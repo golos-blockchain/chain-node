@@ -3988,7 +3988,18 @@ namespace golos { namespace chain {
                         if (witness_missed.owner != b.witness) {
                             modify(witness_missed, [&](witness_object &w) {
                                 w.total_missed++;
-                                if (has_hardfork(STEEMIT_HARDFORK_0_14__278)) {
+                                if (is_transit_enabled()) {
+                                    //hack, in order to switch off missing delates faster
+                                    if (head_block_num() - _dgp.transit_block_num < 210) {
+                                        if(head_block_num() - w.last_confirmed_block_num > 30) {
+                                            w.signing_key = public_key_type();
+                                            push_virtual_operation(shutdown_witness_operation(w.owner));
+                                        }
+                                    } else if (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_DAY) {
+                                        w.signing_key = public_key_type();
+                                        push_virtual_operation(shutdown_witness_operation(w.owner));
+                                    }
+                                } else if (has_hardfork(STEEMIT_HARDFORK_0_14__278)) {
                                     if (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_DAY) {
                                         w.signing_key = public_key_type();
                                         push_virtual_operation(shutdown_witness_operation(w.owner));
