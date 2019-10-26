@@ -660,6 +660,27 @@ namespace golos { namespace protocol {
             chain_properties_19& operator=(const chain_properties_19&) = default;
         };
 
+        struct chain_properties_22 : public chain_properties_19 {
+            void validate() const;
+
+            chain_properties_22& operator=(const chain_properties_17& src) {
+                chain_properties_19::operator=(src);
+                return *this;
+            }
+
+            chain_properties_22& operator=(const chain_properties_18& src) {
+                chain_properties_19::operator=(src);
+                return *this;
+            }
+
+            chain_properties_22& operator=(const chain_properties_19& src) {
+                chain_properties_19::operator=(src);
+                return *this;
+            }
+
+            chain_properties_22& operator=(const chain_properties_22&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -670,7 +691,8 @@ namespace golos { namespace protocol {
         using versioned_chain_properties = fc::static_variant<
             chain_properties_17,
             chain_properties_18,
-            chain_properties_19
+            chain_properties_19,
+            chain_properties_22
         >;
 
         /**
@@ -1371,6 +1393,8 @@ FC_REFLECT_DERIVED(
     (posts_window)(posts_per_window)(comments_window)(comments_per_window)(votes_window)(votes_per_window)(auction_window_size)
     (max_delegated_vesting_interest_rate)(custom_ops_bandwidth_multiplier)(min_curation_percent)(max_curation_percent)
     (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund))
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),)
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
