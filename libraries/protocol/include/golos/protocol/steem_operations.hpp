@@ -10,6 +10,10 @@
 
 namespace golos { namespace protocol {
 
+        void validate_account_name(const std::string &name);
+
+        void validate_permlink(const std::string &permlink);
+
         struct account_create_operation : public base_operation {
             asset fee;
             account_name_type creator;
@@ -661,6 +665,32 @@ namespace golos { namespace protocol {
         };
 
         struct chain_properties_22 : public chain_properties_19 {
+
+            /**
+             * Percent of content fund growth on each block being redirected to worker fund
+             */
+            uint16_t worker_from_content_fund_percent = GOLOS_WORKER_FROM_CONTENT_FUND_PERCENT;
+
+            /**
+             * Percent of vesting fund growth on each block being redirected to worker fund
+             */
+            uint16_t worker_from_vesting_fund_percent = GOLOS_WORKER_FROM_VESTING_FUND_PERCENT;
+
+            /**
+             * Percent of witness fund growth on each block being redirected to worker fund
+             */
+            uint16_t worker_from_witness_fund_percent = GOLOS_WORKER_FROM_WITNESS_FUND_PERCENT;
+
+            /**
+             * Maximum term of worker techspec approving
+             */
+            uint32_t worker_techspec_approve_term_sec = GOLOS_WORKER_TECHSPEC_APPROVE_TERM_SEC;
+
+            /**
+             * Maximum term of worker result approving
+             */
+            uint32_t worker_result_approve_term_sec = GOLOS_WORKER_RESULT_APPROVE_TERM_SEC;
+
             void validate() const;
 
             chain_properties_22& operator=(const chain_properties_17& src) {
@@ -1394,7 +1424,9 @@ FC_REFLECT_DERIVED(
     (max_delegated_vesting_interest_rate)(custom_ops_bandwidth_multiplier)(min_curation_percent)(max_curation_percent)
     (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund))
 FC_REFLECT_DERIVED(
-    (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),)
+    (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
+    (worker_from_content_fund_percent)(worker_from_vesting_fund_percent)(worker_from_witness_fund_percent)
+    (worker_techspec_approve_term_sec)(worker_result_approve_term_sec))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

@@ -41,6 +41,7 @@ target_link_libraries(
         golos::block_info
         golos::json_rpc
         golos::follow
+        golos::worker_api
         ${MONGO_LIB}
         golos_protocol
         fc

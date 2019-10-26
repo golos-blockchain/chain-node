@@ -1516,6 +1516,46 @@ namespace mongo_db {
         }
     }
 
+    auto state_writer::operator()(const worker_proposal_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_proposal_delete_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_techspec_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_techspec_delete_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_techspec_approve_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_result_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_result_delete_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_payment_approve_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_assign_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_fund_operation& op) -> result_type {
+
+    }
+
     auto state_writer::operator()(const fill_convert_request_operation& op) -> result_type {
         try {
             format_account(op.owner);
@@ -1932,6 +1972,18 @@ namespace mongo_db {
     }
 
     auto state_writer::operator()(const total_comment_reward_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const techspec_reward_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const techspec_expired_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_reward_operation& op) -> result_type {
 
     }
 

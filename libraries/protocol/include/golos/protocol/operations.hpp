@@ -3,6 +3,7 @@
 #include <golos/protocol/operation_util.hpp>
 #include <golos/protocol/proposal_operations.hpp>
 #include <golos/protocol/steem_operations.hpp>
+#include <golos/protocol/worker_operations.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
 
 namespace golos { namespace protocol {
@@ -70,6 +71,16 @@ namespace golos { namespace protocol {
                 delegate_vesting_shares_with_interest_operation,
                 reject_vesting_shares_delegation_operation,
                 transit_to_cyberway_operation,
+                worker_proposal_operation,
+                worker_proposal_delete_operation,
+                worker_techspec_operation,
+                worker_techspec_delete_operation,
+                worker_techspec_approve_operation,
+                worker_result_operation,
+                worker_result_delete_operation,
+                worker_payment_approve_operation,
+                worker_assign_operation,
+                worker_fund_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,
@@ -89,7 +100,10 @@ namespace golos { namespace protocol {
                 producer_reward_operation,
                 delegation_reward_operation,
                 auction_window_reward_operation,
-                total_comment_reward_operation
+                total_comment_reward_operation,
+                techspec_reward_operation,
+                worker_reward_operation,
+                techspec_expired_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

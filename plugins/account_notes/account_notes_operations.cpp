@@ -6,12 +6,6 @@
 
 namespace golos { namespace plugins { namespace account_notes {
 
-using golos::protocol::is_valid_account_name;
-
-static inline void validate_account_name(const string& name) {
-    GOLOS_CHECK_VALUE(is_valid_account_name(name), "Account name ${name} is invalid", ("name", name));
-}
-
 void set_value_operation::validate() const {
     GOLOS_CHECK_PARAM_ACCOUNT(account);
     GOLOS_CHECK_PARAM(key, GOLOS_CHECK_VALUE_LEGE(key.length(), 1, 128));

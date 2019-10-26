@@ -1978,6 +1978,11 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_19::curation_reward_curve);
             calc_median(&chain_properties_19::allow_distribute_auction_reward);
             calc_median(&chain_properties_19::allow_return_auction_reward_to_fund);
+            calc_median(&chain_properties_22::worker_from_content_fund_percent);
+            calc_median(&chain_properties_22::worker_from_vesting_fund_percent);
+            calc_median(&chain_properties_22::worker_from_witness_fund_percent);
+            calc_median(&chain_properties_22::worker_techspec_approve_term_sec);
+            calc_median(&chain_properties_22::worker_result_approve_term_sec);
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -2612,9 +2617,17 @@ namespace golos { namespace chain {
        /**
         *  At a start overall the network has an inflation rate of 15.15% of virtual golos per year.
         *  Each year the inflation rate is reduced by 0.42% and stops at 0.95% of virtual golos per year in 33 years.
+        *
+        *  Before HF22:
         *  66.67% of inflation is directed to content reward pool
         *  26.67% of inflation is directed to vesting fund
         *  6.66% of inflation is directed to witness pay
+        *
+        *  After HF22:
+        *  60.00% of inflation is directed to content reward pool
+        *  24.00% of inflation is directed to vesting fund
+        *  6.00% of inflation is directed to witness pay
+        *  10.00% of inflation is directed to worker pay
         *
         *  This method pays out vesting, reward shares and witnesses every block.
         */
@@ -2650,6 +2663,22 @@ namespace golos { namespace chain {
                         (new_steem * STEEMIT_VESTING_FUND_PERCENT) /
                         STEEMIT_100_PERCENT; /// 26.67% to vesting fund
                 auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 6.66% to witness pay
+
+                fc::safe<int64_t> worker_reward = 0;
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
+                    auto content_to_worker = content_reward * wso.median_props.worker_from_content_fund_percent / STEEMIT_100_PERCENT;
+                    content_reward -= content_to_worker;
+                    worker_reward += content_to_worker;
+
+                    auto vesting_to_worker = vesting_reward * wso.median_props.worker_from_vesting_fund_percent / STEEMIT_100_PERCENT;
+                    vesting_reward -= vesting_to_worker;
+                    worker_reward += vesting_to_worker;
+
+                    auto witness_to_worker = witness_reward * wso.median_props.worker_from_witness_fund_percent / STEEMIT_100_PERCENT;
+                    witness_reward -= witness_to_worker;
+                    worker_reward += witness_to_worker;
+                }
+
                 witness_reward *= STEEMIT_MAX_WITNESSES;
 
                 if (cwit.schedule == witness_object::timeshare) {
@@ -2665,6 +2694,15 @@ namespace golos { namespace chain {
                 witness_reward /= wso.witness_pay_normalization_factor;
 
                 new_steem = content_reward + vesting_reward + witness_reward;
+
+                if (worker_reward != 0) {
+                    new_steem += worker_reward;
+
+                    modify(props, [&](dynamic_global_property_object& p) {
+                        p.total_worker_fund_steem += asset(worker_reward, STEEM_SYMBOL);
+                        p.worker_revenue_per_day = asset(worker_reward * STEEMIT_BLOCKS_PER_DAY, STEEM_SYMBOL);
+                    });
+                }
 
                 modify(props, [&](dynamic_global_property_object &p) {
                     p.total_vesting_fund_steem += asset(vesting_reward, STEEM_SYMBOL);
@@ -3106,6 +3144,16 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<proposal_delete_evaluator>();
             _my->_evaluator_registry.register_evaluator<chain_properties_update_evaluator>();
             _my->_evaluator_registry.register_evaluator<break_free_referral_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_proposal_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_proposal_delete_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_techspec_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_techspec_delete_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_techspec_approve_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_result_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_result_delete_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_payment_approve_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_assign_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_fund_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -3151,6 +3199,10 @@ namespace golos { namespace chain {
             add_core_index<account_metadata_index>(*this);
             add_core_index<proposal_index>(*this);
             add_core_index<required_approval_index>(*this);
+            add_core_index<worker_proposal_index>(*this);
+            add_core_index<worker_techspec_index>(*this);
+            add_core_index<worker_techspec_approve_index>(*this);
+            add_core_index<worker_payment_approve_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3697,6 +3749,7 @@ namespace golos { namespace chain {
                 clear_expired_transactions();
                 clear_expired_orders();
                 clear_expired_delegations();
+                clear_expired_worker_objects();
 
                 update_witness_schedule();
 
@@ -3707,6 +3760,7 @@ namespace golos { namespace chain {
                 process_funds();
                 process_conversions();
                 process_comment_cashout();
+                process_worker_cashout();
                 process_vesting_withdrawals();
                 process_savings_withdraws();
                 pay_liquidity_reward();
@@ -5034,7 +5088,8 @@ namespace golos { namespace chain {
                 }
 
                 total_supply += gpo.total_vesting_fund_steem +
-                                gpo.total_reward_fund_steem;
+                                gpo.total_reward_fund_steem +
+                                gpo.total_worker_fund_steem;
 
                 FC_ASSERT(gpo.current_supply ==
                           total_supply, "", ("gpo.current_supply", gpo.current_supply)("total_supply", total_supply));

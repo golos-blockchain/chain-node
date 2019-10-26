@@ -2,6 +2,7 @@
 
 #include <golos/protocol/exceptions.hpp>
 #include <golos/protocol/operations.hpp>
+#include <golos/chain/account_object.hpp>
 
 #define ASSERT_REQ_HF_IN_DB(HF, FEATURE, DATABASE) \
     GOLOS_ASSERT(DATABASE.has_hardfork(HF), unsupported_operation, \
@@ -10,6 +11,18 @@
 
 #define ASSERT_REQ_HF(HF, FEATURE) \
     ASSERT_REQ_HF_IN_DB(HF, FEATURE, _db)
+
+#define GOLOS_CHECK_BALANCE(ACCOUNT, TYPE, REQUIRED ...) \
+    FC_EXPAND_MACRO( \
+        FC_MULTILINE_MACRO_BEGIN \
+            asset exist = get_balance(ACCOUNT, TYPE, (REQUIRED).symbol); \
+            if( UNLIKELY( exist < (REQUIRED) )) { \
+                FC_THROW_EXCEPTION( golos::insufficient_funds, \
+                        "Account \"${account}\" does not have enough ${balance}: required ${required}, exist ${exist}", \
+                        ("account",ACCOUNT.name)("balance",get_balance_name(TYPE))("required",REQUIRED)("exist",exist)); \
+            } \
+        FC_MULTILINE_MACRO_END \
+    )
 
 namespace golos {
     namespace chain {
@@ -52,6 +65,18 @@ namespace golos {
             database &_db;
         };
 
+        enum balance_type {
+            MAIN_BALANCE,
+            SAVINGS,
+            VESTING,
+            EFFECTIVE_VESTING,
+            HAVING_VESTING,
+            AVAILABLE_VESTING
+        };
+
+        asset get_balance(const account_object &account, balance_type type, asset_symbol_type symbol);
+
+        std::string get_balance_name(balance_type type);
     }
 }
 

@@ -60,6 +60,7 @@ namespace golos {
             asset total_vesting_shares = asset(0, VESTS_SYMBOL);
             asset total_reward_fund_steem = asset(0, STEEM_SYMBOL);
             fc::uint128_t total_reward_shares2; ///< the running total of REWARD^2
+            asset total_worker_fund_steem = asset(0, STEEM_SYMBOL);
 
             price get_vesting_share_price() const {
                 if (total_vesting_fund_steem.amount == 0 ||
@@ -147,6 +148,9 @@ namespace golos {
 
             uint32_t transit_block_num = UINT32_MAX;
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
+
+            asset worker_revenue_per_day = asset(0, STEEM_SYMBOL);
+            asset worker_consumption_per_day = asset(0, STEEM_SYMBOL);
         };
 
         typedef multi_index_container <
@@ -179,6 +183,7 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (total_vesting_shares)
                 (total_reward_fund_steem)
                 (total_reward_shares2)
+                (total_worker_fund_steem)
                 (sbd_interest_rate)
                 (sbd_print_rate)
                 (average_block_size)
@@ -194,5 +199,7 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (is_forced_min_price)
                 (transit_block_num)
                 (transit_witnesses)
+                (worker_revenue_per_day)
+                (worker_consumption_per_day)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::dynamic_global_property_object, golos::chain::dynamic_global_property_index)

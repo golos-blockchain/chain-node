@@ -227,6 +227,31 @@ namespace golos { namespace protocol {
             asset vesting_shares_in_golos; // not reflected
         };
 
+        struct techspec_reward_operation : public virtual_operation {
+            techspec_reward_operation() {
+            }
+            techspec_reward_operation(const account_name_type& a, const string& p, const asset& r)
+                    : author(a), permlink(p), reward(r) {
+            }
+
+            account_name_type author;
+            string permlink;
+            asset reward;
+        };
+
+        struct worker_reward_operation : public virtual_operation {
+            worker_reward_operation() {
+            }
+            worker_reward_operation(const account_name_type& w, const account_name_type& wta, const string& wtp, const asset& r)
+                    : worker(w), worker_techspec_author(wta), worker_techspec_permlink(wtp), reward(r) {
+            }
+
+            account_name_type worker;
+            account_name_type worker_techspec_author;
+            string worker_techspec_permlink;
+            asset reward;
+        };
+
         struct return_vesting_delegation_operation: public virtual_operation {
             return_vesting_delegation_operation() {
             }
@@ -253,6 +278,18 @@ namespace golos { namespace protocol {
             asset curator_reward;
             int64_t net_rshares;
         };
+
+        struct techspec_expired_operation : public virtual_operation {
+            techspec_expired_operation() {
+            }
+            techspec_expired_operation(const account_name_type& a, const string& p, bool w)
+                    : author(a), permlink(p), was_approved(w) {
+            }
+
+            account_name_type author;
+            string permlink;
+            bool was_approved;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -273,3 +310,6 @@ FC_REFLECT((golos::protocol::return_vesting_delegation_operation), (account)(ves
 FC_REFLECT((golos::protocol::producer_reward_operation), (producer)(vesting_shares))
 FC_REFLECT((golos::protocol::delegation_reward_operation), (delegator)(delegatee)(payout_strategy)(vesting_shares))
 FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
+FC_REFLECT((golos::protocol::techspec_reward_operation), (author)(permlink)(reward))
+FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_techspec_author)(worker_techspec_permlink)(reward))
+FC_REFLECT((golos::protocol::techspec_expired_operation), (author)(permlink)(was_approved))
