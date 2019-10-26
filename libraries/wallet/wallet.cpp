@@ -351,6 +351,13 @@ namespace golos { namespace wallet {
                         result["max_curation_percent"] = median_props.max_curation_percent;
                         result["curation_reward_curve"] = median_props.curation_reward_curve;
                     }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
+                        result["worker_from_content_fund_percent"] = median_props.worker_from_content_fund_percent;
+                        result["worker_from_vesting_fund_percent"] = median_props.worker_from_vesting_fund_percent;
+                        result["worker_from_witness_fund_percent"] = median_props.worker_from_witness_fund_percent;
+                        result["worker_techspec_approve_term_sec"] = median_props.worker_techspec_approve_term_sec;
+                        result["worker_result_approve_term_sec"] = median_props.worker_result_approve_term_sec;
+                    }
 
                     return result;
                 }
@@ -2284,6 +2291,11 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
                 chain_properties_22 p22;
                 p22 = p;
+                SET_PROP(p22, worker_from_content_fund_percent);
+                SET_PROP(p22, worker_from_vesting_fund_percent);
+                SET_PROP(p22, worker_from_witness_fund_percent);
+                SET_PROP(p22, worker_techspec_approve_term_sec);
+                SET_PROP(p22, worker_result_approve_term_sec);
                 op.props = p22;
             }
 #undef SET_PROP
@@ -3121,6 +3133,161 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( trx, broadcast );
         }
 
+        annotated_signed_transaction wallet_api::worker_proposal(
+                const std::string& author, const std::string& permlink, worker_proposal_type type, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_proposal_operation op;
+            op.author = author;
+            op.permlink = permlink;
+            op.type = type;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::delete_worker_proposal(
+                const std::string& author, const std::string& permlink, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_proposal_delete_operation op;
+            op.author = author;
+            op.permlink = permlink;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::worker_techspec(
+                const std::string& author, const std::string& permlink,
+                const std::string& worker_proposal_author, const std::string& worker_proposal_permlink,
+                const asset& specification_cost, const asset& development_cost, const std::string& worker,
+                uint16_t payments_count, uint32_t payments_interval, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_techspec_operation op;
+            op.author = author;
+            op.permlink = permlink;
+            op.worker_proposal_author = worker_proposal_author;
+            op.worker_proposal_permlink = worker_proposal_permlink;
+            op.specification_cost = specification_cost;
+            op.development_cost = development_cost;
+            op.worker = worker;
+            op.payments_count = payments_count;
+            op.payments_interval = payments_interval;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::delete_worker_techspec(
+                const std::string& author, const std::string& permlink, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_techspec_delete_operation op;
+            op.author = author;
+            op.permlink = permlink;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::approve_worker_techspec(
+                const std::string& approver, const std::string& author, const std::string& permlink,
+                worker_techspec_approve_state state, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_techspec_approve_operation op;
+            op.approver = approver;
+            op.author = author;
+            op.permlink = permlink;
+            op.state = state;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::assign_worker(
+                const std::string& assigner, const std::string& worker_techspec_author,
+                const std::string& worker_techspec_permlink, const std::string& worker, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_assign_operation op;
+            op.assigner = assigner;
+            op.worker_techspec_author = worker_techspec_author;
+            op.worker_techspec_permlink = worker_techspec_permlink;
+            op.worker = worker;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::worker_result(
+                const std::string& author, const std::string& permlink, const std::string& worker_techspec_permlink, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_result_operation op;
+            op.author = author;
+            op.permlink = permlink;
+            op.worker_techspec_permlink = worker_techspec_permlink;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::delete_worker_result(
+                const std::string& author, const std::string& permlink, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_result_delete_operation op;
+            op.author = author;
+            op.permlink = permlink;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::approve_worker_payment(
+                const std::string& approver, const std::string& worker_techspec_author, const std::string& worker_techspec_permlink,
+                worker_techspec_approve_state state, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_payment_approve_operation op;
+            op.approver = approver;
+            op.worker_techspec_author = worker_techspec_author;
+            op.worker_techspec_permlink = worker_techspec_permlink;
+            op.state = state;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
 } } // golos::wallet
 
 FC_REFLECT_ENUM(golos::wallet::logic_errors::types,

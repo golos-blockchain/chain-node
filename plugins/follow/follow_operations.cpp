@@ -5,13 +5,7 @@ namespace golos {
     namespace plugins {
         namespace follow {
 
-            /// TODO: after the hardfork, we can rename this method validate_permlink because it is strictily less restrictive than before
-            ///  Issue #56 contains the justificiation for allowing any UTF-8 string to serve as a permlink, content will be grouped by tags
-            ///  going forward.
-            inline void validate_permlink(const string &permlink) {
-                GOLOS_CHECK_VALUE(permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH, "permlink is too long");
-                GOLOS_CHECK_VALUE(fc::is_utf8(permlink), "permlink not formatted in UTF8");
-            }
+            using golos::protocol::validate_permlink;
 
             void follow_operation::validate() const {
                 GOLOS_CHECK_LOGIC(follower != following,

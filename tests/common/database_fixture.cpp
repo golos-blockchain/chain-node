@@ -473,6 +473,59 @@ namespace golos { namespace chain {
                 return db->get_witness(owner);
             }
             FC_CAPTURE_AND_RETHROW((owner)(url))
+        }     
+
+        const comment_object& database_fixture::comment_create(
+                const string& author,
+                const private_key_type& author_key,
+                const string& permlink,
+                const string& parent_author,
+                const string& parent_permlink,
+                const string& title,
+                const string& body,
+                const string& json) {
+            try {
+                comment_operation op;
+                op.author = author;
+                op.permlink = permlink;
+                op.parent_author = parent_author;
+                op.parent_permlink = parent_permlink;
+                op.title = title;
+                op.body = body;
+                op.json_metadata = json;
+
+                trx.operations.push_back(op);
+                trx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                trx.sign(author_key, db->get_chain_id());
+                trx.validate();
+                db->push_transaction(trx, 0);
+                trx.operations.clear();
+                trx.signatures.clear();
+
+                return db->get_comment(author, permlink);
+            }
+            FC_CAPTURE_AND_RETHROW((author)(permlink))
+        }
+
+        const comment_object& database_fixture::comment_create(
+                const string& author,
+                const private_key_type& author_key,
+                const string& permlink,
+                const string& parent_author,
+                const string& parent_permlink) {
+            try {
+                return comment_create(
+                    author,
+                    author_key,
+                    permlink,
+                    parent_author,
+                    parent_permlink,
+                    "title",
+                    "body",
+                    "{}"
+                );
+            }
+            FC_CAPTURE_AND_RETHROW((author)(permlink))
         }
 
         void database_fixture::fund(

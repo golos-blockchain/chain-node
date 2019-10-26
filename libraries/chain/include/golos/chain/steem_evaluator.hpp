@@ -81,4 +81,15 @@ namespace golos { namespace chain {
             int depth_ = 0;
         };
 
+        DEFINE_EVALUATOR(worker_proposal)
+        DEFINE_EVALUATOR(worker_proposal_delete)
+        DEFINE_EVALUATOR(worker_techspec)
+        DEFINE_EVALUATOR(worker_techspec_delete)
+        DEFINE_EVALUATOR(worker_techspec_approve)
+        DEFINE_EVALUATOR(worker_result)
+        DEFINE_EVALUATOR(worker_result_delete)
+        DEFINE_EVALUATOR(worker_payment_approve)
+        DEFINE_EVALUATOR(worker_assign)
+        DEFINE_EVALUATOR(worker_fund)
+
 } } // golos::chain

@@ -205,6 +205,20 @@ namespace detail_ns {
     };
 
     template<>
+    struct js_name<worker_proposal_type> {
+        static std::string name() {
+            return "worker_proposal_type";
+        }
+    };
+
+    template<>
+    struct js_name<worker_techspec_approve_state> {
+        static std::string name() {
+            return "worker_techspec_approve_state";
+        }
+    };
+
+    template<>
     struct js_name<curation_curve> {
         static std::string name() {
             return "curation_curve";
@@ -443,6 +457,44 @@ namespace detail_ns {
             std::cout << "ChainTypes." << js_name<delegator_payout_strategy>::name() << " =\n";
             for (uint8_t i = uint8_t(delegator_payout_strategy::to_delegator); i < uint8_t(delegator_payout_strategy::_size); ++i) {
                 std::cout << "    " << fc::json::to_string(delegator_payout_strategy(i)) << ": " << int(i) << "\n";
+            }
+            std::cout << "\n";
+        }
+    };
+
+    template<>
+    struct serializer<worker_proposal_type, true> {
+        static void init() {
+            static bool init = false;
+            if (!init) {
+                init = true;
+                register_serializer(js_name<worker_proposal_type>::name(), [=]() { generate(); });
+            }
+        }
+
+        static void generate() {
+            std::cout << "ChainTypes." << js_name<worker_proposal_type>::name() << " =\n";
+            for (uint8_t i = uint8_t(worker_proposal_type::task); i < uint8_t(worker_proposal_type::_size); ++i) {
+                std::cout << "    " << fc::json::to_string(worker_proposal_type(i)) << ": " << int(i) << "\n";
+            }
+            std::cout << "\n";
+        }
+    };
+
+    template<>
+    struct serializer<worker_techspec_approve_state, true> {
+        static void init() {
+            static bool init = false;
+            if (!init) {
+                init = true;
+                register_serializer(js_name<worker_techspec_approve_state>::name(), [=]() { generate(); });
+            }
+        }
+
+        static void generate() {
+            std::cout << "ChainTypes." << js_name<worker_techspec_approve_state>::name() << " =\n";
+            for (uint8_t i = uint8_t(worker_techspec_approve_state::approve); i < uint8_t(worker_techspec_approve_state::_size); ++i) {
+                std::cout << "    " << fc::json::to_string(worker_techspec_approve_state(i)) << ": " << int(i) << "\n";
             }
             std::cout << "\n";
         }

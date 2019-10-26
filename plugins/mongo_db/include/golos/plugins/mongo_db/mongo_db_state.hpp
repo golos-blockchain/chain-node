@@ -71,6 +71,16 @@ namespace mongo_db {
         result_type operator()(const proposal_create_operation& op);
         result_type operator()(const proposal_update_operation& op);
         result_type operator()(const proposal_delete_operation& op);
+        result_type operator()(const worker_proposal_operation& op);
+        result_type operator()(const worker_proposal_delete_operation& op);
+        result_type operator()(const worker_techspec_operation& op);
+        result_type operator()(const worker_techspec_delete_operation& op);
+        result_type operator()(const worker_techspec_approve_operation& op);
+        result_type operator()(const worker_result_operation& op);
+        result_type operator()(const worker_result_delete_operation& op);
+        result_type operator()(const worker_payment_approve_operation& op);
+        result_type operator()(const worker_assign_operation& op);
+        result_type operator()(const worker_fund_operation& op);
         result_type operator()(const fill_convert_request_operation& op);
         result_type operator()(const author_reward_operation& op);
         result_type operator()(const curation_reward_operation& op);
@@ -90,6 +100,9 @@ namespace mongo_db {
         result_type operator()(const delegation_reward_operation& op);
         result_type operator()(const auction_window_reward_operation& op);
         result_type operator()(const total_comment_reward_operation& op);
+        result_type operator()(const techspec_reward_operation& op);
+        result_type operator()(const techspec_expired_operation& op);
+        result_type operator()(const worker_reward_operation& op);
 
         void write_global_property_object(const dynamic_global_property_object& dgpo, bool history);
 

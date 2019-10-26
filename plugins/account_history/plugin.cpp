@@ -513,6 +513,60 @@ if (options.count(name)) { \
         void operator()(const proposal_delete_operation& op) {
             insert_pair(op.requester, op.author);
         }
+
+        void operator()(const worker_proposal_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const worker_proposal_delete_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const worker_techspec_operation& op) {
+            insert_pair(op.author, op.worker_proposal_author);
+        }
+
+        void operator()(const worker_techspec_delete_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const worker_techspec_approve_operation& op) {
+            insert_pair(op.approver, op.author);
+        }
+
+        void operator()(const worker_assign_operation& op) {
+            insert_sender(op.assigner);
+            insert_receiver(op.worker);
+            insert_receiver(op.worker_techspec_author);
+        }
+
+        void operator()(const worker_fund_operation& op) {
+            insert_sender(op.sponsor);
+        }
+
+        void operator()(const worker_result_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const worker_result_delete_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const worker_payment_approve_operation& op) {
+            insert_pair(op.approver, op.worker_techspec_author);
+        }
+
+        void operator()(const techspec_reward_operation& op) {
+            insert_receiver(op.author);
+        }
+
+        void operator()(const techspec_expired_operation& op) {
+            insert_receiver(op.author);
+        }
+
+        void operator()(const worker_reward_operation& op) {
+            insert_pair(op.worker_techspec_author, op.worker);
+        }
     };
 
     void operation_get_impacted_accounts(const operation& op, impacted_accounts& result) {

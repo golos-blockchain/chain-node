@@ -223,6 +223,9 @@ namespace golos {
             replies_are_not_allowed,
             cannot_delete_comment_with_replies,
             cannot_delete_comment_with_positive_votes,
+            cannot_delete_post_with_worker_proposal,
+            cannot_delete_post_with_worker_techspec,
+            cannot_delete_post_with_worker_result,
             comment_options_requires_no_rshares,
             curation_rewards_cannot_be_reenabled,
             voting_cannot_be_reenabled,
@@ -333,6 +336,20 @@ namespace golos {
             account_already_scheduled_for_work,
             cannot_specify_owner_key_unless_creating_account,
             witness_must_be_created_before_minning,
+
+            // workers
+            post_is_already_used,
+            post_is_not_root,
+            post_should_be_in_cashout_window,
+            proposal_has_techspecs,
+            you_are_not_proposal_author,
+            you_are_not_techspec_author_or_worker,
+            approver_is_not_top19_witness,
+            insufficient_funds_to_approve,
+            worker_not_set,
+            techspec_already_used_for_another_proposal,
+            incorrect_proposal_state,
+            incorrect_techspec_state,
 
             // custom operations
             inner_authorities_does_not_match_outer,
@@ -493,6 +510,9 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
         (replies_are_not_allowed)
         (cannot_delete_comment_with_replies)
         (cannot_delete_comment_with_positive_votes)
+        (cannot_delete_post_with_worker_proposal)
+        (cannot_delete_post_with_worker_techspec)
+        (cannot_delete_post_with_worker_result)
         (comment_options_requires_no_rshares)
         (curation_rewards_cannot_be_reenabled)
         (voting_cannot_be_reenabled)
@@ -603,6 +623,20 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
         (account_already_scheduled_for_work)
         (cannot_specify_owner_key_unless_creating_account)
         (witness_must_be_created_before_minning)
+
+        // workers
+        (post_is_already_used)
+        (post_is_not_root)
+        (post_should_be_in_cashout_window)
+        (proposal_has_techspecs)
+        (you_are_not_proposal_author)
+        (you_are_not_techspec_author_or_worker)
+        (approver_is_not_top19_witness)
+        (insufficient_funds_to_approve)
+        (worker_not_set)
+        (techspec_already_used_for_another_proposal)
+        (incorrect_proposal_state)
+        (incorrect_techspec_state)
 
         // custom operations
         (inner_authorities_does_not_match_outer)
