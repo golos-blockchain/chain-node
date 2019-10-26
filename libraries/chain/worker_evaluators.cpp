@@ -8,7 +8,7 @@
 namespace golos { namespace chain {
 
     void worker_proposal_evaluator::do_apply(const worker_proposal_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_proposal_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_proposal_operation");
 
         const auto& post = _db.get_comment(o.author, o.permlink);
 
@@ -33,7 +33,7 @@ namespace golos { namespace chain {
     }
 
     void worker_proposal_delete_evaluator::do_apply(const worker_proposal_delete_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_proposal_delete_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_proposal_delete_operation");
 
         const auto& post = _db.get_comment(o.author, o.permlink);
 
@@ -45,7 +45,7 @@ namespace golos { namespace chain {
     }
 
     void worker_techspec_evaluator::do_apply(const worker_techspec_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_techspec_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_techspec_operation");
 
         const auto& wpo_post = _db.get_comment(o.worker_proposal_author, o.worker_proposal_permlink);
         const auto& wpo = _db.get_worker_proposal(wpo_post.id);
@@ -103,7 +103,7 @@ namespace golos { namespace chain {
     }
 
     void worker_techspec_delete_evaluator::do_apply(const worker_techspec_delete_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_techspec_delete_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_techspec_delete_operation");
 
         const auto& post = _db.get_comment(o.author, o.permlink);
         const auto& wto = _db.get_worker_techspec(post.id);
@@ -115,7 +115,7 @@ namespace golos { namespace chain {
     }
 
     void worker_techspec_approve_evaluator::do_apply(const worker_techspec_approve_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_techspec_approve_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_techspec_approve_operation");
 
         CHECK_APPROVER_WITNESS(o.approver);
 
@@ -227,7 +227,7 @@ namespace golos { namespace chain {
     }
 
     void worker_result_evaluator::do_apply(const worker_result_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_result_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_result_operation");
 
         const auto& post = _db.get_comment(o.author, o.permlink);
 
@@ -247,7 +247,7 @@ namespace golos { namespace chain {
     }
 
     void worker_result_delete_evaluator::do_apply(const worker_result_delete_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_result_delete_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_result_delete_operation");
 
         const auto& worker_result_post = _db.get_comment(o.author, o.permlink);
         const auto& wto = _db.get_worker_result(worker_result_post.id);
@@ -262,7 +262,7 @@ namespace golos { namespace chain {
     }
 
     void worker_payment_approve_evaluator::do_apply(const worker_payment_approve_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_payment_approve_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_payment_approve_operation");
 
         CHECK_APPROVER_WITNESS(o.approver);
 
@@ -329,7 +329,7 @@ namespace golos { namespace chain {
     }
 
     void worker_assign_evaluator::do_apply(const worker_assign_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1013, "worker_assign_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_assign_operation");
 
         const auto& wto_post = _db.get_comment(o.worker_techspec_author, o.worker_techspec_permlink);
         const auto& wto = _db.get_worker_techspec(wto_post.id);
@@ -364,7 +364,7 @@ namespace golos { namespace chain {
     }
 
     void worker_fund_evaluator::do_apply(const worker_fund_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__1107, "worker_fund_operation");
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_fund_operation");
 
         const auto& sponsor = _db.get_account(o.sponsor);
 

@@ -83,7 +83,7 @@ namespace golos { namespace chain {
             auto vesting_reward = total_reward * uint16_t(STEEMIT_VESTING_FUND_PERCENT) / STEEMIT_100_PERCENT;
             auto witness_reward = total_reward - content_reward - vesting_reward;
 
-            if (db_.has_hardfork(STEEMIT_HARDFORK_0_22__1013)) {
+            if (db_.has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
                 auto content_to_worker = content_reward * uint16_t(GOLOS_WORKER_FROM_CONTENT_FUND_PERCENT) / STEEMIT_100_PERCENT;
                 content_reward -= content_to_worker;
 

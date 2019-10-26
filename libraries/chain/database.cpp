@@ -2665,7 +2665,7 @@ namespace golos { namespace chain {
                 auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 6.66% to witness pay
 
                 fc::safe<int64_t> worker_reward = 0;
-                if (has_hardfork(STEEMIT_HARDFORK_0_22__1013)) {
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
                     auto content_to_worker = content_reward * wso.median_props.worker_from_content_fund_percent / STEEMIT_100_PERCENT;
                     content_reward -= content_to_worker;
                     worker_reward += content_to_worker;
