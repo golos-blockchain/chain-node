@@ -1516,14 +1516,6 @@ namespace mongo_db {
         }
     }
 
-    auto state_writer::operator()(const worker_proposal_operation& op) -> result_type {
-
-    }
-
-    auto state_writer::operator()(const worker_proposal_delete_operation& op) -> result_type {
-
-    }
-
     auto state_writer::operator()(const worker_techspec_operation& op) -> result_type {
 
     }

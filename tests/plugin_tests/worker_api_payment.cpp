@@ -30,18 +30,11 @@ BOOST_AUTO_TEST_CASE(worker_payment_approving) {
 
     const auto& wtmo_idx = db->get_index<worker_techspec_metadata_index, by_post>();
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
 
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
@@ -120,18 +113,11 @@ BOOST_AUTO_TEST_CASE(worker_payment_closed_by_witnesses) {
 
     const auto& wtmo_idx = db->get_index<worker_techspec_metadata_index, by_post>();
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
 
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
@@ -177,18 +163,11 @@ BOOST_AUTO_TEST_CASE(worker_payment_disapproved_by_witnesses) {
 
     const auto& wtmo_idx = db->get_index<worker_techspec_metadata_index, by_post>();
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
 
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
@@ -241,18 +220,11 @@ BOOST_AUTO_TEST_CASE(worker_payment_storing_consumption) {
 
     BOOST_TEST_MESSAGE("-- Creating techspec and approving payments");
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
 
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(4);
     wtop.development_cost = ASSET_GOLOS(12);
     wtop.payments_interval = 60*60*24;

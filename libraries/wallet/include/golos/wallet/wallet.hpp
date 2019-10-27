@@ -1404,34 +1404,11 @@ namespace golos { namespace wallet {
                 const std::string& start_date, const std::string& stop_date, bool broadcast);
 
             /**
-             * Create or update worker proposal based on specified post
-             *
-             * @param author author of the post
-             * @param permlink permlink of the post
-             * @param type new type of worker proposal
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction worker_proposal(
-                const std::string& author, const std::string& permlink, worker_proposal_type type, bool broadcast
-                );
-            /**
-             * Delete worker proposal based on specified post
-             *
-             * @param author author of the post
-             * @param permlink permlink of the post
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction delete_worker_proposal(
-                const std::string& author, const std::string& permlink, bool broadcast
-                );
-
-            /**
              * Create or update worker techspec based on specified post, for specified worker proposal
              *
              * @param author author of the post
              * @param permlink permlink of the post
-             * @param worker_proposal_author author of the worker proposal
-             * @param worker_proposal_permlink permlink of the worker proposal
+             * @param type task or premade
              * @param specification_cost cost of specification
              * @param development_cost cost of work
              * @param worker worker who will do techspec or done if premade
@@ -1441,7 +1418,7 @@ namespace golos { namespace wallet {
              */
             annotated_signed_transaction worker_techspec(
                 const std::string& author, const std::string& permlink,
-                const std::string& worker_proposal_author, const std::string& worker_proposal_permlink,
+                const worker_proposal_type& type,
                 const asset& specification_cost, const asset& development_cost, const std::string& worker,
                 uint16_t payments_count, uint32_t payments_interval, bool broadcast
                 );
@@ -1659,8 +1636,6 @@ FC_API( golos::wallet::wallet_api,
                 (mark_private_message)
                 (mark_private_messages)
 
-                (worker_proposal)
-                (delete_worker_proposal)
                 (worker_techspec)
                 (delete_worker_techspec)
                 (approve_worker_techspec)

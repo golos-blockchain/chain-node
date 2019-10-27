@@ -63,10 +63,6 @@ BOOST_AUTO_TEST_CASE(worker_result_apply) {
 
     signed_transaction tx;
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     BOOST_TEST_MESSAGE("-- Create result on not-exist post");
 
     worker_result_operation op;
@@ -77,7 +73,8 @@ BOOST_AUTO_TEST_CASE(worker_result_apply) {
 
     BOOST_TEST_MESSAGE("-- Create result on comment instead of post");
 
-    comment_create("bob", bob_private_key, "i-am-comment", "alice", "alice-proposal");
+    comment_create("alice", alice_private_key, "the-post", "", "the-post");
+    comment_create("bob", bob_private_key, "i-am-comment", "alice", "the-post");
 
     op.permlink = "i-am-comment";
     GOLOS_CHECK_ERROR_LOGIC(post_is_not_root, bob_private_key, op);
@@ -104,8 +101,6 @@ BOOST_AUTO_TEST_CASE(worker_result_apply) {
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24*30;
@@ -207,11 +202,6 @@ BOOST_AUTO_TEST_CASE(worker_result_delete_apply) {
 
     BOOST_TEST_MESSAGE("-- Creating result");
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     generate_blocks(60 / STEEMIT_BLOCK_INTERVAL); // Waiting for posts window
 
     comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
@@ -219,8 +209,6 @@ BOOST_AUTO_TEST_CASE(worker_result_delete_apply) {
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;

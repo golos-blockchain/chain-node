@@ -5,17 +5,6 @@
 
 namespace golos { namespace chain {
 
-    const worker_proposal_object& database::get_worker_proposal(const comment_id_type& post) const { try {
-        return get<worker_proposal_object, by_post>(post);
-    } catch (const std::out_of_range &e) {
-        const auto& comment = get_comment(post);
-        GOLOS_THROW_MISSING_OBJECT("worker_proposal_object", fc::mutable_variant_object()("account",comment.author)("permlink",comment.permlink));
-    } FC_CAPTURE_AND_RETHROW((post)) }
-
-    const worker_proposal_object* database::find_worker_proposal(const comment_id_type& post) const {
-        return find<worker_proposal_object, by_post>(post);
-    }
-
     const worker_techspec_object& database::get_worker_techspec(const comment_id_type& post) const { try {
         return get<worker_techspec_object, by_post>(post);
     } catch (const std::out_of_range &e) {
@@ -165,14 +154,6 @@ namespace golos { namespace chain {
         bool has_approves = false;
 
         if (wto.state >= worker_techspec_state::approved) {
-            const auto& wpo = get_worker_proposal(wto.worker_proposal_post);
-            if (wpo.type == worker_proposal_type::task) {
-                modify(wpo, [&](worker_proposal_object& wpo) {
-                    wpo.state = worker_proposal_state::created;
-                    wpo.approved_techspec_post = comment_id_type(-1);
-                });
-            }
-
             const auto& gpo = get_dynamic_global_properties();
             modify(gpo, [&](dynamic_global_property_object& gpo) {
                 gpo.worker_consumption_per_day -= calculate_worker_techspec_consumption_per_day(wto);

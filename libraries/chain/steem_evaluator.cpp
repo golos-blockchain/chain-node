@@ -376,12 +376,6 @@ namespace golos { namespace chain {
 
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__8)
                 && comment.parent_author == STEEMIT_ROOT_POST_PARENT) {
-
-                const auto* wpo = _db.find_worker_proposal(comment.id);
-                GOLOS_CHECK_LOGIC(!wpo,
-                    logic_exception::cannot_delete_post_with_worker_proposal,
-                    "Cannot delete a post with worker proposal.");
-
                 const auto* wto = _db.find_worker_techspec(comment.id);
                 GOLOS_CHECK_LOGIC(!wto,
                     logic_exception::cannot_delete_post_with_worker_techspec,

@@ -514,16 +514,8 @@ if (options.count(name)) { \
             insert_pair(op.requester, op.author);
         }
 
-        void operator()(const worker_proposal_operation& op) {
-            insert_dual(op.author);
-        }
-
-        void operator()(const worker_proposal_delete_operation& op) {
-            insert_dual(op.author);
-        }
-
         void operator()(const worker_techspec_operation& op) {
-            insert_pair(op.author, op.worker_proposal_author);
+            insert_dual(op.author);
         }
 
         void operator()(const worker_techspec_delete_operation& op) {

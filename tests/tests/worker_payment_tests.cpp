@@ -64,12 +64,6 @@ BOOST_AUTO_TEST_CASE(worker_payment_approve_apply) {
     generate_block();
 
     signed_transaction tx;
-
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     BOOST_TEST_MESSAGE("-- Approving payment by not witness case");
 
     worker_payment_approve_operation op;
@@ -101,8 +95,6 @@ BOOST_AUTO_TEST_CASE(worker_payment_approve_apply) {
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
@@ -189,11 +181,6 @@ BOOST_AUTO_TEST_CASE(worker_payment_disapprove) {
 
     signed_transaction tx;
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     BOOST_TEST_MESSAGE("-- Creating 2 techspecs (bob's will be disapproved before payment, carol's - on payment)");
 
     comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
@@ -201,8 +188,6 @@ BOOST_AUTO_TEST_CASE(worker_payment_disapprove) {
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
@@ -258,10 +243,6 @@ BOOST_AUTO_TEST_CASE(worker_payment_disapprove) {
     {
         const auto& wto = db->get_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
         BOOST_CHECK(wto.state == worker_techspec_state::closed_by_witnesses);
-
-        const auto& wpo = db->get_worker_proposal(wto.worker_proposal_post);
-        BOOST_CHECK(wpo.state == worker_proposal_state::created);
-        BOOST_CHECK_EQUAL(wpo.approved_techspec_post, comment_id_type(-1));
 
         const auto& gpo = db->get_dynamic_global_properties();
         BOOST_CHECK_EQUAL(gpo.worker_consumption_per_day.amount, 0);
@@ -345,10 +326,6 @@ BOOST_AUTO_TEST_CASE(worker_payment_disapprove) {
     {
         const auto& wto = db->get_worker_techspec(db->get_comment("carol", string("carol-techspec")).id);
         BOOST_CHECK(wto.state == worker_techspec_state::disapproved_by_witnesses);
-
-        const auto& wpo = db->get_worker_proposal(wto.worker_proposal_post);
-        BOOST_CHECK(wpo.state == worker_proposal_state::created);
-        BOOST_CHECK_EQUAL(wpo.approved_techspec_post, comment_id_type(-1));
 
         const auto& gpo = db->get_dynamic_global_properties();
         BOOST_CHECK_EQUAL(gpo.worker_consumption_per_day.amount, 0);
@@ -441,18 +418,11 @@ BOOST_AUTO_TEST_CASE(worker_cashout) {
 
     BOOST_TEST_MESSAGE("-- Creating techspec and approving payments");
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
 
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(4);
     wtop.development_cost = ASSET_GOLOS(12);
     wtop.payments_interval = 60*60*24;
@@ -600,18 +570,11 @@ BOOST_AUTO_TEST_CASE(worker_cashout_waiting_funds) {
 
     BOOST_TEST_MESSAGE("-- Creating techspec and approving payments");
 
-    comment_create("alice", alice_private_key, "alice-proposal", "", "alice-proposal");
-
-    worker_proposal("alice", alice_private_key, "alice-proposal", worker_proposal_type::task);
-    generate_block();
-
     comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
 
     worker_techspec_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-techspec";
-    wtop.worker_proposal_author = "alice";
-    wtop.worker_proposal_permlink = "alice-proposal";
     wtop.specification_cost = ASSET_GOLOS(4);
     wtop.development_cost = ASSET_GOLOS(12);
     wtop.payments_interval = 60*60*24;
