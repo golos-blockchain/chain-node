@@ -8,28 +8,6 @@ namespace golos { namespace chain {
 
     using namespace golos::protocol;
 
-    enum class worker_proposal_state {
-        created,
-        techspec
-    };
-
-    class worker_proposal_object : public object<worker_proposal_object_type, worker_proposal_object> {
-    public:
-        worker_proposal_object() = delete;
-
-        template <typename Constructor, typename Allocator>
-        worker_proposal_object(Constructor&& c, allocator <Allocator> a) {
-            c(*this);
-        };
-
-        id_type id;
-
-        comment_id_type post;
-        worker_proposal_type type;
-        worker_proposal_state state;
-        comment_id_type approved_techspec_post = comment_id_type(-1);
-    };
-
     enum class worker_techspec_state {
         created,
         approved,
@@ -56,7 +34,7 @@ namespace golos { namespace chain {
         id_type id;
 
         comment_id_type post;
-        comment_id_type worker_proposal_post;
+        worker_proposal_type type;
         worker_techspec_state state;
         asset specification_cost;
         asset development_cost;
@@ -102,18 +80,6 @@ namespace golos { namespace chain {
 
     struct by_post;
 
-    using worker_proposal_index = multi_index_container<
-        worker_proposal_object,
-        indexed_by<
-            ordered_unique<
-                tag<by_id>,
-                member<worker_proposal_object, worker_proposal_object_id_type, &worker_proposal_object::id>>,
-            ordered_unique<
-                tag<by_post>,
-                member<worker_proposal_object, comment_id_type, &worker_proposal_object::post>>>,
-        allocator<worker_proposal_object>>;
-
-    struct by_worker_proposal;
     struct by_worker_result;
     struct by_next_cashout_time;
 
@@ -126,9 +92,6 @@ namespace golos { namespace chain {
             ordered_unique<
                 tag<by_post>,
                 member<worker_techspec_object, comment_id_type, &worker_techspec_object::post>>,
-            ordered_non_unique<
-                tag<by_worker_proposal>,
-                member<worker_techspec_object, comment_id_type, &worker_techspec_object::worker_proposal_post>>,
             ordered_non_unique<
                 tag<by_worker_result>,
                 member<worker_techspec_object, comment_id_type, &worker_techspec_object::worker_result_post>>,
@@ -177,12 +140,6 @@ namespace golos { namespace chain {
         allocator<worker_payment_approve_object>>;
 
 } } // golos::chain
-
-FC_REFLECT_ENUM(golos::chain::worker_proposal_state, (created)(techspec))
-
-CHAINBASE_SET_INDEX_TYPE(
-    golos::chain::worker_proposal_object,
-    golos::chain::worker_proposal_index);
 
 FC_REFLECT_ENUM(golos::chain::worker_techspec_state,
     (created)(approved)(work)(wip)(complete)(payment)(payment_complete)(closed_by_author)(closed_by_expiration)(closed_by_witnesses)(disapproved_by_witnesses))

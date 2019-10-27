@@ -3133,40 +3133,9 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( trx, broadcast );
         }
 
-        annotated_signed_transaction wallet_api::worker_proposal(
-                const std::string& author, const std::string& permlink, worker_proposal_type type, bool broadcast
-        ) {
-            WALLET_CHECK_UNLOCKED();
-
-            worker_proposal_operation op;
-            op.author = author;
-            op.permlink = permlink;
-            op.type = type;
-
-            signed_transaction tx;
-            tx.operations.push_back(op);
-            tx.validate();
-            return sign_transaction(tx, broadcast);
-        }
-
-        annotated_signed_transaction wallet_api::delete_worker_proposal(
-                const std::string& author, const std::string& permlink, bool broadcast
-        ) {
-            WALLET_CHECK_UNLOCKED();
-
-            worker_proposal_delete_operation op;
-            op.author = author;
-            op.permlink = permlink;
-
-            signed_transaction tx;
-            tx.operations.push_back(op);
-            tx.validate();
-            return my->sign_transaction(tx, broadcast);
-        }
-
         annotated_signed_transaction wallet_api::worker_techspec(
                 const std::string& author, const std::string& permlink,
-                const std::string& worker_proposal_author, const std::string& worker_proposal_permlink,
+                const worker_proposal_type& type,
                 const asset& specification_cost, const asset& development_cost, const std::string& worker,
                 uint16_t payments_count, uint32_t payments_interval, bool broadcast
         ) {
@@ -3175,8 +3144,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             worker_techspec_operation op;
             op.author = author;
             op.permlink = permlink;
-            op.worker_proposal_author = worker_proposal_author;
-            op.worker_proposal_permlink = worker_proposal_permlink;
+            op.type = type;
             op.specification_cost = specification_cost;
             op.development_cost = development_cost;
             op.worker = worker;

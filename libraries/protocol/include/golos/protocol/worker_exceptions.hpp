@@ -4,20 +4,6 @@
 
 // State exceptions and related
 
-#define PROPOSAL_STATE worker_proposal_state
-
-#define CHECK_PROPOSAL_STATE(EXPR, MSG) \
-    GOLOS_CHECK_LOGIC(EXPR, \
-        logic_exception::incorrect_proposal_state, \
-        MSG)
-
-#define CHECK_PROPOSAL_HAS_NO_TECHSPECS(WPO, MSG) \
-    const auto& wto_idx = _db.get_index<worker_techspec_index, by_worker_proposal>(); \
-    auto wto_itr = wto_idx.find(WPO.post); \
-    GOLOS_CHECK_LOGIC(wto_itr == wto_idx.end(), \
-        logic_exception::proposal_has_techspecs, \
-        MSG)
-
 #define TECHSPEC_STATE worker_techspec_state
 
 #define CHECK_TECHSPEC_STATE(EXPR, MSG) \

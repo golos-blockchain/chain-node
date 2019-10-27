@@ -67,8 +67,6 @@ namespace mongo_db {
         result_type operator()(const proposal_create_operation& op);
         result_type operator()(const proposal_update_operation& op);
         result_type operator()(const proposal_delete_operation& op);
-        result_type operator()(const worker_proposal_operation& op);
-        result_type operator()(const worker_proposal_delete_operation& op);
         result_type operator()(const worker_techspec_operation& op);
         result_type operator()(const worker_techspec_delete_operation& op);
         result_type operator()(const worker_techspec_approve_operation& op);

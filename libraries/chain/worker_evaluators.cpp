@@ -7,69 +7,19 @@
 
 namespace golos { namespace chain {
 
-    void worker_proposal_evaluator::do_apply(const worker_proposal_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_proposal_operation");
-
-        const auto& post = _db.get_comment(o.author, o.permlink);
-
-        const auto* wpo = _db.find_worker_proposal(post.id);
-
-        if (wpo) {
-            CHECK_PROPOSAL_HAS_NO_TECHSPECS((*wpo), "Cannot edit worker proposal with techspecs");
-
-            _db.modify(*wpo, [&](worker_proposal_object& wpo) {
-                wpo.type = o.type;
-            });
-            return;
-        }
-
-        CHECK_POST(post);
-
-        _db.create<worker_proposal_object>([&](worker_proposal_object& wpo) {
-            wpo.post = post.id;
-            wpo.type = o.type;
-            wpo.state = worker_proposal_state::created;
-        });
-    }
-
-    void worker_proposal_delete_evaluator::do_apply(const worker_proposal_delete_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_proposal_delete_operation");
-
-        const auto& post = _db.get_comment(o.author, o.permlink);
-
-        const auto& wpo = _db.get_worker_proposal(post.id);
-
-        CHECK_PROPOSAL_HAS_NO_TECHSPECS(wpo, "Cannot delete worker proposal with techspecs");
-
-        _db.remove(wpo);
-    }
-
     void worker_techspec_evaluator::do_apply(const worker_techspec_operation& o) {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_techspec_operation");
-
-        const auto& wpo_post = _db.get_comment(o.worker_proposal_author, o.worker_proposal_permlink);
-        const auto& wpo = _db.get_worker_proposal(wpo_post.id);
-
-        CHECK_PROPOSAL_STATE(wpo.state < PROPOSAL_STATE::techspec, "Proposal already has approved techspec");
-
-        if (wpo.type == worker_proposal_type::premade_work) {
-            GOLOS_CHECK_LOGIC(o.worker.size(),
-                logic_exception::worker_not_set,
-                "Premade techspec requires worker set");
-        }
-
-        if (o.worker.size()) {
-            _db.get_account(o.worker);
-        }
 
         const auto& post = _db.get_comment(o.author, o.permlink);
 
         const auto* wto = _db.find_worker_techspec(post.id);
 
+        if (o.worker.size()) {
+            _db.get_account(o.worker);
+        }
+
         if (wto) {
-            GOLOS_CHECK_LOGIC(wto->worker_proposal_post == wpo_post.id,
-                logic_exception::techspec_already_used_for_another_proposal,
-                "This worker techspec is already used for another worker proposal");
+            CHECK_TECHSPEC_STATE(wto->state < TECHSPEC_STATE::approved, "Cannot modify approved techspec");
 
             _db.modify(*wto, [&](worker_techspec_object& wto) {
                 wto.specification_cost = o.specification_cost;
@@ -84,15 +34,9 @@ namespace golos { namespace chain {
 
         CHECK_POST(post);
 
-        if (wpo.type == worker_proposal_type::premade_work) {
-            GOLOS_CHECK_LOGIC(o.author == wpo_post.author,
-                logic_exception::you_are_not_proposal_author,
-                "Premade techspec can be created only by proposal author");
-        }
-
         _db.create<worker_techspec_object>([&](worker_techspec_object& wto) {
             wto.post = post.id;
-            wto.worker_proposal_post = wpo.post;
+            wto.type = o.type;
             wto.state = worker_techspec_state::created;
             wto.specification_cost = o.specification_cost;
             wto.development_cost = o.development_cost;
@@ -122,12 +66,8 @@ namespace golos { namespace chain {
         const auto& wto_post = _db.get_comment(o.author, o.permlink);
         const auto& wto = _db.get_worker_techspec(wto_post.id);
 
-        const auto& wpo = _db.get_worker_proposal(wto.worker_proposal_post);
-
         CHECK_TECHSPEC_STATE(wto.state < TECHSPEC_STATE::payment_complete, "Techspec closed, cannot approve");
         CHECK_TECHSPEC_STATE(wto.state < TECHSPEC_STATE::approved, "Techspec already approved");
-
-        CHECK_PROPOSAL_STATE(wpo.state < PROPOSAL_STATE::techspec, "Another techspec approved for this proposal");
 
         const auto& wtao_idx = _db.get_index<worker_techspec_approve_index, by_techspec_approver>();
         auto wtao_itr = wtao_idx.find(std::make_tuple(wto.post, o.approver));
@@ -188,14 +128,9 @@ namespace golos { namespace chain {
                 gpo.worker_consumption_per_day += consumption;
             });
 
-            _db.modify(wpo, [&](worker_proposal_object& wpo) {
-                wpo.approved_techspec_post = wto_post.id;
-                wpo.state = worker_proposal_state::techspec;
-            });
-
             _db.clear_worker_techspec_approves(wto);
 
-            if (wpo.type == worker_proposal_type::premade_work) {
+            if (wto.type == worker_proposal_type::premade_work) {
                 _db.modify(wto, [&](worker_techspec_object& wto) {
                     wto.next_cashout_time = _db.head_block_time() + wto.payments_interval;
                     wto.state = worker_techspec_state::payment;

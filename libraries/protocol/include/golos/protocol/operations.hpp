@@ -71,8 +71,6 @@ namespace golos { namespace protocol {
                 delegate_vesting_shares_with_interest_operation,
                 reject_vesting_shares_delegation_operation,
                 transit_to_cyberway_operation,
-                worker_proposal_operation,
-                worker_proposal_delete_operation,
                 worker_techspec_operation,
                 worker_techspec_delete_operation,
                 worker_techspec_approve_operation,

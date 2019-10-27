@@ -223,7 +223,6 @@ namespace golos {
             replies_are_not_allowed,
             cannot_delete_comment_with_replies,
             cannot_delete_comment_with_positive_votes,
-            cannot_delete_post_with_worker_proposal,
             cannot_delete_post_with_worker_techspec,
             cannot_delete_post_with_worker_result,
             comment_options_requires_no_rshares,
@@ -341,14 +340,10 @@ namespace golos {
             post_is_already_used,
             post_is_not_root,
             post_should_be_in_cashout_window,
-            proposal_has_techspecs,
-            you_are_not_proposal_author,
             you_are_not_techspec_author_or_worker,
             approver_is_not_top19_witness,
             insufficient_funds_to_approve,
             worker_not_set,
-            techspec_already_used_for_another_proposal,
-            incorrect_proposal_state,
             incorrect_techspec_state,
 
             // custom operations
@@ -510,7 +505,6 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
         (replies_are_not_allowed)
         (cannot_delete_comment_with_replies)
         (cannot_delete_comment_with_positive_votes)
-        (cannot_delete_post_with_worker_proposal)
         (cannot_delete_post_with_worker_techspec)
         (cannot_delete_post_with_worker_result)
         (comment_options_requires_no_rshares)
@@ -628,14 +622,10 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
         (post_is_already_used)
         (post_is_not_root)
         (post_should_be_in_cashout_window)
-        (proposal_has_techspecs)
-        (you_are_not_proposal_author)
         (you_are_not_techspec_author_or_worker)
         (approver_is_not_top19_witness)
         (insufficient_funds_to_approve)
         (worker_not_set)
-        (techspec_already_used_for_another_proposal)
-        (incorrect_proposal_state)
         (incorrect_techspec_state)
 
         // custom operations

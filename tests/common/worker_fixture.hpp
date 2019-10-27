@@ -14,19 +14,6 @@ struct worker_fixture : public clean_database_fixture {
         startup();
     }
 
-    const worker_proposal_object& worker_proposal(
-            const string& author, const private_key_type& author_key, const string& permlink, worker_proposal_type type) {
-        signed_transaction tx;
-
-        worker_proposal_operation op;
-        op.author = author;
-        op.permlink = permlink;
-        op.type = type;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, author_key, op));
-
-        return db->get_worker_proposal(db->get_comment(author, permlink).id);
-    }
-
     void worker_techspec_approve(
             const string& approver, const private_key_type& approver_key,
             const string& author, const string& permlink, worker_techspec_approve_state state) {
@@ -80,7 +67,7 @@ struct worker_fixture : public clean_database_fixture {
         BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
     }
 
-    void check_techspec_closed(const comment_id_type& post, worker_techspec_state state, bool was_approved, asset consumption_after_close) {
+    void check_techspec_closed(const comment_id_type& post, worker_techspec_state state, asset consumption_after_close) {
         BOOST_TEST_MESSAGE("---- Checking techspec is not deleted but closed");
 
         const auto* wto = db->find_worker_techspec(post);
@@ -94,13 +81,6 @@ struct worker_fixture : public clean_database_fixture {
 
         const auto& wpao_idx = db->get_index<worker_payment_approve_index, by_techspec_approver>();
         BOOST_CHECK(wpao_idx.find(post) == wpao_idx.end());
-
-        if (was_approved) {
-            BOOST_TEST_MESSAGE("---- Checking worker proposal is open");
-
-            const auto& wpo = db->get_worker_proposal(wto->worker_proposal_post);
-            BOOST_CHECK(wpo.state == worker_proposal_state::created);
-        }
 
         BOOST_TEST_MESSAGE("---- Checking worker funds are unfrozen");
 
