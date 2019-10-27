@@ -628,30 +628,6 @@ namespace mongo_db {
         return body;
     }
 
-    auto operation_writer::operator()(const worker_result_operation& op) -> result_type {
-        result_type body;
-
-        return body;
-    }
-
-    auto operation_writer::operator()(const worker_result_delete_operation& op) -> result_type {
-        result_type body;
-
-        return body;
-    }
-
-    auto operation_writer::operator()(const worker_payment_approve_operation& op) -> result_type {
-        result_type body;
-
-        return body;
-    }
-
-    auto operation_writer::operator()(const worker_assign_operation& op) -> result_type {
-        result_type body;
-
-        return body;
-    }
-
     auto operation_writer::operator()(const worker_fund_operation& op) -> result_type {
         result_type body;
 

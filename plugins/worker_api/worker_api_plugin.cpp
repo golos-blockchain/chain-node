@@ -85,62 +85,13 @@ struct post_operation_visitor {
 
         auto approves = _db.count_worker_techspec_approves(wto_post.id);
 
-        const auto now = _db.head_block_time();
-
         _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
             wtmo.approves = approves[worker_techspec_approve_state::approve];
             wtmo.disapproves = approves[worker_techspec_approve_state::disapprove];
 
-            if (wto.state == worker_techspec_state::approved || wto.state == worker_techspec_state::work
-                    || wto.state == worker_techspec_state::payment) {
+            if (wto.state == worker_techspec_state::payment) {
                 wtmo.consumption_per_day = _db.calculate_worker_techspec_consumption_per_day(wto);
-            }
-
-            if (wto.state == worker_techspec_state::payment) {
                 wtmo.payment_beginning_time = wto.next_cashout_time;
-            } else if (wto.state == worker_techspec_state::work) {
-                wtmo.work_beginning_time = now;
-            }
-        });
-    }
-
-    result_type operator()(const worker_assign_operation& o) const {
-        const auto& wto_post = _db.get_comment(o.worker_techspec_author, o.worker_techspec_permlink);
-
-        const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
-        auto wtmo_itr = wtmo_idx.find(wto_post.id);
-
-        _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
-            if (!o.worker.size()) { // Unassign worker
-                wtmo.work_beginning_time = time_point_sec::min();
-                return;
-            }
-
-            wtmo.work_beginning_time = _db.head_block_time();
-        });
-    }
-
-    result_type operator()(const worker_payment_approve_operation& o) const {
-        const auto& wto_post = _db.get_comment(o.worker_techspec_author, o.worker_techspec_permlink);
-        const auto& wto = _db.get_worker_techspec(wto_post.id);
-
-        auto approves = _db.count_worker_payment_approves(wto_post.id);
-
-        const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
-        auto wtmo_itr = wtmo_idx.find(wto.post);
-        _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
-            wtmo.worker_payment_approves = approves[worker_techspec_approve_state::approve];
-            wtmo.worker_payment_disapproves = approves[worker_techspec_approve_state::disapprove];
-
-            if (wto.state == worker_techspec_state::payment) {
-                if (wtmo.payment_beginning_time != time_point_sec::min()) { // Do not check consumption_per_day because cost can be 0
-                    return;
-                }
-                wtmo.payment_beginning_time = wto.next_cashout_time;
-            }
-
-            if (wto.state == worker_techspec_state::closed_by_witnesses || wto.state == worker_techspec_state::disapproved_by_witnesses) {
-                wtmo.consumption_per_day = asset(0, STEEM_SYMBOL);
             }
         });
     }
@@ -153,20 +104,6 @@ struct post_operation_visitor {
         if (wto.finished_payments_count != wto.payments_count) {
             return;
         }
-
-        const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
-        auto wtmo_itr = wtmo_idx.find(post.id);
-        _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
-            wtmo.consumption_per_day = asset(0, STEEM_SYMBOL);
-        });
-    }
-
-    result_type operator()(const techspec_expired_operation& o) const {
-        if (!o.was_approved) {
-            return;
-        }
-
-        const auto& post = _db.get_comment(o.author, o.permlink);
 
         const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);
@@ -322,7 +259,6 @@ DEFINE_API(worker_api_plugin, get_worker_techspecs) {
         (worker_techspec_query, query)
         (worker_techspec_sort, sort)
         (bool, fill_posts)
-        (bool, fill_worker_result_posts)
     )
     query.validate();
 
@@ -332,10 +268,6 @@ DEFINE_API(worker_api_plugin, get_worker_techspecs) {
         auto wto = my->_db.get_worker_techspec(wtmo.post);
         if (!query.is_good_state(wto.state)) {
             return false;
-        }
-        if (fill_worker_result_posts && wto.worker_result_post != comment_id_type(-1)) {
-            const auto post = my->_db.get_comment(wto.worker_result_post);
-            wto_api.worker_result_post = my->helper->create_comment_api_object(post);
         }
         wto_api.fill_worker_techspec(wto);
         return true;
@@ -349,10 +281,6 @@ DEFINE_API(worker_api_plugin, get_worker_techspecs) {
         my->select_postbased_results_ordered<worker_techspec_metadata_index, by_approves, false>(query, result, wto_fill_worker_fields, fill_posts);
     } else if (sort == worker_techspec_sort::by_disapproves) {
         my->select_postbased_results_ordered<worker_techspec_metadata_index, by_disapproves, false>(query, result, wto_fill_worker_fields, fill_posts);
-    } else if (sort == worker_techspec_sort::by_worker_payment_approves) {
-        my->select_postbased_results_ordered<worker_techspec_metadata_index, by_worker_payment_approves, false>(query, result, wto_fill_worker_fields, fill_posts);
-    } else if (sort == worker_techspec_sort::by_worker_payment_disapproves) {
-        my->select_postbased_results_ordered<worker_techspec_metadata_index, by_worker_payment_disapproves, false>(query, result, wto_fill_worker_fields, fill_posts);
     }
 
     return result;

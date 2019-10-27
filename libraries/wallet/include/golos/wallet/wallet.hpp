@@ -76,7 +76,6 @@ namespace golos { namespace wallet {
             fc::optional<uint16_t> worker_from_vesting_fund_percent;
             fc::optional<uint16_t> worker_from_witness_fund_percent;
             fc::optional<uint32_t> worker_techspec_approve_term_sec;
-            fc::optional<uint32_t> worker_result_approve_term_sec;
         };
 
         struct optional_private_box_query {
@@ -1408,7 +1407,6 @@ namespace golos { namespace wallet {
              *
              * @param author author of the post
              * @param permlink permlink of the post
-             * @param type task or premade
              * @param specification_cost cost of specification
              * @param development_cost cost of work
              * @param worker worker who will do techspec or done if premade
@@ -1418,7 +1416,6 @@ namespace golos { namespace wallet {
              */
             annotated_signed_transaction worker_techspec(
                 const std::string& author, const std::string& permlink,
-                const worker_proposal_type& type,
                 const asset& specification_cost, const asset& development_cost, const std::string& worker,
                 uint16_t payments_count, uint32_t payments_interval, bool broadcast
                 );
@@ -1445,57 +1442,6 @@ namespace golos { namespace wallet {
              */
             annotated_signed_transaction approve_worker_techspec(
                 const std::string& approver, const std::string& author, const std::string& permlink,
-                worker_techspec_approve_state state, bool broadcast
-                );
-
-            /**
-             * Assign worker to worker techspec based on specified post, or unassign it
-             *
-             * @param assigner worker or worker techspec author
-             * @param worker_techspec_author author of the post
-             * @param worker_techspec_permlink permlink of the post
-             * @param worker empty if unassigning
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction assign_worker(
-                const std::string& assigner, const std::string& worker_techspec_author,
-                const std::string& worker_techspec_permlink, const std::string& worker, bool broadcast
-                );
-
-            /**
-             * Create worker result for specified worker techspec using specified post
-             *
-             * @param author author of the post and of the worker techspec
-             * @param permlink permlink of the post
-             * @param worker_techspec_permlink permlink of the worker techspec
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction worker_result(
-                const std::string& author, const std::string& permlink, const std::string& worker_techspec_permlink, bool broadcast
-                );
-
-            /**
-             * Delete worker result for specified worker techspec
-             *
-             * @param author author of the worker techspec
-             * @param permlink permlink of the worker techspec post
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction delete_worker_result(
-                const std::string& author, const std::string& permlink, bool broadcast
-                );
-
-            /**
-             * Approve or disapprove payment for worker techspec based on specified post, or cancel this
-             *
-             * @param approver witness account
-             * @param worker_techspec_author author of the post
-             * @param worker_techspec_permlink permlink of the post
-             * @param state approve, disapprove or abstain
-             * @param broadcast true if you wish to broadcast the transaction
-             */
-            annotated_signed_transaction approve_worker_payment(
-                const std::string& approver, const std::string& worker_techspec_author, const std::string& worker_techspec_permlink,
                 worker_techspec_approve_state state, bool broadcast
                 );
         private:
@@ -1639,10 +1585,6 @@ FC_API( golos::wallet::wallet_api,
                 (worker_techspec)
                 (delete_worker_techspec)
                 (approve_worker_techspec)
-                (assign_worker)
-                (worker_result)
-                (delete_worker_result)
-                (approve_worker_payment)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))
@@ -1670,7 +1612,7 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (max_delegated_vesting_interest_rate)(custom_ops_bandwidth_multiplier)(min_curation_percent)(max_curation_percent)
     (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund)
     (worker_from_content_fund_percent)(worker_from_vesting_fund_percent)(worker_from_witness_fund_percent)
-    (worker_techspec_approve_term_sec)(worker_result_approve_term_sec))
+    (worker_techspec_approve_term_sec))
 
 FC_REFLECT(
     (golos::wallet::message_body),

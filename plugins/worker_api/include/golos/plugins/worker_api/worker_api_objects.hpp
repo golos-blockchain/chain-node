@@ -32,9 +32,6 @@ namespace golos { namespace plugins { namespace worker_api {
         share_type net_rshares;
         uint16_t approves = 0;
         uint16_t disapproves = 0;
-        time_point_sec work_beginning_time;
-        uint16_t worker_payment_approves = 0;
-        uint16_t worker_payment_disapproves = 0;
         time_point_sec payment_beginning_time;
         asset consumption_per_day;
     };
@@ -42,8 +39,6 @@ namespace golos { namespace plugins { namespace worker_api {
     struct by_net_rshares;
     struct by_approves;
     struct by_disapproves;
-    struct by_worker_payment_approves;
-    struct by_worker_payment_disapproves;
 
     using worker_techspec_metadata_id_type = object_id<worker_techspec_metadata_object>;
 
@@ -82,24 +77,6 @@ namespace golos { namespace plugins { namespace worker_api {
                     member<worker_techspec_metadata_object, worker_techspec_metadata_id_type, &worker_techspec_metadata_object::id>>,
                 composite_key_compare<
                     std::greater<uint16_t>,
-                    std::less<worker_techspec_metadata_id_type>>>,
-            ordered_unique<
-                tag<by_worker_payment_approves>,
-                composite_key<
-                    worker_techspec_metadata_object,
-                    member<worker_techspec_metadata_object, uint16_t, &worker_techspec_metadata_object::worker_payment_approves>,
-                    member<worker_techspec_metadata_object, worker_techspec_metadata_id_type, &worker_techspec_metadata_object::id>>,
-                composite_key_compare<
-                    std::greater<uint16_t>,
-                    std::less<worker_techspec_metadata_id_type>>>,
-            ordered_unique<
-                tag<by_worker_payment_disapproves>,
-                composite_key<
-                    worker_techspec_metadata_object,
-                    member<worker_techspec_metadata_object, uint16_t, &worker_techspec_metadata_object::worker_payment_disapproves>,
-                    member<worker_techspec_metadata_object, worker_techspec_metadata_id_type, &worker_techspec_metadata_object::id>>,
-                composite_key_compare<
-                    std::greater<uint16_t>,
                     std::less<worker_techspec_metadata_id_type>>>>,
         allocator<worker_techspec_metadata_object>>;
 
@@ -110,9 +87,6 @@ namespace golos { namespace plugins { namespace worker_api {
               net_rshares(o.net_rshares),
               approves(o.approves),
               disapproves(o.disapproves),
-              work_beginning_time(o.work_beginning_time),
-              worker_payment_approves(o.worker_payment_approves),
-              worker_payment_disapproves(o.worker_payment_disapproves),
               consumption_per_day(o.consumption_per_day),
               payment_beginning_time(o.payment_beginning_time) {
         }
@@ -140,10 +114,6 @@ namespace golos { namespace plugins { namespace worker_api {
         uint16_t approves = 0;
         uint16_t disapproves = 0;
         account_name_type worker;
-        time_point_sec work_beginning_time;
-        comment_api_object worker_result_post;
-        uint16_t worker_payment_approves = 0;
-        uint16_t worker_payment_disapproves = 0;
         uint16_t payments_count = 0;
         uint32_t payments_interval = 0;
         asset consumption_per_day;
@@ -160,6 +130,6 @@ CHAINBASE_SET_INDEX_TYPE(
 
 FC_REFLECT((golos::plugins::worker_api::worker_techspec_api_object),
     (post)(state)(modified)(net_rshares)(specification_cost)(development_cost)(approves)(disapproves)
-    (worker)(work_beginning_time)(worker_result_post)(worker_payment_approves)(worker_payment_disapproves)(payments_count)
+    (worker)(payments_count)
     (payments_interval)(consumption_per_day)(payment_beginning_time)(next_cashout_time)(finished_payments_count)
 )

@@ -526,26 +526,8 @@ if (options.count(name)) { \
             insert_pair(op.approver, op.author);
         }
 
-        void operator()(const worker_assign_operation& op) {
-            insert_sender(op.assigner);
-            insert_receiver(op.worker);
-            insert_receiver(op.worker_techspec_author);
-        }
-
         void operator()(const worker_fund_operation& op) {
             insert_sender(op.sponsor);
-        }
-
-        void operator()(const worker_result_operation& op) {
-            insert_dual(op.author);
-        }
-
-        void operator()(const worker_result_delete_operation& op) {
-            insert_dual(op.author);
-        }
-
-        void operator()(const worker_payment_approve_operation& op) {
-            insert_pair(op.approver, op.worker_techspec_author);
         }
 
         void operator()(const techspec_reward_operation& op) {

@@ -23,6 +23,7 @@ BOOST_AUTO_TEST_CASE(worker_authorities) {
         op.development_cost = ASSET_GOLOS(60000);
         op.payments_interval = 60;
         op.payments_count = 2;
+        op.worker = "bob";
         CHECK_OP_AUTHS(op, account_name_set(), account_name_set(), account_name_set({"bob"}));
     }
 
@@ -41,18 +42,6 @@ BOOST_AUTO_TEST_CASE(worker_authorities) {
         op.state = worker_techspec_approve_state::approve;
         CHECK_OP_AUTHS(op, account_name_set(), account_name_set(), account_name_set({"cyberfounder"}));
     }
-
-    {
-        worker_assign_operation op;
-        op.assigner = "bob";
-        op.worker_techspec_author = "bob";
-        op.worker_techspec_permlink = "bob-techspec";
-        op.worker = "alice";
-        CHECK_OP_AUTHS(op, account_name_set(), account_name_set(), account_name_set({"bob"}));
-
-        op.worker = "";
-        CHECK_OP_AUTHS(op, account_name_set(), account_name_set(), account_name_set({"bob"}));
-    }
 }
 
 BOOST_AUTO_TEST_CASE(worker_techspec_validate) {
@@ -67,7 +56,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_validate) {
     op.development_cost = ASSET_GOLOS(60000);
     op.payments_interval = 60*60*24;
     op.payments_count = 2;
-    op.worker = "";
+    op.worker = "bob";
     CHECK_OP_VALID(op);
 
     BOOST_TEST_MESSAGE("-- Incorrect account or permlink case");
@@ -79,9 +68,9 @@ BOOST_AUTO_TEST_CASE(worker_techspec_validate) {
 
     CHECK_PARAM_INVALID(op, worker, "-");
 
-    BOOST_TEST_MESSAGE("-- Correct worker");
+    BOOST_TEST_MESSAGE("-- No worker");
 
-    CHECK_PARAM_VALID(op, worker, "carol");
+    CHECK_PARAM_INVALID(op, worker, "");
 
     BOOST_TEST_MESSAGE("-- Non-GOLOS cost case");
 
@@ -132,6 +121,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_apply_create) {
     op.development_cost = ASSET_GOLOS(60);
     op.payments_interval = 60*60*24*2;
     op.payments_count = 2;
+    op.worker = "bob";
     GOLOS_CHECK_ERROR_MISSING(comment, make_comment_id("bob", "bob-techspec"), bob_private_key, op);
     generate_block();
 
@@ -168,8 +158,8 @@ BOOST_AUTO_TEST_CASE(worker_techspec_apply_create) {
     BOOST_CHECK_EQUAL(wto.development_cost, op.development_cost);
     BOOST_CHECK_EQUAL(wto.payments_count, op.payments_count);
     BOOST_CHECK_EQUAL(wto.payments_interval, op.payments_interval);
+    BOOST_CHECK_EQUAL(wto.worker, op.worker);
 
-    BOOST_CHECK_EQUAL(wto.worker_result_post, comment_id_type(-1));
     BOOST_CHECK_EQUAL(wto.next_cashout_time, fc::time_point_sec::maximum());
     BOOST_CHECK_EQUAL(wto.finished_payments_count, 0);
 
@@ -183,91 +173,6 @@ BOOST_AUTO_TEST_CASE(worker_techspec_apply_create) {
         op.author = "greta";
         op.permlink = "greta-techspec";
         GOLOS_CHECK_ERROR_LOGIC(post_should_be_in_cashout_window, greta_private_key, op);
-    }
-
-    validate_database();
-}
-
-BOOST_AUTO_TEST_CASE(worker_techspec_apply_create_with_reusing_post) {
-    BOOST_TEST_MESSAGE("Testing: worker_techspec_apply_create_with_reusing_post");
-
-    ACTORS((alice)(bob))
-    auto private_key = create_approvers(0, STEEMIT_MAJOR_VOTED_WITNESSES);
-    generate_block();
-
-    signed_transaction tx;
-
-    BOOST_TEST_MESSAGE("-- Creating techspec");
-
-    comment_create("alice", alice_private_key, "alice-techspec", "", "alice-techspec");
-    generate_block();
-
-    worker_techspec_operation op;
-    op.author = "alice";
-    op.permlink = "alice-techspec";
-    op.specification_cost = ASSET_GOLOS(6);
-    op.development_cost = ASSET_GOLOS(60);
-    op.payments_interval = 60*60*24*30;
-    op.payments_count = 2;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
-    generate_block();
-
-    BOOST_TEST_MESSAGE("-- Check cannot create another techspec on same post (it should modify same one)");
-
-    op.payments_count = 3;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
-    generate_block();
-
-    BOOST_TEST_MESSAGE("-- Approving techspec");
-
-    generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for approvers to reach TOP-19 and not leave it
-
-    for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-        const auto name = "approver" + std::to_string(i);
-        worker_techspec_approve_operation wtaop;
-        wtaop.approver = name;
-        wtaop.author = "alice";
-        wtaop.permlink = "alice-techspec";
-        wtaop.state = worker_techspec_approve_state::approve;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, private_key, wtaop));
-        generate_block();
-    }
-
-    worker_assign_operation waop;
-    waop.assigner = "alice";
-    waop.worker_techspec_author = "alice";
-    waop.worker_techspec_permlink = "alice-techspec";
-    waop.worker = "alice";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, waop));
-    generate_block();
-
-    BOOST_TEST_MESSAGE("-- Creating worker result post");
-
-    comment_create("alice", alice_private_key, "result-techspec", "", "result-techspec");
-
-    worker_result_operation wrop;
-    wrop.author = "alice";
-    wrop.permlink = "result-techspec";
-    wrop.worker_techspec_permlink = "alice-techspec";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wrop));
-    generate_block();
-
-    BOOST_TEST_MESSAGE("-- Check can create techspec on worker result post");
-
-    op.author = "alice";
-    op.permlink = "result-techspec";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
-    generate_block();
-
-    BOOST_TEST_MESSAGE("-- Validating all data");
-
-    {
-        const auto& wto_result_post = db->get_comment("alice", string("result-techspec"));
-        BOOST_CHECK_NO_THROW(db->get_worker_techspec(wto_result_post.id));
-        BOOST_CHECK_NO_THROW(db->get_worker_result(wto_result_post.id));
-
-        const auto& wto_idx = db->get_index<worker_techspec_index, by_post>();
-        BOOST_CHECK_EQUAL(wto_idx.count(wto_result_post.id), 1);
     }
 
     validate_database();
@@ -290,6 +195,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_apply_modify) {
     op.development_cost = ASSET_GOLOS(60);
     op.payments_interval = 60*60*24*2;
     op.payments_count = 2;
+    op.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -321,28 +227,16 @@ BOOST_AUTO_TEST_CASE(worker_techspec_apply_modify) {
         BOOST_CHECK_EQUAL(wto.development_cost, op.development_cost);
     }
 
-    BOOST_TEST_MESSAGE("-- Set worker");
+    BOOST_TEST_MESSAGE("-- Change worker");
 
-    op.worker = "alice";
+    op.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     {
         const auto& wto_post = db->get_comment("bob", string("bob-techspec"));
         const auto& wto = db->get_worker_techspec(wto_post.id);
-        BOOST_CHECK_EQUAL(wto.worker, "alice");
-    }
-
-    BOOST_TEST_MESSAGE("-- Clear worker");
-
-    op.worker = "";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
-    generate_block();
-
-    {
-        const auto& wto_post = db->get_comment("bob", string("bob-techspec"));
-        const auto& wto = db->get_worker_techspec(wto_post.id);
-        BOOST_CHECK_EQUAL(wto.worker, "");
+        BOOST_CHECK_EQUAL(wto.worker, "bob");
     }
 
     BOOST_TEST_MESSAGE("-- Check cannot modify approved techspec");
@@ -419,6 +313,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_checking_funds) {
     wtop.development_cost = revenue * (60*60*37*2 / STEEMIT_BLOCK_INTERVAL + 1);
     wtop.payments_interval = 60*60*37;
     wtop.payments_count = 2;
+    wtop.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
 
     BOOST_TEST_MESSAGE("-- Checking cannot approve");
@@ -458,6 +353,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_combinations) {
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24*2;
     wtop.payments_count = 2;
+    wtop.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -556,6 +452,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_top19_updating) {
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
     wtop.payments_count = 2;
+    wtop.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -632,6 +529,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_approve) {
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
     wtop.payments_count = 40;
+    wtop.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -665,7 +563,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_approve) {
 
     const auto& wto_post = db->get_comment("bob", string("bob-techspec"));
     const auto& wto = db->get_worker_techspec(wto_post.id);
-    BOOST_CHECK(wto.state == worker_techspec_state::approved);
+    BOOST_CHECK(wto.state == worker_techspec_state::payment);
 
     auto secs = wto.payments_interval * wto.payments_count;
     auto cost = wto.specification_cost + wto.development_cost;
@@ -707,7 +605,6 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_premade) {
     wtop.payments_interval = 60*60*24;
     wtop.payments_count = 40;
     wtop.worker = "bob";
-    wtop.type = worker_proposal_type::premade_work;
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wtop));
     generate_block();
 
@@ -743,6 +640,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_disapprove) {
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
     wtop.payments_count = 40;
+    wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -826,6 +724,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_clear_on_approve) {
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
     wtop.payments_count = 40;
+    wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -877,7 +776,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_clear_on_approve) {
     {
         const auto& wto_post = db->get_comment("bob", string("bob-techspec"));
         const auto& wto = db->get_worker_techspec(wto_post.id);
-        BOOST_CHECK(wto.state == worker_techspec_state::approved);
+        BOOST_CHECK(wto.state == worker_techspec_state::payment);
 
         const auto& wtao_idx = db->get_index<worker_techspec_approve_index, by_techspec_approver>();
         BOOST_CHECK(wtao_idx.find(wto_post.id) == wtao_idx.end());
@@ -904,6 +803,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_clear_on_expired) {
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
     wtop.payments_count = 40;
+    wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
 
     BOOST_TEST_MESSAGE("-- Creating carol techspec in same block");
@@ -912,6 +812,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_clear_on_expired) {
 
     wtop.author = "carol";
     wtop.permlink = "carol-techspec";
+    wtop.worker = "carol";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
     generate_block();
 
@@ -974,7 +875,6 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_clear_on_expired) {
         auto teop = get_last_operations<techspec_expired_operation>(1)[0];
         BOOST_CHECK_EQUAL(teop.author, wto_post.author);
         BOOST_CHECK_EQUAL(teop.permlink, to_string(wto_post.permlink));
-        BOOST_CHECK(!teop.was_approved);
     }
 
     BOOST_TEST_MESSAGE("-- Checking carol techspec is not closed and has approves");
@@ -982,168 +882,13 @@ BOOST_AUTO_TEST_CASE(worker_techspec_approve_apply_clear_on_expired) {
     {
         const auto& wto_post = db->get_comment("carol", string("carol-techspec"));
         const auto& wto = db->get_worker_techspec(wto_post.id);
-        BOOST_CHECK(wto.state == worker_techspec_state::approved);
+        BOOST_CHECK(wto.state == worker_techspec_state::payment);
 
         BOOST_TEST_MESSAGE("-- Checking carol techspec has approves (it should, clearing is enabled after final approve)");
 
         const auto& wtao_idx = db->get_index<worker_techspec_approve_index, by_techspec_approver>();
         BOOST_CHECK(wtao_idx.find(wto_post.id) != wtao_idx.end());
     }
-}
-
-BOOST_AUTO_TEST_CASE(worker_assign_validate) {
-    BOOST_TEST_MESSAGE("Testing: worker_assign_validate");
-
-    BOOST_TEST_MESSAGE("-- Normal case");
-
-    worker_assign_operation op;
-    op.assigner = "bob";
-    op.worker_techspec_author = "bob";
-    op.worker_techspec_permlink = "techspec-permlink";
-    op.worker = "alice";
-    CHECK_OP_VALID(op);
-
-    BOOST_TEST_MESSAGE("-- Incorrect account or permlink case");
-
-    CHECK_PARAM_INVALID(op, assigner, "");
-    CHECK_PARAM_INVALID(op, worker_techspec_author, "");
-    CHECK_PARAM_INVALID(op, worker_techspec_permlink, std::string(STEEMIT_MAX_PERMLINK_LENGTH+1, ' '));
-
-    BOOST_TEST_MESSAGE("-- Assigning worker not by techspec author case");
-
-    CHECK_PARAM_INVALID(op, assigner, "alice");
-
-    BOOST_TEST_MESSAGE("-- Unassigning worker by worker case");
-
-    op.worker = "";
-    CHECK_PARAM_VALID(op, assigner, "alice");
-}
-
-BOOST_AUTO_TEST_CASE(worker_assign_apply) {
-    BOOST_TEST_MESSAGE("Testing: worker_assign_apply");
-
-    ACTORS((alice)(bob)(chuck))
-    auto private_key = create_approvers(0, STEEMIT_MAJOR_VOTED_WITNESSES);
-    generate_block();
-
-    signed_transaction tx;
-
-    BOOST_TEST_MESSAGE("-- Assigning worker to techspec without post case");
-
-    worker_assign_operation op;
-    op.assigner = "bob";
-    op.worker_techspec_author = "bob";
-    op.worker_techspec_permlink = "bob-techspec";
-    op.worker = "alice";
-
-    GOLOS_CHECK_ERROR_MISSING(comment, make_comment_id("bob", "bob-techspec"), bob_private_key, op);
-
-    comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
-
-    BOOST_TEST_MESSAGE("-- Assigning worker to non-existing techspec case");
-
-    GOLOS_CHECK_ERROR_MISSING(worker_techspec_object, make_comment_id("bob", "bob-techspec"), bob_private_key, op);
-
-    worker_techspec_operation wtop;
-    wtop.author = "bob";
-    wtop.permlink = "bob-techspec";
-    wtop.specification_cost = ASSET_GOLOS(6);
-    wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 40;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
-    generate_block();
-
-    BOOST_TEST_MESSAGE("-- Assigning worker to non-approved techspec case");
-
-    GOLOS_CHECK_ERROR_LOGIC(incorrect_techspec_state, bob_private_key, op);
-
-    BOOST_TEST_MESSAGE("-- Approving worker techspec by witnesses");
-
-    generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for approvers to reach TOP-19 and not leave it
-
-    for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-        const auto name = "approver" + std::to_string(i);
-
-        worker_techspec_approve_operation wtaop;
-        wtaop.approver = name;
-        wtaop.author = "bob";
-        wtaop.permlink = "bob-techspec";
-        wtaop.state = worker_techspec_approve_state::approve;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, private_key, wtaop));
-        generate_block();
-    }
-
-    {
-        const auto& wto = db->get_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
-        BOOST_CHECK_EQUAL(wto.worker, account_name_type());
-        BOOST_CHECK(wto.state == worker_techspec_state::approved);
-    }
-
-    BOOST_TEST_MESSAGE("-- Assigning non-existing worker to techspec case");
-
-    op.worker = "notexistacc";
-    GOLOS_CHECK_ERROR_MISSING(account, "notexistacc", bob_private_key, op);
-
-    BOOST_TEST_MESSAGE("-- Unassigning worker without assigned case");
-
-    op.worker = "";
-    GOLOS_CHECK_ERROR_LOGIC(incorrect_techspec_state, bob_private_key, op);
-
-    BOOST_TEST_MESSAGE("-- Normal assigning worker case");
-
-    op.worker = "alice";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
-    generate_block();
-
-    {
-        const auto& wto = db->get_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
-        BOOST_CHECK_EQUAL(wto.worker, op.worker);
-        BOOST_CHECK(wto.state == worker_techspec_state::work);
-    }
-
-    BOOST_TEST_MESSAGE("-- Repeat assigning worker case");
-
-    GOLOS_CHECK_ERROR_LOGIC(incorrect_techspec_state, bob_private_key, op);
-
-    BOOST_TEST_MESSAGE("-- Unassigning worker by foreign person case");
-
-    op.assigner = "chuck";
-    op.worker = "";
-    GOLOS_CHECK_ERROR_LOGIC(you_are_not_techspec_author_or_worker, chuck_private_key, op);
-
-    BOOST_TEST_MESSAGE("-- Normal unassigning worker by techspec author case");
-
-    op.assigner = "bob";
-    op.worker = "";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
-    generate_block();
-
-    {
-        const auto& wto = db->get_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
-        BOOST_CHECK_EQUAL(wto.worker, account_name_type());
-        BOOST_CHECK(wto.state == worker_techspec_state::approved);
-    }
-
-    BOOST_TEST_MESSAGE("-- Normal unassigning worker by himself case");
-
-    op.assigner = "bob";
-    op.worker = "alice";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
-    generate_block();
-
-    op.assigner = "alice";
-    op.worker = "";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
-    generate_block();
-
-    {
-        const auto& wto = db->get_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
-        BOOST_CHECK_EQUAL(wto.worker, account_name_type());
-        BOOST_CHECK(wto.state == worker_techspec_state::approved);
-    }
-
-    validate_database();
 }
 
 BOOST_AUTO_TEST_CASE(worker_techspec_delete_validate) {
@@ -1194,6 +939,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_delete_apply) {
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
     wtop.payments_count = 40;
+    wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -1252,6 +998,7 @@ BOOST_AUTO_TEST_CASE(worker_techspec_delete_apply_closing_cases) {
         wtop.development_cost = ASSET_GOLOS(60);
         wtop.payments_interval = 60*60*24;
         wtop.payments_count = 40;
+        wtop.worker = "bob";
         BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
         generate_block();
 
@@ -1295,121 +1042,13 @@ BOOST_AUTO_TEST_CASE(worker_techspec_delete_apply_closing_cases) {
             worker_techspec_state::closed_by_author, ASSET_GOLOS(0));
     }
 
-    BOOST_TEST_MESSAGE("-- Creating techspec which will be approved");
-
-    {
-        comment_create("carol", carol_private_key, "carol-techspec", "", "carol-techspec");
-
-        wtop.author = "carol";
-        wtop.permlink = "carol-techspec";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
-        generate_block();
-
-        db->set_clear_old_worker_approves(false);
-
-        for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-            worker_techspec_approve("approver" + std::to_string(i), private_key,
-                "carol", "carol-techspec", worker_techspec_approve_state::approve);
-            generate_block();
-        }
-
-        BOOST_TEST_MESSAGE("-- Deleting it");
-
-        generate_blocks(10);
-        db->set_clear_old_worker_approves(true);
-
-        worker_techspec_delete_operation op;
-        op.author = "carol";
-        op.permlink = "carol-techspec";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
-        generate_block();
-
-        check_techspec_closed(db->get_comment("carol", string("carol-techspec")).id,
-            worker_techspec_state::closed_by_author, ASSET_GOLOS(0));
-    }
-
-    BOOST_TEST_MESSAGE("-- Creating techspec with result and no approves");
-
-    {
-        comment_create("dave", dave_private_key, "dave-techspec", "", "dave-techspec");
-
-        wtop.author = "dave";
-        wtop.permlink = "dave-techspec";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
-        generate_block();
-
-        for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-            worker_techspec_approve("approver" + std::to_string(i), private_key,
-                "dave", "dave-techspec", worker_techspec_approve_state::approve);
-            generate_block();
-        }
-
-        worker_assign("dave", dave_private_key, "dave", "dave-techspec", "alice");
-
-        generate_blocks(60 / STEEMIT_BLOCK_INTERVAL); // Waiting for posts window
-
-        comment_create("dave", dave_private_key, "dave-result", "", "dave-result");
-        worker_result("dave",  dave_private_key, "dave-result", "dave-techspec");
-
-        BOOST_TEST_MESSAGE("-- Deleting it");
-
-        worker_techspec_delete_operation op;
-        op.author = "dave";
-        op.permlink = "dave-techspec";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
-        generate_block();
-
-        check_techspec_closed(db->get_comment("dave", string("dave-techspec")).id,
-            worker_techspec_state::closed_by_author, ASSET_GOLOS(0));
-    }
-
-    BOOST_TEST_MESSAGE("-- Creating techspec with result and 1 result approve");
-
-    {
-        generate_blocks(60 / STEEMIT_BLOCK_INTERVAL); // Waiting for posts window
-
-        comment_create("dave", dave_private_key, "dave-techspec2", "", "dave-techspec2");
-
-        wtop.author = "dave";
-        wtop.permlink = "dave-techspec2";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
-        generate_block();
-
-        for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-            worker_techspec_approve("approver" + std::to_string(i), private_key,
-                "dave", "dave-techspec2", worker_techspec_approve_state::approve);
-            generate_block();
-        }
-
-        worker_assign("dave", dave_private_key, "dave", "dave-techspec2", "alice");
-
-        generate_blocks(60 / STEEMIT_BLOCK_INTERVAL); // Waiting for posts window
-
-        comment_create("dave", dave_private_key, "dave-result2", "", "dave-result2");
-        worker_result("dave",  dave_private_key, "dave-result2", "dave-techspec2");
-
-        worker_payment_approve("approver0", private_key, "dave", "dave-techspec2", worker_techspec_approve_state::approve);
-        generate_block();
-
-        BOOST_TEST_MESSAGE("-- Deleting it");
-
-        worker_techspec_delete_operation op;
-        op.author = "dave";
-        op.permlink = "dave-techspec2";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
-        generate_block();
-
-        check_techspec_closed(db->get_comment("dave", string("dave-techspec2")).id,
-            worker_techspec_state::closed_by_author, ASSET_GOLOS(0));
-    }
-
     BOOST_TEST_MESSAGE("-- Checking cannot close closed techspec");
 
     {
         worker_techspec_delete_operation op;
-        op.author = "dave";
-        op.permlink = "dave-techspec2";
-        GOLOS_CHECK_ERROR_LOGIC(incorrect_techspec_state, dave_private_key, op);
+        op.author = "bob";
+        op.permlink = "bob-techspec";
+        GOLOS_CHECK_ERROR_LOGIC(incorrect_techspec_state, bob_private_key, op);
     }
 
     validate_database();

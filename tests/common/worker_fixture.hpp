@@ -27,46 +27,6 @@ struct worker_fixture : public clean_database_fixture {
         BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
     }
 
-    void worker_assign(
-            const string& assigner, const private_key_type& assigner_key,
-            const string& worker_techspec_author, const string& worker_techspec_permlink, const string& worker) {
-        signed_transaction tx;
-
-        worker_assign_operation op;
-        op.assigner = assigner;
-        op.worker_techspec_author = worker_techspec_author;
-        op.worker_techspec_permlink = worker_techspec_permlink;
-        op.worker = worker;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, assigner_key, op));
-    }
-
-    const worker_techspec_object& worker_result(
-            const string& author, const private_key_type& author_key,
-            const string& permlink, const string& worker_techspec_permlink) {
-        signed_transaction tx;
-
-        worker_result_operation op;
-        op.author = author,
-        op.permlink = permlink;
-        op.worker_techspec_permlink = worker_techspec_permlink;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, author_key, op));
-
-        return db->get_worker_result(db->get_comment(author, permlink).id);
-    }
-
-    void worker_payment_approve(
-            const string& approver, const private_key_type& approver_key,
-            const string& worker_techspec_author, const string& worker_techspec_permlink, worker_techspec_approve_state state) {
-        signed_transaction tx;
-
-        worker_payment_approve_operation op;
-        op.approver = approver;
-        op.worker_techspec_author = worker_techspec_author;
-        op.worker_techspec_permlink = worker_techspec_permlink;
-        op.state = state;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
-    }
-
     void check_techspec_closed(const comment_id_type& post, worker_techspec_state state, asset consumption_after_close) {
         BOOST_TEST_MESSAGE("---- Checking techspec is not deleted but closed");
 
@@ -78,9 +38,6 @@ struct worker_fixture : public clean_database_fixture {
 
         const auto& wtao_idx = db->get_index<worker_techspec_approve_index, by_techspec_approver>();
         BOOST_CHECK(wtao_idx.find(post) == wtao_idx.end());
-
-        const auto& wpao_idx = db->get_index<worker_payment_approve_index, by_techspec_approver>();
-        BOOST_CHECK(wpao_idx.find(post) == wpao_idx.end());
 
         BOOST_TEST_MESSAGE("---- Checking worker funds are unfrozen");
 

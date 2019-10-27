@@ -70,10 +70,6 @@ namespace mongo_db {
         result_type operator()(const worker_techspec_operation& op);
         result_type operator()(const worker_techspec_delete_operation& op);
         result_type operator()(const worker_techspec_approve_operation& op);
-        result_type operator()(const worker_result_operation& op);
-        result_type operator()(const worker_result_delete_operation& op);
-        result_type operator()(const worker_payment_approve_operation& op);
-        result_type operator()(const worker_assign_operation& op);
         result_type operator()(const worker_fund_operation& op);
 //
         result_type operator()(const fill_convert_request_operation& op);

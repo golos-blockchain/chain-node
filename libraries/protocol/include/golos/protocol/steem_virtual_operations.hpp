@@ -282,13 +282,12 @@ namespace golos { namespace protocol {
         struct techspec_expired_operation : public virtual_operation {
             techspec_expired_operation() {
             }
-            techspec_expired_operation(const account_name_type& a, const string& p, bool w)
-                    : author(a), permlink(p), was_approved(w) {
+            techspec_expired_operation(const account_name_type& a, const string& p)
+                    : author(a), permlink(p) {
             }
 
             account_name_type author;
             string permlink;
-            bool was_approved;
         };
 } } //golos::protocol
 
@@ -312,4 +311,4 @@ FC_REFLECT((golos::protocol::delegation_reward_operation), (delegator)(delegatee
 FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
 FC_REFLECT((golos::protocol::techspec_reward_operation), (author)(permlink)(reward))
 FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_techspec_author)(worker_techspec_permlink)(reward))
-FC_REFLECT((golos::protocol::techspec_expired_operation), (author)(permlink)(was_approved))
+FC_REFLECT((golos::protocol::techspec_expired_operation), (author)(permlink))
