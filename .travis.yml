@@ -1,4 +1,4 @@
-sudo: required
+os: linux
 
 language: cpp
 
@@ -12,23 +12,21 @@ before_install:
 env:
   - DOCKERFILE=Dockerfile DOCKERNAME=""
   - DOCKERFILE=share/golosd/docker/Dockerfile-test DOCKERNAME="-test"
-  - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
-  - DOCKERFILE=share/golosd/docker/Dockerfile-mongo DOCKERNAME="-mongo"
+  # - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
+  # - DOCKERFILE=share/golosd/docker/Dockerfile-mongo DOCKERNAME="-mongo"
 
-matrix:
+jobs:
   fast_finish: true
 
 script:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
       export DOCKERNAME="latest""$DOCKERNAME";
-      export EXPORTNAME="$DOCKERNAME";
     elif [ -n "$TRAVIS_TAG" ]; then
       export DOCKERNAME="$TRAVIS_TAG""$DOCKERNAME";
-      export EXPORTNAME="$DOCKERNAME";
     elif [ "$DOCKERNAME" == "-testnet" ] || [ "$DOCKERNAME" == "-test" ]; then
       export DOCKERNAME=develop"$DOCKERNAME";
     else
-      export DOCKERNAME="";
+      export DOCKERNAME="$TRAVIS_BRANCH""$DOCKERNAME";
     fi
   - echo "$DOCKERFILE"
   - echo "$DOCKERNAME"
@@ -37,12 +35,12 @@ script:
     fi
 
 after_success:
-  - echo "$EXPORTNAME"
-  - docker images
-  - if [ -n "$EXPORTNAME" ]; then
-      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-      docker push goloschain/golos:"$EXPORTNAME";
-    fi
-  - if [ "$TRAVIS_BRANCH" == "master" -a "$EXPORTNAME" == "latest" ]; then
-      bash deploy/deploy.sh;
-    fi
+  # - echo "$EXPORTNAME"
+  # - docker images
+  # - if [ -n "$EXPORTNAME" ]; then
+  #     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+  #     docker push goloschain/golos:"$EXPORTNAME";
+  #   fi
+  # - if [ "$TRAVIS_BRANCH" == "master" -a "$EXPORTNAME" == "latest" ]; then
+  #     bash deploy/deploy.sh;
+  #   fi
