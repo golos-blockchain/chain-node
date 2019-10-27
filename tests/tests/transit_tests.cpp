@@ -95,82 +95,6 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
             BOOST_TEST_MESSAGE("-- save block to transit");
             generate_block();
             auto transit_block_num = db->head_block_num();
-
-            BOOST_TEST_MESSAGE("-- wait event to transit");
-
-            uint32_t event_block_num = 0;
-            db->transit_to_cyberway.connect([&](const uint32_t n, const uint32_t skip) {
-                BOOST_CHECK_GT(n, event_block_num);
-                event_block_num = n;
-            });
-
-            std::size_t i;
-            for (i = 0; i < 100 /* limiting waiting */ && event_block_num == 0; ++i) {
-                generate_block();
-            }
-            BOOST_CHECK_NE(event_block_num, 0);
-
-            BOOST_TEST_MESSAGE("-- validate transit properties");
-
-            {
-                auto& gpo = db->get_dynamic_global_properties();
-                BOOST_CHECK_EQUAL(gpo.transit_witnesses[0], witness);
-                for (i = 1; i < gpo.transit_witnesses.size(); ++i) {
-                    BOOST_CHECK_EQUAL(gpo.transit_witnesses[i], account_name_type());
-                }
-
-                BOOST_CHECK_EQUAL(transit_block_num, gpo.transit_block_num);
-                BOOST_CHECK_EQUAL(gpo.transit_block_num, gpo.last_irreversible_block_num);
-                BOOST_CHECK_GT(event_block_num, gpo.last_irreversible_block_num);
-            }
-            db->transit_to_cyberway.disconnect_all_slots();
-
-            BOOST_TEST_MESSAGE("-- fix block number to transit");
-            db->_fixed_irreversible_block_num = transit_block_num;
-            int events_count = 0;
-            db->transit_to_cyberway.connect([&](const uint32_t n, const uint32_t skip) {
-                BOOST_CHECK_GT(n, event_block_num);
-                event_block_num = n;
-                ++events_count;
-
-                auto& gpo = db->get_dynamic_global_properties();
-                BOOST_CHECK_EQUAL(transit_block_num, gpo.transit_block_num);
-                BOOST_CHECK_EQUAL(gpo.transit_block_num, gpo.last_irreversible_block_num);
-                BOOST_CHECK_GT(n, gpo.last_irreversible_block_num);
-            });
-
-            for (i = 0; i < 1000; ++i) {
-                generate_block();
-            }
-            BOOST_CHECK_EQUAL(events_count, 1000);
-
-            db->transit_to_cyberway.disconnect_all_slots();
-
-            BOOST_TEST_MESSAGE("-- unfix block number to transit");
-
-            db->_fixed_irreversible_block_num = UINT32_MAX;
-            events_count = 0;
-            auto unfixed_event = db->transit_to_cyberway.connect([&](const uint32_t n, const uint32_t skip) {
-                BOOST_CHECK_GT(n, event_block_num);
-                event_block_num = n;
-                ++events_count;
-
-                auto& gpo = db->get_dynamic_global_properties();
-                BOOST_CHECK_EQUAL(transit_block_num, gpo.transit_block_num);
-                BOOST_CHECK_EQUAL(gpo.transit_block_num, gpo.last_irreversible_block_num);
-                BOOST_CHECK_GT(n, gpo.last_irreversible_block_num);
-            });
-
-            for (i = 0; i < 1000; ++i) {
-                generate_block();
-            }
-            BOOST_CHECK_EQUAL(events_count, 0);
-
-            {
-                auto& gpo = db->get_dynamic_global_properties();
-                BOOST_CHECK_EQUAL(transit_block_num, gpo.transit_block_num);
-                BOOST_CHECK_GT(gpo.last_irreversible_block_num, gpo.transit_block_num);
-            }
         }
         FC_LOG_AND_RETHROW()
     }
@@ -201,40 +125,6 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
 
             BOOST_TEST_MESSAGE("-- save block to transit");
             generate_block();
-            auto transit_block_num = db->head_block_num();
-
-            BOOST_TEST_MESSAGE("-- wait event to transit");
-
-            int events_count = 0;
-            uint32_t event_block_num = 0;
-            db->transit_to_cyberway.connect([&](const uint32_t n, const uint32_t skip) {
-                BOOST_CHECK_GT(n, event_block_num);
-                event_block_num = n;
-                ++events_count;
-
-                BOOST_TEST_MESSAGE("--- validate transit properties");
-                auto& gpo = db->get_dynamic_global_properties();
-                BOOST_CHECK_EQUAL(gpo.transit_witnesses[0], witness);
-                for (std::size_t i = 1; i < gpo.transit_witnesses.size(); ++i) {
-                    BOOST_CHECK_EQUAL(gpo.transit_witnesses[i], account_name_type());
-                }
-
-                BOOST_CHECK_EQUAL(transit_block_num, gpo.transit_block_num);
-                BOOST_CHECK_EQUAL(gpo.transit_block_num, gpo.last_irreversible_block_num);
-                BOOST_CHECK_GT(event_block_num, gpo.last_irreversible_block_num);
-            });
-
-            std::size_t i;
-            for (i = 0; i < 1000; ++i) {
-                generate_block();
-            }
-            BOOST_CHECK_EQUAL(events_count, 1);
-
-            {
-                auto& gpo = db->get_dynamic_global_properties();
-                BOOST_CHECK_EQUAL(transit_block_num, gpo.transit_block_num);
-                BOOST_CHECK_GT(gpo.last_irreversible_block_num, gpo.transit_block_num);
-            }
         }
         FC_LOG_AND_RETHROW()
     }
