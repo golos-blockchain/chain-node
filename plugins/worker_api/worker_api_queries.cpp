@@ -6,7 +6,7 @@ using golos::protocol::validate_permlink;
 
 namespace golos { namespace plugins { namespace worker_api {
 
-    void worker_techspec_query::validate() const {
+    void worker_request_query::validate() const {
         GOLOS_CHECK_LIMIT_PARAM(limit, 100);
 
         if (!!start_author) {

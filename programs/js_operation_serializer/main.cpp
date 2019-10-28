@@ -205,9 +205,9 @@ namespace detail_ns {
     };
 
     template<>
-    struct js_name<worker_techspec_approve_state> {
+    struct js_name<worker_request_approve_state> {
         static std::string name() {
-            return "worker_techspec_approve_state";
+            return "worker_request_approve_state";
         }
     };
 
@@ -456,19 +456,19 @@ namespace detail_ns {
     };
 
     template<>
-    struct serializer<worker_techspec_approve_state, true> {
+    struct serializer<worker_request_approve_state, true> {
         static void init() {
             static bool init = false;
             if (!init) {
                 init = true;
-                register_serializer(js_name<worker_techspec_approve_state>::name(), [=]() { generate(); });
+                register_serializer(js_name<worker_request_approve_state>::name(), [=]() { generate(); });
             }
         }
 
         static void generate() {
-            std::cout << "ChainTypes." << js_name<worker_techspec_approve_state>::name() << " =\n";
-            for (uint8_t i = uint8_t(worker_techspec_approve_state::approve); i < uint8_t(worker_techspec_approve_state::_size); ++i) {
-                std::cout << "    " << fc::json::to_string(worker_techspec_approve_state(i)) << ": " << int(i) << "\n";
+            std::cout << "ChainTypes." << js_name<worker_request_approve_state>::name() << " =\n";
+            for (uint8_t i = uint8_t(worker_request_approve_state::approve); i < uint8_t(worker_request_approve_state::_size); ++i) {
+                std::cout << "    " << fc::json::to_string(worker_request_approve_state(i)) << ": " << int(i) << "\n";
             }
             std::cout << "\n";
         }

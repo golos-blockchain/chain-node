@@ -6,7 +6,7 @@
 
 namespace golos { namespace protocol {
 
-    struct worker_techspec_operation : public base_operation {
+    struct worker_request_operation : public base_operation {
         account_name_type author;
         std::string permlink;
         asset specification_cost;
@@ -24,7 +24,7 @@ namespace golos { namespace protocol {
         }
     };
 
-    struct worker_techspec_delete_operation : public base_operation {
+    struct worker_request_delete_operation : public base_operation {
         account_name_type author;
         std::string permlink;
 
@@ -37,18 +37,18 @@ namespace golos { namespace protocol {
         }
     };
 
-    enum class worker_techspec_approve_state {
+    enum class worker_request_approve_state {
         approve,
         disapprove,
         abstain,
         _size
     };
 
-    struct worker_techspec_approve_operation : public base_operation {
+    struct worker_request_approve_operation : public base_operation {
         account_name_type approver;
         account_name_type author;
         std::string permlink;
-        worker_techspec_approve_state state;
+        worker_request_approve_state state;
 
         extensions_type extensions;
 
@@ -75,17 +75,17 @@ namespace golos { namespace protocol {
 } } // golos::protocol
 
 FC_REFLECT(
-    (golos::protocol::worker_techspec_operation),
+    (golos::protocol::worker_request_operation),
     (author)(permlink)(specification_cost)(development_cost)
     (worker)(payments_count)(payments_interval)(extensions))
 
 FC_REFLECT(
-    (golos::protocol::worker_techspec_delete_operation),
+    (golos::protocol::worker_request_delete_operation),
     (author)(permlink)(extensions))
 
-FC_REFLECT_ENUM(golos::protocol::worker_techspec_approve_state, (approve)(disapprove)(abstain)(_size))
+FC_REFLECT_ENUM(golos::protocol::worker_request_approve_state, (approve)(disapprove)(abstain)(_size))
 FC_REFLECT(
-    (golos::protocol::worker_techspec_approve_operation),
+    (golos::protocol::worker_request_approve_operation),
     (approver)(author)(permlink)(state)(extensions))
 
 FC_REFLECT(

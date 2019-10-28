@@ -20,13 +20,13 @@ BOOST_AUTO_TEST_CASE(worker_payment_approving) {
 
     signed_transaction tx;
 
-    const auto& wtmo_idx = db->get_index<worker_techspec_metadata_index, by_post>();
+    const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
 
-    comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
+    comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
-    worker_techspec_operation wtop;
+    worker_request_operation wtop;
     wtop.author = "bob";
-    wtop.permlink = "bob-techspec";
+    wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
     wtop.payments_interval = 60*60*24;
@@ -39,16 +39,16 @@ BOOST_AUTO_TEST_CASE(worker_payment_approving) {
 
     BOOST_TEST_MESSAGE("-- Checking payment_beginning_time is updating on final payment approve");
 
-    auto wtmo_itr = wtmo_idx.find(db->get_comment("bob", string("bob-techspec")).id);
+    auto wtmo_itr = wtmo_idx.find(db->get_comment("bob", string("bob-request")).id);
     BOOST_CHECK_EQUAL(wtmo_itr->payment_beginning_time, time_point_sec::min());
 
     for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-        worker_techspec_approve("approver" + std::to_string(i), private_key,
-            "bob", "bob-techspec", worker_techspec_approve_state::approve);
+        worker_request_approve("approver" + std::to_string(i), private_key,
+            "bob", "bob-request", worker_request_approve_state::approve);
         generate_block();
     }
 
-    wtmo_itr = wtmo_idx.find(db->get_comment("bob", string("bob-techspec")).id);
+    wtmo_itr = wtmo_idx.find(db->get_comment("bob", string("bob-request")).id);
     BOOST_CHECK(wtmo_itr != wtmo_idx.end());
     BOOST_CHECK_NE(wtmo_itr->payment_beginning_time, time_point_sec::min());
     BOOST_CHECK_NE(wtmo_itr->consumption_per_day.amount, 0);
@@ -63,15 +63,15 @@ BOOST_AUTO_TEST_CASE(worker_payment_storing_consumption) {
 
     signed_transaction tx;
 
-    const auto& wtmo_idx = db->get_index<worker_techspec_metadata_index, by_post>();
+    const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
 
-    BOOST_TEST_MESSAGE("-- Creating techspec and approving payments");
+    BOOST_TEST_MESSAGE("-- Creating request and approving payments");
 
-    comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
+    comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
-    worker_techspec_operation wtop;
+    worker_request_operation wtop;
     wtop.author = "bob";
-    wtop.permlink = "bob-techspec";
+    wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(4);
     wtop.development_cost = ASSET_GOLOS(12);
     wtop.payments_interval = 60*60*24;
@@ -83,19 +83,19 @@ BOOST_AUTO_TEST_CASE(worker_payment_storing_consumption) {
     generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for approvers to reach TOP-19 and not leave it
 
     for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-        worker_techspec_approve("approver" + std::to_string(i), private_key,
-            "bob", "bob-techspec", worker_techspec_approve_state::approve);
+        worker_request_approve("approver" + std::to_string(i), private_key,
+            "bob", "bob-request", worker_request_approve_state::approve);
         generate_block();
     }
 
     BOOST_TEST_MESSAGE("-- Checking cashout");
 
-    auto* wto = db->find_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
+    auto* wto = db->find_worker_request(db->get_comment("bob", string("bob-request")).id);
     do
     {
         BOOST_TEST_MESSAGE("-- Checking consumption");
 
-        auto wtmo_itr = wtmo_idx.find(db->get_comment("bob", string("bob-techspec")).id);
+        auto wtmo_itr = wtmo_idx.find(db->get_comment("bob", string("bob-request")).id);
         BOOST_CHECK_NE(wtmo_itr->consumption_per_day.amount, 0);
 
         auto next_cashout_time = wto->next_cashout_time;
@@ -110,10 +110,10 @@ BOOST_AUTO_TEST_CASE(worker_payment_storing_consumption) {
         generate_blocks(next_cashout_time - STEEMIT_BLOCK_INTERVAL, true); // Here is no revenue - blocks skipping
         generate_block();
 
-        wto = db->find_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
+        wto = db->find_worker_request(db->get_comment("bob", string("bob-request")).id);
     } while (wto->next_cashout_time != time_point_sec::maximum());
 
-    auto wtmo_itr = wtmo_idx.find(db->get_comment("bob", string("bob-techspec")).id);
+    auto wtmo_itr = wtmo_idx.find(db->get_comment("bob", string("bob-request")).id);
     BOOST_CHECK_EQUAL(wtmo_itr->consumption_per_day.amount, 0);
 }
 

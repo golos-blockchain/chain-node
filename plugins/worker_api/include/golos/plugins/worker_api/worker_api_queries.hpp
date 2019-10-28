@@ -8,12 +8,12 @@ using namespace golos::chain;
 
 namespace golos { namespace plugins { namespace worker_api {
 
-    struct worker_techspec_query {
+    struct worker_request_query {
         uint32_t                        limit = 20;
         fc::optional<std::string>       start_author;
         fc::optional<std::string>       start_permlink;
         std::set<std::string>           select_authors;
-        std::set<worker_techspec_state> select_states;
+        std::set<worker_request_state> select_states;
 
         void validate() const;
 
@@ -29,13 +29,13 @@ namespace golos { namespace plugins { namespace worker_api {
             return !has_author() || select_authors.count(author);
         }
 
-        bool is_good_state(const worker_techspec_state& state) const {
+        bool is_good_state(const worker_request_state& state) const {
             return select_states.empty() || select_states.count(state);
         }
     };
 
 } } } // golos::plugins::worker_api
 
-FC_REFLECT((golos::plugins::worker_api::worker_techspec_query),
+FC_REFLECT((golos::plugins::worker_api::worker_request_query),
     (limit)(start_author)(start_permlink)(select_authors)(select_states)
 );

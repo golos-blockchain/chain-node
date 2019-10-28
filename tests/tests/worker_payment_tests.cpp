@@ -108,13 +108,13 @@ BOOST_AUTO_TEST_CASE(worker_cashout) {
 
     signed_transaction tx;
 
-    BOOST_TEST_MESSAGE("-- Creating techspec and approving payments");
+    BOOST_TEST_MESSAGE("-- Creating request and approving payments");
 
-    comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
+    comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
-    worker_techspec_operation wtop;
+    worker_request_operation wtop;
     wtop.author = "bob";
-    wtop.permlink = "bob-techspec";
+    wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(4);
     wtop.development_cost = ASSET_GOLOS(12);
     wtop.payments_interval = 60*60*24;
@@ -126,8 +126,8 @@ BOOST_AUTO_TEST_CASE(worker_cashout) {
     generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for approvers to reach TOP-19 and not leave it
 
     for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-        worker_techspec_approve("approver" + std::to_string(i), private_key,
-            "bob", "bob-techspec", worker_techspec_approve_state::approve);
+        worker_request_approve("approver" + std::to_string(i), private_key,
+            "bob", "bob-request", worker_request_approve_state::approve);
         generate_block();
     }
 
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE(worker_cashout) {
     auto init_fund = db->get_dynamic_global_properties().total_worker_fund_steem;
     auto init_block_num = db->head_block_num();
 
-    auto* wto = db->find_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
+    auto* wto = db->find_worker_request(db->get_comment("bob", string("bob-request")).id);
     do
     {
         auto next_cashout_time = wto->next_cashout_time;
@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE(worker_cashout) {
 
         BOOST_TEST_MESSAGE("-- Checking");
 
-        wto = db->find_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
+        wto = db->find_worker_request(db->get_comment("bob", string("bob-request")).id);
 
         BOOST_TEST_MESSAGE("---- finished_payments_count");
 
@@ -190,21 +190,21 @@ BOOST_AUTO_TEST_CASE(worker_cashout) {
 
         BOOST_TEST_MESSAGE("---- virtual operations");
 
-        auto trop = get_last_operations<techspec_reward_operation>(1)[0];
+        auto trop = get_last_operations<request_reward_operation>(1)[0];
         BOOST_CHECK_EQUAL(trop.author, wtop.author);
         BOOST_CHECK_EQUAL(trop.permlink, wtop.permlink);
         BOOST_CHECK_EQUAL(trop.reward, get_balance("bob") - author_balance);
 
         auto wrop = get_last_operations<worker_reward_operation>(1)[0];
         BOOST_CHECK_EQUAL(wrop.worker, "carol");
-        BOOST_CHECK_EQUAL(wrop.worker_techspec_author, wtop.author);
-        BOOST_CHECK_EQUAL(wrop.worker_techspec_permlink, wtop.permlink);
+        BOOST_CHECK_EQUAL(wrop.worker_request_author, wtop.author);
+        BOOST_CHECK_EQUAL(wrop.worker_request_permlink, wtop.permlink);
         BOOST_CHECK_EQUAL(wrop.reward, get_balance("carol") - worker_balance);
 
         BOOST_TEST_MESSAGE("---- state");
 
         if (wto->finished_payments_count < wto->payments_count) {
-            BOOST_CHECK(wto->state == worker_techspec_state::payment);
+            BOOST_CHECK(wto->state == worker_request_state::payment);
         }
 
         BOOST_TEST_MESSAGE("---- consumption");
@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE(worker_cashout) {
 
     BOOST_TEST_MESSAGE("---- state");
 
-    BOOST_CHECK(wto->state == worker_techspec_state::payment_complete);
+    BOOST_CHECK(wto->state == worker_request_state::payment_complete);
 
     BOOST_TEST_MESSAGE("---- consumption");
 
@@ -250,13 +250,13 @@ BOOST_AUTO_TEST_CASE(worker_cashout_waiting_funds) {
 
     signed_transaction tx;
 
-    BOOST_TEST_MESSAGE("-- Creating techspec and approving payments");
+    BOOST_TEST_MESSAGE("-- Creating request and approving payments");
 
-    comment_create("bob", bob_private_key, "bob-techspec", "", "bob-techspec");
+    comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
-    worker_techspec_operation wtop;
+    worker_request_operation wtop;
     wtop.author = "bob";
-    wtop.permlink = "bob-techspec";
+    wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(4);
     wtop.development_cost = ASSET_GOLOS(12);
     wtop.payments_interval = 60*60*24;
@@ -268,15 +268,15 @@ BOOST_AUTO_TEST_CASE(worker_cashout_waiting_funds) {
     generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for approvers to reach TOP-19 and not leave it
 
     for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-        worker_techspec_approve("approver" + std::to_string(i), private_key,
-            "bob", "bob-techspec", worker_techspec_approve_state::approve);
+        worker_request_approve("approver" + std::to_string(i), private_key,
+            "bob", "bob-request", worker_request_approve_state::approve);
         generate_block();
     }
 
     BOOST_TEST_MESSAGE("-- Waiting for cashout");
 
     {
-        const auto& wto = db->get_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
+        const auto& wto = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
         generate_blocks(wto.next_cashout_time - STEEMIT_BLOCK_INTERVAL, true); // It skips blocks - no revenue
         generate_block();
     }
@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE(worker_cashout_waiting_funds) {
     BOOST_TEST_MESSAGE("-- Check cashout skipped");
 
     {
-        const auto& wto = db->get_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
+        const auto& wto = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wto.finished_payments_count, 0);
     }
 
@@ -298,7 +298,7 @@ BOOST_AUTO_TEST_CASE(worker_cashout_waiting_funds) {
     BOOST_TEST_MESSAGE("-- Check cashout proceed");
 
     {
-        const auto& wto = db->get_worker_techspec(db->get_comment("bob", string("bob-techspec")).id);
+        const auto& wto = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wto.finished_payments_count, 1);
     }
 }

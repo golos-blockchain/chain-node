@@ -8,7 +8,7 @@ namespace golos { namespace chain {
 
     using namespace golos::protocol;
 
-    enum class worker_techspec_state {
+    enum class worker_request_state {
         created,
         payment,
         payment_complete,
@@ -17,19 +17,19 @@ namespace golos { namespace chain {
         closed_by_witnesses
     };
 
-    class worker_techspec_object : public object<worker_techspec_object_type, worker_techspec_object> {
+    class worker_request_object : public object<worker_request_object_type, worker_request_object> {
     public:
-        worker_techspec_object() = delete;
+        worker_request_object() = delete;
 
         template <typename Constructor, typename Allocator>
-        worker_techspec_object(Constructor&& c, allocator <Allocator> a) {
+        worker_request_object(Constructor&& c, allocator <Allocator> a) {
             c(*this);
         };
 
         id_type id;
 
         comment_id_type post;
-        worker_techspec_state state;
+        worker_request_state state;
         asset specification_cost;
         asset development_cost;
         account_name_type worker;
@@ -39,12 +39,12 @@ namespace golos { namespace chain {
         uint16_t finished_payments_count = 0;
     };
 
-    class worker_techspec_approve_object : public object<worker_techspec_approve_object_type, worker_techspec_approve_object> {
+    class worker_request_approve_object : public object<worker_request_approve_object_type, worker_request_approve_object> {
     public:
-        worker_techspec_approve_object() = delete;
+        worker_request_approve_object() = delete;
 
         template <typename Constructor, typename Allocator>
-        worker_techspec_approve_object(Constructor&& c, allocator <Allocator> a) {
+        worker_request_approve_object(Constructor&& c, allocator <Allocator> a) {
             c(*this);
         };
 
@@ -52,58 +52,58 @@ namespace golos { namespace chain {
 
         account_name_type approver;
         comment_id_type post;
-        worker_techspec_approve_state state;
+        worker_request_approve_state state;
     };
 
     struct by_post;
 
     struct by_next_cashout_time;
 
-    using worker_techspec_index = multi_index_container<
-        worker_techspec_object,
+    using worker_request_index = multi_index_container<
+        worker_request_object,
         indexed_by<
             ordered_unique<
                 tag<by_id>,
-                member<worker_techspec_object, worker_techspec_object_id_type, &worker_techspec_object::id>>,
+                member<worker_request_object, worker_request_object_id_type, &worker_request_object::id>>,
             ordered_unique<
                 tag<by_post>,
-                member<worker_techspec_object, comment_id_type, &worker_techspec_object::post>>,
+                member<worker_request_object, comment_id_type, &worker_request_object::post>>,
             ordered_unique<
                 tag<by_next_cashout_time>,
                 composite_key<
-                    worker_techspec_object,
-                    member<worker_techspec_object, time_point_sec, &worker_techspec_object::next_cashout_time>,
-                    member<worker_techspec_object, worker_techspec_object_id_type, &worker_techspec_object::id>>>>,
-        allocator<worker_techspec_object>>;
+                    worker_request_object,
+                    member<worker_request_object, time_point_sec, &worker_request_object::next_cashout_time>,
+                    member<worker_request_object, worker_request_object_id_type, &worker_request_object::id>>>>,
+        allocator<worker_request_object>>;
 
-    struct by_techspec_approver;
+    struct by_request_approver;
 
-    using worker_techspec_approve_index = multi_index_container<
-        worker_techspec_approve_object,
+    using worker_request_approve_index = multi_index_container<
+        worker_request_approve_object,
         indexed_by<
             ordered_unique<
                 tag<by_id>,
-                member<worker_techspec_approve_object, worker_techspec_approve_object_id_type, &worker_techspec_approve_object::id>>,
+                member<worker_request_approve_object, worker_request_approve_object_id_type, &worker_request_approve_object::id>>,
             ordered_unique<
-                tag<by_techspec_approver>,
+                tag<by_request_approver>,
                 composite_key<
-                    worker_techspec_approve_object,
-                    member<worker_techspec_approve_object, comment_id_type, &worker_techspec_approve_object::post>,
-                    member<worker_techspec_approve_object, account_name_type, &worker_techspec_approve_object::approver>>,
+                    worker_request_approve_object,
+                    member<worker_request_approve_object, comment_id_type, &worker_request_approve_object::post>,
+                    member<worker_request_approve_object, account_name_type, &worker_request_approve_object::approver>>,
                 composite_key_compare<
                     std::less<comment_id_type>,
                     std::less<account_name_type>>>>,
-        allocator<worker_techspec_approve_object>>;
+        allocator<worker_request_approve_object>>;
 
 } } // golos::chain
 
-FC_REFLECT_ENUM(golos::chain::worker_techspec_state,
+FC_REFLECT_ENUM(golos::chain::worker_request_state,
     (created)(payment)(payment_complete)(closed_by_author)(closed_by_expiration)(closed_by_witnesses))
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::chain::worker_techspec_object,
-    golos::chain::worker_techspec_index);
+    golos::chain::worker_request_object,
+    golos::chain::worker_request_index);
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::chain::worker_techspec_approve_object,
-    golos::chain::worker_techspec_approve_index);
+    golos::chain::worker_request_approve_object,
+    golos::chain::worker_request_approve_index);

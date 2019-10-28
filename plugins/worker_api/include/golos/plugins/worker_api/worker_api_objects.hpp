@@ -13,15 +13,15 @@ namespace golos { namespace plugins { namespace worker_api {
 #endif
 
     enum worker_api_plugin_object_type {
-        worker_techspec_metadata_object_type = (WORKER_API_SPACE_ID << 8)
+        worker_request_metadata_object_type = (WORKER_API_SPACE_ID << 8)
     };
 
-    class worker_techspec_metadata_object : public object<worker_techspec_metadata_object_type, worker_techspec_metadata_object> {
+    class worker_request_metadata_object : public object<worker_request_metadata_object_type, worker_request_metadata_object> {
     public:
-        worker_techspec_metadata_object() = delete;
+        worker_request_metadata_object() = delete;
 
         template <typename Constructor, typename Allocator>
-        worker_techspec_metadata_object(Constructor&& c, allocator <Allocator> a) {
+        worker_request_metadata_object(Constructor&& c, allocator <Allocator> a) {
             c(*this);
         };
 
@@ -40,48 +40,48 @@ namespace golos { namespace plugins { namespace worker_api {
     struct by_approves;
     struct by_disapproves;
 
-    using worker_techspec_metadata_id_type = object_id<worker_techspec_metadata_object>;
+    using worker_request_metadata_id_type = object_id<worker_request_metadata_object>;
 
-    using worker_techspec_metadata_index = multi_index_container<
-        worker_techspec_metadata_object,
+    using worker_request_metadata_index = multi_index_container<
+        worker_request_metadata_object,
         indexed_by<
             ordered_unique<
                 tag<by_id>,
-                member<worker_techspec_metadata_object, worker_techspec_metadata_id_type, &worker_techspec_metadata_object::id>>,
+                member<worker_request_metadata_object, worker_request_metadata_id_type, &worker_request_metadata_object::id>>,
             ordered_unique<
                 tag<by_post>,
-                member<worker_techspec_metadata_object, comment_id_type, &worker_techspec_metadata_object::post>>,
+                member<worker_request_metadata_object, comment_id_type, &worker_request_metadata_object::post>>,
             ordered_unique<
                 tag<by_net_rshares>,
                 composite_key<
-                    worker_techspec_metadata_object,
-                    member<worker_techspec_metadata_object, share_type, &worker_techspec_metadata_object::net_rshares>,
-                    member<worker_techspec_metadata_object, worker_techspec_metadata_id_type, &worker_techspec_metadata_object::id>>,
+                    worker_request_metadata_object,
+                    member<worker_request_metadata_object, share_type, &worker_request_metadata_object::net_rshares>,
+                    member<worker_request_metadata_object, worker_request_metadata_id_type, &worker_request_metadata_object::id>>,
                 composite_key_compare<
                     std::greater<share_type>,
-                    std::less<worker_techspec_metadata_id_type>>>,
+                    std::less<worker_request_metadata_id_type>>>,
             ordered_unique<
                 tag<by_approves>,
                 composite_key<
-                    worker_techspec_metadata_object,
-                    member<worker_techspec_metadata_object, uint16_t, &worker_techspec_metadata_object::approves>,
-                    member<worker_techspec_metadata_object, worker_techspec_metadata_id_type, &worker_techspec_metadata_object::id>>,
+                    worker_request_metadata_object,
+                    member<worker_request_metadata_object, uint16_t, &worker_request_metadata_object::approves>,
+                    member<worker_request_metadata_object, worker_request_metadata_id_type, &worker_request_metadata_object::id>>,
                 composite_key_compare<
                     std::greater<uint16_t>,
-                    std::less<worker_techspec_metadata_id_type>>>,
+                    std::less<worker_request_metadata_id_type>>>,
             ordered_unique<
                 tag<by_disapproves>,
                 composite_key<
-                    worker_techspec_metadata_object,
-                    member<worker_techspec_metadata_object, uint16_t, &worker_techspec_metadata_object::disapproves>,
-                    member<worker_techspec_metadata_object, worker_techspec_metadata_id_type, &worker_techspec_metadata_object::id>>,
+                    worker_request_metadata_object,
+                    member<worker_request_metadata_object, uint16_t, &worker_request_metadata_object::disapproves>,
+                    member<worker_request_metadata_object, worker_request_metadata_id_type, &worker_request_metadata_object::id>>,
                 composite_key_compare<
                     std::greater<uint16_t>,
-                    std::less<worker_techspec_metadata_id_type>>>>,
-        allocator<worker_techspec_metadata_object>>;
+                    std::less<worker_request_metadata_id_type>>>>,
+        allocator<worker_request_metadata_object>>;
 
-    struct worker_techspec_api_object {
-        worker_techspec_api_object(const worker_techspec_metadata_object& o, const comment_api_object& p)
+    struct worker_request_api_object {
+        worker_request_api_object(const worker_request_metadata_object& o, const comment_api_object& p)
             : post(p),
               modified(o.modified),
               net_rshares(o.net_rshares),
@@ -91,10 +91,10 @@ namespace golos { namespace plugins { namespace worker_api {
               payment_beginning_time(o.payment_beginning_time) {
         }
 
-        worker_techspec_api_object() {
+        worker_request_api_object() {
         }
 
-        void fill_worker_techspec(const worker_techspec_object& wto) {
+        void fill_worker_request(const worker_request_object& wto) {
             state = wto.state;
             specification_cost = wto.specification_cost;
             development_cost = wto.development_cost;
@@ -106,7 +106,7 @@ namespace golos { namespace plugins { namespace worker_api {
         }
 
         comment_api_object post;
-        worker_techspec_state state;
+        worker_request_state state;
         time_point_sec modified;
         share_type net_rshares;
         asset specification_cost;
@@ -125,10 +125,10 @@ namespace golos { namespace plugins { namespace worker_api {
 } } } // golos::plugins::worker_api
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::worker_api::worker_techspec_metadata_object,
-    golos::plugins::worker_api::worker_techspec_metadata_index)
+    golos::plugins::worker_api::worker_request_metadata_object,
+    golos::plugins::worker_api::worker_request_metadata_index)
 
-FC_REFLECT((golos::plugins::worker_api::worker_techspec_api_object),
+FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
     (post)(state)(modified)(net_rshares)(specification_cost)(development_cost)(approves)(disapproves)
     (worker)(payments_count)
     (payments_interval)(consumption_per_day)(payment_beginning_time)(next_cashout_time)(finished_payments_count)

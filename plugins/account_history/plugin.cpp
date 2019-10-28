@@ -514,15 +514,15 @@ if (options.count(name)) { \
             insert_pair(op.requester, op.author);
         }
 
-        void operator()(const worker_techspec_operation& op) {
+        void operator()(const worker_request_operation& op) {
             insert_dual(op.author);
         }
 
-        void operator()(const worker_techspec_delete_operation& op) {
+        void operator()(const worker_request_delete_operation& op) {
             insert_dual(op.author);
         }
 
-        void operator()(const worker_techspec_approve_operation& op) {
+        void operator()(const worker_request_approve_operation& op) {
             insert_pair(op.approver, op.author);
         }
 
@@ -530,16 +530,16 @@ if (options.count(name)) { \
             insert_sender(op.sponsor);
         }
 
-        void operator()(const techspec_reward_operation& op) {
+        void operator()(const request_reward_operation& op) {
             insert_receiver(op.author);
         }
 
-        void operator()(const techspec_expired_operation& op) {
+        void operator()(const request_expired_operation& op) {
             insert_receiver(op.author);
         }
 
         void operator()(const worker_reward_operation& op) {
-            insert_pair(op.worker_techspec_author, op.worker);
+            insert_pair(op.worker_request_author, op.worker);
         }
     };
 

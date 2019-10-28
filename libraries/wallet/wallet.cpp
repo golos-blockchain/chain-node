@@ -355,7 +355,7 @@ namespace golos { namespace wallet {
                         result["worker_from_content_fund_percent"] = median_props.worker_from_content_fund_percent;
                         result["worker_from_vesting_fund_percent"] = median_props.worker_from_vesting_fund_percent;
                         result["worker_from_witness_fund_percent"] = median_props.worker_from_witness_fund_percent;
-                        result["worker_techspec_approve_term_sec"] = median_props.worker_techspec_approve_term_sec;
+                        result["worker_request_approve_term_sec"] = median_props.worker_request_approve_term_sec;
                     }
 
                     return result;
@@ -2293,7 +2293,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 SET_PROP(p22, worker_from_content_fund_percent);
                 SET_PROP(p22, worker_from_vesting_fund_percent);
                 SET_PROP(p22, worker_from_witness_fund_percent);
-                SET_PROP(p22, worker_techspec_approve_term_sec);
+                SET_PROP(p22, worker_request_approve_term_sec);
                 op.props = p22;
             }
 #undef SET_PROP
@@ -3131,14 +3131,14 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( trx, broadcast );
         }
 
-        annotated_signed_transaction wallet_api::worker_techspec(
+        annotated_signed_transaction wallet_api::worker_request(
                 const std::string& author, const std::string& permlink,
                 const asset& specification_cost, const asset& development_cost, const std::string& worker,
                 uint16_t payments_count, uint32_t payments_interval, bool broadcast
         ) {
             WALLET_CHECK_UNLOCKED();
 
-            worker_techspec_operation op;
+            worker_request_operation op;
             op.author = author;
             op.permlink = permlink;
             op.specification_cost = specification_cost;
@@ -3153,12 +3153,12 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return sign_transaction(tx, broadcast);
         }
 
-        annotated_signed_transaction wallet_api::delete_worker_techspec(
+        annotated_signed_transaction wallet_api::delete_worker_request(
                 const std::string& author, const std::string& permlink, bool broadcast
         ) {
             WALLET_CHECK_UNLOCKED();
 
-            worker_techspec_delete_operation op;
+            worker_request_delete_operation op;
             op.author = author;
             op.permlink = permlink;
 
@@ -3168,13 +3168,13 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction(tx, broadcast);
         }
 
-        annotated_signed_transaction wallet_api::approve_worker_techspec(
+        annotated_signed_transaction wallet_api::approve_worker_request(
                 const std::string& approver, const std::string& author, const std::string& permlink,
-                worker_techspec_approve_state state, bool broadcast
+                worker_request_approve_state state, bool broadcast
         ) {
             WALLET_CHECK_UNLOCKED();
 
-            worker_techspec_approve_operation op;
+            worker_request_approve_operation op;
             op.approver = approver;
             op.author = author;
             op.permlink = permlink;

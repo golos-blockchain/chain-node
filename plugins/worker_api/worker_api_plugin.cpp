@@ -25,14 +25,14 @@ struct post_operation_visitor {
     result_type operator()(const T&) const {
     }
 
-    result_type operator()(const worker_techspec_operation& o) const {
+    result_type operator()(const worker_request_operation& o) const {
         const auto& post = _db.get_comment(o.author, o.permlink);
 
-        const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
+        const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);
 
         if (wtmo_itr != wtmo_idx.end()) { // Edit case
-            _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
+            _db.modify(*wtmo_itr, [&](worker_request_metadata_object& wtmo) {
                 wtmo.modified = _db.head_block_time();
             });
 
@@ -41,21 +41,21 @@ struct post_operation_visitor {
 
         // Create case
 
-        _db.create<worker_techspec_metadata_object>([&](worker_techspec_metadata_object& wtmo) {
+        _db.create<worker_request_metadata_object>([&](worker_request_metadata_object& wtmo) {
             wtmo.post = post.id;
             wtmo.net_rshares = post.net_rshares;
         });
     }
 
-    result_type operator()(const worker_techspec_delete_operation& o) const {
+    result_type operator()(const worker_request_delete_operation& o) const {
         const auto& post = _db.get_comment(o.author, o.permlink);
 
-        const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
+        const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);
 
-        const auto* wto = _db.find_worker_techspec(post.id);
+        const auto* wto = _db.find_worker_request(post.id);
         if (wto) {
-            _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
+            _db.modify(*wtmo_itr, [&](worker_request_metadata_object& wtmo) {
                 wtmo.consumption_per_day = asset(0, STEEM_SYMBOL);
             });
             return;
@@ -67,47 +67,47 @@ struct post_operation_visitor {
     result_type operator()(const vote_operation& o) const {
         const auto& post = _db.get_comment(o.author, o.permlink);
 
-        const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
+        const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);
         if (wtmo_itr != wtmo_idx.end()) {
-            _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
+            _db.modify(*wtmo_itr, [&](worker_request_metadata_object& wtmo) {
                 wtmo.net_rshares = post.net_rshares;
             });
         }
     }
 
-    result_type operator()(const worker_techspec_approve_operation& o) const {
+    result_type operator()(const worker_request_approve_operation& o) const {
         const auto& wto_post = _db.get_comment(o.author, o.permlink);
-        const auto& wto = _db.get_worker_techspec(wto_post.id);
+        const auto& wto = _db.get_worker_request(wto_post.id);
 
-        const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
+        const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(wto_post.id);
 
-        auto approves = _db.count_worker_techspec_approves(wto_post.id);
+        auto approves = _db.count_worker_request_approves(wto_post.id);
 
-        _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
-            wtmo.approves = approves[worker_techspec_approve_state::approve];
-            wtmo.disapproves = approves[worker_techspec_approve_state::disapprove];
+        _db.modify(*wtmo_itr, [&](worker_request_metadata_object& wtmo) {
+            wtmo.approves = approves[worker_request_approve_state::approve];
+            wtmo.disapproves = approves[worker_request_approve_state::disapprove];
 
-            if (wto.state == worker_techspec_state::payment) {
-                wtmo.consumption_per_day = _db.calculate_worker_techspec_consumption_per_day(wto);
+            if (wto.state == worker_request_state::payment) {
+                wtmo.consumption_per_day = _db.calculate_worker_request_consumption_per_day(wto);
                 wtmo.payment_beginning_time = wto.next_cashout_time;
             }
         });
     }
 
-    result_type operator()(const techspec_reward_operation& o) const {
+    result_type operator()(const request_reward_operation& o) const {
         const auto& post = _db.get_comment(o.author, o.permlink);
 
-        const auto& wto = _db.get_worker_techspec(post.id);
+        const auto& wto = _db.get_worker_request(post.id);
 
         if (wto.finished_payments_count != wto.payments_count) {
             return;
         }
 
-        const auto& wtmo_idx = _db.get_index<worker_techspec_metadata_index, by_post>();
+        const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);
-        _db.modify(*wtmo_itr, [&](worker_techspec_metadata_object& wtmo) {
+        _db.modify(*wtmo_itr, [&](worker_request_metadata_object& wtmo) {
             wtmo.consumption_per_day = asset(0, STEEM_SYMBOL);
         });
     }
@@ -169,7 +169,7 @@ void worker_api_plugin::plugin_initialize(const boost::program_options::variable
         my->post_operation(note, *this);
     });
 
-    add_plugin_index<worker_techspec_metadata_index>(my->_db);
+    add_plugin_index<worker_request_metadata_index>(my->_db);
 
     JSON_RPC_REGISTER_API(name())
 }
@@ -254,33 +254,33 @@ void worker_api_plugin::worker_api_plugin_impl::select_postbased_results_ordered
 
 // Api Defines
 
-DEFINE_API(worker_api_plugin, get_worker_techspecs) {
+DEFINE_API(worker_api_plugin, get_worker_requests) {
     PLUGIN_API_VALIDATE_ARGS(
-        (worker_techspec_query, query)
-        (worker_techspec_sort, sort)
+        (worker_request_query, query)
+        (worker_request_sort, sort)
         (bool, fill_posts)
     )
     query.validate();
 
-    std::vector<worker_techspec_api_object> result;
+    std::vector<worker_request_api_object> result;
 
-    auto wto_fill_worker_fields = [&](worker_api_plugin_impl* my, const worker_techspec_metadata_object& wtmo, worker_techspec_api_object& wto_api, const worker_techspec_query& query) -> bool {
-        auto wto = my->_db.get_worker_techspec(wtmo.post);
+    auto wto_fill_worker_fields = [&](worker_api_plugin_impl* my, const worker_request_metadata_object& wtmo, worker_request_api_object& wto_api, const worker_request_query& query) -> bool {
+        auto wto = my->_db.get_worker_request(wtmo.post);
         if (!query.is_good_state(wto.state)) {
             return false;
         }
-        wto_api.fill_worker_techspec(wto);
+        wto_api.fill_worker_request(wto);
         return true;
     };
 
-    if (sort == worker_techspec_sort::by_created) {
-        my->select_postbased_results_ordered<worker_techspec_metadata_index, by_id, true>(query, result, wto_fill_worker_fields, fill_posts);
-    } else if (sort == worker_techspec_sort::by_net_rshares) {
-        my->select_postbased_results_ordered<worker_techspec_metadata_index, by_net_rshares, false>(query, result, wto_fill_worker_fields, fill_posts);
-    } else if (sort == worker_techspec_sort::by_approves) {
-        my->select_postbased_results_ordered<worker_techspec_metadata_index, by_approves, false>(query, result, wto_fill_worker_fields, fill_posts);
-    } else if (sort == worker_techspec_sort::by_disapproves) {
-        my->select_postbased_results_ordered<worker_techspec_metadata_index, by_disapproves, false>(query, result, wto_fill_worker_fields, fill_posts);
+    if (sort == worker_request_sort::by_created) {
+        my->select_postbased_results_ordered<worker_request_metadata_index, by_id, true>(query, result, wto_fill_worker_fields, fill_posts);
+    } else if (sort == worker_request_sort::by_net_rshares) {
+        my->select_postbased_results_ordered<worker_request_metadata_index, by_net_rshares, false>(query, result, wto_fill_worker_fields, fill_posts);
+    } else if (sort == worker_request_sort::by_approves) {
+        my->select_postbased_results_ordered<worker_request_metadata_index, by_approves, false>(query, result, wto_fill_worker_fields, fill_posts);
+    } else if (sort == worker_request_sort::by_disapproves) {
+        my->select_postbased_results_ordered<worker_request_metadata_index, by_disapproves, false>(query, result, wto_fill_worker_fields, fill_posts);
     }
 
     return result;
