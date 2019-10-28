@@ -168,7 +168,8 @@ namespace golos { namespace chain {
             appbase::reset();
         }
 
-        clean_database_fixture::clean_database_fixture() {
+        clean_database_fixture::clean_database_fixture(bool init) {
+            if (!init) return;
             try {
                 initialize();
 

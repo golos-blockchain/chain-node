@@ -8,10 +8,7 @@ namespace golos { namespace chain {
 
 struct worker_fixture : public clean_database_fixture {
 
-    void initialize(const plugin_options& opts = {}) {
-        database_fixture::initialize(opts);
-        open_database();
-        startup();
+    worker_fixture(bool init = true) : clean_database_fixture(init) {
     }
 
     void worker_techspec_approve(
