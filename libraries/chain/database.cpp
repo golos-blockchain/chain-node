@@ -1308,7 +1308,7 @@ namespace golos { namespace chain {
             }
         }
 
-        inline const void database::push_virtual_operation(const operation &op, bool force) {
+        const void database::push_virtual_operation(const operation &op, bool force) {
             if (!force && _skip_virtual_ops ) {
                 return;
             }
