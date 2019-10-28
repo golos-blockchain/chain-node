@@ -6,16 +6,9 @@
 
 namespace golos { namespace protocol {
 
-    enum class worker_proposal_type {
-        task,
-        premade_work,
-        _size
-    };
-
     struct worker_techspec_operation : public base_operation {
         account_name_type author;
         std::string permlink;
-        worker_proposal_type type = worker_proposal_type::task;
         asset specification_cost;
         asset development_cost;
         account_name_type worker;
@@ -66,63 +59,6 @@ namespace golos { namespace protocol {
         }
     };
 
-    struct worker_assign_operation : public base_operation {
-        account_name_type assigner;
-        account_name_type worker_techspec_author;
-        std::string worker_techspec_permlink;
-        account_name_type worker;
-
-        extensions_type extensions;
-
-        void validate() const;
-
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
-            a.insert(assigner);
-        }
-    };
-
-    struct worker_result_operation : public base_operation {
-        account_name_type author;
-        std::string permlink;
-        std::string worker_techspec_permlink;
-
-        extensions_type extensions;
-
-        void validate() const;
-
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
-            a.insert(author);
-        }
-    };
-
-    struct worker_result_delete_operation : public base_operation {
-        account_name_type author;
-        std::string permlink;
-
-        extensions_type extensions;
-
-        void validate() const;
-
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
-            a.insert(author);
-        }
-    };
-
-    struct worker_payment_approve_operation : public base_operation {
-        account_name_type approver;
-        account_name_type worker_techspec_author;
-        std::string worker_techspec_permlink;
-        worker_techspec_approve_state state;
-
-        extensions_type extensions;
-
-        void validate() const;
-
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
-            a.insert(approver);
-        }
-    };
-
     struct worker_fund_operation : public base_operation {
         account_name_type sponsor;
         asset amount;
@@ -138,11 +74,9 @@ namespace golos { namespace protocol {
 
 } } // golos::protocol
 
-FC_REFLECT_ENUM(golos::protocol::worker_proposal_type, (task)(premade_work)(_size))
-
 FC_REFLECT(
     (golos::protocol::worker_techspec_operation),
-    (author)(permlink)(type)(specification_cost)(development_cost)
+    (author)(permlink)(specification_cost)(development_cost)
     (worker)(payments_count)(payments_interval)(extensions))
 
 FC_REFLECT(
@@ -153,22 +87,6 @@ FC_REFLECT_ENUM(golos::protocol::worker_techspec_approve_state, (approve)(disapp
 FC_REFLECT(
     (golos::protocol::worker_techspec_approve_operation),
     (approver)(author)(permlink)(state)(extensions))
-
-FC_REFLECT(
-    (golos::protocol::worker_assign_operation),
-    (assigner)(worker_techspec_author)(worker_techspec_permlink)(worker)(extensions))
-
-FC_REFLECT(
-    (golos::protocol::worker_result_operation),
-    (author)(permlink)(worker_techspec_permlink)(extensions))
-
-FC_REFLECT(
-    (golos::protocol::worker_result_delete_operation),
-    (author)(permlink)(extensions))
-
-FC_REFLECT(
-    (golos::protocol::worker_payment_approve_operation),
-    (approver)(worker_techspec_author)(worker_techspec_permlink)(state)(extensions))
 
 FC_REFLECT(
     (golos::protocol::worker_fund_operation),

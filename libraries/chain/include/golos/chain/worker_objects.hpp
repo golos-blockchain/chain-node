@@ -10,16 +10,11 @@ namespace golos { namespace chain {
 
     enum class worker_techspec_state {
         created,
-        approved,
-        work,
-        wip,
-        complete,
         payment,
         payment_complete,
         closed_by_author,
         closed_by_expiration,
-        closed_by_witnesses,
-        disapproved_by_witnesses
+        closed_by_witnesses
     };
 
     class worker_techspec_object : public object<worker_techspec_object_type, worker_techspec_object> {
@@ -34,12 +29,10 @@ namespace golos { namespace chain {
         id_type id;
 
         comment_id_type post;
-        worker_proposal_type type;
         worker_techspec_state state;
         asset specification_cost;
         asset development_cost;
         account_name_type worker;
-        comment_id_type worker_result_post = comment_id_type(-1);
         uint16_t payments_count;
         uint32_t payments_interval;
         time_point_sec next_cashout_time = time_point_sec::maximum();
@@ -62,25 +55,8 @@ namespace golos { namespace chain {
         worker_techspec_approve_state state;
     };
 
-    class worker_payment_approve_object : public object<worker_payment_approve_object_type, worker_payment_approve_object> {
-    public:
-        worker_payment_approve_object() = delete;
-
-        template <typename Constructor, typename Allocator>
-        worker_payment_approve_object(Constructor&& c, allocator <Allocator> a) {
-            c(*this);
-        };
-
-        id_type id;
-
-        account_name_type approver;
-        comment_id_type post;
-        worker_techspec_approve_state state;
-    };
-
     struct by_post;
 
-    struct by_worker_result;
     struct by_next_cashout_time;
 
     using worker_techspec_index = multi_index_container<
@@ -92,9 +68,6 @@ namespace golos { namespace chain {
             ordered_unique<
                 tag<by_post>,
                 member<worker_techspec_object, comment_id_type, &worker_techspec_object::post>>,
-            ordered_non_unique<
-                tag<by_worker_result>,
-                member<worker_techspec_object, comment_id_type, &worker_techspec_object::worker_result_post>>,
             ordered_unique<
                 tag<by_next_cashout_time>,
                 composite_key<
@@ -122,27 +95,10 @@ namespace golos { namespace chain {
                     std::less<account_name_type>>>>,
         allocator<worker_techspec_approve_object>>;
 
-    using worker_payment_approve_index = multi_index_container<
-        worker_payment_approve_object,
-        indexed_by<
-            ordered_unique<
-                tag<by_id>,
-                member<worker_payment_approve_object, worker_payment_approve_object_id_type, &worker_payment_approve_object::id>>,
-            ordered_unique<
-                tag<by_techspec_approver>,
-                composite_key<
-                    worker_payment_approve_object,
-                    member<worker_payment_approve_object, comment_id_type, &worker_payment_approve_object::post>,
-                    member<worker_payment_approve_object, account_name_type, &worker_payment_approve_object::approver>>,
-                composite_key_compare<
-                    std::less<comment_id_type>,
-                    std::less<account_name_type>>>>,
-        allocator<worker_payment_approve_object>>;
-
 } } // golos::chain
 
 FC_REFLECT_ENUM(golos::chain::worker_techspec_state,
-    (created)(approved)(work)(wip)(complete)(payment)(payment_complete)(closed_by_author)(closed_by_expiration)(closed_by_witnesses)(disapproved_by_witnesses))
+    (created)(payment)(payment_complete)(closed_by_author)(closed_by_expiration)(closed_by_witnesses))
 
 CHAINBASE_SET_INDEX_TYPE(
     golos::chain::worker_techspec_object,
@@ -151,7 +107,3 @@ CHAINBASE_SET_INDEX_TYPE(
 CHAINBASE_SET_INDEX_TYPE(
     golos::chain::worker_techspec_approve_object,
     golos::chain::worker_techspec_approve_index);
-
-CHAINBASE_SET_INDEX_TYPE(
-    golos::chain::worker_payment_approve_object,
-    golos::chain::worker_payment_approve_index);

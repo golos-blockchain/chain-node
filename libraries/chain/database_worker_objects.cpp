@@ -16,17 +16,6 @@ namespace golos { namespace chain {
         return find<worker_techspec_object, by_post>(post);
     }
 
-    const worker_techspec_object& database::get_worker_result(const comment_id_type& post) const { try {
-        return get<worker_techspec_object, by_worker_result>(post);
-    } catch (const std::out_of_range &e) {
-        const auto& comment = get_comment(post);
-        GOLOS_THROW_MISSING_OBJECT("worker_techspec_object", fc::mutable_variant_object()("account",comment.author)("worker_result_permlink",comment.permlink));
-    } FC_CAPTURE_AND_RETHROW((post)) }
-
-    const worker_techspec_object* database::find_worker_result(const comment_id_type& post) const {
-        return find<worker_techspec_object, by_worker_result>(post);
-    }
-
     template<typename ApproveMultiIndex, typename ApproveIndex>
     flat_map<worker_techspec_approve_state, int32_t> count_worker_approves(const database& _db, const comment_id_type& post) {
         flat_map<worker_techspec_approve_state, int32_t> result;
@@ -45,10 +34,6 @@ namespace golos { namespace chain {
 
     flat_map<worker_techspec_approve_state, int32_t> database::count_worker_techspec_approves(const comment_id_type& post) {
         return count_worker_approves<worker_techspec_approve_index, by_techspec_approver>(*this, post);
-    }
-
-    flat_map<worker_techspec_approve_state, int32_t> database::count_worker_payment_approves(const comment_id_type& post) {
-        return count_worker_approves<worker_payment_approve_index, by_techspec_approver>(*this, post);
     }
 
     asset database::calculate_worker_techspec_consumption_per_day(const worker_techspec_object& wto) {
@@ -90,8 +75,6 @@ namespace golos { namespace chain {
                 modify(gpo, [&](dynamic_global_property_object& gpo) {
                     gpo.worker_consumption_per_day -= calculate_worker_techspec_consumption_per_day(*wto_itr);
                 });
-
-                clear_worker_payment_approves(*wto_itr);
 
                 modify(*wto_itr, [&](worker_techspec_object& wto) {
                     wto.finished_payments_count++;
@@ -142,18 +125,10 @@ namespace golos { namespace chain {
         clear_worker_approves<worker_techspec_approve_index, by_techspec_approver>(*this, wto.post);
     }
 
-    void database::clear_worker_payment_approves(const worker_techspec_object& wto) {
-        if (!_clear_old_worker_approves) {
-            return;
-        }
-
-        clear_worker_approves<worker_payment_approve_index, by_techspec_approver>(*this, wto.post);
-    }
-
     void database::close_worker_techspec(const worker_techspec_object& wto, worker_techspec_state closed_state) {
         bool has_approves = false;
 
-        if (wto.state >= worker_techspec_state::approved) {
+        if (wto.state >= worker_techspec_state::payment) {
             const auto& gpo = get_dynamic_global_properties();
             modify(gpo, [&](dynamic_global_property_object& gpo) {
                 gpo.worker_consumption_per_day -= calculate_worker_techspec_consumption_per_day(wto);
@@ -162,14 +137,11 @@ namespace golos { namespace chain {
             has_approves = true;
         } else {
             const auto& wtao_idx = get_index<worker_techspec_approve_index, by_techspec_approver>();
-            const auto& wpao_idx = get_index<worker_payment_approve_index, by_techspec_approver>();
             auto wtao_itr = wtao_idx.find(wto.post);
-            auto wpao_itr = wpao_idx.find(wto.post);
-            has_approves = (wtao_itr != wtao_idx.end() || wpao_itr != wpao_idx.end());
+            has_approves = wtao_itr != wtao_idx.end();
         }
 
         clear_worker_techspec_approves(wto);
-        clear_worker_payment_approves(wto);
 
         if (closed_state == worker_techspec_state::closed_by_author && !has_approves) {
             remove(wto);
@@ -203,24 +175,7 @@ namespace golos { namespace chain {
 
             close_worker_techspec(*itr, worker_techspec_state::closed_by_expiration);
 
-            push_virtual_operation(techspec_expired_operation(wto_post.author, to_string(wto_post.permlink), false));
-        }
-
-        const auto& result_idx = get_index<worker_techspec_index, by_worker_result>();
-        for (auto result_itr = result_idx.begin(); result_itr != result_idx.end(); result_itr++) {
-            if (result_itr->state != worker_techspec_state::complete) {
-                continue;
-            }
-
-            const auto& result_post = get_comment(result_itr->worker_result_post);
-            if (result_post.created + mprops.worker_result_approve_term_sec > now) {
-                break;
-            }
-
-            close_worker_techspec(*result_itr, worker_techspec_state::closed_by_expiration);
-
-            const auto& wto_post = get_comment(result_itr->post);
-            push_virtual_operation(techspec_expired_operation(wto_post.author, to_string(wto_post.permlink), true));
+            push_virtual_operation(techspec_expired_operation(wto_post.author, to_string(wto_post.permlink)));
         }
     }
 

@@ -324,7 +324,6 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_VALUE_LE(worker_from_vesting_fund_percent, STEEMIT_100_PERCENT);
             GOLOS_CHECK_VALUE_LE(worker_from_witness_fund_percent, STEEMIT_100_PERCENT);
             GOLOS_CHECK_VALUE_LE(worker_techspec_approve_term_sec, GOLOS_WORKER_TECHSPEC_APPROVE_TERM_SEC);
-            GOLOS_CHECK_VALUE_LE(worker_result_approve_term_sec, GOLOS_WORKER_RESULT_APPROVE_TERM_SEC);
         }
 
         void witness_update_operation::validate() const {

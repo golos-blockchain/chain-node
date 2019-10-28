@@ -686,11 +686,6 @@ namespace golos { namespace protocol {
              */
             uint32_t worker_techspec_approve_term_sec = GOLOS_WORKER_TECHSPEC_APPROVE_TERM_SEC;
 
-            /**
-             * Maximum term of worker result approving
-             */
-            uint32_t worker_result_approve_term_sec = GOLOS_WORKER_RESULT_APPROVE_TERM_SEC;
-
             void validate() const;
 
             chain_properties_22& operator=(const chain_properties_17& src) {
@@ -1426,7 +1421,7 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
     (worker_from_content_fund_percent)(worker_from_vesting_fund_percent)(worker_from_witness_fund_percent)
-    (worker_techspec_approve_term_sec)(worker_result_approve_term_sec))
+    (worker_techspec_approve_term_sec))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

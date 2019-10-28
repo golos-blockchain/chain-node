@@ -1308,7 +1308,7 @@ namespace golos { namespace chain {
             }
         }
 
-        inline const void database::push_virtual_operation(const operation &op, bool force) {
+        const void database::push_virtual_operation(const operation &op, bool force) {
             if (!force && _skip_virtual_ops ) {
                 return;
             }
@@ -1982,7 +1982,6 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::worker_from_vesting_fund_percent);
             calc_median(&chain_properties_22::worker_from_witness_fund_percent);
             calc_median(&chain_properties_22::worker_techspec_approve_term_sec);
-            calc_median(&chain_properties_22::worker_result_approve_term_sec);
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -3147,10 +3146,6 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<worker_techspec_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_techspec_delete_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_techspec_approve_evaluator>();
-            _my->_evaluator_registry.register_evaluator<worker_result_evaluator>();
-            _my->_evaluator_registry.register_evaluator<worker_result_delete_evaluator>();
-            _my->_evaluator_registry.register_evaluator<worker_payment_approve_evaluator>();
-            _my->_evaluator_registry.register_evaluator<worker_assign_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_fund_evaluator>();
         }
 
@@ -3199,7 +3194,6 @@ namespace golos { namespace chain {
             add_core_index<required_approval_index>(*this);
             add_core_index<worker_techspec_index>(*this);
             add_core_index<worker_techspec_approve_index>(*this);
-            add_core_index<worker_payment_approve_index>(*this);
 
             _plugin_index_signal();
         }

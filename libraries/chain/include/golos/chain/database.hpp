@@ -184,8 +184,6 @@ namespace golos { namespace chain {
 
             const worker_techspec_object& get_worker_techspec(const comment_id_type& post) const;
             const worker_techspec_object* find_worker_techspec(const comment_id_type& post) const;
-            const worker_techspec_object& get_worker_result(const comment_id_type& post) const;
-            const worker_techspec_object* find_worker_result(const comment_id_type& post) const;
 
             const comment_object &get_comment(const account_name_type &author, const shared_string &permlink) const;
 
@@ -277,7 +275,6 @@ namespace golos { namespace chain {
             void clear_expired_proposals();
 
             void clear_worker_techspec_approves(const worker_techspec_object& wto);
-            void clear_worker_payment_approves(const worker_techspec_object& wto);
 
             void close_worker_techspec(const worker_techspec_object& wto, worker_techspec_state closed_state);
 
@@ -311,7 +308,7 @@ namespace golos { namespace chain {
 
             void notify_post_apply_operation(const operation_notification &note);
 
-            inline const void push_virtual_operation(const operation &op, bool force = false); // vops are not needed for low mem. Force will push them on low mem.
+            const void push_virtual_operation(const operation &op, bool force = false); // vops are not needed for low mem. Force will push them on low mem.
             void notify_applied_block(const signed_block &block);
 
             void notify_on_pending_transaction(const signed_transaction &tx);
@@ -469,7 +466,6 @@ namespace golos { namespace chain {
             void process_comment_cashout();
 
             flat_map<worker_techspec_approve_state, int32_t> count_worker_techspec_approves(const comment_id_type& post);
-            flat_map<worker_techspec_approve_state, int32_t> count_worker_payment_approves(const comment_id_type& post);
 
             asset calculate_worker_techspec_consumption_per_day(const worker_techspec_object& wto);
 
