@@ -94,7 +94,6 @@ namespace mongo_db {
         result_type operator()(const delegation_reward_operation& op);
         result_type operator()(const auction_window_reward_operation& op);
         result_type operator()(const total_comment_reward_operation& op);
-        result_type operator()(const request_reward_operation& op);
         result_type operator()(const request_expired_operation& op);
         result_type operator()(const worker_reward_operation& op);
 

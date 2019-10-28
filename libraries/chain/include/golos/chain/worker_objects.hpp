@@ -33,10 +33,7 @@ namespace golos { namespace chain {
         asset specification_cost;
         asset development_cost;
         account_name_type worker;
-        uint16_t payments_count;
-        uint32_t payments_interval;
         time_point_sec next_cashout_time = time_point_sec::maximum();
-        uint16_t finished_payments_count = 0;
     };
 
     class worker_request_approve_object : public object<worker_request_approve_object_type, worker_request_approve_object> {

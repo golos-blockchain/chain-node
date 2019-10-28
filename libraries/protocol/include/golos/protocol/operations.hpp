@@ -95,7 +95,6 @@ namespace golos { namespace protocol {
                 delegation_reward_operation,
                 auction_window_reward_operation,
                 total_comment_reward_operation,
-                request_reward_operation,
                 worker_reward_operation,
                 request_expired_operation
         > operation;

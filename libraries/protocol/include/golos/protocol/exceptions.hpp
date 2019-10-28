@@ -341,7 +341,6 @@ namespace golos {
             post_should_be_in_cashout_window,
             you_are_not_request_author_or_worker,
             approver_is_not_top19_witness,
-            insufficient_funds_to_approve,
             worker_not_set,
             incorrect_request_state,
 
@@ -622,7 +621,6 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
         (post_should_be_in_cashout_window)
         (you_are_not_request_author_or_worker)
         (approver_is_not_top19_witness)
-        (insufficient_funds_to_approve)
         (worker_not_set)
         (incorrect_request_state)
 

@@ -530,10 +530,6 @@ if (options.count(name)) { \
             insert_sender(op.sponsor);
         }
 
-        void operator()(const request_reward_operation& op) {
-            insert_receiver(op.author);
-        }
-
         void operator()(const request_expired_operation& op) {
             insert_receiver(op.author);
         }

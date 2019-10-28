@@ -21,8 +21,6 @@ BOOST_AUTO_TEST_CASE(worker_authorities) {
         op.permlink = "bob-request";
         op.specification_cost = ASSET_GOLOS(6000);
         op.development_cost = ASSET_GOLOS(60000);
-        op.payments_interval = 60;
-        op.payments_count = 2;
         op.worker = "bob";
         CHECK_OP_AUTHS(op, account_name_set(), account_name_set(), account_name_set({"bob"}));
     }
@@ -54,8 +52,6 @@ BOOST_AUTO_TEST_CASE(worker_request_validate) {
     op.permlink = "request-permlink";
     op.specification_cost = ASSET_GOLOS(6000);
     op.development_cost = ASSET_GOLOS(60000);
-    op.payments_interval = 60*60*24;
-    op.payments_count = 2;
     op.worker = "bob";
     CHECK_OP_VALID(op);
 
@@ -83,24 +79,6 @@ BOOST_AUTO_TEST_CASE(worker_request_validate) {
 
     CHECK_PARAM_INVALID(op, specification_cost, ASSET_GOLOS(-1));
     CHECK_PARAM_INVALID(op, development_cost, ASSET_GOLOS(-1));
-
-    BOOST_TEST_MESSAGE("-- Zero payments count case");
-
-    CHECK_PARAM_INVALID(op, payments_count, 0);
-
-    BOOST_TEST_MESSAGE("-- Too low payments interval case");
-
-    CHECK_PARAM_INVALID(op, payments_interval, 60*60*24 - 1);
-
-    BOOST_TEST_MESSAGE("-- Single payment with too big interval case");
-
-    op.payments_count = 1;
-    CHECK_PARAM_INVALID(op, payments_interval, 60*60*24 + 1);
-
-    BOOST_TEST_MESSAGE("-- Single payment with normal interval case");
-
-    op.payments_count = 1;
-    CHECK_PARAM_VALID(op, payments_interval, 60*60*24);
 }
 
 BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
@@ -119,8 +97,6 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
     op.permlink = "bob-request";
     op.specification_cost = ASSET_GOLOS(6);
     op.development_cost = ASSET_GOLOS(60);
-    op.payments_interval = 60*60*24*2;
-    op.payments_count = 2;
     op.worker = "bob";
     GOLOS_CHECK_ERROR_MISSING(comment, make_comment_id("bob", "bob-request"), bob_private_key, op);
     generate_block();
@@ -156,12 +132,9 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
     BOOST_CHECK(wto.state == worker_request_state::created);
     BOOST_CHECK_EQUAL(wto.specification_cost, op.specification_cost);
     BOOST_CHECK_EQUAL(wto.development_cost, op.development_cost);
-    BOOST_CHECK_EQUAL(wto.payments_count, op.payments_count);
-    BOOST_CHECK_EQUAL(wto.payments_interval, op.payments_interval);
     BOOST_CHECK_EQUAL(wto.worker, op.worker);
 
     BOOST_CHECK_EQUAL(wto.next_cashout_time, fc::time_point_sec::maximum());
-    BOOST_CHECK_EQUAL(wto.finished_payments_count, 0);
 
     {
         BOOST_TEST_MESSAGE("-- Check cannot create worker request on post outside cashout window");
@@ -193,27 +166,11 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     op.permlink = "bob-request";
     op.specification_cost = ASSET_GOLOS(6);
     op.development_cost = ASSET_GOLOS(60);
-    op.payments_interval = 60*60*24*2;
-    op.payments_count = 2;
     op.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
-    BOOST_TEST_MESSAGE("-- Modify payments_count and payments_interval");
-
-    op.payments_interval = 60*60*24*2;
-    op.payments_count = 2;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
-    generate_block();
-
-    {
-        const auto& wto_post = db->get_comment("bob", string("bob-request"));
-        const auto& wto = db->get_worker_request(wto_post.id);
-        BOOST_CHECK_EQUAL(wto.payments_count, op.payments_count);
-        BOOST_CHECK_EQUAL(wto.payments_interval, op.payments_interval);
-    }
-
-    BOOST_TEST_MESSAGE("-- Modify payments_count and payments_interval");
+    BOOST_TEST_MESSAGE("-- Modify development_cost and specification_cost");
 
     op.specification_cost = ASSET_GOLOS(7);
     op.development_cost = ASSET_GOLOS(70);
@@ -285,56 +242,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_validate) {
     CHECK_PARAM_INVALID(op, state, worker_request_approve_state::_size);
 }
 
-BOOST_AUTO_TEST_CASE(worker_request_approve_checking_funds) {
-    BOOST_TEST_MESSAGE("Testing: worker_request_approve_checking_funds");
-
-    ACTORS((alice)(bob))
-    auto private_key = create_approvers(0, 1);
-    generate_block();
-
-    signed_transaction tx;
-
-    BOOST_TEST_MESSAGE("-- Measuring revenue per block");
-
-    const auto before = db->get_dynamic_global_properties().total_worker_fund_steem;
-    generate_blocks(1);
-    const auto revenue = db->get_dynamic_global_properties().total_worker_fund_steem - before;
-
-    BOOST_TEST_MESSAGE("-- Creating request with cost a bit larger than revenue");
-
-    generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for approvers to reach TOP-19 and not leave it
-
-    comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
-
-    worker_request_operation wtop;
-    wtop.author = "bob";
-    wtop.permlink = "bob-request";
-    wtop.specification_cost = db->get_dynamic_global_properties().total_worker_fund_steem;
-    wtop.development_cost = revenue * (60*60*37*2 / STEEMIT_BLOCK_INTERVAL + 1);
-    wtop.payments_interval = 60*60*37;
-    wtop.payments_count = 2;
-    wtop.worker = "alice";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
-
-    BOOST_TEST_MESSAGE("-- Checking cannot approve");
-
-    worker_request_approve_operation op;
-    op.approver = "approver0";
-    op.author = "bob";
-    op.permlink = "bob-request";
-    op.state = worker_request_approve_state::approve;
-    GOLOS_CHECK_ERROR_LOGIC(insufficient_funds_to_approve, private_key, op);
-
-    BOOST_TEST_MESSAGE("-- Editing it to be equal to revenue");
-
-    wtop.development_cost = revenue * (60*60*36*2 / STEEMIT_BLOCK_INTERVAL);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
-
-    BOOST_TEST_MESSAGE("-- Checking can approve now");
-
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, private_key, op));
-}
-
 BOOST_AUTO_TEST_CASE(worker_request_approve_apply_combinations) {
     BOOST_TEST_MESSAGE("Testing: worker_request_approve_apply_combinations");
 
@@ -351,8 +258,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_apply_combinations) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24*2;
-    wtop.payments_count = 2;
     wtop.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -450,8 +355,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_top19_updating) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 2;
     wtop.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -527,8 +430,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_apply_approve) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 40;
     wtop.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -565,11 +466,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_apply_approve) {
     const auto& wto = db->get_worker_request(wto_post.id);
     BOOST_CHECK(wto.state == worker_request_state::payment);
 
-    auto secs = wto.payments_interval * wto.payments_count;
-    auto cost = wto.specification_cost + wto.development_cost;
-    auto consumption = std::min(cost * 60*60*24 / secs, cost);
-    BOOST_CHECK_EQUAL(db->get_dynamic_global_properties().worker_consumption_per_day, consumption);
-
     BOOST_TEST_MESSAGE("-- Checking approves (they are not deleted since clear is off");
 
     auto checked_approves = 0;
@@ -602,8 +498,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_premade) {
     wtop.permlink = "alice-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 40;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wtop));
     generate_block();
@@ -618,7 +512,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_premade) {
 
     const auto& wto = db->get_worker_request(db->get_comment("alice", string("alice-request")).id);
     BOOST_CHECK(wto.state == worker_request_state::payment);
-    BOOST_CHECK_EQUAL(wto.next_cashout_time, now + wto.payments_interval);
+    // BOOST_CHECK_EQUAL(wto.next_cashout_time, now + wto.payments_interval);
 }
 
 BOOST_AUTO_TEST_CASE(worker_request_approve_apply_disapprove) {
@@ -638,8 +532,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_apply_disapprove) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 40;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -722,8 +614,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_apply_clear_on_approve) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 40;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -801,8 +691,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_apply_clear_on_expired) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 40;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
 
@@ -937,8 +825,6 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 40;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -996,8 +882,6 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
         wtop.permlink = "bob-request";
         wtop.specification_cost = ASSET_GOLOS(6);
         wtop.development_cost = ASSET_GOLOS(60);
-        wtop.payments_interval = 60*60*24;
-        wtop.payments_count = 40;
         wtop.worker = "bob";
         BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
         generate_block();

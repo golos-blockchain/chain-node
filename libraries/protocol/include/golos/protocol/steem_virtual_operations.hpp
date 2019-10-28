@@ -227,18 +227,6 @@ namespace golos { namespace protocol {
             asset vesting_shares_in_golos; // not reflected
         };
 
-        struct request_reward_operation : public virtual_operation {
-            request_reward_operation() {
-            }
-            request_reward_operation(const account_name_type& a, const string& p, const asset& r)
-                    : author(a), permlink(p), reward(r) {
-            }
-
-            account_name_type author;
-            string permlink;
-            asset reward;
-        };
-
         struct worker_reward_operation : public virtual_operation {
             worker_reward_operation() {
             }
@@ -309,6 +297,5 @@ FC_REFLECT((golos::protocol::return_vesting_delegation_operation), (account)(ves
 FC_REFLECT((golos::protocol::producer_reward_operation), (producer)(vesting_shares))
 FC_REFLECT((golos::protocol::delegation_reward_operation), (delegator)(delegatee)(payout_strategy)(vesting_shares))
 FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
-FC_REFLECT((golos::protocol::request_reward_operation), (author)(permlink)(reward))
 FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_author)(worker_request_permlink)(reward))
 FC_REFLECT((golos::protocol::request_expired_operation), (author)(permlink))
