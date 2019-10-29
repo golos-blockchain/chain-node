@@ -93,22 +93,24 @@ namespace golos { namespace plugins { namespace worker_api {
         }
 
         void fill_worker_request(const worker_request_object& wto) {
-            state = wto.state;
-            specification_cost = wto.specification_cost;
-            development_cost = wto.development_cost;
             worker = wto.worker;
+            state = wto.state;
+            required_amount_min = wto.required_amount_min;
+            required_amount_max = wto.required_amount_max;
+            duration = wto.duration;
             next_cashout_time = wto.next_cashout_time;
         }
 
         comment_api_object post;
+        account_name_type worker;
         worker_request_state state;
         time_point_sec modified;
         share_type net_rshares;
-        asset specification_cost;
-        asset development_cost;
+        asset required_amount_min;
+        asset required_amount_max;
+        uint32_t duration;
         uint16_t approves = 0;
         uint16_t disapproves = 0;
-        account_name_type worker;
         time_point_sec payment_beginning_time;
         time_point_sec next_cashout_time = time_point_sec::maximum();
     };
@@ -120,6 +122,6 @@ CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::worker_api::worker_request_metadata_index)
 
 FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
-    (post)(state)(modified)(net_rshares)(specification_cost)(development_cost)(approves)(disapproves)
-    (worker)(payment_beginning_time)(next_cashout_time)
+    (post)(worker)(state)(modified)(net_rshares)(required_amount_min)(required_amount_max)
+    (duration)(approves)(disapproves)(payment_beginning_time)(next_cashout_time)
 )

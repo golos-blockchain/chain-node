@@ -27,9 +27,10 @@ BOOST_AUTO_TEST_CASE(worker_payment_approving) {
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
-    wtop.specification_cost = ASSET_GOLOS(6);
-    wtop.development_cost = ASSET_GOLOS(60);
     wtop.worker = "bob";
+    wtop.required_amount_min = ASSET_GOLOS(6000);
+    wtop.required_amount_max = ASSET_GOLOS(60000);
+    wtop.duration = fc::days(5).to_seconds();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 

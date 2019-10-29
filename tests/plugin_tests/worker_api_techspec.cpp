@@ -34,9 +34,10 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
     worker_request_operation op;
     op.author = "bob";
     op.permlink = "bob-request";
-    op.specification_cost = ASSET_GOLOS(6);
-    op.development_cost = ASSET_GOLOS(60);
     op.worker = "bob";
+    op.required_amount_min = ASSET_GOLOS(6000);
+    op.required_amount_max = ASSET_GOLOS(60000);
+    op.duration = fc::days(5).to_seconds();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -72,9 +73,10 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
     worker_request_operation op;
     op.author = "bob";
     op.permlink = "bob-request";
-    op.specification_cost = ASSET_GOLOS(6);
-    op.development_cost = ASSET_GOLOS(60);
     op.worker = "alice";
+    wtop.required_amount_min = ASSET_GOLOS(6000);
+    wtop.required_amount_max = ASSET_GOLOS(60000);
+    wtop.duration = fc::days(5).to_seconds();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -87,7 +89,7 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
 
     auto now = db->head_block_time();
 
-    op.development_cost = ASSET_GOLOS(61);
+    wtop.required_amount_max = ASSET_GBG(60000);
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -115,9 +117,10 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
-    wtop.specification_cost = ASSET_GOLOS(6);
-    wtop.development_cost = ASSET_GOLOS(60);
     wtop.worker = "bob";
+    wtop.required_amount_min = ASSET_GOLOS(6000);
+    wtop.required_amount_max = ASSET_GOLOS(60000);
+    wtop.duration = fc::days(5).to_seconds();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -165,9 +168,10 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
-    wtop.specification_cost = ASSET_GOLOS(6);
-    wtop.development_cost = ASSET_GOLOS(60);
     wtop.worker = "bob";
+    wtop.required_amount_min = ASSET_GOLOS(6000);
+    wtop.required_amount_max = ASSET_GOLOS(60000);
+    wtop.duration = fc::days(5).to_seconds();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -234,9 +238,10 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
-    wtop.specification_cost = ASSET_GOLOS(6);
-    wtop.development_cost = ASSET_GOLOS(60);
     wtop.worker = "bob";
+    wtop.required_amount_min = ASSET_GOLOS(6);
+    wtop.required_amount_max = ASSET_GOLOS(60);
+    wtop.duration = fc::days(5).to_seconds();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -345,9 +350,10 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_premade) {
     worker_request_operation wtop;
     wtop.author = "alice";
     wtop.permlink = "alice-premade";
-    wtop.specification_cost = ASSET_GOLOS(6);
-    wtop.development_cost = ASSET_GOLOS(60);
     wtop.worker = "bob";
+    wtop.required_amount_min = ASSET_GOLOS(6);
+    wtop.required_amount_max = ASSET_GOLOS(60);
+    wtop.duration = fc::days(5).to_seconds();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wtop));
     generate_block();
 
