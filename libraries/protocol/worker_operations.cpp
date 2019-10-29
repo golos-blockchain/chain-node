@@ -8,16 +8,20 @@ namespace golos { namespace protocol {
         GOLOS_CHECK_PARAM_ACCOUNT(author);
         GOLOS_CHECK_PARAM(permlink, validate_permlink(permlink));
 
-        GOLOS_CHECK_PARAM(specification_cost, {
-            GOLOS_CHECK_ASSET_GOLOS(specification_cost);
-            GOLOS_CHECK_VALUE_GE(specification_cost.amount, 0);
+        GOLOS_CHECK_PARAM_ACCOUNT(worker);
+
+        GOLOS_CHECK_PARAM(required_amount_min, {
+            GOLOS_CHECK_ASSET_GOLOS_OR_GBG(required_amount_min);
+            GOLOS_CHECK_VALUE_GT(required_amount_min.amount, 0);
         });
-        GOLOS_CHECK_PARAM(development_cost, {
-            GOLOS_CHECK_ASSET_GOLOS(development_cost);
-            GOLOS_CHECK_VALUE_GE(development_cost.amount, 0);
+        GOLOS_CHECK_PARAM(required_amount_max, {
+            GOLOS_CHECK_VALUE_EQ(required_amount_min.symbol, required_amount_max.symbol);
+            GOLOS_CHECK_VALUE_GE(required_amount_max.amount, required_amount_min.amount);
         });
 
-        GOLOS_CHECK_PARAM_ACCOUNT(worker);
+        GOLOS_CHECK_PARAM(duration, {
+            GOLOS_CHECK_VALUE_LEGE(duration, GOLOS_WORKER_REQUEST_MIN_DURATION, GOLOS_WORKER_REQUEST_MAX_DURATION);
+        });
     }
 
     void worker_request_delete_operation::validate() const {

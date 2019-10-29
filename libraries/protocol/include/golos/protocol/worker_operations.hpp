@@ -9,9 +9,10 @@ namespace golos { namespace protocol {
     struct worker_request_operation : public base_operation {
         account_name_type author;
         std::string permlink;
-        asset specification_cost;
-        asset development_cost;
         account_name_type worker;
+        asset required_amount_min;
+        asset required_amount_max;
+        uint32_t duration;
 
         extensions_type extensions;
 
@@ -74,8 +75,7 @@ namespace golos { namespace protocol {
 
 FC_REFLECT(
     (golos::protocol::worker_request_operation),
-    (author)(permlink)(specification_cost)(development_cost)
-    (worker)(extensions))
+    (author)(permlink)(worker)(required_amount_min)(required_amount_max)(duration)(extensions))
 
 FC_REFLECT(
     (golos::protocol::worker_request_delete_operation),

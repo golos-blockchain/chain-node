@@ -29,10 +29,11 @@ namespace golos { namespace chain {
         id_type id;
 
         comment_id_type post;
-        worker_request_state state;
-        asset specification_cost;
-        asset development_cost;
         account_name_type worker;
+        worker_request_state state;
+        asset required_amount_min;
+        asset required_amount_max;
+        uint32_t duration;
         time_point_sec next_cashout_time = time_point_sec::maximum();
     };
 

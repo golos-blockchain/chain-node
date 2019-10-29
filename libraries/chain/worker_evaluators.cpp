@@ -20,9 +20,10 @@ namespace golos { namespace chain {
             CHECK_REQUEST_STATE(wto->state < REQUEST_STATE::payment, "Cannot modify approved request");
 
             _db.modify(*wto, [&](worker_request_object& wto) {
-                wto.specification_cost = o.specification_cost;
-                wto.development_cost = o.development_cost;
                 wto.worker = o.worker;
+                wto.required_amount_min = o.required_amount_min;
+                wto.required_amount_max = o.required_amount_max;
+                wto.duration = o.duration;
             });
 
             return;
@@ -32,10 +33,11 @@ namespace golos { namespace chain {
 
         _db.create<worker_request_object>([&](worker_request_object& wto) {
             wto.post = post.id;
-            wto.state = worker_request_state::created;
-            wto.specification_cost = o.specification_cost;
-            wto.development_cost = o.development_cost;
             wto.worker = o.worker;
+            wto.state = worker_request_state::created;
+            wto.required_amount_min = o.required_amount_min;
+            wto.required_amount_max = o.required_amount_max;
+            wto.duration = o.duration;
         });
     }
 
