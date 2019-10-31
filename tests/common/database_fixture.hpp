@@ -645,7 +645,7 @@ namespace golos { namespace chain {
         };
 
         struct clean_database_fixture : public database_fixture {
-            clean_database_fixture();
+            clean_database_fixture(bool init = true);
 
             ~clean_database_fixture() override;
 

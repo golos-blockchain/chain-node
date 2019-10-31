@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include "worker_fixture.hpp"
+#include "worker_api_fixture.hpp"
 #include "helpers.hpp"
 
 #include <golos/plugins/worker_api/worker_api_plugin.hpp>
@@ -8,14 +8,6 @@
 using namespace golos;
 using namespace golos::protocol;
 using namespace golos::plugins::worker_api;
-
-struct worker_api_fixture : public golos::chain::worker_fixture {
-    worker_api_fixture() : golos::chain::worker_fixture() {
-        database_fixture::initialize<worker_api_plugin>();
-        open_database();
-        startup();
-    }
-};
 
 BOOST_FIXTURE_TEST_SUITE(worker_api_plugin_techspec, worker_api_fixture)
 
