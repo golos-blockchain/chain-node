@@ -23,8 +23,6 @@ namespace golos { namespace chain {
                 wto.specification_cost = o.specification_cost;
                 wto.development_cost = o.development_cost;
                 wto.worker = o.worker;
-                wto.payments_count = o.payments_count;
-                wto.payments_interval = o.payments_interval;
             });
 
             return;
@@ -38,8 +36,6 @@ namespace golos { namespace chain {
             wto.specification_cost = o.specification_cost;
             wto.development_cost = o.development_cost;
             wto.worker = o.worker;
-            wto.payments_count = o.payments_count;
-            wto.payments_interval = o.payments_interval;
         });
     }
 
@@ -99,36 +95,14 @@ namespace golos { namespace chain {
 
             _db.close_worker_request(wto, worker_request_state::closed_by_witnesses);
         } else if (o.state == worker_request_approve_state::approve) {
-            auto day_sec = fc::days(1).to_seconds();
-            auto payments_period = int64_t(wto.payments_interval) * wto.payments_count;
-
-            auto consumption = _db.calculate_worker_request_consumption_per_day(wto);
-
-            const auto& gpo = _db.get_dynamic_global_properties();
-
-            uint128_t revenue_funds(gpo.worker_revenue_per_day.amount.value);
-            revenue_funds = revenue_funds * payments_period / day_sec;
-            revenue_funds += gpo.total_worker_fund_steem.amount.value;
-
-            auto consumption_funds = uint128_t(gpo.worker_consumption_per_day.amount.value) + consumption.amount.value;
-            consumption_funds = consumption_funds * payments_period / day_sec;
-
-            GOLOS_CHECK_LOGIC(revenue_funds >= consumption_funds,
-                logic_exception::insufficient_funds_to_approve,
-                "Insufficient funds to approve request");
-
             if (approves[o.state] < STEEMIT_MAJOR_VOTED_WITNESSES) {
                 return;
             }
 
-            _db.modify(gpo, [&](dynamic_global_property_object& gpo) {
-                gpo.worker_consumption_per_day += consumption;
-            });
-
             _db.clear_worker_request_approves(wto);
 
             _db.modify(wto, [&](worker_request_object& wto) {
-                wto.next_cashout_time = _db.head_block_time() + wto.payments_interval;
+                //wto.next_cashout_time = _db.head_block_time() + wto.payments_interval;
                 wto.state = worker_request_state::payment;
             });
 

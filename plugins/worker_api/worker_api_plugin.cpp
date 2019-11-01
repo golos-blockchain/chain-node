@@ -55,9 +55,6 @@ struct post_operation_visitor {
 
         const auto* wto = _db.find_worker_request(post.id);
         if (wto) {
-            _db.modify(*wtmo_itr, [&](worker_request_metadata_object& wtmo) {
-                wtmo.consumption_per_day = asset(0, STEEM_SYMBOL);
-            });
             return;
         }
 
@@ -90,25 +87,8 @@ struct post_operation_visitor {
             wtmo.disapproves = approves[worker_request_approve_state::disapprove];
 
             if (wto.state == worker_request_state::payment) {
-                wtmo.consumption_per_day = _db.calculate_worker_request_consumption_per_day(wto);
                 wtmo.payment_beginning_time = wto.next_cashout_time;
             }
-        });
-    }
-
-    result_type operator()(const request_reward_operation& o) const {
-        const auto& post = _db.get_comment(o.author, o.permlink);
-
-        const auto& wto = _db.get_worker_request(post.id);
-
-        if (wto.finished_payments_count != wto.payments_count) {
-            return;
-        }
-
-        const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
-        auto wtmo_itr = wtmo_idx.find(post.id);
-        _db.modify(*wtmo_itr, [&](worker_request_metadata_object& wtmo) {
-            wtmo.consumption_per_day = asset(0, STEEM_SYMBOL);
         });
     }
 };

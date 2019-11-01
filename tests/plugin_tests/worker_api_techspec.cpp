@@ -36,8 +36,6 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
     op.permlink = "bob-request";
     op.specification_cost = ASSET_GOLOS(6);
     op.development_cost = ASSET_GOLOS(60);
-    op.payments_interval = 60*60*24*2;
-    op.payments_count = 2;
     op.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
@@ -76,8 +74,6 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
     op.permlink = "bob-request";
     op.specification_cost = ASSET_GOLOS(6);
     op.development_cost = ASSET_GOLOS(60);
-    op.payments_interval = 60*60*24*2;
-    op.payments_count = 2;
     op.worker = "alice";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
@@ -91,7 +87,7 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
 
     auto now = db->head_block_time();
 
-    op.payments_count = 3;
+    op.development_cost = ASSET_GOLOS(61);
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -121,8 +117,6 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24*2;
-    wtop.payments_count = 2;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -173,8 +167,6 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24*2;
-    wtop.payments_count = 2;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -244,8 +236,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     wtop.permlink = "bob-request";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24*2;
-    wtop.payments_count = 2;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
@@ -320,22 +310,22 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_CHECK_EQUAL(wtmo_itr->approves, 0);
     BOOST_CHECK_EQUAL(wtmo_itr->disapproves, 0);
 
-    {
-        BOOST_TEST_MESSAGE("-- Approving request and checking metadata fields");
+    // {
+    //     BOOST_TEST_MESSAGE("-- Approving request and checking metadata fields");
 
-        comment_create("dave", dave_private_key, "dave-request", "", "dave-request");
+    //     comment_create("dave", dave_private_key, "dave-request", "", "dave-request");
 
-        wtop.author = "dave";
-        wtop.permlink = "dave-request";
-        wtop.worker = "dave";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
-        generate_block();
+    //     wtop.author = "dave";
+    //     wtop.permlink = "dave-request";
+    //     wtop.worker = "dave";
+    //     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
+    //     generate_block();
 
-        auto now = approve_request_final("dave", "dave-request", approver_key);
+    //     auto now = approve_request_final("dave", "dave-request", approver_key);
 
-        wtmo_itr = wtmo_idx.find(db->get_comment("dave", string("dave-request")).id);
-        BOOST_CHECK_NE(wtmo_itr->payment_beginning_time, now + (wtop.payments_interval / wtop.payments_count));
-    }
+    //     wtmo_itr = wtmo_idx.find(db->get_comment("dave", string("dave-request")).id);
+    //     BOOST_CHECK_NE(wtmo_itr->payment_beginning_time, now + (wtop.payments_interval / wtop.payments_count));
+    // }
 
     validate_database();
 }
@@ -357,8 +347,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve_premade) {
     wtop.permlink = "alice-premade";
     wtop.specification_cost = ASSET_GOLOS(6);
     wtop.development_cost = ASSET_GOLOS(60);
-    wtop.payments_interval = 60*60*24;
-    wtop.payments_count = 40;
     wtop.worker = "bob";
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wtop));
     generate_block();

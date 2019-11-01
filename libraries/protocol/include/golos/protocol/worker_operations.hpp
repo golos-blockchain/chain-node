@@ -12,8 +12,6 @@ namespace golos { namespace protocol {
         asset specification_cost;
         asset development_cost;
         account_name_type worker;
-        uint16_t payments_count;
-        uint32_t payments_interval;
 
         extensions_type extensions;
 
@@ -77,7 +75,7 @@ namespace golos { namespace protocol {
 FC_REFLECT(
     (golos::protocol::worker_request_operation),
     (author)(permlink)(specification_cost)(development_cost)
-    (worker)(payments_count)(payments_interval)(extensions))
+    (worker)(extensions))
 
 FC_REFLECT(
     (golos::protocol::worker_request_delete_operation),

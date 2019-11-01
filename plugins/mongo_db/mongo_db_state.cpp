@@ -1951,10 +1951,6 @@ namespace mongo_db {
 
     }
 
-    auto state_writer::operator()(const request_reward_operation& op) -> result_type {
-
-    }
-
     auto state_writer::operator()(const request_expired_operation& op) -> result_type {
 
     }

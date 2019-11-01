@@ -36,70 +36,12 @@ namespace golos { namespace chain {
         return count_worker_approves<worker_request_approve_index, by_request_approver>(*this, post);
     }
 
-    asset database::calculate_worker_request_consumption_per_day(const worker_request_object& wto) {
-        auto payments_period = int64_t(wto.payments_interval) * wto.payments_count;
-        uint128_t cost(wto.development_cost.amount.value);
-        cost += wto.specification_cost.amount.value;
-        cost *= fc::days(1).to_seconds();
-        cost /= payments_period;
-        return asset(cost.to_uint64(), STEEM_SYMBOL);
-    }
-
     void database::process_worker_cashout() {
         if (!has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
             return;
         }
 
-        const auto now = head_block_time();
-
-        const auto& wto_idx = get_index<worker_request_index, by_next_cashout_time>();
-
-        for (auto wto_itr = wto_idx.begin(); wto_itr != wto_idx.end() && wto_itr->next_cashout_time <= now; ++wto_itr) {
-            auto remaining_payments_count = wto_itr->payments_count - wto_itr->finished_payments_count;
-
-            auto author_reward = wto_itr->specification_cost / wto_itr->payments_count;
-            auto worker_reward = wto_itr->development_cost / wto_itr->payments_count;
-
-            if (remaining_payments_count == 1) {
-                author_reward = wto_itr->specification_cost - (author_reward * wto_itr->finished_payments_count);
-                worker_reward = wto_itr->development_cost - (worker_reward * wto_itr->finished_payments_count);
-            }
-
-            const auto& gpo = get_dynamic_global_properties();
-
-            if (gpo.total_worker_fund_steem < (author_reward + worker_reward)) {
-                return;
-            }
-
-            if (remaining_payments_count == 1) {
-                modify(gpo, [&](dynamic_global_property_object& gpo) {
-                    gpo.worker_consumption_per_day -= calculate_worker_request_consumption_per_day(*wto_itr);
-                });
-
-                modify(*wto_itr, [&](worker_request_object& wto) {
-                    wto.finished_payments_count++;
-                    wto.next_cashout_time = time_point_sec::maximum();
-                    wto.state = worker_request_state::payment_complete;
-                });
-            } else {
-                modify(*wto_itr, [&](worker_request_object& wto) {
-                    wto.finished_payments_count++;
-                    wto.next_cashout_time = now + wto.payments_interval;
-                });
-            }
-
-            modify(gpo, [&](dynamic_global_property_object& gpo) {
-                gpo.total_worker_fund_steem -= (author_reward + worker_reward);
-            });
-
-            const auto& wto_post = get_comment(wto_itr->post);
-
-            adjust_balance(get_account(wto_post.author), author_reward);
-            adjust_balance(get_account(wto_itr->worker), worker_reward);
-
-            push_virtual_operation(request_reward_operation(wto_post.author, to_string(wto_post.permlink), author_reward));
-            push_virtual_operation(worker_reward_operation(wto_itr->worker, wto_post.author, to_string(wto_post.permlink), worker_reward));
-        }
+        // TODO
     }
 
     void database::set_clear_old_worker_approves(bool clear_old_worker_approves) {
@@ -129,11 +71,6 @@ namespace golos { namespace chain {
         bool has_approves = false;
 
         if (wto.state >= worker_request_state::payment) {
-            const auto& gpo = get_dynamic_global_properties();
-            modify(gpo, [&](dynamic_global_property_object& gpo) {
-                gpo.worker_consumption_per_day -= calculate_worker_request_consumption_per_day(wto);
-            });
-
             has_approves = true;
         } else {
             const auto& wtao_idx = get_index<worker_request_approve_index, by_request_approver>();

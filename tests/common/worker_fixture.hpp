@@ -35,11 +35,6 @@ struct worker_fixture : public clean_database_fixture {
 
         const auto& wtao_idx = db->get_index<worker_request_approve_index, by_request_approver>();
         BOOST_CHECK(wtao_idx.find(post) == wtao_idx.end());
-
-        BOOST_TEST_MESSAGE("---- Checking worker funds are unfrozen");
-
-        const auto& gpo = db->get_dynamic_global_properties();
-        BOOST_CHECK_EQUAL(gpo.worker_consumption_per_day, consumption_after_close);
     }
 
     private_key_type create_approvers(uint16_t first, uint16_t count) {

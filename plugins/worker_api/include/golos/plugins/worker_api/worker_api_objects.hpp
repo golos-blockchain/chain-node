@@ -33,7 +33,6 @@ namespace golos { namespace plugins { namespace worker_api {
         uint16_t approves = 0;
         uint16_t disapproves = 0;
         time_point_sec payment_beginning_time;
-        asset consumption_per_day;
     };
 
     struct by_net_rshares;
@@ -87,7 +86,6 @@ namespace golos { namespace plugins { namespace worker_api {
               net_rshares(o.net_rshares),
               approves(o.approves),
               disapproves(o.disapproves),
-              consumption_per_day(o.consumption_per_day),
               payment_beginning_time(o.payment_beginning_time) {
         }
 
@@ -99,10 +97,7 @@ namespace golos { namespace plugins { namespace worker_api {
             specification_cost = wto.specification_cost;
             development_cost = wto.development_cost;
             worker = wto.worker;
-            payments_count = wto.payments_count;
-            payments_interval = wto.payments_interval;
             next_cashout_time = wto.next_cashout_time;
-            finished_payments_count = wto.finished_payments_count;
         }
 
         comment_api_object post;
@@ -114,12 +109,8 @@ namespace golos { namespace plugins { namespace worker_api {
         uint16_t approves = 0;
         uint16_t disapproves = 0;
         account_name_type worker;
-        uint16_t payments_count = 0;
-        uint32_t payments_interval = 0;
-        asset consumption_per_day;
         time_point_sec payment_beginning_time;
         time_point_sec next_cashout_time = time_point_sec::maximum();
-        uint16_t finished_payments_count = 0;
     };
 
 } } } // golos::plugins::worker_api
@@ -130,6 +121,5 @@ CHAINBASE_SET_INDEX_TYPE(
 
 FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
     (post)(state)(modified)(net_rshares)(specification_cost)(development_cost)(approves)(disapproves)
-    (worker)(payments_count)
-    (payments_interval)(consumption_per_day)(payment_beginning_time)(next_cashout_time)(finished_payments_count)
+    (worker)(payment_beginning_time)(next_cashout_time)
 )

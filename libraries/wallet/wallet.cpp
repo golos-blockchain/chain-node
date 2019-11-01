@@ -3134,7 +3134,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
         annotated_signed_transaction wallet_api::worker_request(
                 const std::string& author, const std::string& permlink,
                 const asset& specification_cost, const asset& development_cost, const std::string& worker,
-                uint16_t payments_count, uint32_t payments_interval, bool broadcast
+                bool broadcast
         ) {
             WALLET_CHECK_UNLOCKED();
 
@@ -3144,8 +3144,6 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             op.specification_cost = specification_cost;
             op.development_cost = development_cost;
             op.worker = worker;
-            op.payments_count = payments_count;
-            op.payments_interval = payments_interval;
 
             signed_transaction tx;
             tx.operations.push_back(op);

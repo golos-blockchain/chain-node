@@ -467,8 +467,6 @@ namespace golos { namespace chain {
 
             flat_map<worker_request_approve_state, int32_t> count_worker_request_approves(const comment_id_type& post);
 
-            asset calculate_worker_request_consumption_per_day(const worker_request_object& wto);
-
             void process_worker_cashout();
 
             void process_funds();

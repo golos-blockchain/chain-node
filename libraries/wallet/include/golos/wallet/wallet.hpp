@@ -1410,14 +1410,11 @@ namespace golos { namespace wallet {
              * @param specification_cost cost of specification
              * @param development_cost cost of work
              * @param worker worker who will do request or done if premade
-             * @param payments_count count of payments for work and request
-             * @param payments_interval interval between payments in seconds
              * @param broadcast true if you wish to broadcast the transaction
              */
             annotated_signed_transaction worker_request(
                 const std::string& author, const std::string& permlink,
                 const asset& specification_cost, const asset& development_cost, const std::string& worker,
-                uint16_t payments_count, uint32_t payments_interval, bool broadcast
                 );
 
             /**
