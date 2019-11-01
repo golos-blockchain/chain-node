@@ -1516,15 +1516,15 @@ namespace mongo_db {
         }
     }
 
-    auto state_writer::operator()(const worker_techspec_operation& op) -> result_type {
+    auto state_writer::operator()(const worker_request_operation& op) -> result_type {
 
     }
 
-    auto state_writer::operator()(const worker_techspec_delete_operation& op) -> result_type {
+    auto state_writer::operator()(const worker_request_delete_operation& op) -> result_type {
 
     }
 
-    auto state_writer::operator()(const worker_techspec_approve_operation& op) -> result_type {
+    auto state_writer::operator()(const worker_request_approve_operation& op) -> result_type {
 
     }
 
@@ -1951,11 +1951,11 @@ namespace mongo_db {
 
     }
 
-    auto state_writer::operator()(const techspec_reward_operation& op) -> result_type {
+    auto state_writer::operator()(const request_reward_operation& op) -> result_type {
 
     }
 
-    auto state_writer::operator()(const techspec_expired_operation& op) -> result_type {
+    auto state_writer::operator()(const request_expired_operation& op) -> result_type {
 
     }
 

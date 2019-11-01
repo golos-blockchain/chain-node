@@ -223,7 +223,7 @@ namespace golos {
             replies_are_not_allowed,
             cannot_delete_comment_with_replies,
             cannot_delete_comment_with_positive_votes,
-            cannot_delete_post_with_worker_techspec,
+            cannot_delete_post_with_worker_request,
             comment_options_requires_no_rshares,
             curation_rewards_cannot_be_reenabled,
             voting_cannot_be_reenabled,
@@ -339,11 +339,11 @@ namespace golos {
             post_is_already_used,
             post_is_not_root,
             post_should_be_in_cashout_window,
-            you_are_not_techspec_author_or_worker,
+            you_are_not_request_author_or_worker,
             approver_is_not_top19_witness,
             insufficient_funds_to_approve,
             worker_not_set,
-            incorrect_techspec_state,
+            incorrect_request_state,
 
             // custom operations
             inner_authorities_does_not_match_outer,
@@ -504,7 +504,7 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
         (replies_are_not_allowed)
         (cannot_delete_comment_with_replies)
         (cannot_delete_comment_with_positive_votes)
-        (cannot_delete_post_with_worker_techspec)
+        (cannot_delete_post_with_worker_request)
         (comment_options_requires_no_rshares)
         (curation_rewards_cannot_be_reenabled)
         (voting_cannot_be_reenabled)
@@ -620,11 +620,11 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
         (post_is_already_used)
         (post_is_not_root)
         (post_should_be_in_cashout_window)
-        (you_are_not_techspec_author_or_worker)
+        (you_are_not_request_author_or_worker)
         (approver_is_not_top19_witness)
         (insufficient_funds_to_approve)
         (worker_not_set)
-        (incorrect_techspec_state)
+        (incorrect_request_state)
 
         // custom operations
         (inner_authorities_does_not_match_outer)

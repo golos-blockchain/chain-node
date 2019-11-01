@@ -294,7 +294,7 @@ namespace golos { namespace plugins { namespace chain {
                 "The delay in seconds before the state is serialized, which will be used for CyberWay genesis."
             ) (
                 "clear-old-worker-approves", bpo::value<bool>()->default_value(false),
-                "if set, remove worker techspec, result, payment approves when approving ends"
+                "if set, remove worker request approves when approving ends"
             );
         //  Do not use bool_switch() in cfg!
         cli.add_options()

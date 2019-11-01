@@ -182,8 +182,8 @@ namespace golos { namespace chain {
             const proposal_object* find_proposal(const account_name_type&, const std::string&) const;
             void        throw_if_exists_proposal(const account_name_type&, const std::string&) const;
 
-            const worker_techspec_object& get_worker_techspec(const comment_id_type& post) const;
-            const worker_techspec_object* find_worker_techspec(const comment_id_type& post) const;
+            const worker_request_object& get_worker_request(const comment_id_type& post) const;
+            const worker_request_object* find_worker_request(const comment_id_type& post) const;
 
             const comment_object &get_comment(const account_name_type &author, const shared_string &permlink) const;
 
@@ -274,9 +274,9 @@ namespace golos { namespace chain {
 
             void clear_expired_proposals();
 
-            void clear_worker_techspec_approves(const worker_techspec_object& wto);
+            void clear_worker_request_approves(const worker_request_object& wto);
 
-            void close_worker_techspec(const worker_techspec_object& wto, worker_techspec_state closed_state);
+            void close_worker_request(const worker_request_object& wto, worker_request_state closed_state);
 
             void clear_expired_worker_objects();
 
@@ -465,9 +465,9 @@ namespace golos { namespace chain {
 
             void process_comment_cashout();
 
-            flat_map<worker_techspec_approve_state, int32_t> count_worker_techspec_approves(const comment_id_type& post);
+            flat_map<worker_request_approve_state, int32_t> count_worker_request_approves(const comment_id_type& post);
 
-            asset calculate_worker_techspec_consumption_per_day(const worker_techspec_object& wto);
+            asset calculate_worker_request_consumption_per_day(const worker_request_object& wto);
 
             void process_worker_cashout();
 

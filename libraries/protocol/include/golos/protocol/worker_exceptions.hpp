@@ -4,11 +4,11 @@
 
 // State exceptions and related
 
-#define TECHSPEC_STATE worker_techspec_state
+#define REQUEST_STATE worker_request_state
 
-#define CHECK_TECHSPEC_STATE(EXPR, MSG) \
+#define CHECK_REQUEST_STATE(EXPR, MSG) \
     GOLOS_CHECK_LOGIC(EXPR, \
-        logic_exception::incorrect_techspec_state, \
+        logic_exception::incorrect_request_state, \
         MSG)
 
 // Some another helpers
