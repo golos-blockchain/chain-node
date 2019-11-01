@@ -1407,14 +1407,15 @@ namespace golos { namespace wallet {
              *
              * @param author author of the post
              * @param permlink permlink of the post
-             * @param specification_cost cost of specification
-             * @param development_cost cost of work
              * @param worker worker who will do request or done if premade
+             * @param required_amount_min required_amount_min
+             * @param required_amount_max required_amount_max
+             * @param duration duration
              * @param broadcast true if you wish to broadcast the transaction
              */
             annotated_signed_transaction worker_request(
-                const std::string& author, const std::string& permlink,
-                const asset& specification_cost, const asset& development_cost, const std::string& worker,
+                const std::string& author, const std::string& permlink, const std::string& worker,
+                const asset& required_amount_min, const asset& required_amount_max, uint32_t duration, bool broadcast
                 );
 
             /**
