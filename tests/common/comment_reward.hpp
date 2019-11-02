@@ -79,21 +79,17 @@ namespace golos { namespace chain {
             int64_t supply = db_.get_dynamic_global_properties().virtual_supply.amount.value;
 
             auto total_reward = (supply * inflation_rate) / (int64_t(STEEMIT_100_PERCENT) * STEEMIT_BLOCKS_PER_YEAR);
-            auto content_reward = (total_reward * uint16_t(STEEMIT_CONTENT_REWARD_PERCENT)) / STEEMIT_100_PERCENT;
-            auto vesting_reward = total_reward * uint16_t(STEEMIT_VESTING_FUND_PERCENT) / STEEMIT_100_PERCENT;
+            auto content_reward = (total_reward * uint16_t(STEEMIT_CONTENT_REWARD_PERCENT_PRE_HF22)) / STEEMIT_100_PERCENT;
+            auto vesting_reward = total_reward * uint16_t(STEEMIT_VESTING_FUND_PERCENT_PRE_HF22) / STEEMIT_100_PERCENT;
             auto witness_reward = total_reward - content_reward - vesting_reward;
 
             if (db_.has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
-                auto content_to_worker = content_reward * uint16_t(GOLOS_WORKER_FROM_CONTENT_FUND_PERCENT) / STEEMIT_100_PERCENT;
-                content_reward -= content_to_worker;
+                auto worker_reward = total_reward * uint16_t(GOLOS_WORKER_REWARD_PERCENT) / STEEMIT_100_PERCENT;
+                witness_reward = total_reward * uint16_t(GOLOS_WITNESS_REWARD_PERCENT) / STEEMIT_100_PERCENT;
+                vesting_reward = total_reward * uint16_t(GOLOS_VESTING_REWARD_PERCENT) / STEEMIT_100_PERCENT;
+                content_reward = total_reward - worker_reward - witness_reward - vesting_reward;
 
-                auto vesting_to_worker = vesting_reward * uint16_t(GOLOS_WORKER_FROM_VESTING_FUND_PERCENT) / STEEMIT_100_PERCENT;
-                vesting_reward -= vesting_to_worker;
-
-                auto witness_to_worker = witness_reward * uint16_t(GOLOS_WORKER_FROM_WITNESS_FUND_PERCENT) / STEEMIT_100_PERCENT;
-                witness_reward -= witness_to_worker;
-
-                worker_fund_ += asset(content_to_worker + vesting_to_worker + witness_to_worker, STEEM_SYMBOL);
+                worker_fund_ += asset(worker_reward, STEEM_SYMBOL);
             }
 
             auto witness_normalize = db_.get_witness_schedule_object().witness_pay_normalization_factor;

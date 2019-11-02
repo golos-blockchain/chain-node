@@ -320,9 +320,7 @@ namespace golos { namespace protocol {
 
         void chain_properties_22::validate() const {
             chain_properties_19::validate();
-            GOLOS_CHECK_VALUE_LE(worker_from_content_fund_percent, STEEMIT_100_PERCENT);
-            GOLOS_CHECK_VALUE_LE(worker_from_vesting_fund_percent, STEEMIT_100_PERCENT);
-            GOLOS_CHECK_VALUE_LE(worker_from_witness_fund_percent, STEEMIT_100_PERCENT);
+            GOLOS_CHECK_VALUE_LE(worker_reward_percent + witness_reward_percent + vesting_reward_percent, STEEMIT_100_PERCENT);
             GOLOS_CHECK_VALUE_LE(worker_request_approve_min_percent, STEEMIT_100_PERCENT);
         }
 

@@ -36,9 +36,9 @@ namespace golos { namespace api {
             allow_return_auction_reward_to_fund = src.allow_return_auction_reward_to_fund;
         }
         if (db.has_hardfork(STEEMIT_HARDFORK_0_22)) {
-            worker_from_content_fund_percent = src.worker_from_content_fund_percent;
-            worker_from_vesting_fund_percent = src.worker_from_vesting_fund_percent;
-            worker_from_witness_fund_percent = src.worker_from_witness_fund_percent;
+            worker_reward_percent = src.worker_reward_percent;
+            witness_reward_percent = src.witness_reward_percent;
+            vesting_reward_percent = src.vesting_reward_percent;
             worker_request_approve_min_percent = src.worker_request_approve_min_percent;
         }
     }
