@@ -1524,7 +1524,7 @@ namespace mongo_db {
 
     }
 
-    auto state_writer::operator()(const worker_request_approve_operation& op) -> result_type {
+    auto state_writer::operator()(const worker_request_vote_operation& op) -> result_type {
 
     }
 
@@ -1951,7 +1951,7 @@ namespace mongo_db {
 
     }
 
-    auto state_writer::operator()(const request_expired_operation& op) -> result_type {
+    auto state_writer::operator()(const worker_state_operation& op) -> result_type {
 
     }
 

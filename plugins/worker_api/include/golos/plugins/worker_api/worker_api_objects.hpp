@@ -30,14 +30,14 @@ namespace golos { namespace plugins { namespace worker_api {
         comment_id_type post;
         time_point_sec modified;
         share_type net_rshares;
-        uint16_t approves = 0;
-        uint16_t disapproves = 0;
+        uint16_t upvotes = 0;
+        uint16_t downvotes = 0;
         time_point_sec payment_beginning_time;
     };
 
     struct by_net_rshares;
-    struct by_approves;
-    struct by_disapproves;
+    struct by_upvotes;
+    struct by_downvotes;
 
     using worker_request_metadata_id_type = object_id<worker_request_metadata_object>;
 
@@ -60,19 +60,19 @@ namespace golos { namespace plugins { namespace worker_api {
                     std::greater<share_type>,
                     std::less<worker_request_metadata_id_type>>>,
             ordered_unique<
-                tag<by_approves>,
+                tag<by_upvotes>,
                 composite_key<
                     worker_request_metadata_object,
-                    member<worker_request_metadata_object, uint16_t, &worker_request_metadata_object::approves>,
+                    member<worker_request_metadata_object, uint16_t, &worker_request_metadata_object::upvotes>,
                     member<worker_request_metadata_object, worker_request_metadata_id_type, &worker_request_metadata_object::id>>,
                 composite_key_compare<
                     std::greater<uint16_t>,
                     std::less<worker_request_metadata_id_type>>>,
             ordered_unique<
-                tag<by_disapproves>,
+                tag<by_downvotes>,
                 composite_key<
                     worker_request_metadata_object,
-                    member<worker_request_metadata_object, uint16_t, &worker_request_metadata_object::disapproves>,
+                    member<worker_request_metadata_object, uint16_t, &worker_request_metadata_object::downvotes>,
                     member<worker_request_metadata_object, worker_request_metadata_id_type, &worker_request_metadata_object::id>>,
                 composite_key_compare<
                     std::greater<uint16_t>,
@@ -84,21 +84,22 @@ namespace golos { namespace plugins { namespace worker_api {
             : post(p),
               modified(o.modified),
               net_rshares(o.net_rshares),
-              approves(o.approves),
-              disapproves(o.disapproves),
+              upvotes(o.upvotes),
+              downvotes(o.downvotes),
               payment_beginning_time(o.payment_beginning_time) {
         }
 
         worker_request_api_object() {
         }
 
-        void fill_worker_request(const worker_request_object& wto) {
-            worker = wto.worker;
-            state = wto.state;
-            required_amount_min = wto.required_amount_min;
-            required_amount_max = wto.required_amount_max;
-            duration = wto.duration;
-            next_cashout_time = wto.next_cashout_time;
+        void fill_worker_request(const worker_request_object& wro) {
+            worker = wro.worker;
+            state = wro.state;
+            required_amount_min = wro.required_amount_min;
+            required_amount_max = wro.required_amount_max;
+            duration = wro.duration;
+            vote_end_time = wro.vote_end_time;
+            calculated_payment = wro.calculated_payment;
         }
 
         comment_api_object post;
@@ -109,10 +110,11 @@ namespace golos { namespace plugins { namespace worker_api {
         asset required_amount_min;
         asset required_amount_max;
         uint32_t duration;
-        uint16_t approves = 0;
-        uint16_t disapproves = 0;
+        uint16_t upvotes = 0;
+        uint16_t downvotes = 0;
         time_point_sec payment_beginning_time;
-        time_point_sec next_cashout_time = time_point_sec::maximum();
+        time_point_sec vote_end_time = time_point_sec::maximum();
+        asset calculated_payment;
     };
 
 } } } // golos::plugins::worker_api
@@ -123,5 +125,5 @@ CHAINBASE_SET_INDEX_TYPE(
 
 FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
     (post)(worker)(state)(modified)(net_rshares)(required_amount_min)(required_amount_max)
-    (duration)(approves)(disapproves)(payment_beginning_time)(next_cashout_time)
+    (duration)(upvotes)(downvotes)(payment_beginning_time)(vote_end_time)(calculated_payment)
 )

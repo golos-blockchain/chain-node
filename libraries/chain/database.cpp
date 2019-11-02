@@ -1981,7 +1981,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::worker_from_content_fund_percent);
             calc_median(&chain_properties_22::worker_from_vesting_fund_percent);
             calc_median(&chain_properties_22::worker_from_witness_fund_percent);
-            calc_median(&chain_properties_22::worker_request_approve_term_sec);
+            calc_median(&chain_properties_22::worker_request_approve_min_percent);
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -3144,7 +3144,7 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<break_free_referral_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_request_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_request_delete_evaluator>();
-            _my->_evaluator_registry.register_evaluator<worker_request_approve_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_request_vote_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_fund_evaluator>();
         }
 
@@ -3192,7 +3192,7 @@ namespace golos { namespace chain {
             add_core_index<proposal_index>(*this);
             add_core_index<required_approval_index>(*this);
             add_core_index<worker_request_index>(*this);
-            add_core_index<worker_request_approve_index>(*this);
+            add_core_index<worker_request_vote_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3739,7 +3739,6 @@ namespace golos { namespace chain {
                 clear_expired_transactions();
                 clear_expired_orders();
                 clear_expired_delegations();
-                clear_expired_worker_objects();
 
                 update_witness_schedule();
 
@@ -3750,6 +3749,7 @@ namespace golos { namespace chain {
                 process_funds();
                 process_conversions();
                 process_comment_cashout();
+                process_worker_votes();
                 process_worker_cashout();
                 process_vesting_withdrawals();
                 process_savings_withdraws();

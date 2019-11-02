@@ -39,7 +39,7 @@ namespace golos { namespace api {
             worker_from_content_fund_percent = src.worker_from_content_fund_percent;
             worker_from_vesting_fund_percent = src.worker_from_vesting_fund_percent;
             worker_from_witness_fund_percent = src.worker_from_witness_fund_percent;
-            worker_request_approve_term_sec = src.worker_request_approve_term_sec;
+            worker_request_approve_min_percent = src.worker_request_approve_min_percent;
         }
     }
 

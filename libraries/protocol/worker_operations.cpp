@@ -29,13 +29,13 @@ namespace golos { namespace protocol {
         GOLOS_CHECK_PARAM(permlink, validate_permlink(permlink));
     }
 
-    void worker_request_approve_operation::validate() const {
-        GOLOS_CHECK_PARAM_ACCOUNT(approver);
+    void worker_request_vote_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(voter);
         GOLOS_CHECK_PARAM_ACCOUNT(author);
         GOLOS_CHECK_PARAM(permlink, validate_permlink(permlink));
 
-        GOLOS_CHECK_PARAM(state, {
-            GOLOS_CHECK_VALUE(state < worker_request_approve_state::_size, "This value is reserved");
+        GOLOS_CHECK_PARAM(vote_percent, {
+            GOLOS_CHECK_VALUE_LEGE(vote_percent, -STEEMIT_100_PERCENT, STEEMIT_100_PERCENT);
         });
     }
 

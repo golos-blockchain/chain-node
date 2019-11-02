@@ -66,7 +66,7 @@ namespace golos { namespace plugins { namespace chain {
 
         boost::asio::deadline_timer transit_timer;
 
-        bool clear_old_worker_approves = false;
+        bool clear_old_worker_votes = false;
 
         impl() : transit_timer(appbase::app().get_io_service()) {
             // get default settings
@@ -293,8 +293,8 @@ namespace golos { namespace plugins { namespace chain {
                 "serialize-delay-sec", bpo::value<long>()->default_value(5*60),
                 "The delay in seconds before the state is serialized, which will be used for CyberWay genesis."
             ) (
-                "clear-old-worker-approves", bpo::value<bool>()->default_value(false),
-                "if set, remove worker request approves when approving ends"
+                "clear-old-worker-votes", bpo::value<bool>()->default_value(false),
+                "if set, remove worker request votes when approving ends"
             );
         //  Do not use bool_switch() in cfg!
         cli.add_options()
@@ -421,7 +421,7 @@ namespace golos { namespace plugins { namespace chain {
 
         my->store_memo_in_savings_withdraws = options.at("store-memo-in-savings-withdraws").as<bool>();
 
-        my->clear_old_worker_approves = options.at("clear-old-worker-approves").as<bool>();
+        my->clear_old_worker_votes = options.at("clear-old-worker-votes").as<bool>();
     }
 
     void plugin::plugin_startup() {
@@ -455,7 +455,7 @@ namespace golos { namespace plugins { namespace chain {
 
         my->db.set_store_memo_in_savings_withdraws(my->store_memo_in_savings_withdraws);
 
-        my->db.set_clear_old_worker_approves(my->clear_old_worker_approves);
+        my->db.set_clear_old_worker_votes(my->clear_old_worker_votes);
 
         if (my->skip_virtual_ops) {
             my->db.set_skip_virtual_ops();

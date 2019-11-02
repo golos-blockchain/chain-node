@@ -522,20 +522,20 @@ if (options.count(name)) { \
             insert_dual(op.author);
         }
 
-        void operator()(const worker_request_approve_operation& op) {
-            insert_pair(op.approver, op.author);
+        void operator()(const worker_request_vote_operation& op) {
+            insert_pair(op.voter, op.author);
         }
 
         void operator()(const worker_fund_operation& op) {
             insert_sender(op.sponsor);
         }
 
-        void operator()(const request_expired_operation& op) {
-            insert_receiver(op.author);
-        }
-
         void operator()(const worker_reward_operation& op) {
             insert_pair(op.worker_request_author, op.worker);
+        }
+
+        void operator()(const worker_state_operation& op) {
+            insert_receiver(op.author);
         }
     };
 

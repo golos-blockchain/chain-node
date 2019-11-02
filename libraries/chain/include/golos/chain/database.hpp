@@ -126,7 +126,7 @@ namespace golos { namespace chain {
             void set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws);
             bool store_memo_in_savings_withdraws() const;
 
-            void set_clear_old_worker_approves(bool clear_old_worker_approves);
+            void set_clear_old_worker_votes(bool clear_old_worker_votes);
 
             /**
              * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -273,12 +273,6 @@ namespace golos { namespace chain {
             void remove(const proposal_object&);
 
             void clear_expired_proposals();
-
-            void clear_worker_request_approves(const worker_request_object& wto);
-
-            void close_worker_request(const worker_request_object& wto, worker_request_state closed_state);
-
-            void clear_expired_worker_objects();
 
             signed_block generate_block(
                     const fc::time_point_sec when,
@@ -465,7 +459,15 @@ namespace golos { namespace chain {
 
             void process_comment_cashout();
 
-            flat_map<worker_request_approve_state, int32_t> count_worker_request_approves(const comment_id_type& post);
+            flat_map<bool, uint32_t> count_worker_request_votes(const comment_id_type& post);
+
+            void clear_worker_request_votes(const worker_request_object& wro);
+
+            void close_worker_request(const worker_request_object& wro, worker_request_state closed_state);
+
+            void send_worker_state(const comment_object& post, worker_request_state closed_state);
+
+            void process_worker_votes();
 
             void process_worker_cashout();
 
@@ -693,7 +695,7 @@ namespace golos { namespace chain {
 
             bool _store_memo_in_savings_withdraws = true;
 
-            bool _clear_old_worker_approves = false;
+            bool _clear_old_worker_votes = false;
 
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;

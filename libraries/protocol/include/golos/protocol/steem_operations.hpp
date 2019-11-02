@@ -682,9 +682,9 @@ namespace golos { namespace protocol {
             uint16_t worker_from_witness_fund_percent = GOLOS_WORKER_FROM_WITNESS_FUND_PERCENT;
 
             /**
-             * Maximum term of worker request approving
+             * Minimum percent of total vesting shares have to be voted for request in period to approve payments
              */
-            uint32_t worker_request_approve_term_sec = GOLOS_WORKER_REQUEST_APPROVE_TERM_SEC;
+            uint16_t worker_request_approve_min_percent = GOLOS_WORKER_REQUEST_APPROVE_MIN_PERCENT;
 
             void validate() const;
 
@@ -1421,7 +1421,7 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
     (worker_from_content_fund_percent)(worker_from_vesting_fund_percent)(worker_from_witness_fund_percent)
-    (worker_request_approve_term_sec))
+    (worker_request_approve_min_percent))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

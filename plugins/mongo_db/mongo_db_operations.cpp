@@ -622,7 +622,7 @@ namespace mongo_db {
         return body;
     }
 
-    auto operation_writer::operator()(const worker_request_approve_operation& op) -> result_type {
+    auto operation_writer::operator()(const worker_request_vote_operation& op) -> result_type {
         result_type body;
 
         return body;
@@ -803,7 +803,7 @@ namespace mongo_db {
         return body;
     }
 
-    auto operation_writer::operator()(const request_expired_operation& op) -> result_type {
+    auto operation_writer::operator()(const worker_state_operation& op) -> result_type {
         result_type body;
         return body;
     }

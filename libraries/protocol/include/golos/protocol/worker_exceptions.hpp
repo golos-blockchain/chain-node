@@ -25,9 +25,3 @@
     GOLOS_CHECK_LOGIC(POST.cashout_time != fc::time_point_sec::maximum(), \
         logic_exception::post_should_be_in_cashout_window, \
         "Post should be in cashout window")
-
-#define CHECK_APPROVER_WITNESS(APPROVER) \
-    auto approver_witness = _db.get_witness(APPROVER); \
-    GOLOS_CHECK_LOGIC(approver_witness.schedule == witness_object::top19, \
-        logic_exception::approver_is_not_top19_witness, \
-        "Approver should be in Top 19 of witnesses")
