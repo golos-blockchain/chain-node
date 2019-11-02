@@ -24,7 +24,7 @@ namespace golos { namespace chain {
                 o.required_amount_min = op.required_amount_min;
                 o.required_amount_max = op.required_amount_max;
                 o.duration = op.duration;
-                o.vote_end_time = post.created + fc::seconds(op.duration);
+                o.vote_end_time = o.created + fc::seconds(op.duration);
             });
 
             return;
@@ -44,10 +44,11 @@ namespace golos { namespace chain {
             o.post = post.id;
             o.worker = op.worker;
             o.state = worker_request_state::created;
+            o.created = _db.head_block_time();
             o.required_amount_min = op.required_amount_min;
             o.required_amount_max = op.required_amount_max;
             o.duration = op.duration;
-            o.vote_end_time = post.created + fc::seconds(op.duration);
+            o.vote_end_time = o.created + fc::seconds(op.duration);
         });
     }
 
