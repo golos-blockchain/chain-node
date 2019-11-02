@@ -9,6 +9,7 @@
 namespace golos {
     namespace chain {
 
+        using golos::protocol::asset_symbol_type;
         using golos::protocol::asset;
         using golos::protocol::price;
 
@@ -147,6 +148,8 @@ namespace golos {
 
             uint32_t transit_block_num = UINT32_MAX;
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
+
+            flat_map<asset_symbol_type, uint32_t> worker_requests;
         };
 
         typedef multi_index_container <
@@ -194,5 +197,6 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (is_forced_min_price)
                 (transit_block_num)
                 (transit_witnesses)
+                (worker_requests)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::dynamic_global_property_object, golos::chain::dynamic_global_property_index)

@@ -26,7 +26,7 @@ namespace golos { namespace chain {
         asset required_amount_max;
         uint32_t duration;
         time_point_sec vote_end_time = time_point_sec::maximum();
-        asset calculated_payment;
+        asset remaining_payment;
     };
 
     class worker_request_vote_object : public object<worker_request_vote_object_type, worker_request_vote_object> {
