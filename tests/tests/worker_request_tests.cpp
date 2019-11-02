@@ -145,11 +145,21 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
     op.worker = "notexistacc";
     GOLOS_CHECK_ERROR_MISSING(account, "notexistacc", bob_private_key, op);
 
-    BOOST_TEST_MESSAGE("-- Normal create worker request case");
+    BOOST_TEST_MESSAGE("-- Create worker request without GBG for fee");
 
     op.worker = "bob";
+    GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, op),
+        CHECK_ERROR(tx_invalid_operation, 0,
+            CHECK_ERROR(insufficient_funds, "bob", "fund", "100.000 GBG")));
+
+    BOOST_TEST_MESSAGE("-- Normal create worker request case");
+
+    fund("bob", ASSET_GBG(101));
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
+
+    BOOST_CHECK_EQUAL(db->get_balance("bob", SBD_SYMBOL), ASSET_GBG(1));
+    BOOST_CHECK_EQUAL(db->get_balance("workers", SBD_SYMBOL), ASSET_GBG(100));
 
     const auto& wro_post = db->get_comment("bob", string("bob-request"));
     const auto& wro = db->get_worker_request(wro_post.id);
@@ -187,6 +197,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     const auto& created = db->head_block_time();
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation op;
     op.author = "bob";
     op.permlink = "bob-request";
@@ -293,6 +304,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
@@ -390,6 +402,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     const auto& created = db->head_block_time();
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
@@ -405,6 +418,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
 
     comment_create("carol", carol_private_key, "carol-request", "", "carol-request");
 
+    fund("carol", ASSET_GBG(100));
     wtop.author = "carol";
     wtop.permlink = "carol-request";
     wtop.worker = "carol";
@@ -416,6 +430,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
 
     comment_create("dave", dave_private_key, "dave-request", "", "dave-request");
 
+    fund("dave", ASSET_GBG(100));
     wtop.author = "dave";
     wtop.permlink = "dave-request";
     wtop.worker = "dave";
@@ -425,6 +440,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
 
     comment_create("frad", frad_private_key, "frad-request", "", "frad-request");
 
+    fund("frad", ASSET_GBG(100));
     wtop.author = "frad";
     wtop.permlink = "frad-request";
     wtop.worker = "frad";
@@ -524,8 +540,6 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
         BOOST_CHECK_EQUAL(wsop.state, worker_request_state::payment);
     }
 
-    generate_block();
-
     BOOST_TEST_MESSAGE("-- Checking dave request is not closed and has votes");
 
     {
@@ -546,8 +560,6 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
         BOOST_CHECK_EQUAL(wsop.permlink, to_string(wro_post.permlink));
         BOOST_CHECK_EQUAL(wsop.state, worker_request_state::payment);
     }
-
-    generate_block();
 
     BOOST_TEST_MESSAGE("-- Checking frad request is not closed and has votes");
 
@@ -612,6 +624,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
 
     BOOST_TEST_MESSAGE("-- Creating request");
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
@@ -670,6 +683,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
     {
         comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
+        fund("bob", ASSET_GBG(100));
         wtop.author = "bob";
         wtop.permlink = "bob-request";
         wtop.worker = "bob";
@@ -699,6 +713,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
     BOOST_TEST_MESSAGE("-- Creating request with 1 vote");
 
     {
+        fund("bob", ASSET_GBG(100));
         BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
         generate_block();
 

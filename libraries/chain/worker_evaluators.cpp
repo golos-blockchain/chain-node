@@ -32,6 +32,14 @@ namespace golos { namespace chain {
 
         CHECK_POST(post);
 
+        const auto& fee = _db.get_witness_schedule_object().median_props.worker_request_creation_fee;
+        if (fee.amount != 0) {
+            const auto& author = _db.get_account(post.author);
+            GOLOS_CHECK_BALANCE(author, MAIN_BALANCE, fee);
+            _db.adjust_balance(author, -fee);
+            _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), fee);
+        }
+
         _db.create<worker_request_object>([&](auto& o) {
             o.post = post.id;
             o.worker = op.worker;

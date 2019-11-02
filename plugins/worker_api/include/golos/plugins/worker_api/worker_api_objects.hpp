@@ -30,6 +30,7 @@ namespace golos { namespace plugins { namespace worker_api {
         comment_id_type post;
         time_point_sec modified;
         share_type net_rshares;
+        asset creation_fee;
         uint16_t upvotes = 0;
         uint16_t downvotes = 0;
         time_point_sec payment_beginning_time;
@@ -84,6 +85,7 @@ namespace golos { namespace plugins { namespace worker_api {
             : post(p),
               modified(o.modified),
               net_rshares(o.net_rshares),
+              creation_fee(o.creation_fee),
               upvotes(o.upvotes),
               downvotes(o.downvotes),
               payment_beginning_time(o.payment_beginning_time) {
@@ -110,10 +112,11 @@ namespace golos { namespace plugins { namespace worker_api {
         asset required_amount_min;
         asset required_amount_max;
         uint32_t duration;
+        time_point_sec vote_end_time = time_point_sec::maximum();
+        asset creation_fee;
         uint16_t upvotes = 0;
         uint16_t downvotes = 0;
         time_point_sec payment_beginning_time;
-        time_point_sec vote_end_time = time_point_sec::maximum();
         asset calculated_payment;
     };
 
@@ -125,5 +128,7 @@ CHAINBASE_SET_INDEX_TYPE(
 
 FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
     (post)(worker)(state)(modified)(net_rshares)(required_amount_min)(required_amount_max)
-    (duration)(upvotes)(downvotes)(payment_beginning_time)(vote_end_time)(calculated_payment)
+    (duration)(vote_end_time)
+    (creation_fee)
+    (upvotes)(downvotes)(payment_beginning_time)(calculated_payment)
 )

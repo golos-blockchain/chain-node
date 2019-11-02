@@ -44,6 +44,7 @@ struct post_operation_visitor {
         _db.create<worker_request_metadata_object>([&](worker_request_metadata_object& wtmo) {
             wtmo.post = post.id;
             wtmo.net_rshares = post.net_rshares;
+            wtmo.creation_fee = _db.get_witness_schedule_object().median_props.worker_request_creation_fee;
         });
     }
 

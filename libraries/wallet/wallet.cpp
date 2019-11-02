@@ -355,6 +355,7 @@ namespace golos { namespace wallet {
                         result["worker_reward_percent"] = median_props.worker_reward_percent;
                         result["witness_reward_percent"] = median_props.witness_reward_percent;
                         result["vesting_reward_percent"] = median_props.vesting_reward_percent;
+                        result["worker_request_creation_fee"] = median_props.worker_request_creation_fee;
                         result["worker_request_approve_min_percent"] = median_props.worker_request_approve_min_percent;
                     }
 
@@ -2293,6 +2294,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 SET_PROP(p22, worker_reward_percent);
                 SET_PROP(p22, witness_reward_percent);
                 SET_PROP(p22, vesting_reward_percent);
+                SET_PROP(p22, worker_request_creation_fee);
                 SET_PROP(p22, worker_request_approve_min_percent);
                 op.props = p22;
             }

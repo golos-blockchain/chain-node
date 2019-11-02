@@ -39,6 +39,7 @@ namespace golos { namespace api {
             worker_reward_percent = src.worker_reward_percent;
             witness_reward_percent = src.witness_reward_percent;
             vesting_reward_percent = src.vesting_reward_percent;
+            worker_request_creation_fee = src.worker_request_creation_fee;
             worker_request_approve_min_percent = src.worker_request_approve_min_percent;
         }
     }

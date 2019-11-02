@@ -682,6 +682,11 @@ namespace golos { namespace protocol {
             uint16_t vesting_reward_percent = GOLOS_VESTING_REWARD_PERCENT;
 
             /**
+             * Amount of fee in GBG have to be claimed from worker request author on creating request
+             */
+            asset worker_request_creation_fee = GOLOS_WORKER_REQUEST_CREATION_FEE;
+
+            /**
              * Minimum percent of total vesting shares have to be voted for request in period to approve payments
              */
             uint16_t worker_request_approve_min_percent = GOLOS_WORKER_REQUEST_APPROVE_MIN_PERCENT;
@@ -1421,7 +1426,7 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
-    (worker_request_approve_min_percent))
+    (worker_request_creation_fee)(worker_request_approve_min_percent))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
