@@ -39,9 +39,4 @@ namespace golos { namespace protocol {
         });
     }
 
-    void worker_fund_operation::validate() const {
-        GOLOS_CHECK_PARAM_ACCOUNT(sponsor);
-        GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
-    }
-
 } } // golos::protocol

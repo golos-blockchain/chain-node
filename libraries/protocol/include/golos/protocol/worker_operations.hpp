@@ -61,19 +61,6 @@ namespace golos { namespace protocol {
         }
     };
 
-    struct worker_fund_operation : public base_operation {
-        account_name_type sponsor;
-        asset amount;
-
-        extensions_type extensions;
-
-        void validate() const;
-
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
-            a.insert(sponsor);
-        }
-    };
-
 } } // golos::protocol
 
 FC_REFLECT_ENUM(
@@ -91,7 +78,3 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::protocol::worker_request_vote_operation),
     (voter)(author)(permlink)(vote_percent)(extensions))
-
-FC_REFLECT(
-    (golos::protocol::worker_fund_operation),
-    (sponsor)(amount)(extensions))

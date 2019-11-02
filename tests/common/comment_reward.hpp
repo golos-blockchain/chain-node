@@ -20,7 +20,7 @@ namespace golos { namespace chain {
             reward_fund_ = gpo.total_reward_fund_steem;
             vesting_shares_ = gpo.total_vesting_shares;
             vesting_fund_ = gpo.total_vesting_fund_steem;
-            worker_fund_ = gpo.total_worker_fund_steem;
+            worker_fund_ = db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance;
 
             process_funds();
         }

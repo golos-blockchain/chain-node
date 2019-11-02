@@ -93,18 +93,4 @@ namespace golos { namespace chain {
         }
     }
 
-    void worker_fund_evaluator::do_apply(const worker_fund_operation& o) {
-        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_fund_operation");
-
-        const auto& sponsor = _db.get_account(o.sponsor);
-
-        GOLOS_CHECK_BALANCE(sponsor, MAIN_BALANCE, o.amount);
-        _db.adjust_balance(sponsor, -o.amount);
-
-        const auto& props = _db.get_dynamic_global_properties();
-        _db.modify(props, [&](dynamic_global_property_object& p) {
-            p.total_worker_fund_steem += o.amount;
-        });
-    }
-
 } } // golos::chain

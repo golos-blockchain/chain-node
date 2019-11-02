@@ -60,7 +60,6 @@ namespace golos {
             asset total_vesting_shares = asset(0, VESTS_SYMBOL);
             asset total_reward_fund_steem = asset(0, STEEM_SYMBOL);
             fc::uint128_t total_reward_shares2; ///< the running total of REWARD^2
-            asset total_worker_fund_steem = asset(0, STEEM_SYMBOL);
 
             price get_vesting_share_price() const {
                 if (total_vesting_fund_steem.amount == 0 ||
@@ -180,7 +179,6 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (total_vesting_shares)
                 (total_reward_fund_steem)
                 (total_reward_shares2)
-                (total_worker_fund_steem)
                 (sbd_interest_rate)
                 (sbd_print_rate)
                 (average_block_size)
