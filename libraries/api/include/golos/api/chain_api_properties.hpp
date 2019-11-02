@@ -50,6 +50,7 @@ namespace golos { namespace api {
         fc::optional<uint16_t> worker_reward_percent;
         fc::optional<uint16_t> witness_reward_percent;
         fc::optional<uint16_t> vesting_reward_percent;
+        fc::optional<asset> worker_request_creation_fee;
         fc::optional<uint16_t> worker_request_approve_min_percent;
     };
 
@@ -66,4 +67,4 @@ FC_REFLECT(
     (min_curation_percent)(max_curation_percent)(curation_reward_curve)
     (allow_distribute_auction_reward)(allow_return_auction_reward_to_fund)
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
-    (worker_request_approve_min_percent))
+    (worker_request_creation_fee)(worker_request_approve_min_percent))

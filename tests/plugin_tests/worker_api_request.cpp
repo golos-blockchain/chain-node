@@ -31,6 +31,7 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vop));
     generate_block();
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation op;
     op.author = "bob";
     op.permlink = "bob-request";
@@ -55,6 +56,10 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
 
     BOOST_CHECK_EQUAL(wtmo_itr->net_rshares, wto_post.net_rshares);
 
+    BOOST_TEST_MESSAGE("-- Checking creation_fee");
+
+    BOOST_CHECK_EQUAL(wtmo_itr->creation_fee, ASSET_GBG(100));
+
     validate_database();
 }
 
@@ -70,6 +75,7 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation op;
     op.author = "bob";
     op.permlink = "bob-request";
@@ -115,6 +121,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
@@ -165,6 +172,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";
@@ -194,6 +202,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
 
     BOOST_TEST_MESSAGE("-- Creating request with 1 vote");
 
+    fund("bob", ASSET_GBG(100));
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
@@ -232,6 +241,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
+    fund("bob", ASSET_GBG(100));
     worker_request_operation wtop;
     wtop.author = "bob";
     wtop.permlink = "bob-request";

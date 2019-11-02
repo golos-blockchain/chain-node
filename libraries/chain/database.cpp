@@ -1981,6 +1981,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::worker_reward_percent);
             calc_median(&chain_properties_22::witness_reward_percent);
             calc_median(&chain_properties_22::vesting_reward_percent);
+            calc_median(&chain_properties_22::worker_request_creation_fee);
             calc_median(&chain_properties_22::worker_request_approve_min_percent);
 
             std::nth_element(
