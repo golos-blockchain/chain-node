@@ -97,6 +97,7 @@ namespace golos { namespace plugins { namespace worker_api {
         void fill_worker_request(const worker_request_object& wro) {
             worker = wro.worker;
             state = wro.state;
+            created = wro.created;
             required_amount_min = wro.required_amount_min;
             required_amount_max = wro.required_amount_max;
             duration = wro.duration;
@@ -107,6 +108,7 @@ namespace golos { namespace plugins { namespace worker_api {
         comment_api_object post;
         account_name_type worker;
         worker_request_state state;
+        time_point_sec created;
         time_point_sec modified;
         share_type net_rshares;
         asset required_amount_min;
@@ -127,7 +129,7 @@ CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::worker_api::worker_request_metadata_index)
 
 FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
-    (post)(worker)(state)(modified)(net_rshares)(required_amount_min)(required_amount_max)
+    (post)(worker)(state)(created)(modified)(net_rshares)(required_amount_min)(required_amount_max)
     (duration)(vote_end_time)
     (creation_fee)
     (upvotes)(downvotes)(payment_beginning_time)(remaining_payment)

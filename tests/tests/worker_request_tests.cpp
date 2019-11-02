@@ -137,7 +137,6 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
 
     BOOST_TEST_MESSAGE("-- Creating request with not-exist worker");
 
-    const auto& created = db->head_block_time();
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
     op.author = "bob";
@@ -155,6 +154,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
     BOOST_TEST_MESSAGE("-- Normal create worker request case");
 
     fund("bob", ASSET_GBG(101));
+    const auto& created = db->head_block_time();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -194,7 +194,6 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
 
     signed_transaction tx;
 
-    const auto& created = db->head_block_time();
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
     fund("bob", ASSET_GBG(100));
@@ -205,6 +204,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     op.required_amount_min = ASSET_GOLOS(6000);
     op.required_amount_max = ASSET_GOLOS(60000);
     op.duration = fc::days(5).to_seconds();
+    const auto& created = db->head_block_time();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -399,7 +399,6 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
 
     BOOST_TEST_MESSAGE("-- Creating bob request");
 
-    const auto& created = db->head_block_time();
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
     fund("bob", ASSET_GBG(100));
@@ -410,6 +409,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     wtop.required_amount_min = ASSET_GOLOS(6);
     wtop.required_amount_max = ASSET_GOLOS(60);
     wtop.duration = fc::days(5).to_seconds();
+    const auto& created = db->head_block_time();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     BOOST_CHECK_EQUAL(db->get_worker_request(db->get_comment("bob", string("bob-request")).id).vote_end_time,
         created + wtop.duration);
