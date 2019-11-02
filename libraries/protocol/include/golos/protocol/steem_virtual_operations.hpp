@@ -3,6 +3,7 @@
 #include <golos/protocol/base.hpp>
 #include <golos/protocol/block_header.hpp>
 #include <golos/protocol/asset.hpp>
+#include <golos/protocol/worker_operations.hpp>
 
 #include <fc/utf8.hpp>
 
@@ -227,19 +228,6 @@ namespace golos { namespace protocol {
             asset vesting_shares_in_golos; // not reflected
         };
 
-        struct worker_reward_operation : public virtual_operation {
-            worker_reward_operation() {
-            }
-            worker_reward_operation(const account_name_type& w, const account_name_type& wta, const string& wtp, const asset& r)
-                    : worker(w), worker_request_author(wta), worker_request_permlink(wtp), reward(r) {
-            }
-
-            account_name_type worker;
-            account_name_type worker_request_author;
-            string worker_request_permlink;
-            asset reward;
-        };
-
         struct return_vesting_delegation_operation: public virtual_operation {
             return_vesting_delegation_operation() {
             }
@@ -267,15 +255,29 @@ namespace golos { namespace protocol {
             int64_t net_rshares;
         };
 
-        struct request_expired_operation : public virtual_operation {
-            request_expired_operation() {
+        struct worker_reward_operation : public virtual_operation {
+            worker_reward_operation() {
             }
-            request_expired_operation(const account_name_type& a, const string& p)
-                    : author(a), permlink(p) {
+            worker_reward_operation(const account_name_type& w, const account_name_type& wta, const string& wtp, const asset& r)
+                    : worker(w), worker_request_author(wta), worker_request_permlink(wtp), reward(r) {
+            }
+
+            account_name_type worker;
+            account_name_type worker_request_author;
+            string worker_request_permlink;
+            asset reward;
+        };
+
+        struct worker_state_operation : public virtual_operation {
+            worker_state_operation() {
+            }
+            worker_state_operation(const account_name_type& a, const string& p, const worker_request_state& s)
+                    : author(a), permlink(p), state(s) {
             }
 
             account_name_type author;
             string permlink;
+            worker_request_state state;
         };
 } } //golos::protocol
 
@@ -298,4 +300,4 @@ FC_REFLECT((golos::protocol::producer_reward_operation), (producer)(vesting_shar
 FC_REFLECT((golos::protocol::delegation_reward_operation), (delegator)(delegatee)(payout_strategy)(vesting_shares))
 FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
 FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_author)(worker_request_permlink)(reward))
-FC_REFLECT((golos::protocol::request_expired_operation), (author)(permlink))
+FC_REFLECT((golos::protocol::worker_state_operation), (author)(permlink)(state))

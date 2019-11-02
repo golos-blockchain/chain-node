@@ -73,22 +73,17 @@ struct post_operation_visitor {
         }
     }
 
-    result_type operator()(const worker_request_approve_operation& o) const {
-        const auto& wto_post = _db.get_comment(o.author, o.permlink);
-        const auto& wto = _db.get_worker_request(wto_post.id);
+    result_type operator()(const worker_request_vote_operation& op) const {
+        const auto& wro_post = _db.get_comment(op.author, op.permlink);
 
-        const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
-        auto wtmo_itr = wtmo_idx.find(wto_post.id);
+        const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
+        auto wrmo_itr = wrmo_idx.find(wro_post.id);
 
-        auto approves = _db.count_worker_request_approves(wto_post.id);
+        auto votes = _db.count_worker_request_votes(wro_post.id);
 
-        _db.modify(*wtmo_itr, [&](worker_request_metadata_object& wtmo) {
-            wtmo.approves = approves[worker_request_approve_state::approve];
-            wtmo.disapproves = approves[worker_request_approve_state::disapprove];
-
-            if (wto.state == worker_request_state::payment) {
-                wtmo.payment_beginning_time = wto.next_cashout_time;
-            }
+        _db.modify(*wrmo_itr, [&](auto& o) {
+            o.upvotes = votes[true];
+            o.downvotes = votes[false];
         });
     }
 };
@@ -257,10 +252,10 @@ DEFINE_API(worker_api_plugin, get_worker_requests) {
         my->select_postbased_results_ordered<worker_request_metadata_index, by_id, true>(query, result, wto_fill_worker_fields, fill_posts);
     } else if (sort == worker_request_sort::by_net_rshares) {
         my->select_postbased_results_ordered<worker_request_metadata_index, by_net_rshares, false>(query, result, wto_fill_worker_fields, fill_posts);
-    } else if (sort == worker_request_sort::by_approves) {
-        my->select_postbased_results_ordered<worker_request_metadata_index, by_approves, false>(query, result, wto_fill_worker_fields, fill_posts);
-    } else if (sort == worker_request_sort::by_disapproves) {
-        my->select_postbased_results_ordered<worker_request_metadata_index, by_disapproves, false>(query, result, wto_fill_worker_fields, fill_posts);
+    } else if (sort == worker_request_sort::by_upvotes) {
+        my->select_postbased_results_ordered<worker_request_metadata_index, by_upvotes, false>(query, result, wto_fill_worker_fields, fill_posts);
+    } else if (sort == worker_request_sort::by_downvotes) {
+        my->select_postbased_results_ordered<worker_request_metadata_index, by_downvotes, false>(query, result, wto_fill_worker_fields, fill_posts);
     }
 
     return result;

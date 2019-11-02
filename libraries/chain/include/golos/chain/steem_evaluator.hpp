@@ -83,7 +83,7 @@ namespace golos { namespace chain {
 
         DEFINE_EVALUATOR(worker_request)
         DEFINE_EVALUATOR(worker_request_delete)
-        DEFINE_EVALUATOR(worker_request_approve)
+        DEFINE_EVALUATOR(worker_request_vote)
         DEFINE_EVALUATOR(worker_fund)
 
 } } // golos::chain

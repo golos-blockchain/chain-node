@@ -6,6 +6,15 @@
 
 namespace golos { namespace protocol {
 
+    enum class worker_request_state {
+        created,
+        payment,
+        payment_complete,
+        closed_by_author,
+        closed_by_expiration,
+        closed_by_voters
+    };
+
     struct worker_request_operation : public base_operation {
         account_name_type author;
         std::string permlink;
@@ -36,25 +45,18 @@ namespace golos { namespace protocol {
         }
     };
 
-    enum class worker_request_approve_state {
-        approve,
-        disapprove,
-        abstain,
-        _size
-    };
-
-    struct worker_request_approve_operation : public base_operation {
-        account_name_type approver;
+    struct worker_request_vote_operation : public base_operation {
+        account_name_type voter;
         account_name_type author;
         std::string permlink;
-        worker_request_approve_state state;
+        int16_t vote_percent;
 
         extensions_type extensions;
 
         void validate() const;
 
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
-            a.insert(approver);
+            a.insert(voter);
         }
     };
 
@@ -73,6 +75,10 @@ namespace golos { namespace protocol {
 
 } } // golos::protocol
 
+FC_REFLECT_ENUM(
+    golos::protocol::worker_request_state,
+    (created)(payment)(payment_complete)(closed_by_author)(closed_by_expiration)(closed_by_voters))
+
 FC_REFLECT(
     (golos::protocol::worker_request_operation),
     (author)(permlink)(worker)(required_amount_min)(required_amount_max)(duration)(extensions))
@@ -81,10 +87,9 @@ FC_REFLECT(
     (golos::protocol::worker_request_delete_operation),
     (author)(permlink)(extensions))
 
-FC_REFLECT_ENUM(golos::protocol::worker_request_approve_state, (approve)(disapprove)(abstain)(_size))
 FC_REFLECT(
-    (golos::protocol::worker_request_approve_operation),
-    (approver)(author)(permlink)(state)(extensions))
+    (golos::protocol::worker_request_vote_operation),
+    (voter)(author)(permlink)(vote_percent)(extensions))
 
 FC_REFLECT(
     (golos::protocol::worker_fund_operation),

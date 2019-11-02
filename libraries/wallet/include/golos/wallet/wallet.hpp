@@ -75,7 +75,7 @@ namespace golos { namespace wallet {
             fc::optional<uint16_t> worker_from_content_fund_percent;
             fc::optional<uint16_t> worker_from_vesting_fund_percent;
             fc::optional<uint16_t> worker_from_witness_fund_percent;
-            fc::optional<uint32_t> worker_request_approve_term_sec;
+            fc::optional<uint16_t> worker_request_approve_min_percent;
         };
 
         struct optional_private_box_query {
@@ -1430,17 +1430,17 @@ namespace golos { namespace wallet {
                 );
 
             /**
-             * Approve or disapprove worker request based on specified post, or cancel this
+             * Upvote or downvote worker request based on specified post, or cancel it
              *
-             * @param approver witness account
+             * @param voter account with non-zero Vesting Shares
              * @param author author of the post
              * @param permlink permlink of the post
-             * @param state approve, disapprove or abstain
+             * @param vote_percent from -10000 (-100%) to 10000 (100%)
              * @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction approve_worker_request(
-                const std::string& approver, const std::string& author, const std::string& permlink,
-                worker_request_approve_state state, bool broadcast
+            annotated_signed_transaction vote_worker_request(
+                const std::string& voter, const std::string& author, const std::string& permlink,
+                int16_t vote_percent, bool broadcast
                 );
         private:
             void decrypt_history_memos(history_operations& result);
@@ -1582,7 +1582,7 @@ FC_API( golos::wallet::wallet_api,
 
                 (worker_request)
                 (delete_worker_request)
-                (approve_worker_request)
+                (vote_worker_request)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))
@@ -1610,7 +1610,7 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (max_delegated_vesting_interest_rate)(custom_ops_bandwidth_multiplier)(min_curation_percent)(max_curation_percent)
     (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund)
     (worker_from_content_fund_percent)(worker_from_vesting_fund_percent)(worker_from_witness_fund_percent)
-    (worker_request_approve_term_sec))
+    (worker_request_approve_min_percent))
 
 FC_REFLECT(
     (golos::wallet::message_body),

@@ -355,7 +355,7 @@ namespace golos { namespace wallet {
                         result["worker_from_content_fund_percent"] = median_props.worker_from_content_fund_percent;
                         result["worker_from_vesting_fund_percent"] = median_props.worker_from_vesting_fund_percent;
                         result["worker_from_witness_fund_percent"] = median_props.worker_from_witness_fund_percent;
-                        result["worker_request_approve_term_sec"] = median_props.worker_request_approve_term_sec;
+                        result["worker_request_approve_min_percent"] = median_props.worker_request_approve_min_percent;
                     }
 
                     return result;
@@ -2293,7 +2293,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 SET_PROP(p22, worker_from_content_fund_percent);
                 SET_PROP(p22, worker_from_vesting_fund_percent);
                 SET_PROP(p22, worker_from_witness_fund_percent);
-                SET_PROP(p22, worker_request_approve_term_sec);
+                SET_PROP(p22, worker_request_approve_min_percent);
                 op.props = p22;
             }
 #undef SET_PROP
@@ -3167,17 +3167,17 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction(tx, broadcast);
         }
 
-        annotated_signed_transaction wallet_api::approve_worker_request(
-                const std::string& approver, const std::string& author, const std::string& permlink,
-                worker_request_approve_state state, bool broadcast
+        annotated_signed_transaction wallet_api::vote_worker_request(
+                const std::string& voter, const std::string& author, const std::string& permlink,
+                int16_t vote_percent, bool broadcast
         ) {
             WALLET_CHECK_UNLOCKED();
 
-            worker_request_approve_operation op;
-            op.approver = approver;
+            worker_request_vote_operation op;
+            op.voter = voter;
             op.author = author;
             op.permlink = permlink;
-            op.state = state;
+            op.vote_percent = vote_percent;
 
             signed_transaction tx;
             tx.operations.push_back(op);

@@ -73,7 +73,7 @@ namespace golos { namespace protocol {
                 transit_to_cyberway_operation,
                 worker_request_operation,
                 worker_request_delete_operation,
-                worker_request_approve_operation,
+                worker_request_vote_operation,
                 worker_fund_operation,
 
                 /// virtual operations below this point
@@ -96,7 +96,7 @@ namespace golos { namespace protocol {
                 auction_window_reward_operation,
                 total_comment_reward_operation,
                 worker_reward_operation,
-                request_expired_operation
+                worker_state_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

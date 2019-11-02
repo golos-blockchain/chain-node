@@ -74,9 +74,9 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
     op.author = "bob";
     op.permlink = "bob-request";
     op.worker = "alice";
-    wtop.required_amount_min = ASSET_GOLOS(6000);
-    wtop.required_amount_max = ASSET_GOLOS(60000);
-    wtop.duration = fc::days(5).to_seconds();
+    op.required_amount_min = ASSET_GOLOS(6000);
+    op.required_amount_max = ASSET_GOLOS(60000);
+    op.duration = fc::days(5).to_seconds();
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -89,7 +89,8 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
 
     auto now = db->head_block_time();
 
-    wtop.required_amount_max = ASSET_GBG(60000);
+    op.required_amount_min = ASSET_GBG(6000);
+    op.required_amount_max = ASSET_GBG(60000);
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -154,14 +155,13 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     BOOST_TEST_MESSAGE("Testing: worker_request_delete");
 
     ACTORS((alice)(bob))
-    auto private_key = create_approvers(0, 1);
     generate_block();
 
     signed_transaction tx;
 
     const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
 
-    BOOST_TEST_MESSAGE("-- Creating request without approves");
+    BOOST_TEST_MESSAGE("-- Creating request without upvotes");
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
@@ -192,19 +192,17 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK(wtmo_itr == wtmo_idx.end());
 
-    BOOST_TEST_MESSAGE("-- Creating request with 1 approve");
+    BOOST_TEST_MESSAGE("-- Creating request with 1 vote");
 
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
-    generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for approvers to reach TOP-19 and not leave it
-
-    worker_request_approve_operation wtaop;
-    wtaop.approver = "approver0";
-    wtaop.author = "bob";
-    wtaop.permlink = "bob-request";
-    wtaop.state = worker_request_approve_state::approve;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, private_key, wtaop));
+    worker_request_vote_operation wrvop;
+    wrvop.voter = "alice";
+    wrvop.author = "bob";
+    wrvop.permlink = "bob-request";
+    wrvop.vote_percent = 10*STEEMIT_1_PERCENT;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wrvop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Deleting it");
@@ -226,7 +224,6 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_TEST_MESSAGE("Testing: worker_request_approve");
 
     ACTORS((alice)(bob)(carol)(dave))
-    auto approver_key = create_approvers(0, STEEMIT_MAJOR_VOTED_WITNESSES);
     generate_block();
 
     signed_transaction tx;
@@ -245,126 +242,75 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
-    BOOST_TEST_MESSAGE("-- Checking approves are 0 before approving");
+    BOOST_TEST_MESSAGE("-- Checking upvotes are 0 before approving");
 
     const auto& wto_post = db->get_comment("bob", string("bob-request"));
     auto wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK(wtmo_itr != wtmo_idx.end());
-    BOOST_CHECK_EQUAL(wtmo_itr->approves, 0);
-    BOOST_CHECK_EQUAL(wtmo_itr->disapproves, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->downvotes, 0);
 
-    generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for approvers to reach TOP-19 and not leave it
+    BOOST_TEST_MESSAGE("-- Upvoting worker request (after abstain)");
 
-    BOOST_TEST_MESSAGE("-- Approving worker request (after abstain)");
-
-    worker_request_approve_operation op;
-    op.approver = "approver0";
+    worker_request_vote_operation op;
+    op.voter = "alice";
     op.author = "bob";
     op.permlink = "bob-request";
-    op.state = worker_request_approve_state::approve;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
+    op.vote_percent = STEEMIT_100_PERCENT;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
-    BOOST_CHECK_EQUAL(wtmo_itr->approves, 1);
-    BOOST_CHECK_EQUAL(wtmo_itr->disapproves, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 1);
+    BOOST_CHECK_EQUAL(wtmo_itr->downvotes, 0);
 
-    BOOST_TEST_MESSAGE("-- Disapproving worker request (after approve)");
+    BOOST_TEST_MESSAGE("-- Downvoting worker request (after approve)");
 
-    op.state = worker_request_approve_state::disapprove;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
+    op.vote_percent = -STEEMIT_100_PERCENT;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
-    BOOST_CHECK_EQUAL(wtmo_itr->approves, 0);
-    BOOST_CHECK_EQUAL(wtmo_itr->disapproves, 1);
+    BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->downvotes, 1);
 
     BOOST_TEST_MESSAGE("-- Abstaining worker request (after disapprove)");
 
-    op.state = worker_request_approve_state::abstain;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
+    op.vote_percent = 0;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
-    BOOST_CHECK_EQUAL(wtmo_itr->approves, 0);
-    BOOST_CHECK_EQUAL(wtmo_itr->disapproves, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->downvotes, 0);
 
     generate_block();
 
-    BOOST_TEST_MESSAGE("-- Disapproving worker request (after abstain)");
+    BOOST_TEST_MESSAGE("-- Downvoting worker request (after abstain)");
 
-    op.state = worker_request_approve_state::disapprove;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
-
-    wtmo_itr = wtmo_idx.find(wto_post.id);
-    BOOST_CHECK_EQUAL(wtmo_itr->approves, 0);
-    BOOST_CHECK_EQUAL(wtmo_itr->disapproves, 1);
-
-    BOOST_TEST_MESSAGE("-- Approving worker request (after disapprove)");
-
-    op.state = worker_request_approve_state::approve;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
+    op.vote_percent = -STEEMIT_100_PERCENT;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
-    BOOST_CHECK_EQUAL(wtmo_itr->approves, 1);
-    BOOST_CHECK_EQUAL(wtmo_itr->disapproves, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->downvotes, 1);
+
+    BOOST_TEST_MESSAGE("-- Upvoting worker request (after disapprove)");
+
+    op.vote_percent = STEEMIT_100_PERCENT;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+
+    wtmo_itr = wtmo_idx.find(wto_post.id);
+    BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 1);
+    BOOST_CHECK_EQUAL(wtmo_itr->downvotes, 0);
 
     BOOST_TEST_MESSAGE("-- Abstaining worker request (after approve)");
 
-    op.state = worker_request_approve_state::abstain;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, approver_key, op));
+    op.vote_percent = 0;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
-    BOOST_CHECK_EQUAL(wtmo_itr->approves, 0);
-    BOOST_CHECK_EQUAL(wtmo_itr->disapproves, 0);
-
-    // {
-    //     BOOST_TEST_MESSAGE("-- Approving request and checking metadata fields");
-
-    //     comment_create("dave", dave_private_key, "dave-request", "", "dave-request");
-
-    //     wtop.author = "dave";
-    //     wtop.permlink = "dave-request";
-    //     wtop.worker = "dave";
-    //     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
-    //     generate_block();
-
-    //     auto now = approve_request_final("dave", "dave-request", approver_key);
-
-    //     wtmo_itr = wtmo_idx.find(db->get_comment("dave", string("dave-request")).id);
-    //     BOOST_CHECK_NE(wtmo_itr->payment_beginning_time, now + (wtop.payments_interval / wtop.payments_count));
-    // }
+    BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);
+    BOOST_CHECK_EQUAL(wtmo_itr->downvotes, 0);
 
     validate_database();
-}
-
-BOOST_AUTO_TEST_CASE(worker_request_approve_premade) {
-    BOOST_TEST_MESSAGE("Testing: worker_request_approve_premade");
-
-    ACTORS((alice)(bob))
-    generate_block();
-
-    signed_transaction tx;
-
-    const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
-
-    comment_create("alice", alice_private_key, "alice-premade", "", "alice-premade");
-
-    worker_request_operation wtop;
-    wtop.author = "alice";
-    wtop.permlink = "alice-premade";
-    wtop.worker = "bob";
-    wtop.required_amount_min = ASSET_GOLOS(6);
-    wtop.required_amount_max = ASSET_GOLOS(60);
-    wtop.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wtop));
-    generate_block();
-
-    BOOST_TEST_MESSAGE("-- Approving request and checking metadata fields");
-
-    auto approver_key = create_approvers(0, STEEMIT_MAJOR_VOTED_WITNESSES);
-    generate_blocks(STEEMIT_MAX_WITNESSES);
-    auto now = approve_request_final("alice", "alice-premade", approver_key);
-
-    auto wtmo_itr = wtmo_idx.find(db->get_comment("alice", string("alice-premade")).id);
-    BOOST_CHECK_EQUAL(wtmo_itr->payment_beginning_time, now + wtop.payments_interval);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
