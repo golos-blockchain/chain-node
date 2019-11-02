@@ -12,7 +12,8 @@ namespace golos { namespace protocol {
         payment_complete,
         closed_by_author,
         closed_by_expiration,
-        closed_by_voters
+        closed_by_voters,
+        _size
     };
 
     struct worker_request_operation : public base_operation {
@@ -77,7 +78,7 @@ namespace golos { namespace protocol {
 
 FC_REFLECT_ENUM(
     golos::protocol::worker_request_state,
-    (created)(payment)(payment_complete)(closed_by_author)(closed_by_expiration)(closed_by_voters))
+    (created)(payment)(payment_complete)(closed_by_author)(closed_by_expiration)(closed_by_voters)(_size))
 
 FC_REFLECT(
     (golos::protocol::worker_request_operation),
