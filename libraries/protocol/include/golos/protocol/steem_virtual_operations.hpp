@@ -258,8 +258,8 @@ namespace golos { namespace protocol {
         struct worker_reward_operation : public virtual_operation {
             worker_reward_operation() {
             }
-            worker_reward_operation(const account_name_type& w, const account_name_type& wta, const string& wtp, const asset& r)
-                    : worker(w), worker_request_author(wta), worker_request_permlink(wtp), reward(r) {
+            worker_reward_operation(const account_name_type& w, const account_name_type& wra, const string& wrp, const asset& r)
+                    : worker(w), worker_request_author(wra), worker_request_permlink(wrp), reward(r) {
             }
 
             account_name_type worker;

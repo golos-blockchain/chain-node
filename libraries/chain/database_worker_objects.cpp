@@ -110,7 +110,7 @@ namespace golos { namespace chain {
             share_type calculated_payment = (uint128_t(wro.required_amount_max.amount.value) * rshares_rating.value / rshares_voted.value).to_uint64();
             if (calculated_payment < wro.required_amount_min.amount) {
                 modify(wro, [&](auto& o) {
-                    o.calculated_payment = asset(calculated_payment, wro.required_amount_min.symbol);
+                    o.remaining_payment = asset(calculated_payment, wro.required_amount_min.symbol);
                 });
                 close_worker_request(wro, worker_request_state::closed_by_voters);
                 send_worker_state(post, worker_request_state::closed_by_voters);
@@ -118,9 +118,11 @@ namespace golos { namespace chain {
             }
 
             modify(wro, [&](auto& o) {
-                o.calculated_payment = asset(calculated_payment, wro.required_amount_min.symbol);
-                o.vote_end_time = time_point_sec::maximum();
+                o.remaining_payment = asset(calculated_payment, wro.required_amount_min.symbol);
                 o.state = worker_request_state::payment;
+            });
+            modify(props, [&](auto& o) {
+                o.worker_requests[wro.required_amount_min.symbol]++;
             });
             send_worker_state(post, worker_request_state::payment);
         }
@@ -130,6 +132,49 @@ namespace golos { namespace chain {
         if (!has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
             return;
         }
-        // TODO
+
+        const auto& now = head_block_time();
+        const auto& props = get_dynamic_global_properties();
+        auto requests = props.worker_requests;
+
+        const auto& pool = get_account(STEEMIT_WORKER_POOL_ACCOUNT);
+        flat_map<asset_symbol_type, asset> max_request_payment;
+        max_request_payment[STEEM_SYMBOL] = requests[STEEM_SYMBOL] > 0 ? (pool.balance / requests[STEEM_SYMBOL]) : asset(0, STEEM_SYMBOL);
+        max_request_payment[SBD_SYMBOL] = requests[SBD_SYMBOL] > 0 ? (pool.sbd_balance / requests[SBD_SYMBOL]) : asset(0, SBD_SYMBOL);
+
+        if (!max_request_payment[STEEM_SYMBOL].amount.value && !max_request_payment[SBD_SYMBOL].amount.value) {
+            return;
+        }
+
+        const auto& wro_idx = get_index<worker_request_index, by_vote_end_time>();
+        for (auto itr = wro_idx.begin(); itr != wro_idx.end() && itr->vote_end_time <= now;) {
+            const auto& wro = *itr;
+            ++itr;
+
+            auto payment = std::min(wro.remaining_payment, max_request_payment[wro.required_amount_max.symbol]);
+            if (!payment.amount.value) {
+                continue;
+            }
+
+            const auto& post = get_comment(wro.post);
+
+            adjust_balance(pool, -payment);
+            adjust_balance(get_account(wro.worker), payment);
+            push_virtual_operation(worker_reward_operation(wro.worker, post.author, to_string(post.permlink), payment));
+            modify(wro, [&](auto& o) {
+                o.remaining_payment -= payment;
+                if (o.remaining_payment.amount <= 0) {
+                    o.vote_end_time = time_point_sec::maximum();
+                    o.state = worker_request_state::payment_complete;
+                }
+            });
+
+            if (wro.remaining_payment.amount <= 0) {
+                modify(props, [&](auto& o) {
+                    o.worker_requests[payment.symbol]--;
+                });
+                send_worker_state(post, worker_request_state::payment_complete);
+            }
+        }
     }
 } } // golos::chain

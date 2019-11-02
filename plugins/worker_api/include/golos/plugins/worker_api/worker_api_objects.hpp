@@ -101,7 +101,7 @@ namespace golos { namespace plugins { namespace worker_api {
             required_amount_max = wro.required_amount_max;
             duration = wro.duration;
             vote_end_time = wro.vote_end_time;
-            calculated_payment = wro.calculated_payment;
+            remaining_payment = wro.remaining_payment;
         }
 
         comment_api_object post;
@@ -117,7 +117,7 @@ namespace golos { namespace plugins { namespace worker_api {
         uint16_t upvotes = 0;
         uint16_t downvotes = 0;
         time_point_sec payment_beginning_time;
-        asset calculated_payment;
+        asset remaining_payment;
     };
 
 } } } // golos::plugins::worker_api
@@ -130,5 +130,5 @@ FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
     (post)(worker)(state)(modified)(net_rshares)(required_amount_min)(required_amount_max)
     (duration)(vote_end_time)
     (creation_fee)
-    (upvotes)(downvotes)(payment_beginning_time)(calculated_payment)
+    (upvotes)(downvotes)(payment_beginning_time)(remaining_payment)
 )
