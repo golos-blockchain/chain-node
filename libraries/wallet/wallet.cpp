@@ -352,9 +352,9 @@ namespace golos { namespace wallet {
                         result["curation_reward_curve"] = median_props.curation_reward_curve;
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
-                        result["worker_from_content_fund_percent"] = median_props.worker_from_content_fund_percent;
-                        result["worker_from_vesting_fund_percent"] = median_props.worker_from_vesting_fund_percent;
-                        result["worker_from_witness_fund_percent"] = median_props.worker_from_witness_fund_percent;
+                        result["worker_reward_percent"] = median_props.worker_reward_percent;
+                        result["witness_reward_percent"] = median_props.witness_reward_percent;
+                        result["vesting_reward_percent"] = median_props.vesting_reward_percent;
                         result["worker_request_approve_min_percent"] = median_props.worker_request_approve_min_percent;
                     }
 
@@ -2290,9 +2290,9 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
                 chain_properties_22 p22;
                 p22 = p;
-                SET_PROP(p22, worker_from_content_fund_percent);
-                SET_PROP(p22, worker_from_vesting_fund_percent);
-                SET_PROP(p22, worker_from_witness_fund_percent);
+                SET_PROP(p22, worker_reward_percent);
+                SET_PROP(p22, witness_reward_percent);
+                SET_PROP(p22, vesting_reward_percent);
                 SET_PROP(p22, worker_request_approve_min_percent);
                 op.props = p22;
             }

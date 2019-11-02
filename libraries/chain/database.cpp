@@ -1978,10 +1978,21 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_19::curation_reward_curve);
             calc_median(&chain_properties_19::allow_distribute_auction_reward);
             calc_median(&chain_properties_19::allow_return_auction_reward_to_fund);
-            calc_median(&chain_properties_22::worker_from_content_fund_percent);
-            calc_median(&chain_properties_22::worker_from_vesting_fund_percent);
-            calc_median(&chain_properties_22::worker_from_witness_fund_percent);
+            calc_median(&chain_properties_22::worker_reward_percent);
+            calc_median(&chain_properties_22::witness_reward_percent);
+            calc_median(&chain_properties_22::vesting_reward_percent);
             calc_median(&chain_properties_22::worker_request_approve_min_percent);
+
+            std::nth_element(
+                active.begin(), active.begin() + median, active.end(),
+                [&](const auto* a, const auto* b) {
+                    return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
+                        < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
+                }
+            );
+            median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
+            median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
+            median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -2623,12 +2634,12 @@ namespace golos { namespace chain {
         *  6.66% of inflation is directed to witness pay
         *
         *  After HF22:
-        *  60.00% of inflation is directed to content reward pool
-        *  24.00% of inflation is directed to vesting fund
-        *  6.00% of inflation is directed to witness pay
-        *  10.00% of inflation is directed to worker pay
+        *  15.00% of inflation (voted by witnesses) is directed to worker pay
+        *  10.00% of inflation (voted by witnesses) is directed to witness pay
+        *  10.00% of inflation (voted by witnesses) is directed to vesting fund
+        *  65.00% of inflation is directed to content reward pool
         *
-        *  This method pays out vesting, reward shares and witnesses every block.
+        *  This method pays out vesting, reward shares, witnesses and workers every block.
         */
         void database::process_funds() {
             const auto& wso = get_witness_schedule_object();
@@ -2656,26 +2667,19 @@ namespace golos { namespace chain {
                         (props.virtual_supply.amount * current_inflation_rate) /
                         (int64_t(STEEMIT_100_PERCENT) * int64_t(STEEMIT_BLOCKS_PER_YEAR));
                 auto content_reward =
-                        (new_steem * STEEMIT_CONTENT_REWARD_PERCENT) /
+                        (new_steem * STEEMIT_CONTENT_REWARD_PERCENT_PRE_HF22) /
                         STEEMIT_100_PERCENT; /// 66.67% to content creator
                 auto vesting_reward =
-                        (new_steem * STEEMIT_VESTING_FUND_PERCENT) /
+                        (new_steem * STEEMIT_VESTING_FUND_PERCENT_PRE_HF22) /
                         STEEMIT_100_PERCENT; /// 26.67% to vesting fund
                 auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 6.66% to witness pay
 
-                fc::safe<int64_t> worker_reward = 0;
+                share_type worker_reward = 0;
                 if (has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
-                    auto content_to_worker = content_reward * wso.median_props.worker_from_content_fund_percent / STEEMIT_100_PERCENT;
-                    content_reward -= content_to_worker;
-                    worker_reward += content_to_worker;
-
-                    auto vesting_to_worker = vesting_reward * wso.median_props.worker_from_vesting_fund_percent / STEEMIT_100_PERCENT;
-                    vesting_reward -= vesting_to_worker;
-                    worker_reward += vesting_to_worker;
-
-                    auto witness_to_worker = witness_reward * wso.median_props.worker_from_witness_fund_percent / STEEMIT_100_PERCENT;
-                    witness_reward -= witness_to_worker;
-                    worker_reward += witness_to_worker;
+                    worker_reward = new_steem * wso.median_props.worker_reward_percent / STEEMIT_100_PERCENT;
+                    witness_reward = new_steem * wso.median_props.witness_reward_percent / STEEMIT_100_PERCENT;
+                    vesting_reward = new_steem * wso.median_props.vesting_reward_percent / STEEMIT_100_PERCENT;
+                    content_reward = new_steem - worker_reward - witness_reward - vesting_reward;
                 }
 
                 witness_reward *= STEEMIT_MAX_WITNESSES;

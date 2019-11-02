@@ -667,19 +667,19 @@ namespace golos { namespace protocol {
         struct chain_properties_22 : public chain_properties_19 {
 
             /**
-             * Percent of content fund growth on each block being redirected to worker fund
+             * Percent of emission on each block being redirected to worker fund
              */
-            uint16_t worker_from_content_fund_percent = GOLOS_WORKER_FROM_CONTENT_FUND_PERCENT;
+            uint16_t worker_reward_percent = GOLOS_WORKER_REWARD_PERCENT;
 
             /**
-             * Percent of vesting fund growth on each block being redirected to worker fund
+             * Percent of emission on each block being redirected to witness fund
              */
-            uint16_t worker_from_vesting_fund_percent = GOLOS_WORKER_FROM_VESTING_FUND_PERCENT;
+            uint16_t witness_reward_percent = GOLOS_WITNESS_REWARD_PERCENT;
 
             /**
-             * Percent of witness fund growth on each block being redirected to worker fund
+             * Percent of emission on each block being redirected to vesting fund
              */
-            uint16_t worker_from_witness_fund_percent = GOLOS_WORKER_FROM_WITNESS_FUND_PERCENT;
+            uint16_t vesting_reward_percent = GOLOS_VESTING_REWARD_PERCENT;
 
             /**
              * Minimum percent of total vesting shares have to be voted for request in period to approve payments
@@ -1420,7 +1420,7 @@ FC_REFLECT_DERIVED(
     (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund))
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
-    (worker_from_content_fund_percent)(worker_from_vesting_fund_percent)(worker_from_witness_fund_percent)
+    (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_approve_min_percent))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
