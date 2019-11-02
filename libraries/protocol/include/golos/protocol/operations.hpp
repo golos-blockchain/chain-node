@@ -74,7 +74,6 @@ namespace golos { namespace protocol {
                 worker_request_operation,
                 worker_request_delete_operation,
                 worker_request_vote_operation,
-                worker_fund_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,

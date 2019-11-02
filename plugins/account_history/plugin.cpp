@@ -526,10 +526,6 @@ if (options.count(name)) { \
             insert_pair(op.voter, op.author);
         }
 
-        void operator()(const worker_fund_operation& op) {
-            insert_sender(op.sponsor);
-        }
-
         void operator()(const worker_reward_operation& op) {
             insert_pair(op.worker_request_author, op.worker);
         }

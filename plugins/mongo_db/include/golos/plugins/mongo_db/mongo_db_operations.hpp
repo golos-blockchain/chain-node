@@ -70,7 +70,6 @@ namespace mongo_db {
         result_type operator()(const worker_request_operation& op);
         result_type operator()(const worker_request_delete_operation& op);
         result_type operator()(const worker_request_vote_operation& op);
-        result_type operator()(const worker_fund_operation& op);
 //
         result_type operator()(const fill_convert_request_operation& op);
         result_type operator()(const author_reward_operation& op);

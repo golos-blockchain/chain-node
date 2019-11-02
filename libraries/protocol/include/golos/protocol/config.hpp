@@ -515,4 +515,6 @@
 #define STEEMIT_PROXY_TO_SELF_ACCOUNT           ""
 /// Represents the canonical root post parent account
 #define STEEMIT_ROOT_POST_PARENT                (account_name_type())
+/// Represents the current worker pool (stored on its balances)
+#define STEEMIT_WORKER_POOL_ACCOUNT             "workers"
 ///@}

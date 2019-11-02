@@ -2696,10 +2696,7 @@ namespace golos { namespace chain {
 
                 if (worker_reward != 0) {
                     new_steem += worker_reward;
-
-                    modify(props, [&](dynamic_global_property_object& p) {
-                        p.total_worker_fund_steem += asset(worker_reward, STEEM_SYMBOL);
-                    });
+                    adjust_balance(get_account(STEEMIT_WORKER_POOL_ACCOUNT), asset(worker_reward, STEEM_SYMBOL));
                 }
 
                 modify(props, [&](dynamic_global_property_object &p) {
@@ -3145,7 +3142,6 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<worker_request_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_request_delete_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_request_vote_evaluator>();
-            _my->_evaluator_registry.register_evaluator<worker_fund_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -4945,6 +4941,21 @@ namespace golos { namespace chain {
 #endif
                     break;
                 case STEEMIT_HARDFORK_0_22:
+                    create<account_object>([&](auto& a) {
+                        a.name = STEEMIT_WORKER_POOL_ACCOUNT;
+                    });
+
+                    if (store_metadata_for_account(STEEMIT_WORKER_POOL_ACCOUNT)) {
+                        create<account_metadata_object>([&](auto& m) {
+                            m.account = STEEMIT_WORKER_POOL_ACCOUNT;
+                        });
+                    }
+
+                    create<account_authority_object>([&](auto& auth) {
+                        auth.account = STEEMIT_WORKER_POOL_ACCOUNT;
+                        auth.owner.weight_threshold = 1;
+                        auth.active.weight_threshold = 1;
+                    });
                     break;
                 default:
                     break;
@@ -5078,8 +5089,7 @@ namespace golos { namespace chain {
                 }
 
                 total_supply += gpo.total_vesting_fund_steem +
-                                gpo.total_reward_fund_steem +
-                                gpo.total_worker_fund_steem;
+                                gpo.total_reward_fund_steem;
 
                 FC_ASSERT(gpo.current_supply ==
                           total_supply, "", ("gpo.current_supply", gpo.current_supply)("total_supply", total_supply));
