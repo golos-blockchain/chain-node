@@ -55,4 +55,123 @@ BOOST_AUTO_TEST_CASE(worker_fund_transfering) {
     BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, init_fund + block_add*2 + op.amount);
 }
 
+BOOST_AUTO_TEST_CASE(worker_request_payment) {
+    BOOST_TEST_MESSAGE("Testing: worker_request_payment");
+
+    ACTORS((alice)(bob)(carol)(dave)(frad))
+    generate_block();
+
+    signed_transaction tx;
+
+    BOOST_TEST_MESSAGE("-- Funding GBG");
+    fund("alice", ASSET_GBG(1010));
+
+    transfer_operation transfer_op;
+    transfer_op.from = "alice";
+    transfer_op.to = "workers";
+    transfer_op.amount = ASSET_GBG(1000);
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, transfer_op));
+    generate_block();
+
+    BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance, ASSET_GBG(1000));
+    BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, ASSET_GBG(10));
+
+    BOOST_TEST_MESSAGE("-- Creating bob request in same block");
+
+    comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
+
+    fund("bob", ASSET_GBG(100));
+    worker_request_operation wtop;
+    wtop.author = "bob";
+    wtop.permlink = "bob-request";
+    wtop.worker = "bob";
+    wtop.required_amount_min = ASSET_GBG(6);
+    wtop.required_amount_max = ASSET_GBG(60);
+    wtop.duration = fc::days(5).to_seconds();
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+
+    BOOST_TEST_MESSAGE("-- Creating carol request in same block");
+
+    comment_create("carol", carol_private_key, "carol-request", "", "carol-request");
+
+    fund("carol", ASSET_GBG(100));
+    wtop.author = "carol";
+    wtop.permlink = "carol-request";
+    wtop.worker = "carol";
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
+    generate_block();
+
+    BOOST_TEST_MESSAGE("-- Creating dave request in same block");
+
+    comment_create("dave", dave_private_key, "dave-request", "", "dave-request");
+
+    fund("dave", ASSET_GBG(100));
+    wtop.author = "dave";
+    wtop.permlink = "dave-request";
+    wtop.worker = "dave";
+    wtop.duration = fc::days(30).to_seconds();
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
+
+    BOOST_TEST_MESSAGE("-- Creating frad request in same block");
+
+    comment_create("frad", frad_private_key, "frad-request", "", "frad-request");
+
+    fund("frad", ASSET_GBG(100));
+    wtop.author = "frad";
+    wtop.permlink = "frad-request";
+    wtop.worker = "frad";
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, frad_private_key, wtop));
+    generate_block();
+
+    BOOST_TEST_MESSAGE("-- Upvoting requests by enough stake-holders");
+
+    worker_request_vote_operation op;
+    auto upvote_request = [&](account_name_type author, std::string permlink, int16_t vote_percent) {
+        op.voter = "bob";
+        op.author = author;
+        op.permlink = permlink;
+        op.vote_percent = vote_percent;
+        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+        op.voter = "carol";
+        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+        op.voter = "alice";
+        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    };
+    upvote_request("bob", "bob-request", STEEMIT_100_PERCENT);
+    upvote_request("carol", "carol-request", STEEMIT_100_PERCENT);
+    upvote_request("dave", "dave-request", STEEMIT_100_PERCENT);
+    upvote_request("frad", "frad-request", STEEMIT_100_PERCENT);
+
+    generate_blocks(db->get_comment("bob", string("bob-request")).created
+        + wtop.duration, true);
+
+    BOOST_TEST_MESSAGE("-- Checking bob and carol requests approved");
+
+    {
+        const auto& wro = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
+        BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
+        BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
+    }
+    {
+        const auto& wro = db->get_worker_request(db->get_comment("carol", string("carol-request")).id);
+        BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
+        BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
+    }
+
+    BOOST_TEST_MESSAGE("-- Waiting for payment");
+
+    generate_blocks(GOLOS_WORKER_CASHOUT_INTERVAL);
+
+    BOOST_CHECK_EQUAL(db->get_balance("bob", SBD_SYMBOL), ASSET_GBG(60));
+    {
+        const auto& wro = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
+        BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
+    }
+    BOOST_CHECK_EQUAL(db->get_balance("carol", SBD_SYMBOL), ASSET_GBG(60));
+    {
+        const auto& wro = db->get_worker_request(db->get_comment("carol", string("carol-request")).id);
+        BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
