@@ -19,6 +19,11 @@ namespace golos { namespace chain {
         if (wro) {
             CHECK_REQUEST_STATE(wro->state < REQUEST_STATE::payment, "Cannot modify approved request");
 
+            const auto& wrvo_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
+            GOLOS_CHECK_LOGIC(wrvo_idx.find(wro->post) == wrvo_idx.end(), 
+                logic_exception::cannot_edit_voted,
+                "Cannot edit request with votes");
+
             _db.modify(*wro, [&](auto& o) {
                 o.worker = op.worker;
                 o.required_amount_min = op.required_amount_min;
@@ -69,9 +74,7 @@ namespace golos { namespace chain {
     void worker_request_vote_evaluator::do_apply(const worker_request_vote_operation& op) {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_request_vote_operation");
 
-        GOLOS_CHECK_LOGIC(_db.get_account(op.voter).effective_vesting_shares().amount > 0, 
-           logic_exception::cannot_vote_no_stake,
-           "Cannot vote without vesting shares");
+        GOLOS_CHECK_BALANCE(_db.get_account(op.voter), EFFECTIVE_VESTING, asset(1, VESTS_SYMBOL));
 
         const auto& wro_post = _db.get_comment(op.author, op.permlink);
         const auto& wro = _db.get_worker_request(wro_post.id);

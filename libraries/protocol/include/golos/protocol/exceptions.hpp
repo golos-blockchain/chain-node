@@ -340,7 +340,7 @@ namespace golos {
             post_is_not_root,
             post_should_be_in_cashout_window,
             you_are_not_request_author_or_worker,
-            cannot_vote_no_stake,
+            cannot_edit_voted,
             worker_not_set,
             incorrect_request_state,
 
@@ -620,7 +620,7 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
         (post_is_not_root)
         (post_should_be_in_cashout_window)
         (you_are_not_request_author_or_worker)
-        (cannot_vote_no_stake)
+        (cannot_edit_voted)
         (worker_not_set)
         (incorrect_request_state)
 

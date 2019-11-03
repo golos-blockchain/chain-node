@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
 BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     BOOST_TEST_MESSAGE("Testing: worker_request_apply_modify");
 
-    ACTORS((alice)(bob))
+    ACTORS((alice)(bob)(carol))
     generate_block();
 
     signed_transaction tx;
@@ -269,25 +269,36 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
         BOOST_CHECK_EQUAL(wro.worker, "bob");
     }
 
-    // BOOST_TEST_MESSAGE("-- Check cannot modify voted request");
+    BOOST_TEST_MESSAGE("-- Check can modify request if another voted");
 
-    // auto private_key = create_voters(0, STEEMIT_MAJOR_VOTED_WITNESSES);
+    comment_create("carol", carol_private_key, "carol-request", "", "carol-request");
 
-    // generate_blocks(STEEMIT_MAX_WITNESSES); // Enough for voters to reach TOP-19 and not leave it
+    fund("carol", ASSET_GBG(100));
+    op.author = "carol";
+    op.permlink = "carol-request";
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+    generate_block();
+    worker_request_vote_operation wrvop;
+    wrvop.voter = "alice";
+    wrvop.author = "carol";
+    wrvop.permlink = "carol-request";
+    wrvop.vote_percent = -1;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wrvop));
+    generate_block();
+    op.author = "bob";
+    op.permlink = "bob-request";
+    op.required_amount_min = ASSET_GBG(10);
+    op.required_amount_max = ASSET_GBG(10);
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    generate_block();
 
-    // for (auto i = 0; i < STEEMIT_MAJOR_VOTED_WITNESSES; ++i) {
-    //     const auto name = "voter" + std::to_string(i);
-    //     worker_request_vote_operation wtaop;
-    //     wtaop.voter = name;
-    //     wtaop.author = "bob";
-    //     wtaop.permlink = "bob-request";
-    //     wtaop.state = worker_request_vote_state::vote;
-    //     BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, private_key, wtaop));
-    //     generate_block();
-    // }
+    BOOST_TEST_MESSAGE("-- Check cannot modify voted request");
 
-    // op.required_amount_min = ASSET_GBG(50);
-    // GOLOS_CHECK_ERROR_LOGIC(incorrect_request_state, bob_private_key, op);
+    op.author = "carol";
+    op.permlink = "carol-request";
+    op.required_amount_min = ASSET_GBG(10000000);
+    op.required_amount_max = ASSET_GBG(10000000);
+    GOLOS_CHECK_ERROR_LOGIC(cannot_edit_voted, carol_private_key, op);
 
     validate_database();
 }
