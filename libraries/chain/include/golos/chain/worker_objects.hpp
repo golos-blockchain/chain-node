@@ -24,6 +24,7 @@ namespace golos { namespace chain {
         worker_request_state state;
         asset required_amount_min;
         asset required_amount_max;
+        bool vest_reward;
         uint32_t duration;
         time_point_sec created;
         time_point_sec vote_end_time = time_point_sec::maximum();
