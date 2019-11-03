@@ -4921,6 +4921,23 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_20:
                     break;
                 case STEEMIT_HARDFORK_0_21:
+                    break;
+                case STEEMIT_HARDFORK_0_22:
+                    create<account_object>([&](auto& a) {
+                        a.name = STEEMIT_WORKER_POOL_ACCOUNT;
+                    });
+
+                    if (store_metadata_for_account(STEEMIT_WORKER_POOL_ACCOUNT)) {
+                        create<account_metadata_object>([&](auto& m) {
+                            m.account = STEEMIT_WORKER_POOL_ACCOUNT;
+                        });
+                    }
+
+                    create<account_authority_object>([&](auto& auth) {
+                        auth.account = STEEMIT_WORKER_POOL_ACCOUNT;
+                        auth.owner.weight_threshold = 1;
+                        auth.active.weight_threshold = 1;
+                    });
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -4944,23 +4961,6 @@ namespace golos { namespace chain {
                         }                
                     }
 #endif
-                    break;
-                case STEEMIT_HARDFORK_0_22:
-                    create<account_object>([&](auto& a) {
-                        a.name = STEEMIT_WORKER_POOL_ACCOUNT;
-                    });
-
-                    if (store_metadata_for_account(STEEMIT_WORKER_POOL_ACCOUNT)) {
-                        create<account_metadata_object>([&](auto& m) {
-                            m.account = STEEMIT_WORKER_POOL_ACCOUNT;
-                        });
-                    }
-
-                    create<account_authority_object>([&](auto& auth) {
-                        auth.account = STEEMIT_WORKER_POOL_ACCOUNT;
-                        auth.owner.weight_threshold = 1;
-                        auth.active.weight_threshold = 1;
-                    });
                     break;
                 default:
                     break;

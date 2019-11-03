@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(worker_request_validate) {
 
     BOOST_TEST_MESSAGE("-- Duration");
 
-    CHECK_PARAM_INVALID(op, duration, fc::days(5).to_seconds() - 1);
+    CHECK_PARAM_INVALID(op, duration, GOLOS_WORKER_REQUEST_MIN_DURATION - 1);
     CHECK_PARAM_INVALID(op, duration, fc::days(30).to_seconds() + 1);
     CHECK_PARAM_VALID(op, duration, fc::days(30).to_seconds());
 }
