@@ -19,6 +19,11 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_VALUE_GE(required_amount_max.amount, required_amount_min.amount);
         });
 
+        if (vest_reward)
+            GOLOS_CHECK_PARAM(vest_reward, {
+                GOLOS_CHECK_ASSET_GOLOS(required_amount_min);
+            });
+
         GOLOS_CHECK_PARAM(duration, {
             GOLOS_CHECK_VALUE_LEGE(duration, GOLOS_WORKER_REQUEST_MIN_DURATION, GOLOS_WORKER_REQUEST_MAX_DURATION);
         });

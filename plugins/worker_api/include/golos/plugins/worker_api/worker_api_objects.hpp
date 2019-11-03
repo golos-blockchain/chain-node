@@ -100,6 +100,7 @@ namespace golos { namespace plugins { namespace worker_api {
             created = wro.created;
             required_amount_min = wro.required_amount_min;
             required_amount_max = wro.required_amount_max;
+            vest_reward = wro.vest_reward;
             duration = wro.duration;
             vote_end_time = wro.vote_end_time;
             remaining_payment = wro.remaining_payment;
@@ -113,6 +114,7 @@ namespace golos { namespace plugins { namespace worker_api {
         share_type net_rshares;
         asset required_amount_min;
         asset required_amount_max;
+        bool vest_reward;
         uint32_t duration;
         time_point_sec vote_end_time = time_point_sec::maximum();
         asset creation_fee;
@@ -129,7 +131,8 @@ CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::worker_api::worker_request_metadata_index)
 
 FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
-    (post)(worker)(state)(created)(modified)(net_rshares)(required_amount_min)(required_amount_max)
+    (post)(worker)(state)(created)(modified)(net_rshares)
+    (required_amount_min)(required_amount_max)(vest_reward)
     (duration)(vote_end_time)
     (creation_fee)
     (upvotes)(downvotes)(payment_beginning_time)(remaining_payment)

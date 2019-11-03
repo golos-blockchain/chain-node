@@ -174,4 +174,94 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
+    BOOST_TEST_MESSAGE("Testing: worker_request_payment_vests");
+
+    ACTORS((alice)(bob)(carol)(dave)(frad))
+    auto emission_per_block = db->get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL);
+    generate_block();
+    emission_per_block = db->get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL) - emission_per_block;
+
+    signed_transaction tx;
+
+    BOOST_TEST_MESSAGE("-- Creating bob request in same block");
+
+    comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
+
+    fund("bob", ASSET_GBG(100));
+    worker_request_operation wtop;
+    wtop.author = "bob";
+    wtop.permlink = "bob-request";
+    wtop.worker = "bob";
+    wtop.required_amount_min = ASSET_GOLOS(6);
+    wtop.required_amount_max = ASSET_GOLOS(6);
+    wtop.duration = fc::days(5).to_seconds();
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+
+    BOOST_TEST_MESSAGE("-- Creating carol request in same block");
+
+    comment_create("carol", carol_private_key, "carol-request", "", "carol-request");
+
+    fund("carol", ASSET_GBG(100));
+    wtop.author = "carol";
+    wtop.permlink = "carol-request";
+    wtop.worker = "carol";
+    wtop.vest_reward = true;
+    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
+    generate_block();
+
+    BOOST_TEST_MESSAGE("-- Upvoting requests by enough stake-holders");
+
+    worker_request_vote_operation op;
+    auto upvote_request = [&](account_name_type author, std::string permlink, int16_t vote_percent) {
+        op.voter = "bob";
+        op.author = author;
+        op.permlink = permlink;
+        op.vote_percent = vote_percent;
+        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+        op.voter = "carol";
+        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+        op.voter = "alice";
+        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    };
+    upvote_request("bob", "bob-request", STEEMIT_100_PERCENT);
+    upvote_request("carol", "carol-request", STEEMIT_100_PERCENT);
+
+    generate_blocks(db->get_comment("bob", string("bob-request")).created
+        + wtop.duration, true);
+
+    BOOST_TEST_MESSAGE("-- Checking bob and carol requests approved");
+
+    {
+        const auto& wro = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
+        BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
+        BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
+    }
+    {
+        const auto& wro = db->get_worker_request(db->get_comment("carol", string("carol-request")).id);
+        BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
+        BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
+    }
+
+    BOOST_TEST_MESSAGE("-- Waiting for payment");
+
+    auto funds_need = ASSET_GOLOS(12) - db->get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL);
+    auto blocks_need = db->head_block_num() + funds_need.amount.value / emission_per_block.amount.value;
+    auto actual_blocks_need = blocks_need / GOLOS_WORKER_CASHOUT_INTERVAL * GOLOS_WORKER_CASHOUT_INTERVAL;
+    if (actual_blocks_need != blocks_need)
+        actual_blocks_need += GOLOS_WORKER_CASHOUT_INTERVAL;
+    generate_blocks(actual_blocks_need);
+
+    BOOST_CHECK_EQUAL(db->get_balance("bob", STEEM_SYMBOL), ASSET_GOLOS(6));
+    {
+        const auto& wro = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
+        BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
+    }
+    BOOST_CHECK_EQUAL(db->get_balance("carol", STEEM_SYMBOL).amount, 0);
+    {
+        const auto& wro = db->get_worker_request(db->get_comment("carol", string("carol-request")).id);
+        BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

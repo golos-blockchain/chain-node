@@ -23,6 +23,7 @@ namespace golos { namespace chain {
                 o.worker = op.worker;
                 o.required_amount_min = op.required_amount_min;
                 o.required_amount_max = op.required_amount_max;
+                o.vest_reward = op.vest_reward;
                 o.duration = op.duration;
                 o.vote_end_time = o.created + fc::seconds(op.duration);
             });
@@ -47,6 +48,7 @@ namespace golos { namespace chain {
             o.created = _db.head_block_time();
             o.required_amount_min = op.required_amount_min;
             o.required_amount_max = op.required_amount_max;
+            o.vest_reward = op.vest_reward;
             o.duration = op.duration;
             o.vote_end_time = o.created + fc::seconds(op.duration);
         });

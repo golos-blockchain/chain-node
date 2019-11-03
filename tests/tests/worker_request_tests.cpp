@@ -98,6 +98,14 @@ BOOST_AUTO_TEST_CASE(worker_request_validate) {
 
     CHECK_PARAM_VALID(op, required_amount_min, op.required_amount_max);
 
+    BOOST_TEST_MESSAGE("-- vest_reward");
+
+    CHECK_PARAM_VALID(op, vest_reward, true);
+
+    op.required_amount_min = ASSET_GBG(6000);
+    op.required_amount_max = ASSET_GBG(6000);
+    CHECK_PARAM_INVALID(op, vest_reward, true);
+
     BOOST_TEST_MESSAGE("-- Duration");
 
     CHECK_PARAM_INVALID(op, duration, fc::days(5).to_seconds() - 1);
@@ -168,6 +176,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
     BOOST_CHECK_EQUAL(wro.state, worker_request_state::created);
     BOOST_CHECK_EQUAL(wro.required_amount_min, op.required_amount_min);
     BOOST_CHECK_EQUAL(wro.required_amount_max, op.required_amount_max);
+    BOOST_CHECK_EQUAL(wro.vest_reward, false);
     BOOST_CHECK_EQUAL(wro.duration, op.duration);
     BOOST_CHECK_EQUAL(wro.vote_end_time, created + op.duration);
 
@@ -181,6 +190,19 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
         op.author = "greta";
         op.permlink = "greta-request";
         GOLOS_CHECK_ERROR_LOGIC(post_should_be_in_cashout_window, greta_private_key, op);
+    }
+
+    {
+        BOOST_TEST_MESSAGE("-- Check can create worker request with VESTS reward");
+
+        comment_create("dave", dave_private_key, "dave-request", "", "dave-request");
+
+        fund("dave", ASSET_GBG(100));
+        op.author = "dave";
+        op.permlink = "dave-request";
+        op.vest_reward = true;
+        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
+        BOOST_CHECK(db->get_worker_request(db->get_comment("dave", string("dave-request")).id).vest_reward);
     }
 
     validate_database();

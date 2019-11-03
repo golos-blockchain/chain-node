@@ -160,10 +160,15 @@ namespace golos { namespace chain {
             }
 
             const auto& post = get_comment(wro.post);
+            const auto& worker = get_account(wro.worker);
 
             adjust_balance(pool, -payment);
-            adjust_balance(get_account(wro.worker), payment);
-            push_virtual_operation(worker_reward_operation(wro.worker, post.author, to_string(post.permlink), payment));
+            asset vest_reward{0, VESTS_SYMBOL};
+            if (wro.vest_reward)
+                vest_reward = create_vesting(worker, payment);
+            else
+                adjust_balance(worker, payment);
+            push_virtual_operation(worker_reward_operation(wro.worker, post.author, to_string(post.permlink), payment, vest_reward));
             modify(wro, [&](auto& o) {
                 o.remaining_payment -= payment;
                 if (o.remaining_payment.amount <= 0) {

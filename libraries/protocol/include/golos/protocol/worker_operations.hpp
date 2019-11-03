@@ -22,6 +22,7 @@ namespace golos { namespace protocol {
         account_name_type worker;
         asset required_amount_min;
         asset required_amount_max;
+        bool vest_reward = false;
         uint32_t duration;
 
         extensions_type extensions;
@@ -69,7 +70,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::protocol::worker_request_operation),
-    (author)(permlink)(worker)(required_amount_min)(required_amount_max)(duration)(extensions))
+    (author)(permlink)(worker)(required_amount_min)(required_amount_max)(vest_reward)(duration)(extensions))
 
 FC_REFLECT(
     (golos::protocol::worker_request_delete_operation),
