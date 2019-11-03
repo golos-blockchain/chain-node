@@ -49,6 +49,7 @@ namespace golos { namespace chain {
     struct by_post;
 
     struct by_vote_end_time;
+    struct by_state;
 
     using worker_request_index = multi_index_container<
         worker_request_object,
@@ -64,6 +65,12 @@ namespace golos { namespace chain {
                 composite_key<
                     worker_request_object,
                     member<worker_request_object, time_point_sec, &worker_request_object::vote_end_time>,
+                    member<worker_request_object, worker_request_object_id_type, &worker_request_object::id>>>,
+            ordered_unique<
+                tag<by_state>,
+                composite_key<
+                    worker_request_object,
+                    member<worker_request_object, worker_request_state, &worker_request_object::state>,
                     member<worker_request_object, worker_request_object_id_type, &worker_request_object::id>>>>,
         allocator<worker_request_object>>;
 

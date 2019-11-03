@@ -118,6 +118,7 @@ namespace golos { namespace chain {
             }
 
             modify(wro, [&](auto& o) {
+                o.vote_end_time = time_point_sec::maximum();
                 o.remaining_payment = asset(calculated_payment, wro.required_amount_min.symbol);
                 o.state = worker_request_state::payment;
             });
@@ -129,11 +130,12 @@ namespace golos { namespace chain {
     }
 
     void database::process_worker_cashout() {
+        if (head_block_num() % GOLOS_WORKER_CASHOUT_INTERVAL != 0) return;
+
         if (!has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
             return;
         }
 
-        const auto& now = head_block_time();
         const auto& props = get_dynamic_global_properties();
         auto requests = props.worker_requests;
 
@@ -146,8 +148,9 @@ namespace golos { namespace chain {
             return;
         }
 
-        const auto& wro_idx = get_index<worker_request_index, by_vote_end_time>();
-        for (auto itr = wro_idx.begin(); itr != wro_idx.end() && itr->vote_end_time <= now;) {
+        const auto& wro_idx = get_index<worker_request_index, by_state>();
+        auto itr = wro_idx.lower_bound(worker_request_state::payment);
+        for (; itr != wro_idx.end() && itr->state == worker_request_state::payment;) {
             const auto& wro = *itr;
             ++itr;
 
@@ -164,7 +167,7 @@ namespace golos { namespace chain {
             modify(wro, [&](auto& o) {
                 o.remaining_payment -= payment;
                 if (o.remaining_payment.amount <= 0) {
-                    o.vote_end_time = time_point_sec::maximum();
+                    o.remaining_payment.amount = 0;
                     o.state = worker_request_state::payment_complete;
                 }
             });
