@@ -102,3 +102,7 @@ CHAINBASE_SET_INDEX_TYPE(
 CHAINBASE_SET_INDEX_TYPE(
     golos::chain::worker_request_vote_object,
     golos::chain::worker_request_vote_index);
+
+FC_REFLECT((golos::chain::worker_request_vote_object),
+    (voter)(vote_percent)
+)

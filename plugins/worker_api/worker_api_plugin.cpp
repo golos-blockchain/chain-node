@@ -262,4 +262,29 @@ DEFINE_API(worker_api_plugin, get_worker_requests) {
     return result;
 }
 
+DEFINE_API(worker_api_plugin, get_worker_request_votes) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (account_name_type, author)
+        (string, permlink)
+        (account_name_type, start_voter)
+        (uint32_t,          limit)
+    )
+
+    GOLOS_CHECK_LIMIT_PARAM(limit, 50);
+
+    std::vector<worker_request_vote_object> result;
+    result.reserve(limit);
+    my->_db.with_weak_read_lock([&]() {
+        const auto& post = my->_db.get_comment(author, permlink);
+        my->_db.get_worker_request(post.id); // check it exists
+        const auto& idx = my->_db.get_index<worker_request_vote_index, by_request_voter>();
+        auto itr = idx.lower_bound(std::make_tuple(post.id, start_voter));
+        while (itr != idx.end() && result.size() < limit && itr->post == post.id) {
+            result.push_back(*itr);
+            ++itr;
+        }
+    });
+    return result;
+}
+
 } } } // golos::plugins::worker_api

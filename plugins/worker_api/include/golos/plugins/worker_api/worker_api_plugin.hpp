@@ -13,6 +13,7 @@ namespace golos { namespace plugins { namespace worker_api {
     using namespace golos::chain;
 
     DEFINE_API_ARGS(get_worker_requests, json_rpc::msg_pack, std::vector<worker_request_api_object>)
+    DEFINE_API_ARGS(get_worker_request_votes, json_rpc::msg_pack, std::vector<worker_request_vote_object>)
 
     class worker_api_plugin final : public appbase::plugin<worker_api_plugin> {
     public:
@@ -36,6 +37,7 @@ namespace golos { namespace plugins { namespace worker_api {
 
         DECLARE_API(
             (get_worker_requests)
+            (get_worker_request_votes)
         )
     private:
         class worker_api_plugin_impl;
