@@ -116,11 +116,40 @@ namespace golos { namespace plugins { namespace chain {
     }
 
     void plugin::impl::start_transit_to_cyberway(uint32_t n, uint32_t skip) {
-        //bad CyberFund code
+        if (!serialize_state || db._fixed_irreversible_block_num != UINT32_MAX) {
+            return;
+        }
+
+        if (skip & db.skip_block_log) {
+            transit_to_cyberway();
+        } else {
+            db._fixed_irreversible_block_num = db.last_non_undoable_block_num();
+
+            if (serialize_delay_sec) {
+                wlog("Starts the timer for ${sec} seconds to generate genesis for CyberWay.", ("sec", serialize_delay_sec));
+                transit_timer.expires_from_now(boost::posix_time::seconds(serialize_delay_sec));
+                transit_timer.async_wait([this, n](const boost::system::error_code&) {
+                    this->db.with_strong_write_lock([&]() {
+                        this->transit_to_cyberway();
+                    });
+                });
+            } else {
+                transit_to_cyberway();
+            }
+        }
     }
 
     void plugin::impl::transit_to_cyberway() {
-        //bad CyberFund code
+        // revert to last LIB
+        auto lib = db.last_non_undoable_block_num();
+        while (db.head_block_num() != lib) {
+            db.pop_block();
+        }
+        db.flush();
+
+        state_serializer().serialize(db, serialize_state_path);
+        db.close();
+        std::exit(0);
     }
 
     void plugin::impl::check_time_in_block(const protocol::signed_block& block) {
