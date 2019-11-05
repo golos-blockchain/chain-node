@@ -4933,22 +4933,33 @@ namespace golos { namespace chain {
                     break;
                 case STEEMIT_HARDFORK_0_21:
                     break;
-                case STEEMIT_HARDFORK_0_22:
+                case STEEMIT_HARDFORK_0_22: {
+#ifdef STEEMIT_BUILD_TESTNET
                     create<account_object>([&](auto& a) {
                         a.name = STEEMIT_WORKER_POOL_ACCOUNT;
                     });
-
                     if (store_metadata_for_account(STEEMIT_WORKER_POOL_ACCOUNT)) {
                         create<account_metadata_object>([&](auto& m) {
                             m.account = STEEMIT_WORKER_POOL_ACCOUNT;
                         });
                     }
-
                     create<account_authority_object>([&](auto& auth) {
                         auth.account = STEEMIT_WORKER_POOL_ACCOUNT;
                         auth.owner.weight_threshold = 1;
                         auth.active.weight_threshold = 1;
                     });
+#else
+                    const auto& workers_pool = get_account(STEEMIT_WORKER_POOL_ACCOUNT);
+                    authority empty_owner;
+                    empty_owner.weight_threshold = 1;
+                    update_owner_authority(workers_pool, empty_owner);
+                    modify(get_authority(workers_pool.name), [&](auto& o) {
+                        o.active = authority();
+                        o.active.weight_threshold = 1;
+                        o.posting = authority();
+                        o.posting.weight_threshold = 1;
+                    });
+#endif
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -4972,7 +4983,7 @@ namespace golos { namespace chain {
                         }                
                     }
 #endif
-                    break;
+                    } break;
                 default:
                     break;
             }
