@@ -4935,10 +4935,14 @@ namespace golos { namespace chain {
                     break;
                 case STEEMIT_HARDFORK_0_22:
                     const auto& workers_pool = get_account(STEEMIT_WORKER_POOL_ACCOUNT);
-                    update_owner_authority(workers_pool, authority(1));
+                    authority empty_owner;
+                    empty_owner.weight_threshold = 1;
+                    update_owner_authority(workers_pool, empty_owner);
                     modify(get_authority(workers_pool.name), [&](auto& o) {
-                        o.active = authority(1);
-                        o.posting = authority(1);
+                        o.active = authority();
+                        o.active.weight_threshold = 1;
+                        o.posting = authority();
+                        o.posting.weight_threshold = 1;
                     });
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
