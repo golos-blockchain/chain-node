@@ -4934,6 +4934,12 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_21:
                     break;
                 case STEEMIT_HARDFORK_0_22:
+                    const auto& workers_pool = get_account(STEEMIT_WORKER_POOL_ACCOUNT);
+                    update_owner_authority(workers_pool, authority(1));
+                    modify(get_authority(workers_pool.name), [&](auto& o) {
+                        o.active = authority(1);
+                        o.posting = authority(1);
+                    });
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
