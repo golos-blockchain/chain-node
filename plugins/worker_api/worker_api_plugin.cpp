@@ -177,37 +177,35 @@ void worker_api_plugin::worker_api_plugin_impl::select_postbased_results_ordered
             itr = idx.end();
         }
 
-        const comment_object* post = nullptr;
-
         if (query.has_start()) {
-            post = _db.find_comment(*query.start_author, *query.start_permlink);
-            if (!post) {
+            const auto* start_post = _db.find_comment(*query.start_author, *query.start_permlink);
+            if (!start_post) {
                 return;
             }
 
             const auto& post_idx = _db.get_index<DatabaseIndex, by_post>();
-            const auto post_itr = post_idx.find(post->id);
+            const auto post_itr = post_idx.find(start_post->id);
             if (post_itr == post_idx.end()) {
                 return;
             }
             itr = idx.iterator_to(*post_itr);
+            if (ReverseSort) {
+                ++itr;
+            }
         }
 
         result.reserve(query.limit);
 
-        auto handle = [&](auto obj) {
+        auto handle = [&](auto& obj) {
             comment_api_object ca;
             if (fill_posts) {
-                if (!post) {
-                    post = &_db.get_comment(itr->post);
-                }
+                const auto* post = &_db.get_comment(obj.post);
 
                 if (!query.is_good_author(post->author)) {
                     return;
                 }
 
                 ca = helper->create_comment_api_object(*post);
-                post = nullptr;
             }
             result.emplace_back(obj, ca);
             if (!fill_worker_fields(this, obj, result.back(), query)) {
