@@ -33,7 +33,8 @@ namespace golos { namespace plugins { namespace worker_api {
         asset creation_fee;
         uint16_t upvotes = 0;
         uint16_t downvotes = 0;
-        time_point_sec payment_beginning_time;
+        share_type stake_rshares;
+        share_type stake_total;
     };
 
     struct by_net_rshares;
@@ -88,7 +89,8 @@ namespace golos { namespace plugins { namespace worker_api {
               creation_fee(o.creation_fee),
               upvotes(o.upvotes),
               downvotes(o.downvotes),
-              payment_beginning_time(o.payment_beginning_time) {
+              stake_rshares(o.stake_rshares),
+              stake_total(o.stake_total) {
         }
 
         worker_request_api_object() {
@@ -120,7 +122,8 @@ namespace golos { namespace plugins { namespace worker_api {
         asset creation_fee;
         uint16_t upvotes = 0;
         uint16_t downvotes = 0;
-        time_point_sec payment_beginning_time;
+        share_type stake_rshares;
+        share_type stake_total;
         asset remaining_payment;
     };
 
@@ -135,5 +138,5 @@ FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
     (required_amount_min)(required_amount_max)(vest_reward)
     (duration)(vote_end_time)
     (creation_fee)
-    (upvotes)(downvotes)(payment_beginning_time)(remaining_payment)
+    (upvotes)(downvotes)(stake_rshares)(stake_total)(remaining_payment)
 )

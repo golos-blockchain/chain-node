@@ -80,9 +80,8 @@ struct post_operation_visitor {
         const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wrmo_itr = wrmo_idx.find(wro_post.id);
 
-        auto votes = _db.count_worker_request_votes(wro_post.id);
-
         _db.modify(*wrmo_itr, [&](auto& o) {
+            auto votes = _db.count_worker_request_votes(wro_post.id, o.stake_rshares, o.stake_total);
             o.upvotes = votes[true];
             o.downvotes = votes[false];
         });
@@ -275,8 +274,19 @@ DEFINE_API(worker_api_plugin, get_worker_request_votes) {
     my->_db.with_weak_read_lock([&]() {
         const auto& post = my->_db.get_comment(author, permlink);
         my->_db.get_worker_request(post.id); // check it exists
-        const auto& idx = my->_db.get_index<worker_request_vote_index, by_request_voter>();
-        auto itr = idx.lower_bound(std::make_tuple(post.id, start_voter));
+
+        const auto& idx = my->_db.get_index<worker_request_vote_index, by_request_rshares>();
+        auto itr = idx.lower_bound(std::make_tuple(post.id));
+
+        if (start_voter != account_name_type()) {
+            const auto& voter_idx = my->_db.get_index<worker_request_vote_index, by_request_voter>();
+            auto voter_itr = voter_idx.lower_bound(std::make_tuple(post.id, start_voter));
+            if (voter_itr == voter_idx.end()) {
+                return;
+            }
+            itr = idx.iterator_to(*voter_itr);
+        }
+
         while (itr != idx.end() && result.size() < limit && itr->post == post.id) {
             result.push_back(*itr);
             ++itr;

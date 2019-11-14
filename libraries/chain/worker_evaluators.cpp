@@ -7,6 +7,8 @@
 
 namespace golos { namespace chain {
 
+    using int128_t = boost::multiprecision::int128_t;
+
     void worker_request_evaluator::do_apply(const worker_request_operation& op) {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_request_operation");
 
@@ -92,17 +94,24 @@ namespace golos { namespace chain {
             return;
         }
 
+        auto stake = _db.get_account(op.voter).effective_vesting_shares().amount;
+        share_type rshares = static_cast<int64_t>(int128_t(stake.value) * op.vote_percent / STEEMIT_100_PERCENT);
+
         if (wrvo_itr != wrvo_idx.end()) {
             CHECK_NO_VOTE_REPEAT(wrvo_itr->vote_percent, op.vote_percent);
 
             _db.modify(*wrvo_itr, [&](auto& o) {
                 o.vote_percent = op.vote_percent;
+                o.stake = stake;
+                o.rshares = rshares;
             });
         } else {
             _db.create<worker_request_vote_object>([&](auto& o) {
                 o.voter = op.voter;
                 o.post = wro.post;
                 o.vote_percent = op.vote_percent;
+                o.stake = stake;
+                o.rshares = rshares;
             });
         }
     }

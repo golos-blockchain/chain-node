@@ -45,10 +45,11 @@ namespace golos { namespace chain {
         account_name_type voter;
         comment_id_type post;
         int16_t vote_percent;
+        share_type rshares; //non-consensus
+        share_type stake; // non-consensus
     };
 
     struct by_post;
-
     struct by_vote_end_time;
     struct by_state;
 
@@ -76,6 +77,7 @@ namespace golos { namespace chain {
         allocator<worker_request_object>>;
 
     struct by_request_voter;
+    struct by_request_rshares;
 
     using worker_request_vote_index = multi_index_container<
         worker_request_vote_object,
@@ -91,7 +93,16 @@ namespace golos { namespace chain {
                     member<worker_request_vote_object, account_name_type, &worker_request_vote_object::voter>>,
                 composite_key_compare<
                     std::less<comment_id_type>,
-                    std::less<account_name_type>>>>,
+                    std::less<account_name_type>>>,
+            ordered_non_unique<
+                tag<by_request_rshares>,
+                composite_key<
+                    worker_request_vote_object,
+                    member<worker_request_vote_object, comment_id_type, &worker_request_vote_object::post>,
+                    member<worker_request_vote_object, share_type, &worker_request_vote_object::rshares>>,
+                composite_key_compare<
+                    std::less<comment_id_type>,
+                    std::greater<share_type>>>>,
         allocator<worker_request_vote_object>>;
 
 } } // golos::chain
@@ -105,5 +116,5 @@ CHAINBASE_SET_INDEX_TYPE(
     golos::chain::worker_request_vote_index);
 
 FC_REFLECT((golos::chain::worker_request_vote_object),
-    (voter)(vote_percent)
+    (voter)(vote_percent)(rshares)(stake)
 )
