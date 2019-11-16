@@ -459,8 +459,6 @@ namespace golos { namespace chain {
 
             void process_comment_cashout();
 
-            flat_map<bool, uint32_t> count_worker_request_votes(const comment_id_type& post);
-
             void clear_worker_request_votes(const worker_request_object& wro);
 
             void close_worker_request(const worker_request_object& wro, worker_request_state closed_state);

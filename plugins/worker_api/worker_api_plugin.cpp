@@ -80,11 +80,18 @@ struct post_operation_visitor {
         const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wrmo_itr = wrmo_idx.find(wro_post.id);
 
-        auto votes = _db.count_worker_request_votes(wro_post.id);
+        uint32_t upvotes = 0;
+        uint32_t downvotes = 0;
+
+        const auto& vote_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
+        auto vote_itr = vote_idx.lower_bound(post);
+        for (; vote_itr != vote_idx.end() && vote_itr->post == post; ++vote_itr) {
+            (vote_itr->vote_percent > 0) ? upvotes++ : downvotes++;
+        }
 
         _db.modify(*wrmo_itr, [&](auto& o) {
-            o.upvotes = votes[true];
-            o.downvotes = votes[false];
+            o.upvotes = upvotes;
+            o.downvotes = downvotes;
         });
     }
 };
