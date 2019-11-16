@@ -90,6 +90,11 @@ namespace golos { namespace chain {
         if (op.vote_percent == 0) {
             CHECK_NO_VOTE_REPEAT(wrvo_itr, wrvo_idx.end());
 
+            _db.modify(wro, [&](auto& o) {
+                o.stake_rshares -= wrvo_itr->rshares;
+                o.stake_total -= wrvo_itr->stake;
+            });
+
             _db.remove(*wrvo_itr);
             return;
         }
@@ -97,23 +102,34 @@ namespace golos { namespace chain {
         auto stake = _db.get_account(op.voter).vesting_shares.amount;
         share_type rshares = static_cast<int64_t>(int128_t(stake.value) * op.vote_percent / STEEMIT_100_PERCENT);
 
+        share_type old_rshares = 0;
+        share_type old_stake = 0;
+
         if (wrvo_itr != wrvo_idx.end()) {
             CHECK_NO_VOTE_REPEAT(wrvo_itr->vote_percent, op.vote_percent);
 
+            old_rshares = wrvo_itr->rshares;
+            old_stake = wrvo_itr->stake;
+
             _db.modify(*wrvo_itr, [&](auto& o) {
                 o.vote_percent = op.vote_percent;
-                o.stake = stake;
                 o.rshares = rshares;
+                o.stake = stake;
             });
         } else {
             _db.create<worker_request_vote_object>([&](auto& o) {
                 o.voter = op.voter;
                 o.post = wro.post;
                 o.vote_percent = op.vote_percent;
-                o.stake = stake;
                 o.rshares = rshares;
+                o.stake = stake;
             });
         }
+
+        _db.modify(wro, [&](auto& o) {
+            o.stake_rshares += (-old_rshares + rshares);
+            o.stake_total += (-old_stake + stake);
+        });
     }
 
 } } // golos::chain

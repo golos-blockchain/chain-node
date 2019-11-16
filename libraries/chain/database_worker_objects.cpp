@@ -18,20 +18,13 @@ namespace golos { namespace chain {
         return find<worker_request_object, by_post>(post);
     }
 
-    flat_map<bool, uint32_t> database::count_worker_request_votes(const comment_id_type& post, boost::optional<share_type&> stake_rshares, boost::optional<share_type&> stake_total) {
+    flat_map<bool, uint32_t> database::count_worker_request_votes(const comment_id_type& post) {
         flat_map<bool, uint32_t> result;
-
-        if (stake_rshares) *stake_rshares = 0;
-        if (stake_total) *stake_total = 0;
 
         const auto& vote_idx = get_index<worker_request_vote_index, by_request_voter>();
         auto vote_itr = vote_idx.lower_bound(post);
         for (; vote_itr != vote_idx.end() && vote_itr->post == post; ++vote_itr) {
             result[vote_itr->vote_percent > 0]++;
-            if (stake_rshares)
-                *stake_rshares = *stake_rshares + vote_itr->rshares;
-            if (stake_total)
-                *stake_total = *stake_total + vote_itr->stake;
         }
 
         return result;
@@ -95,27 +88,16 @@ namespace golos { namespace chain {
         for (auto itr = wro_idx.begin(); itr != wro_idx.end() && itr->vote_end_time <= now;) {
             const auto& wro = *itr;
             ++itr;
-
-            share_type rshares_voted = 0;
-            share_type rshares_rating = 0;
-
             const auto& post = get_comment(wro.post);
-            const auto& wrvo_idx = get_index<worker_request_vote_index, by_request_voter>();
-            auto wrvo_itr = wrvo_idx.lower_bound(post.id);
-            for (; wrvo_itr != wrvo_idx.end() && wrvo_itr->post == post.id; ++wrvo_itr) {
-                const auto voter_stake = get_account(wrvo_itr->voter).vesting_shares.amount.value;
-                rshares_voted += voter_stake;
-                rshares_rating += static_cast<int64_t>(int128_t(voter_stake) * wrvo_itr->vote_percent / STEEMIT_100_PERCENT);
-            }
 
             share_type min_voted = (uint128_t(props.total_vesting_shares.amount.value) * wso.worker_request_approve_min_percent / STEEMIT_100_PERCENT).to_uint64();
-            if (rshares_voted < min_voted) {
+            if (wro.stake_total < min_voted) {
                 close_worker_request(wro, worker_request_state::closed_by_expiration);
                 send_worker_state(post, worker_request_state::closed_by_expiration);
                 continue;
             }
 
-            share_type calculated_payment = static_cast<int64_t>(int128_t(wro.required_amount_max.amount.value) * rshares_rating.value / rshares_voted.value);
+            share_type calculated_payment = static_cast<int64_t>(int128_t(wro.required_amount_max.amount.value) * wro.stake_rshares.value / wro.stake_total.value);
             if (calculated_payment < wro.required_amount_min.amount) {
                 modify(wro, [&](auto& o) {
                     o.remaining_payment = asset(calculated_payment, wro.required_amount_min.symbol);

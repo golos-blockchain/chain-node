@@ -28,6 +28,8 @@ namespace golos { namespace chain {
         uint32_t duration;
         time_point_sec created;
         time_point_sec vote_end_time = time_point_sec::maximum();
+        share_type stake_rshares;
+        share_type stake_total;
         asset remaining_payment;
     };
 
@@ -45,8 +47,8 @@ namespace golos { namespace chain {
         account_name_type voter;
         comment_id_type post;
         int16_t vote_percent;
-        share_type rshares; //non-consensus
-        share_type stake; // non-consensus
+        share_type rshares; // can be removed from consensus and re-calculated in place, but used also by API
+        share_type stake;
     };
 
     struct by_post;

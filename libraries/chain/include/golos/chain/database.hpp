@@ -459,7 +459,7 @@ namespace golos { namespace chain {
 
             void process_comment_cashout();
 
-            flat_map<bool, uint32_t> count_worker_request_votes(const comment_id_type& post, boost::optional<share_type&> stake_rshares = {}, boost::optional<share_type&> stake_total = {});
+            flat_map<bool, uint32_t> count_worker_request_votes(const comment_id_type& post);
 
             void clear_worker_request_votes(const worker_request_object& wro);
 
