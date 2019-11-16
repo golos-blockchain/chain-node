@@ -103,7 +103,7 @@ namespace golos { namespace chain {
             const auto& wrvo_idx = get_index<worker_request_vote_index, by_request_voter>();
             auto wrvo_itr = wrvo_idx.lower_bound(post.id);
             for (; wrvo_itr != wrvo_idx.end() && wrvo_itr->post == post.id; ++wrvo_itr) {
-                const auto voter_stake = get_account(wrvo_itr->voter).effective_vesting_shares().amount.value;
+                const auto voter_stake = get_account(wrvo_itr->voter).vesting_shares.amount.value;
                 rshares_voted += voter_stake;
                 rshares_rating += static_cast<int64_t>(int128_t(voter_stake) * wrvo_itr->vote_percent / STEEMIT_100_PERCENT);
             }
