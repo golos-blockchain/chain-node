@@ -94,7 +94,7 @@ namespace golos { namespace chain {
             return;
         }
 
-        auto stake = _db.get_account(op.voter).effective_vesting_shares().amount;
+        auto stake = _db.get_account(op.voter).vesting_shares.amount;
         share_type rshares = static_cast<int64_t>(int128_t(stake.value) * op.vote_percent / STEEMIT_100_PERCENT);
 
         if (wrvo_itr != wrvo_idx.end()) {
