@@ -80,8 +80,9 @@ struct post_operation_visitor {
         const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wrmo_itr = wrmo_idx.find(wro_post.id);
 
+        auto votes = _db.count_worker_request_votes(wro_post.id);
+
         _db.modify(*wrmo_itr, [&](auto& o) {
-            auto votes = _db.count_worker_request_votes(wro_post.id, o.stake_rshares, o.stake_total);
             o.upvotes = votes[true];
             o.downvotes = votes[false];
         });

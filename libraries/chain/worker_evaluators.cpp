@@ -100,18 +100,28 @@ namespace golos { namespace chain {
         if (wrvo_itr != wrvo_idx.end()) {
             CHECK_NO_VOTE_REPEAT(wrvo_itr->vote_percent, op.vote_percent);
 
+            _db.modify(wro, [&](auto& o) {
+                o.stake_rshares += (-wrvo_itr->rshares + rshares);
+                o.stake_total += (-wrvo_itr->stake + stake);
+            });
+
             _db.modify(*wrvo_itr, [&](auto& o) {
                 o.vote_percent = op.vote_percent;
-                o.stake = stake;
                 o.rshares = rshares;
+                o.stake = stake;
             });
         } else {
+            _db.modify(wro, [&](auto& o) {
+                o.stake_rshares += rshares;
+                o.stake_total += stake;
+            });
+
             _db.create<worker_request_vote_object>([&](auto& o) {
                 o.voter = op.voter;
                 o.post = wro.post;
                 o.vote_percent = op.vote_percent;
-                o.stake = stake;
                 o.rshares = rshares;
+                o.stake = stake;
             });
         }
     }
