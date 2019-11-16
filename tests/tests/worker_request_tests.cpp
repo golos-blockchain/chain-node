@@ -358,9 +358,16 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     GOLOS_CHECK_ERROR_LOGIC(already_voted_in_similar_way, alice_private_key, op);
 
     auto check_votes = [&](int upvote_count, int downvote_count) {
-        auto votes = db->count_worker_request_votes(db->get_comment("bob", string("bob-request")).id);
-        BOOST_CHECK_EQUAL(votes[true], upvote_count);
-        BOOST_CHECK_EQUAL(votes[false], downvote_count);
+        const auto& post = db->get_comment("bob", string("bob-request"));
+        uint32_t upvotes = 0;
+        uint32_t downvotes = 0;
+        const auto& vote_idx = db->get_index<worker_request_vote_index, by_request_voter>();
+        auto vote_itr = vote_idx.lower_bound(db->get_comment("bob", string("bob-request")).id);
+        for (; vote_itr != vote_idx.end() && vote_itr->post == post.id; ++vote_itr) {
+            (vote_itr->vote_percent > 0) ? upvotes++ : downvotes++;
+        }
+        BOOST_CHECK_EQUAL(upvotes, upvote_count);
+        BOOST_CHECK_EQUAL(downvotes, downvote_count);
     };
 
     BOOST_TEST_MESSAGE("-- Upvoting request (after abstain)");

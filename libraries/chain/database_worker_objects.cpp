@@ -18,18 +18,6 @@ namespace golos { namespace chain {
         return find<worker_request_object, by_post>(post);
     }
 
-    flat_map<bool, uint32_t> database::count_worker_request_votes(const comment_id_type& post) {
-        flat_map<bool, uint32_t> result;
-
-        const auto& vote_idx = get_index<worker_request_vote_index, by_request_voter>();
-        auto vote_itr = vote_idx.lower_bound(post);
-        for (; vote_itr != vote_idx.end() && vote_itr->post == post; ++vote_itr) {
-            result[vote_itr->vote_percent > 0]++;
-        }
-
-        return result;
-    }
-
     void database::set_clear_old_worker_votes(bool clear_old_worker_votes) {
         _clear_old_worker_votes = clear_old_worker_votes;
     }

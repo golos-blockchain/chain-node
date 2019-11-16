@@ -78,8 +78,8 @@ namespace golos { namespace chain {
 
         GOLOS_CHECK_BALANCE(_db.get_account(op.voter), EFFECTIVE_VESTING, asset(1, VESTS_SYMBOL));
 
-        const auto& wro_post = _db.get_comment(op.author, op.permlink);
-        const auto& wro = _db.get_worker_request(wro_post.id);
+        const auto& post = _db.get_comment(op.author, op.permlink);
+        const auto& wro = _db.get_worker_request(post.id);
 
         CHECK_REQUEST_STATE(wro.state < REQUEST_STATE::payment_complete, "Request closed, cannot vote");
         CHECK_REQUEST_STATE(wro.state < REQUEST_STATE::payment, "Request already paying");

@@ -75,16 +75,23 @@ struct post_operation_visitor {
     }
 
     result_type operator()(const worker_request_vote_operation& op) const {
-        const auto& wro_post = _db.get_comment(op.author, op.permlink);
+        const auto& post = _db.get_comment(op.author, op.permlink);
 
         const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
-        auto wrmo_itr = wrmo_idx.find(wro_post.id);
+        auto wrmo_itr = wrmo_idx.find(post.id);
 
-        auto votes = _db.count_worker_request_votes(wro_post.id);
+        uint32_t upvotes = 0;
+        uint32_t downvotes = 0;
+
+        const auto& vote_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
+        auto vote_itr = vote_idx.lower_bound(post.id);
+        for (; vote_itr != vote_idx.end() && vote_itr->post == post.id; ++vote_itr) {
+            (vote_itr->vote_percent > 0) ? upvotes++ : downvotes++;
+        }
 
         _db.modify(*wrmo_itr, [&](auto& o) {
-            o.upvotes = votes[true];
-            o.downvotes = votes[false];
+            o.upvotes = upvotes;
+            o.downvotes = downvotes;
         });
     }
 };
