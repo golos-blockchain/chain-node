@@ -86,6 +86,7 @@ struct account_api_object {
     std::vector<share_type> proxied_vsf_votes;
 
     uint16_t witnesses_voted_for;
+    bool witness_vote_staked;
 
     share_type average_bandwidth;
     share_type average_market_bandwidth;
@@ -119,7 +120,7 @@ FC_REFLECT((golos::api::account_api_object),
     (savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)
     (savings_withdraw_requests)(vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
     (vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
-    (benefaction_rewards)(curation_rewards)(delegation_rewards)(posting_rewards)(proxied_vsf_votes)(witnesses_voted_for)
+    (benefaction_rewards)(curation_rewards)(delegation_rewards)(posting_rewards)(proxied_vsf_votes)(witnesses_voted_for)(witness_vote_staked)
     (average_bandwidth)(average_market_bandwidth)(lifetime_bandwidth)(lifetime_market_bandwidth)
     (last_bandwidth_update)(last_market_bandwidth_update)
     (last_comment)(last_post)(post_bandwidth)

@@ -1331,6 +1331,7 @@ namespace golos { namespace chain {
             GOLOS_CHECK_LOGIC(voter.proxy.size() == 0,
                     logic_exception::cannot_vote_when_route_are_set,
                     "A proxy is currently set, please clear the proxy before voting for a witness.");
+            const auto witness_vote_weight = voter.witness_vote_weight();
 
             if (o.approve)
                 GOLOS_CHECK_LOGIC(voter.can_vote,
@@ -1353,15 +1354,29 @@ namespace golos { namespace chain {
                             "Account has voted for too many witnesses.",
                             ("max_votes", STEEMIT_MAX_ACCOUNT_WITNESS_VOTES)); // TODO: Remove after hardfork 2
 
-                    _db.create<witness_vote_object>([&](witness_vote_object &v) {
-                        v.witness = witness.id;
-                        v.account = voter.id;
-                    });
-
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
-                        _db.adjust_witness_vote(witness, voter.witness_vote_weight());
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
+                        auto old_delta = witness_vote_weight;
+                        if (voter.witness_vote_staked) {
+                            old_delta /= std::max(voter.witnesses_voted_for, uint16_t(1));
+                        }
+                        auto new_delta = witness_vote_weight / (voter.witnesses_voted_for+1);
+                        _db.adjust_witness_votes(voter, -old_delta + new_delta);
+                        _db.create<witness_vote_object>([&](witness_vote_object &v) {
+                            v.witness = witness.id;
+                            v.account = voter.id;
+                        });
+                        _db.adjust_witness_vote(witness, new_delta);
                     } else {
-                        _db.adjust_proxied_witness_votes(voter, voter.witness_vote_weight());
+                        _db.create<witness_vote_object>([&](witness_vote_object &v) {
+                            v.witness = witness.id;
+                            v.account = voter.id;
+                        });
+
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
+                            _db.adjust_witness_vote(witness, witness_vote_weight);
+                        } else {
+                            _db.adjust_proxied_witness_votes(voter, witness_vote_weight);
+                        }
                     }
 
                 } else {
@@ -1371,12 +1386,13 @@ namespace golos { namespace chain {
                         v.account = voter.id;
                     });
                     _db.modify(witness, [&](witness_object &w) {
-                        w.votes += voter.witness_vote_weight();
+                        w.votes += witness_vote_weight;
                     });
 
                 }
                 _db.modify(voter, [&](account_object &a) {
                     a.witnesses_voted_for++;
+                    a.witness_vote_staked = _db.has_hardfork(STEEMIT_HARDFORK_0_22__68);
                 });
 
             } else {
@@ -1385,18 +1401,27 @@ namespace golos { namespace chain {
                         "Vote currently exists, user must indicate a desire to reject witness.");
 
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_2)) {
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
-                        _db.adjust_witness_vote(witness, -voter.witness_vote_weight());
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
+                        auto old_delta = witness_vote_weight;
+                        if (voter.witness_vote_staked) {
+                            old_delta /= voter.witnesses_voted_for;
+                        }
+                        auto new_delta = witness_vote_weight / std::max(uint16_t(voter.witnesses_voted_for-1), uint16_t(1));
+                        _db.adjust_witness_votes(voter, -old_delta + new_delta);
+                        _db.adjust_witness_vote(witness, -new_delta);
+                    } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
+                        _db.adjust_witness_vote(witness, -witness_vote_weight);
                     } else {
-                        _db.adjust_proxied_witness_votes(voter, -voter.witness_vote_weight());
+                        _db.adjust_proxied_witness_votes(voter, -witness_vote_weight);
                     }
                 } else {
                     _db.modify(witness, [&](witness_object &w) {
-                        w.votes -= voter.witness_vote_weight();
+                        w.votes -= witness_vote_weight;
                     });
                 }
                 _db.modify(voter, [&](account_object &a) {
                     a.witnesses_voted_for--;
+                    a.witness_vote_staked = _db.has_hardfork(STEEMIT_HARDFORK_0_22__68);
                 });
                 _db.remove(*itr);
             }

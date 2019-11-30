@@ -104,6 +104,7 @@ public:
     fc::array<share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH> proxied_vsf_votes;// = std::vector<share_type>( STEEMIT_MAX_PROXY_RECURSION_DEPTH, 0 ); ///< the total VFS votes proxied to this account
 
     uint16_t witnesses_voted_for = 0;
+    bool witness_vote_staked = false;
 
     time_point_sec last_comment;
     time_point_sec last_post;
@@ -522,7 +523,7 @@ FC_REFLECT((golos::chain::account_object),
     (curation_rewards)
     (delegation_rewards)
     (posting_rewards)
-    (proxied_vsf_votes)(witnesses_voted_for)
+    (proxied_vsf_votes)(witnesses_voted_for)(witness_vote_staked)
     (last_comment)(last_post)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
 )

@@ -2034,6 +2034,9 @@ namespace golos { namespace chain {
                      i >= 0; --i) {
                     total_delta += delta[i];
                 }
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__68) && a.witness_vote_staked) {
+                    total_delta /= std::max(a.witnesses_voted_for, uint16_t(1));
+                }
                 adjust_witness_votes(a, total_delta);
             }
         }
@@ -2053,6 +2056,9 @@ namespace golos { namespace chain {
 
                 adjust_proxied_witness_votes(proxy, delta, depth + 1);
             } else {
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__68) && a.witness_vote_staked) {
+                    delta /= std::max(a.witnesses_voted_for, uint16_t(1));
+                }
                 adjust_witness_votes(a, delta);
             }
         }
@@ -2074,7 +2080,8 @@ namespace golos { namespace chain {
                 w.virtual_position += delta_pos;
 
                 w.virtual_last_update = wso.current_virtual_time;
-                w.votes += delta;
+                // With staked voting it can be negative because of inaccuracy of integer division. It should be >= 0.
+                w.votes = std::max(w.votes + delta, share_type(0));
                 FC_ASSERT(w.votes <=
                           get_dynamic_global_properties().total_vesting_shares.amount, "", ("w.votes", w.votes)("props", get_dynamic_global_properties().total_vesting_shares));
 

@@ -34,7 +34,8 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         delegated_vesting_shares(a.delegated_vesting_shares), received_vesting_shares(a.received_vesting_shares),
         vesting_withdraw_rate(a.vesting_withdraw_rate), next_vesting_withdrawal(a.next_vesting_withdrawal),
         withdrawn(a.withdrawn), to_withdraw(a.to_withdraw), withdraw_routes(a.withdraw_routes),
-        witnesses_voted_for(a.witnesses_voted_for), last_comment(a.last_comment), last_post(a.last_post) {
+        witnesses_voted_for(a.witnesses_voted_for), witness_vote_staked(a.witness_vote_staked),
+        last_comment(a.last_comment), last_post(a.last_post) {
     size_t n = a.proxied_vsf_votes.size();
     proxied_vsf_votes.reserve(n);
     for (size_t i = 0; i < n; i++) {

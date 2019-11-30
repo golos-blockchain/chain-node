@@ -2168,6 +2168,153 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
         FC_LOG_AND_RETHROW()
     }
 
+    BOOST_AUTO_TEST_CASE(account_witness_vote_staked) {
+        try {
+            BOOST_TEST_MESSAGE("Testing: account_witness_vote_staked");
+
+            signed_transaction tx;
+            ACTORS((alice))
+            fund("alice", 5000);
+            vest("alice", 5000);
+            auto witness_key = generate_private_key("test");
+            for (auto i = 0; i < 3; ++i) {
+                const auto name = "witness" + std::to_string(i);
+                GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key(), witness_key.get_public_key()));
+                fund(name, 1000);
+                GOLOS_CHECK_NO_THROW(witness_create(name, witness_key, "foo.bar", witness_key.get_public_key(), 1000));
+            }
+            generate_block();
+
+            BOOST_TEST_MESSAGE("--- Test vote");
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes.value, 0);
+            account_witness_vote_operation op;
+            op.account = "alice";
+            op.witness = "witness0";
+            op.approve = true;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes, db->get_account("alice").vesting_shares.amount);
+
+            op.witness = "witness1";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes, db->get_account("alice").vesting_shares.amount / 2);
+            BOOST_CHECK_EQUAL(db->get_witness("witness1").votes, db->get_account("alice").vesting_shares.amount / 2);
+
+            op.witness = "witness2";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes, db->get_account("alice").vesting_shares.amount / 3);
+            BOOST_CHECK_EQUAL(db->get_witness("witness1").votes, db->get_account("alice").vesting_shares.amount / 3);
+            BOOST_CHECK_EQUAL(db->get_witness("witness2").votes, db->get_account("alice").vesting_shares.amount / 3);
+
+            BOOST_TEST_MESSAGE("--- Test revoke vote");
+
+            op.witness = "witness0";
+            op.approve = false;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes, 0);
+            BOOST_CHECK_EQUAL(db->get_witness("witness1").votes, db->get_account("alice").vesting_shares.amount / 2);
+            BOOST_CHECK_EQUAL(db->get_witness("witness2").votes, db->get_account("alice").vesting_shares.amount / 2);
+
+            op.witness = "witness1";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            op.witness = "witness2";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes, 0);
+            BOOST_CHECK_EQUAL(db->get_witness("witness1").votes, 0);
+            BOOST_CHECK_EQUAL(db->get_witness("witness2").votes, 0);
+
+            BOOST_TEST_MESSAGE("--- Test incrementing votes with delta of vests");
+
+            op.approve = true;
+            op.witness = "witness1";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            op.witness = "witness2";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            fund("alice", 50000);
+            vest("alice", 50000);
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes, 0);
+            APPROX_CHECK_EQUAL(db->get_witness("witness1").votes.value, db->get_account("alice").vesting_shares.amount.value / 2, 1);
+            APPROX_CHECK_EQUAL(db->get_witness("witness2").votes.value, db->get_account("alice").vesting_shares.amount.value / 2, 1);
+
+            validate_database();
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
+    BOOST_AUTO_TEST_CASE(account_witness_vote_staked_with_proxy) {
+        try {
+            BOOST_TEST_MESSAGE("Testing: account_witness_vote_staked_with_proxy");
+
+            signed_transaction tx;
+            ACTORS((alice)(bob))
+            fund("alice", 5000);
+            vest("alice", 5000);
+            fund("bob", 5000);
+            vest("bob", 5000);
+            auto witness_key = generate_private_key("test");
+            for (auto i = 0; i < 3; ++i) {
+                const auto name = "witness" + std::to_string(i);
+                GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key(), witness_key.get_public_key()));
+                fund(name, 1000);
+                GOLOS_CHECK_NO_THROW(witness_create(name, witness_key, "foo.bar", witness_key.get_public_key(), 1000));
+            }
+            generate_block();
+
+            BOOST_TEST_MESSAGE("--- Test vote");
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes.value, 0);
+            account_witness_vote_operation op;
+            op.account = "alice";
+            op.witness = "witness0";
+            op.approve = true;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            op.witness = "witness1";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            op.witness = "witness2";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_witness("witness0").votes, db->get_account("alice").vesting_shares.amount / 3);
+
+            BOOST_TEST_MESSAGE("--- Setting proxy");
+
+            account_witness_proxy_operation proxy_op;
+            proxy_op.account = "bob";
+            proxy_op.proxy = "alice";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, proxy_op));
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_account("alice").witness_vote_weight() / 3,
+                (db->get_account("alice").vesting_shares.amount + db->get_account("bob").vesting_shares.amount) / 3);
+            APPROX_CHECK_EQUAL(db->get_witness("witness0").votes.value, db->get_account("alice").witness_vote_weight().value / 3, 1);
+            APPROX_CHECK_EQUAL(db->get_witness("witness1").votes.value, db->get_account("alice").witness_vote_weight().value / 3, 1);
+            APPROX_CHECK_EQUAL(db->get_witness("witness2").votes.value, db->get_account("alice").witness_vote_weight().value / 3, 1);
+
+            validate_database();
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
     BOOST_AUTO_TEST_CASE(account_witness_proxy_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: account_witness_proxy_validate");
