@@ -50,8 +50,14 @@ namespace golos { namespace chain {
                 : _db(db), _wprops(wprops) {
         }
 
-        result_type operator()(const chain_properties_19& p) const {
-            _wprops = p;
+        result_type operator()(const chain_properties_19& props) const {
+            GOLOS_CHECK_PARAM(props, {
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_22__65)) {
+                    auto max_delegated_vesting_interest_rate = props.max_delegated_vesting_interest_rate;
+                    GOLOS_CHECK_VALUE_LE(max_delegated_vesting_interest_rate, STEEMIT_MAX_DELEGATED_VESTING_INTEREST_RATE_PRE_HF22);
+                }
+            });
+            _wprops = props;
         }
 
         result_type operator()(const chain_properties_22& props) const {
