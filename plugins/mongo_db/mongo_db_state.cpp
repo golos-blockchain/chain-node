@@ -272,6 +272,7 @@ namespace mongo_db {
 
             format_value(body, "witnesses_voted_for", account.witnesses_voted_for);
 
+            format_value(body, "last_comment", account.last_comment);
             format_value(body, "last_post", account.last_post);
 
             format_value(body, "referrer_account", account.referrer_account);
