@@ -792,10 +792,13 @@ namespace golos { namespace chain {
                             com.auction_window_size = mprops.auction_window_size;
                         }
 
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__324)) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__66)) {
+                            com.curation_rewards_percent = std::max(mprops.min_curation_percent,
+                                std::min(uint16_t(STEEMIT_DEF_CURATION_PERCENT), mprops.max_curation_percent));
+                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__324)) {
                             com.curation_rewards_percent = mprops.min_curation_percent;
                         } else {
-                            com.curation_rewards_percent = STEEMIT_MIN_CURATION_PERCENT;
+                            com.curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
                         }
 
                         com.author = o.author;
