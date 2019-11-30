@@ -807,4 +807,9 @@ namespace mongo_db {
         return body;
     }
 
+    auto operation_writer::operator()(const convert_sbd_debt_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
 }}}

@@ -473,6 +473,8 @@ namespace golos { namespace chain {
 
             void process_conversions();
 
+            void process_sbd_debt_conversions();
+
             void process_savings_withdraws();
 
             void account_recovery_processing();

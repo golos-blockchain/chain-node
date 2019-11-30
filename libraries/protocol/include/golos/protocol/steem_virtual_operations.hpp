@@ -280,6 +280,20 @@ namespace golos { namespace protocol {
             string permlink;
             worker_request_state state;
         };
+
+        struct convert_sbd_debt_operation : public virtual_operation {
+            convert_sbd_debt_operation() {
+            }
+            convert_sbd_debt_operation(const account_name_type& o, const asset& sbd, const asset& steem, const asset& ssbd, const asset& ssteem)
+                    : owner(o), sbd_amount(sbd), steem_amount(steem), savings_sbd_amount(ssbd), savings_steem_amount(ssteem) {
+            }
+
+            account_name_type owner;
+            asset sbd_amount;
+            asset steem_amount;
+            asset savings_sbd_amount;
+            asset savings_steem_amount;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -302,3 +316,4 @@ FC_REFLECT((golos::protocol::delegation_reward_operation), (delegator)(delegatee
 FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
 FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_author)(worker_request_permlink)(reward)(reward_in_vests_if_vest))
 FC_REFLECT((golos::protocol::worker_state_operation), (author)(permlink)(state))
+FC_REFLECT((golos::protocol::convert_sbd_debt_operation), (owner)(sbd_amount)(steem_amount)(savings_sbd_amount)(savings_steem_amount))

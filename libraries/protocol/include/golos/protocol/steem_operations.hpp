@@ -691,6 +691,11 @@ namespace golos { namespace protocol {
              */
             uint16_t worker_request_approve_min_percent = GOLOS_WORKER_REQUEST_APPROVE_MIN_PERCENT;
 
+            /**
+             * Percent of each account balance (incl. saving) to be converted on each SBD debt conversion
+             */
+            uint16_t sbd_debt_convert_rate = STEEMIT_SBD_DEBT_CONVERT_RATE;
+
             void validate() const;
 
             chain_properties_22& operator=(const chain_properties_17& src) {
@@ -1426,7 +1431,8 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
-    (worker_request_creation_fee)(worker_request_approve_min_percent))
+    (worker_request_creation_fee)(worker_request_approve_min_percent)
+    (sbd_debt_convert_rate))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

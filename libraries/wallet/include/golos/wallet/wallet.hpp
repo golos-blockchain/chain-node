@@ -77,6 +77,8 @@ namespace golos { namespace wallet {
             fc::optional<uint16_t> vesting_reward_percent;
             fc::optional<uint16_t> worker_request_approve_min_percent;
             fc::optional<asset> worker_request_creation_fee;
+
+            fc::optional<uint16_t> sbd_debt_convert_rate;
         };
 
         struct optional_private_box_query {
@@ -1612,7 +1614,8 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (max_delegated_vesting_interest_rate)(custom_ops_bandwidth_multiplier)(min_curation_percent)(max_curation_percent)
     (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund)
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
-    (worker_request_creation_fee)(worker_request_approve_min_percent))
+    (worker_request_creation_fee)(worker_request_approve_min_percent)
+    (sbd_debt_convert_rate))
 
 FC_REFLECT(
     (golos::wallet::message_body),

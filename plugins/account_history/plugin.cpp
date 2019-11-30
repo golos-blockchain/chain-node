@@ -533,6 +533,10 @@ if (options.count(name)) { \
         void operator()(const worker_state_operation& op) {
             insert_receiver(op.author);
         }
+
+        void operator()(const convert_sbd_debt_operation& op) {
+            insert_dual(op.owner);
+        }
     };
 
     void operation_get_impacted_accounts(const operation& op, impacted_accounts& result) {
