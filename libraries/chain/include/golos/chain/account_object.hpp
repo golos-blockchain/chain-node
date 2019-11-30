@@ -105,6 +105,7 @@ public:
 
     uint16_t witnesses_voted_for = 0;
 
+    time_point_sec last_comment;
     time_point_sec last_post;
 
     account_name_type referrer_account;
@@ -522,7 +523,7 @@ FC_REFLECT((golos::chain::account_object),
     (delegation_rewards)
     (posting_rewards)
     (proxied_vsf_votes)(witnesses_voted_for)
-    (last_post)
+    (last_comment)(last_post)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_object, golos::chain::account_index)

@@ -4,6 +4,7 @@
 #define STEEMIT_HARDFORK_0_22__8 (STEEMIT_HARDFORK_0_22) // Workers
 #define STEEMIT_HARDFORK_0_22__65 (STEEMIT_HARDFORK_0_22) // Remove limit on max delegate interest witness prop
 #define STEEMIT_HARDFORK_0_22__66 (STEEMIT_HARDFORK_0_22) // Remove limit on min curation percent witness prop
+#define STEEMIT_HARDFORK_0_22__67 (STEEMIT_HARDFORK_0_22) // Fix post bandwidth
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_22_TIME  1563958800 // 24 jul 2019 12:00:00 MSK

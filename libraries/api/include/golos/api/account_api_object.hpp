@@ -93,8 +93,8 @@ struct account_api_object {
     share_type lifetime_market_bandwidth;
     time_point_sec last_bandwidth_update;
     time_point_sec last_market_bandwidth_update;
+    time_point_sec last_comment;
     time_point_sec last_post;
-    time_point_sec last_root_post;
     share_type post_bandwidth = STEEMIT_100_PERCENT;
 
     set<string> witness_votes;
@@ -122,7 +122,7 @@ FC_REFLECT((golos::api::account_api_object),
     (benefaction_rewards)(curation_rewards)(delegation_rewards)(posting_rewards)(proxied_vsf_votes)(witnesses_voted_for)
     (average_bandwidth)(average_market_bandwidth)(lifetime_bandwidth)(lifetime_market_bandwidth)
     (last_bandwidth_update)(last_market_bandwidth_update)
-    (last_post)(last_root_post)(post_bandwidth)
+    (last_comment)(last_post)(post_bandwidth)
     (witness_votes)(reputation)(posts_capacity)(comments_capacity)(voting_capacity)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee))
 
