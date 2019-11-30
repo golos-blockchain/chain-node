@@ -6,6 +6,7 @@
 #define STEEMIT_HARDFORK_0_22__66 (STEEMIT_HARDFORK_0_22) // Remove limit on min curation percent witness prop
 #define STEEMIT_HARDFORK_0_22__67 (STEEMIT_HARDFORK_0_22) // Fix post bandwidth
 #define STEEMIT_HARDFORK_0_22__68 (STEEMIT_HARDFORK_0_22) // Voting with stake for witnesses
+#define STEEMIT_HARDFORK_0_22__64 (STEEMIT_HARDFORK_0_22) // Force conversion SBD debt to GOLOS on account balances
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_22_TIME  1563958800 // 24 jul 2019 12:00:00 MSK

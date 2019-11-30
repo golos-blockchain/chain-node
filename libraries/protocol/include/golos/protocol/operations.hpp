@@ -95,7 +95,8 @@ namespace golos { namespace protocol {
                 auction_window_reward_operation,
                 total_comment_reward_operation,
                 worker_reward_operation,
-                worker_state_operation
+                worker_state_operation,
+                convert_sbd_debt_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

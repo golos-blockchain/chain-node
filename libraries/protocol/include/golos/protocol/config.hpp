@@ -243,6 +243,10 @@
 #define STEEMIT_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
 #define STEEMIT_CONVERSION_DELAY                (fc::hours(STEEMIT_FEED_HISTORY_WINDOW)) //3.5 day conversion
 
+#define STEEMIT_SBD_DEBT_CONVERT_THRESHOLD      (20*STEEMIT_1_PERCENT) ///< Start force conversion SBD debt to GOLOS on account balances at 20% Market Cap
+#define STEEMIT_SBD_DEBT_CONVERT_RATE           (STEEMIT_1_PERCENT) ///< Convert 1% of account balance (incl. savings) on each SBD debt conversion
+#define STEEMIT_SBD_DEBT_CONVERT_INTERVAL       (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
+
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
 
@@ -493,6 +497,10 @@
 #define STEEMIT_MIN_FEEDS                       (STEEMIT_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
 #define STEEMIT_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
 #define STEEMIT_CONVERSION_DELAY                (fc::hours(STEEMIT_FEED_HISTORY_WINDOW)) //3.5 day conversion
+
+#define STEEMIT_SBD_DEBT_CONVERT_THRESHOLD      (20*STEEMIT_1_PERCENT) ///< Start force conversion SBD debt to GOLOS on account balances at 20% Market Cap
+#define STEEMIT_SBD_DEBT_CONVERT_RATE           (STEEMIT_1_PERCENT) ///< Convert 1% of account balance (incl. savings) on each SBD debt conversion
+#define STEEMIT_SBD_DEBT_CONVERT_INTERVAL       (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000

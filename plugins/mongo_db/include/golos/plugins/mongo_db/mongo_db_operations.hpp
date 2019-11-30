@@ -94,6 +94,7 @@ namespace mongo_db {
         result_type operator()(const total_comment_reward_operation& op);
         result_type operator()(const worker_state_operation& op);
         result_type operator()(const worker_reward_operation& op);
+        result_type operator()(const convert_sbd_debt_operation& op);
     };
 
 }}} // golos::plugins::mongo_db

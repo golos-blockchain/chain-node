@@ -1956,4 +1956,8 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const convert_sbd_debt_operation& op) -> result_type {
+
+    }
+
 }}}

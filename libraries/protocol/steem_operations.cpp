@@ -323,6 +323,7 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_VALUE_LE(worker_reward_percent + witness_reward_percent + vesting_reward_percent, STEEMIT_100_PERCENT);
             GOLOS_CHECK_ASSET_GE0(worker_request_creation_fee, GBG);
             GOLOS_CHECK_VALUE_LE(worker_request_approve_min_percent, STEEMIT_100_PERCENT);
+            GOLOS_CHECK_VALUE_LE(sbd_debt_convert_rate, STEEMIT_100_PERCENT);
         }
 
         void witness_update_operation::validate() const {

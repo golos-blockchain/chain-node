@@ -357,6 +357,7 @@ namespace golos { namespace wallet {
                         result["vesting_reward_percent"] = median_props.vesting_reward_percent;
                         result["worker_request_creation_fee"] = median_props.worker_request_creation_fee;
                         result["worker_request_approve_min_percent"] = median_props.worker_request_approve_min_percent;
+                        result["sbd_debt_convert_rate"] = median_props.sbd_debt_convert_rate;
                     }
 
                     return result;
@@ -2296,6 +2297,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 SET_PROP(p22, vesting_reward_percent);
                 SET_PROP(p22, worker_request_creation_fee);
                 SET_PROP(p22, worker_request_approve_min_percent);
+                SET_PROP(p22, sbd_debt_convert_rate);
                 op.props = p22;
             }
 #undef SET_PROP
