@@ -159,6 +159,7 @@ namespace golos {
             id_type id;
 
             price current_median_history; ///< the current median of the price history, used as the base for convert operations
+            price witness_median_history; ///< the current median of the price history not limited with min_price (raw median from witnesses)
             boost::interprocess::deque <price, allocator<price>> price_history; ///< tracks this last week of median_feed one per hour
         };
 
@@ -484,7 +485,7 @@ FC_REFLECT((golos::chain::limit_order_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::limit_order_object, golos::chain::limit_order_index)
 
 FC_REFLECT((golos::chain::feed_history_object),
-        (id)(current_median_history)(price_history))
+        (id)(current_median_history)(witness_median_history)(price_history))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::feed_history_object, golos::chain::feed_history_index)
 
 FC_REFLECT((golos::chain::convert_request_object),

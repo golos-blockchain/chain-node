@@ -78,6 +78,8 @@ namespace golos {
 
             uint16_t sbd_print_rate = STEEMIT_100_PERCENT;
 
+            uint16_t sbd_debt_percent = 0;
+
             /**
              *  This property switches off fee for SBD holders
              */
@@ -184,6 +186,7 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (total_reward_shares2)
                 (sbd_interest_rate)
                 (sbd_print_rate)
+                (sbd_debt_percent)
                 (average_block_size)
                 (maximum_block_size)
                 (current_aslot)

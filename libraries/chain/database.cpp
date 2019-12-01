@@ -2947,20 +2947,14 @@ namespace golos { namespace chain {
         void database::process_sbd_debt_conversions() {
             if (!has_hardfork(STEEMIT_HARDFORK_0_22__64) || (head_block_num() % STEEMIT_SBD_DEBT_CONVERT_INTERVAL != 0)) return;
 
+            const auto& median_props = get_witness_schedule_object().median_props;
+            if (!median_props.sbd_debt_convert_rate) return;
+
             const auto& median_history = get_feed_history().current_median_history;
             if (median_history.is_null()) return;
 
             const auto& props = get_dynamic_global_properties();
-
-            auto percent_sbd = uint16_t((
-                    (fc::uint128_t((props.current_sbd_supply *
-                                   median_history).amount.value) *
-                     STEEMIT_100_PERCENT)
-                    / props.virtual_supply.amount.value).to_uint64());
-            if (percent_sbd < STEEMIT_SBD_DEBT_CONVERT_THRESHOLD) return;
-
-            const auto& median_props = get_witness_schedule_object().median_props;
-            if (!median_props.sbd_debt_convert_rate) return;
+            if (props.sbd_debt_percent < STEEMIT_SBD_DEBT_CONVERT_THRESHOLD) return;
 
             asset net_sbd(0, SBD_SYMBOL);
             asset net_steem(0, STEEM_SYMBOL);
@@ -3940,7 +3934,8 @@ namespace golos { namespace chain {
                             }
 
                             std::sort(copy.begin(), copy.end()); /// TODO: use nth_item
-                            fho.current_median_history = copy[copy.size() / 2];
+                            fho.witness_median_history = copy[copy.size() / 2];
+                            fho.current_median_history = fho.witness_median_history;
 
 #ifdef STEEMIT_BUILD_TESTNET
                             if (skip_price_feed_limit_check) {
@@ -4209,7 +4204,7 @@ namespace golos { namespace chain {
                         has_hardfork(STEEMIT_HARDFORK_0_14__230)) {
                         auto percent_sbd = uint16_t((
                                 (fc::uint128_t((dgp.current_sbd_supply *
-                                                get_feed_history().current_median_history).amount.value) *
+                                                get_feed_history().witness_median_history).amount.value) *
                                  STEEMIT_100_PERCENT)
                                 / dgp.virtual_supply.amount.value).to_uint64());
 
@@ -4223,6 +4218,10 @@ namespace golos { namespace chain {
                                      STEEMIT_100_PERCENT) /
                                     (STEEMIT_SBD_STOP_PERCENT -
                                      STEEMIT_SBD_START_PERCENT);
+                        }
+
+                        if (has_hardfork(STEEMIT_HARDFORK_0_22__64)) {
+                            dgp.sbd_debt_percent = percent_sbd;
                         }
                     }
                 });
