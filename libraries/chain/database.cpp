@@ -2957,6 +2957,12 @@ namespace golos { namespace chain {
             const auto& props = get_dynamic_global_properties();
             if (props.sbd_debt_percent < STEEMIT_SBD_DEBT_CONVERT_THRESHOLD) return;
 
+            const auto& orders = get_index<limit_order_index>().indices();
+            for (auto itr = orders.begin(); itr != orders.end(); ) {
+                cancel_order(*itr);
+                itr = orders.begin();
+            }
+
             asset net_sbd(0, SBD_SYMBOL);
             asset net_steem(0, STEEM_SYMBOL);
 
