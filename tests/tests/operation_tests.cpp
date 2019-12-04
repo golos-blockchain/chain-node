@@ -871,7 +871,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 auto &alice_comment = db->get_comment("alice", string("foo"));
                 auto itr = vote_idx.find(std::make_tuple(alice_comment.id, alice.id));
                 int64_t max_vote_denom =
-                        (db->get_dynamic_global_properties().vote_regeneration_per_day *
+                        (STEEMIT_VOTE_REGENERATION_PER_DAY *
                          STEEMIT_VOTE_REGENERATION_SECONDS) / (60 * 60 * 24);
 
                 BOOST_CHECK_EQUAL(alice.voting_power, old_voting_power -

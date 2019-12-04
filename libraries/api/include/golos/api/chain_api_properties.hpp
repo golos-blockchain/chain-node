@@ -54,6 +54,8 @@ namespace golos { namespace api {
         fc::optional<uint16_t> worker_request_approve_min_percent;
 
         fc::optional<uint16_t> sbd_debt_convert_rate;
+
+        fc::optional<uint32_t> vote_regeneration_per_day;
     };
 
 } } // golos::api
@@ -70,4 +72,4 @@ FC_REFLECT(
     (allow_distribute_auction_reward)(allow_return_auction_reward_to_fund)
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
-    (sbd_debt_convert_rate))
+    (sbd_debt_convert_rate)(vote_regeneration_per_day))

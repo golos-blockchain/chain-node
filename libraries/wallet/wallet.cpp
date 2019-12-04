@@ -358,6 +358,7 @@ namespace golos { namespace wallet {
                         result["worker_request_creation_fee"] = median_props.worker_request_creation_fee;
                         result["worker_request_approve_min_percent"] = median_props.worker_request_approve_min_percent;
                         result["sbd_debt_convert_rate"] = median_props.sbd_debt_convert_rate;
+                        result["vote_regeneration_per_day"] = median_props.vote_regeneration_per_day;
                     }
 
                     return result;
@@ -2298,6 +2299,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 SET_PROP(p22, worker_request_creation_fee);
                 SET_PROP(p22, worker_request_approve_min_percent);
                 SET_PROP(p22, sbd_debt_convert_rate);
+                SET_PROP(p22, vote_regeneration_per_day);
                 op.props = p22;
             }
 #undef SET_PROP

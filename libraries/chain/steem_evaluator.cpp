@@ -1507,12 +1507,13 @@ namespace golos { namespace chain {
                 int64_t abs_weight = abs(o.weight);
                 int64_t used_power = (current_power * abs_weight) / STEEMIT_100_PERCENT;
 
-                const dynamic_global_property_object &dgpo = _db.get_dynamic_global_properties();
-
                 // used_power = (current_power * abs_weight / STEEMIT_100_PERCENT) * (reserve / max_vote_denom)
                 // The second multiplication is rounded up as of HF 259
-                int64_t max_vote_denom = dgpo.vote_regeneration_per_day *
-                    STEEMIT_VOTE_REGENERATION_SECONDS / (60 * 60 * 24);
+                int64_t max_vote_denom  = STEEMIT_VOTE_REGENERATION_PER_DAY_PRE_HF_22;
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__76)) {
+                    max_vote_denom = mprops.vote_regeneration_per_day;
+                }
+                max_vote_denom = max_vote_denom * STEEMIT_VOTE_REGENERATION_SECONDS / (60 * 60 * 24);
                 GOLOS_ASSERT(max_vote_denom > 0, golos::internal_error, "max_vote_denom is too small");
                 if (!_db.has_hardfork(STEEMIT_HARDFORK_0_14__259)) {
                     used_power = (used_power / max_vote_denom) + 1;

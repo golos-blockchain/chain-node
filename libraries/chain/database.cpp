@@ -1984,6 +1984,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::worker_request_creation_fee);
             calc_median(&chain_properties_22::worker_request_approve_min_percent);
             calc_median(&chain_properties_22::sbd_debt_convert_rate);
+            calc_median(&chain_properties_22::vote_regeneration_per_day);
 
             std::nth_element(
                 active.begin(), active.begin() + median, active.end(),

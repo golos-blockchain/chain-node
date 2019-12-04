@@ -139,13 +139,6 @@ namespace golos {
              */
             uint64_t current_reserve_ratio = 1;
 
-            /**
-             * The number of votes regenerated per day.  Any user voting slower than this rate will be
-             * "wasting" voting power through spillover; any user voting faster than this rate will have
-             * their votes reduced.
-             */
-            uint32_t vote_regeneration_per_day = 40;
-
             uint16_t custom_ops_bandwidth_multiplier = STEEMIT_CUSTOM_OPS_BANDWIDTH_MULTIPLIER;
 
             uint32_t transit_block_num = UINT32_MAX;
@@ -195,7 +188,6 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (last_irreversible_block_num)
                 (max_virtual_bandwidth)
                 (current_reserve_ratio)
-                (vote_regeneration_per_day)
                 (custom_ops_bandwidth_multiplier)
                 (is_forced_min_price)
                 (transit_block_num)

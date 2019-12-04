@@ -696,6 +696,13 @@ namespace golos { namespace protocol {
              */
             uint16_t sbd_debt_convert_rate = STEEMIT_SBD_DEBT_CONVERT_RATE;
 
+            /**
+             * The number of votes regenerated per day.  Any user voting slower than this rate will be
+             * "wasting" voting power through spillover; any user voting faster than this rate will have
+             * their votes reduced.
+             */
+            uint32_t vote_regeneration_per_day = STEEMIT_VOTE_REGENERATION_PER_DAY;
+
             void validate() const;
 
             chain_properties_22& operator=(const chain_properties_17& src) {
@@ -1432,7 +1439,7 @@ FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
-    (sbd_debt_convert_rate))
+    (sbd_debt_convert_rate)(vote_regeneration_per_day))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
