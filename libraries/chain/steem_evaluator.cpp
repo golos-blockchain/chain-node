@@ -1355,10 +1355,7 @@ namespace golos { namespace chain {
                             ("max_votes", STEEMIT_MAX_ACCOUNT_WITNESS_VOTES)); // TODO: Remove after hardfork 2
 
                     if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
-                        auto old_delta = witness_vote_weight;
-                        if (voter.witness_vote_staked) {
-                            old_delta /= std::max(voter.witnesses_voted_for, uint16_t(1));
-                        }
+                        auto old_delta = witness_vote_weight / std::max(voter.witnesses_voted_for, uint16_t(1));
                         auto new_delta = witness_vote_weight / (voter.witnesses_voted_for+1);
                         _db.adjust_witness_votes(voter, -old_delta + new_delta);
                         _db.create<witness_vote_object>([&](witness_vote_object &v) {
@@ -1392,7 +1389,6 @@ namespace golos { namespace chain {
                 }
                 _db.modify(voter, [&](account_object &a) {
                     a.witnesses_voted_for++;
-                    a.witness_vote_staked = _db.has_hardfork(STEEMIT_HARDFORK_0_22__68);
                 });
 
             } else {
@@ -1402,10 +1398,7 @@ namespace golos { namespace chain {
 
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_2)) {
                     if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
-                        auto old_delta = witness_vote_weight;
-                        if (voter.witness_vote_staked) {
-                            old_delta /= voter.witnesses_voted_for;
-                        }
+                        auto old_delta = witness_vote_weight / voter.witnesses_voted_for;
                         auto new_delta = witness_vote_weight / std::max(uint16_t(voter.witnesses_voted_for-1), uint16_t(1));
                         _db.adjust_witness_votes(voter, -old_delta + new_delta);
                         _db.adjust_witness_vote(witness, -new_delta);
@@ -1421,7 +1414,6 @@ namespace golos { namespace chain {
                 }
                 _db.modify(voter, [&](account_object &a) {
                     a.witnesses_voted_for--;
-                    a.witness_vote_staked = _db.has_hardfork(STEEMIT_HARDFORK_0_22__68);
                 });
                 _db.remove(*itr);
             }

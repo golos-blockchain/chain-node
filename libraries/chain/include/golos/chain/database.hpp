@@ -555,6 +555,8 @@ namespace golos { namespace chain {
 
             void retally_witness_votes();
 
+            void retally_witness_votes_hf22();
+
             void retally_witness_vote_counts(bool force = false);
 
             void retally_liquidity_weight();

@@ -2036,7 +2036,7 @@ namespace golos { namespace chain {
                      i >= 0; --i) {
                     total_delta += delta[i];
                 }
-                if (has_hardfork(STEEMIT_HARDFORK_0_22__68) && a.witness_vote_staked) {
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
                     total_delta /= std::max(a.witnesses_voted_for, uint16_t(1));
                 }
                 adjust_witness_votes(a, total_delta);
@@ -2058,7 +2058,7 @@ namespace golos { namespace chain {
 
                 adjust_proxied_witness_votes(proxy, delta, depth + 1);
             } else {
-                if (has_hardfork(STEEMIT_HARDFORK_0_22__68) && a.witness_vote_staked) {
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
                     delta /= std::max(a.witnesses_voted_for, uint16_t(1));
                 }
                 adjust_witness_votes(a, delta);
@@ -5057,6 +5057,7 @@ namespace golos { namespace chain {
                         }                
                     }
 #endif
+                    retally_witness_votes_hf22();
                     } break;
                 default:
                     break;
@@ -5321,6 +5322,37 @@ namespace golos { namespace chain {
                 auto wit_itr = vidx.lower_bound(boost::make_tuple(a.id, witness_id_type()));
                 while (wit_itr != vidx.end() && wit_itr->account == a.id) {
                     adjust_witness_vote(get(wit_itr->witness), a.witness_vote_weight());
+                    ++wit_itr;
+                }
+            }
+        }
+
+        void database::retally_witness_votes_hf22() {
+            const auto& witness_idx = get_index<witness_index>().indices();
+
+            // Clear all witness votes
+            for (auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr) {
+                modify(*itr, [&](auto& w) {
+                    w.votes = 0;
+                    w.virtual_position = 0;
+                });
+            }
+
+            const auto& account_idx = get_index<account_index>().indices();
+            const auto& vidx = get_index<witness_vote_index>().indices().get<by_account_witness>();
+
+            // Apply all existing votes by account
+            for (auto itr = account_idx.begin(); itr != account_idx.end(); ++itr) {
+                if (itr->proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT) {
+                    continue;
+                }
+
+                const auto& a = *itr;
+                auto weight = a.witness_vote_weight() / std::max(a.witnesses_voted_for, uint16_t(1));
+
+                auto wit_itr = vidx.lower_bound(std::make_tuple(a.id, witness_id_type()));
+                while (wit_itr != vidx.end() && wit_itr->account == a.id) {
+                    adjust_witness_vote(get(wit_itr->witness), weight);
                     ++wit_itr;
                 }
             }
