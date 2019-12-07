@@ -8,6 +8,7 @@
 #define STEEMIT_HARDFORK_0_22__68 (STEEMIT_HARDFORK_0_22) // Voting with stake for witnesses
 #define STEEMIT_HARDFORK_0_22__64 (STEEMIT_HARDFORK_0_22) // Force conversion SBD debt to GOLOS on account balances
 #define STEEMIT_HARDFORK_0_22__76 (STEEMIT_HARDFORK_0_22) // Make vote regeneration per day votable by witnesses
+#define STEEMIT_HARDFORK_0_22__77 (STEEMIT_HARDFORK_0_22) // Clearing votes on idling witnesses.
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_22_TIME  1563958800 // 24 jul 2019 12:00:00 MSK

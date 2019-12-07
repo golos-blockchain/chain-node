@@ -1518,6 +1518,50 @@ namespace golos { namespace chain {
             }
         }
 
+        void database::check_witness_idleness(bool periodically) {
+            if (periodically) {
+                if (head_block_num() % GOLOS_WITNESS_IDLENESS_CHECK_INTERVAL != 0) return;
+
+                if (!has_hardfork(STEEMIT_HARDFORK_0_22__77)) return;
+            }
+
+            uint32_t top_count = periodically ? GOLOS_WITNESS_IDLENESS_TOP_COUNT : UINT32_MAX;
+
+            const auto& median_props = get_witness_schedule_object().median_props;
+            const auto old_block_num = head_block_num() - (median_props.witness_idleness_time / STEEMIT_BLOCK_INTERVAL);
+
+            std::vector<witness_id_type> witnesses_to_clear;
+            uint32_t i = 0;
+            const auto& widx = get_index<witness_index, by_vote_name>();
+            for (auto itr = widx.begin(); itr != widx.end() && i < top_count; ++itr, ++i) {
+                if (itr->last_confirmed_block_num == 0 || itr->last_confirmed_block_num > old_block_num) continue;
+                witnesses_to_clear.push_back(itr->id);
+            }
+
+            const auto& vidx = get_index<witness_vote_index, by_witness_account>();
+            for (auto& witn : witnesses_to_clear) {
+                auto vitr = vidx.lower_bound(std::make_tuple(witn, account_id_type()));
+                while (vitr != vidx.end() && vitr->witness == witn) {
+                    const auto& voter = get(vitr->account);
+                    const auto witness_vote_weight = voter.witness_vote_weight();
+
+                    auto old_delta = witness_vote_weight / voter.witnesses_voted_for;
+                    auto new_delta = witness_vote_weight / std::max(uint16_t(voter.witnesses_voted_for-1), uint16_t(1));
+
+                    adjust_witness_votes(voter, -old_delta + new_delta);
+                    adjust_witness_vote(get(witn), -new_delta);
+
+                    modify(voter, [&](auto& a) {
+                        a.witnesses_voted_for--;
+                    });
+
+                    const auto& current = *vitr;
+                    ++vitr;
+                    remove(current);
+                }
+            }
+        }
+
         void database::update_witness_schedule4() {
             vector<account_name_type> active_witnesses;
             active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
@@ -1985,6 +2029,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::worker_request_approve_min_percent);
             calc_median(&chain_properties_22::sbd_debt_convert_rate);
             calc_median(&chain_properties_22::vote_regeneration_per_day);
+            calc_median(&chain_properties_22::witness_idleness_time);
 
             std::nth_element(
                 active.begin(), active.begin() + median, active.end(),
@@ -3809,6 +3854,7 @@ namespace golos { namespace chain {
                 clear_expired_orders();
                 clear_expired_delegations();
 
+                check_witness_idleness();
                 update_witness_schedule();
 
                 update_median_feed();
@@ -5058,6 +5104,7 @@ namespace golos { namespace chain {
                     }
 #endif
                     retally_witness_votes_hf22();
+                    check_witness_idleness(false);
                     } break;
                 default:
                     break;

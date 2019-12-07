@@ -249,6 +249,11 @@
 #define STEEMIT_SBD_DEBT_CONVERT_RATE           (STEEMIT_1_PERCENT) ///< Convert 1% of account balance (incl. savings) on each SBD debt conversion
 #define STEEMIT_SBD_DEBT_CONVERT_INTERVAL       (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
 
+#define GOLOS_MIN_WITNESS_IDLENESS_TIME         (60*60*24*30*1) ///< 1 month
+#define GOLOS_DEF_WITNESS_IDLENESS_TIME         (60*60*24*30*12) ///< 12 month
+#define GOLOS_WITNESS_IDLENESS_CHECK_INTERVAL   (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
+#define GOLOS_WITNESS_IDLENESS_TOP_COUNT        100 ///< Count of TOP voted witnesses to periodically clear votes if idling too long
+
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
 
@@ -509,6 +514,15 @@
 #else
 #define STEEMIT_SBD_DEBT_CONVERT_INTERVAL       (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
 #endif
+
+#define GOLOS_MIN_WITNESS_IDLENESS_TIME         (60*60*24*30*1) ///< 1 month
+#define GOLOS_DEF_WITNESS_IDLENESS_TIME         (60*60*24*30*12) ///< 12 month
+#ifdef STEEMIT_BUILD_LIVETEST
+#define GOLOS_WITNESS_IDLENESS_CHECK_INTERVAL   (60*5/STEEMIT_BLOCK_INTERVAL) ///< 5 minutes
+#else
+#define GOLOS_WITNESS_IDLENESS_CHECK_INTERVAL   (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
+#endif
+#define GOLOS_WITNESS_IDLENESS_TOP_COUNT        100 ///< Count of TOP voted witnesses to clear votes if idling too long
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000

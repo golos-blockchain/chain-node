@@ -81,6 +81,8 @@ namespace golos { namespace wallet {
             fc::optional<uint16_t> sbd_debt_convert_rate;
 
             fc::optional<uint32_t> vote_regeneration_per_day;
+
+            fc::optional<uint32_t> witness_idleness_time;
         };
 
         struct optional_private_box_query {
@@ -1617,7 +1619,7 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund)
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
-    (sbd_debt_convert_rate)(vote_regeneration_per_day))
+    (sbd_debt_convert_rate)(vote_regeneration_per_day)(witness_idleness_time))
 
 FC_REFLECT(
     (golos::wallet::message_body),
