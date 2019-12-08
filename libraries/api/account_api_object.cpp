@@ -78,6 +78,8 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         referral_end_date = a.referral_end_date;
         referral_break_fee = a.referral_break_fee;
     }
+
+    last_active_operation = a.last_active_operation;
 }
 
 account_api_object::account_api_object() = default;

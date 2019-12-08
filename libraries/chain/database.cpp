@@ -1562,6 +1562,48 @@ namespace golos { namespace chain {
             }
         }
 
+        void database::check_account_idleness() {
+            if (head_block_num() % GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL != 0) return;
+
+            if (!has_hardfork(STEEMIT_HARDFORK_0_22__78)) return;
+
+            const auto now = head_block_time();
+            const auto& median_props = get_witness_schedule_object().median_props;
+            const auto old_time = now - median_props.account_idleness_time;
+
+            const auto& vdo_idx = get_index<vesting_delegation_index, by_delegation>();
+
+            const auto& idx = get_index<account_index, by_last_active_operation>();
+            auto itr = idx.lower_bound(old_time);
+            for (; itr != idx.end(); ++itr) {
+                if (!itr->vesting_shares.amount.value || itr->to_withdraw.value) continue;
+
+                auto vdo_itr = vdo_idx.lower_bound(itr->name);
+                while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == itr->name) {
+                    modify(*itr, [&](auto& a) {
+                        a.delegated_vesting_shares -= vdo_itr->vesting_shares;
+                    });
+                    modify(get_account(vdo_itr->delegatee), [&](auto& a) {
+                        a.received_vesting_shares -= vdo_itr->vesting_shares;
+                    });
+                    push_virtual_operation(return_vesting_delegation_operation(vdo_itr->delegator, vdo_itr->vesting_shares));
+
+                    const auto& current = *vdo_itr;
+                    ++vdo_itr;
+                    remove(current);
+                }
+
+                modify(*itr, [&](auto& a) {
+                    a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
+                    if (a.vesting_withdraw_rate.amount == 0)
+                        a.vesting_withdraw_rate.amount = 1;
+                    a.next_vesting_withdrawal = now + fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);
+                    a.to_withdraw = a.vesting_shares.amount;
+                    a.withdrawn = 0;
+                });
+            }
+        }
+
         void database::update_witness_schedule4() {
             vector<account_name_type> active_witnesses;
             active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
@@ -2030,6 +2072,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::sbd_debt_convert_rate);
             calc_median(&chain_properties_22::vote_regeneration_per_day);
             calc_median(&chain_properties_22::witness_idleness_time);
+            calc_median(&chain_properties_22::account_idleness_time);
 
             std::nth_element(
                 active.begin(), active.begin() + median, active.end(),
@@ -3867,6 +3910,7 @@ namespace golos { namespace chain {
                 process_comment_cashout();
                 process_worker_votes();
                 process_worker_cashout();
+                check_account_idleness();
                 process_vesting_withdrawals();
                 process_savings_withdraws();
                 pay_liquidity_reward();
@@ -4051,6 +4095,16 @@ namespace golos { namespace chain {
                             break;
                         } else if (has_hardfork(STEEMIT_HARDFORK_0_19__924) && is_custom_json_operation(op)) {
                             update_account_bandwidth(props, acnt, trx_size * props.custom_ops_bandwidth_multiplier, bandwidth_type::custom_json);
+                            break;
+                        }
+                    }
+
+                    const auto now = head_block_time();
+                    for (const auto& op : trx.operations) {
+                        if (is_active_operation(op)) {
+                            modify(acnt, [&](auto& a) {
+                                a.last_active_operation = now;
+                            });
                             break;
                         }
                     }

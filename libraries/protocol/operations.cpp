@@ -64,6 +64,23 @@ namespace golos {
             return op.visit(is_custom_json_op_visitor());
         }
 
+        struct is_active_op_visitor {
+            typedef bool result_type;
+
+            template<typename T>
+            result_type operator()(T&& v) const {
+                flat_set<account_name_type> active;
+                v.get_required_active_authorities(active);
+                if (active.size()) {
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        bool is_active_operation(const operation& op) {
+            return op.visit(is_active_op_visitor());
+        }
     }
 } // golos::protocol
 

@@ -398,6 +398,8 @@ namespace golos { namespace chain {
 
             void check_witness_idleness(bool periodically = true);
 
+            void check_account_idleness();
+
             void update_witness_schedule();
 
             void adjust_liquidity_reward(const account_object &owner, const asset &volume, bool is_bid);

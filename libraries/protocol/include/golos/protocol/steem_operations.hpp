@@ -708,6 +708,11 @@ namespace golos { namespace protocol {
              */
             uint32_t witness_idleness_time = GOLOS_DEF_WITNESS_IDLENESS_TIME;
 
+            /**
+             * The minimum time of account idleness to lower its vesting shares.
+             */
+            uint32_t account_idleness_time = GOLOS_DEF_ACCOUNT_IDLENESS_TIME;
+
             void validate() const;
 
             chain_properties_22& operator=(const chain_properties_17& src) {
@@ -1444,7 +1449,8 @@ FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
-    (sbd_debt_convert_rate)(vote_regeneration_per_day)(witness_idleness_time))
+    (sbd_debt_convert_rate)(vote_regeneration_per_day)
+    (witness_idleness_time)(account_idleness_time))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

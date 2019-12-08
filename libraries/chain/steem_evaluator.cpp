@@ -143,6 +143,7 @@ namespace golos { namespace chain {
                 acc.memo_key = o.memo_key;
                 acc.created = props.time;
                 acc.last_vote_time = props.time;
+                acc.last_active_operation = props.time;
                 acc.mined = false;
 
                 if (!_db.has_hardfork(STEEMIT_HARDFORK_0_11__169)) {
@@ -247,6 +248,7 @@ namespace golos { namespace chain {
                 acc.memo_key = o.memo_key;
                 acc.created = now;
                 acc.last_vote_time = now;
+                acc.last_active_operation = now;
                 acc.mined = false;
                 acc.recovery_account = o.creator;
                 acc.received_vesting_shares = o.delegation;
@@ -1861,6 +1863,7 @@ namespace golos { namespace chain {
                     acc.memo_key = o.work.worker;
                     acc.created = dgp.time;
                     acc.last_vote_time = dgp.time;
+                    acc.last_active_operation = dgp.time;
 
                     if (!db.has_hardfork(STEEMIT_HARDFORK_0_11__169)) {
                         acc.recovery_account = STEEMIT_INIT_MINER_NAME;
@@ -2003,6 +2006,7 @@ namespace golos { namespace chain {
                     acc.memo_key = *o.new_owner_key;
                     acc.created = dgp.time;
                     acc.last_vote_time = dgp.time;
+                    acc.last_active_operation = dgp.time;
                     acc.recovery_account = ""; /// highest voted witness at time of recovery
                 });
                 store_account_json_metadata(db, worker_account, "");

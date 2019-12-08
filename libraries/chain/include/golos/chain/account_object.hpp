@@ -113,6 +113,8 @@ public:
     time_point_sec referral_end_date = time_point_sec::min();
     asset referral_break_fee = asset(0, STEEM_SYMBOL);
 
+    time_point_sec last_active_operation;
+
     /// This function should be used only when the account votes for a witness directly
     share_type witness_vote_weight() const {
         return std::accumulate(proxied_vsf_votes.begin(),
@@ -282,6 +284,7 @@ public:
 
 struct by_name;
 struct by_next_vesting_withdrawal;
+struct by_last_active_operation;
 
 /**
  * @ingroup object_index
@@ -295,11 +298,18 @@ typedef multi_index_container<
                         member<account_object, account_name_type, &account_object::name>,
                         protocol::string_less>,
                 ordered_unique<tag<by_next_vesting_withdrawal>,
-
-                composite_key < account_object,
-                    member<account_object, time_point_sec, &account_object::next_vesting_withdrawal>,
-                    member<account_object, account_id_type, &account_object::id>
-                > > >,
+                    composite_key<
+                        account_object,
+                        member<account_object, time_point_sec, &account_object::next_vesting_withdrawal>,
+                        member<account_object, account_id_type, &account_object::id>>>,
+                ordered_unique<tag<by_last_active_operation>,
+                    composite_key<
+                        account_object,
+                        member<account_object, time_point_sec, &account_object::last_active_operation>,
+                        member<account_object, account_id_type, &account_object::id>>,
+                    composite_key_compare<
+                        std::greater<time_point_sec>,
+                        std::less<account_id_type>>>>,
     allocator<account_object>
 >
 account_index;
@@ -525,6 +535,7 @@ FC_REFLECT((golos::chain::account_object),
     (proxied_vsf_votes)(witnesses_voted_for)
     (last_comment)(last_post)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
+    (last_active_operation)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_object, golos::chain::account_index)
 
