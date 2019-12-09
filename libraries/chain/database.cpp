@@ -4210,7 +4210,14 @@ namespace golos { namespace chain {
                                             w.signing_key = public_key_type();
                                             push_virtual_operation(shutdown_witness_operation(w.owner));
                                         }
-                                    } else if (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_DAY) {
+                                    } else if ((has_hardfork(STEEMIT_HARDFORK_0_22__79)
+                                            && (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_HOUR*6))
+                                            || (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_DAY)) {
+                                        w.signing_key = public_key_type();
+                                        push_virtual_operation(shutdown_witness_operation(w.owner));
+                                    }
+                                } else if (has_hardfork(STEEMIT_HARDFORK_0_22__79)) {
+                                    if (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_HOUR*6) {
                                         w.signing_key = public_key_type();
                                         push_virtual_operation(shutdown_witness_operation(w.owner));
                                     }

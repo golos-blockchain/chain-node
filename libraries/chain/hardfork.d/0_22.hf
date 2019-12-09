@@ -10,6 +10,7 @@
 #define STEEMIT_HARDFORK_0_22__76 (STEEMIT_HARDFORK_0_22) // Make vote regeneration per day votable by witnesses
 #define STEEMIT_HARDFORK_0_22__77 (STEEMIT_HARDFORK_0_22) // Clearing votes on idling witnesses.
 #define STEEMIT_HARDFORK_0_22__78 (STEEMIT_HARDFORK_0_22) // Lowering vesting shares on idling accounts.
+#define STEEMIT_HARDFORK_0_22__79 (STEEMIT_HARDFORK_0_22) // Change block skipping timeout to reset witness signing key.
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_22_TIME  1563958800 // 24 jul 2019 12:00:00 MSK
