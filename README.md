@@ -1,4 +1,4 @@
-# Introducing Golos (beta)
+# Introducing Golos
 
 [![Build Status](https://travis-ci.org/GolosChain/golos.svg?branch=master)](https://travis-ci.org/GolosChain/golos)
 
@@ -29,7 +29,7 @@ sudo docker run -d \
     -p 4243:4243 \
     -p 8090:8090 \
     -p 8091:8091 \
-    --name golos-default  goloschain/golos:latest
+    --name golos-default golosblockchain/golos:latest
 ```    
 
 To attach to the golosd you should use the cli_wallet:
@@ -47,7 +47,7 @@ more information about configuring, building and running of docker containers.
 # Testing
 
 ```
-git clone https://github.com/GolosChain/golos.git
+git clone https://github.com/golos-classic/golos.git
 cd golos
 sudo docker rm local/golos-test
 sudo docker build -t local/golos-test -f share/golosd/docker/Dockerfile-test .
