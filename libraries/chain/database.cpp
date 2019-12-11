@@ -3084,7 +3084,67 @@ namespace golos { namespace chain {
                 push_virtual_operation(convert_sbd_debt_operation(acc.name, sbd, steem, savings_sbd, savings_steem));
             }
 
-            modify(props, [&](dynamic_global_property_object &p) {
+            const auto& escrows = get_index<escrow_index>().indices();
+            for (auto itr = escrows.begin(); itr != escrows.end(); ++itr) {
+                if (!itr->sbd_balance.amount.value && (itr->pending_fee.symbol != SBD_SYMBOL || !itr->pending_fee.amount.value)) continue;
+
+                if (itr->sbd_balance.amount.value) {
+                    auto sbd = asset(
+                        (uint128_t(itr->sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                    auto steem = sbd * median_history;
+
+                    modify(*itr, [&](auto& e) {
+                        e.sbd_balance -= sbd;
+                        e.steem_balance += steem;
+                    });
+
+                    net_sbd += sbd;
+                    net_steem += steem;
+                }
+
+                if (itr->pending_fee.symbol == SBD_SYMBOL && itr->pending_fee.amount.value) {
+                    auto fee_sbd = asset(
+                        (uint128_t(itr->pending_fee.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                    auto fee_steem = fee_sbd * median_history;
+
+                    modify(*itr, [&](auto& e) {
+                        e.pending_fee -= fee_sbd;
+                    });
+
+                    adjust_balance(get_account(itr->agent), fee_steem);
+
+                    net_sbd += fee_sbd;
+                    net_steem += fee_steem;
+                }
+            }
+
+            const auto& withdraws = get_index<savings_withdraw_index>().indices();
+            for (auto itr = withdraws.begin(); itr != withdraws.end(); ++itr) {
+                if (itr->amount.symbol != SBD_SYMBOL || !itr->amount.amount.value) continue;
+
+                auto sbd = asset(
+                    (uint128_t(itr->amount.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                auto steem = sbd * median_history;
+
+                adjust_balance(get_account(itr->to), steem);
+
+                if (itr->amount == sbd) {
+                    remove(*itr);
+
+                    modify(get_account(itr->from), [&](account_object& a) {
+                        a.savings_withdraw_requests--;
+                    });
+                } else {
+                    modify(*itr, [&](auto& w) {
+                        w.amount -= sbd;
+                    });
+                }
+
+                net_sbd += sbd;
+                net_steem += steem;
+            }
+
+            modify(props, [&](auto& p) {
                 p.current_supply += net_steem;
                 p.current_sbd_supply -= net_sbd;
                 p.virtual_supply += net_steem;
@@ -4318,7 +4378,7 @@ namespace golos { namespace chain {
                         has_hardfork(STEEMIT_HARDFORK_0_14__230)) {
                         auto percent_sbd = uint16_t((
                                 (fc::uint128_t((dgp.current_sbd_supply *
-                                                get_feed_history().witness_median_history).amount.value) *
+                                                get_feed_history().current_median_history).amount.value) *
                                  STEEMIT_100_PERCENT)
                                 / dgp.virtual_supply.amount.value).to_uint64());
 
@@ -4335,7 +4395,11 @@ namespace golos { namespace chain {
                         }
 
                         if (has_hardfork(STEEMIT_HARDFORK_0_22__64)) {
-                            dgp.sbd_debt_percent = percent_sbd;
+                            dgp.sbd_debt_percent = uint16_t((
+                                (fc::uint128_t((dgp.current_sbd_supply *
+                                                get_feed_history().witness_median_history).amount.value) *
+                                 STEEMIT_100_PERCENT)
+                                / dgp.virtual_supply.amount.value).to_uint64());
                         }
                     }
                 });

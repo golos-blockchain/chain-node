@@ -567,6 +567,7 @@ namespace golos { namespace chain {
                         if (median_feed.current_median_history.is_null()) {
                             db.modify(median_feed, [&](feed_history_object &f) {
                                 f.current_median_history = price(asset(1, SBD_SYMBOL), asset(1, STEEM_SYMBOL));
+                                f.witness_median_history = f.current_median_history;
                             });
                         }
                     }
