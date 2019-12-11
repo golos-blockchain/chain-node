@@ -2071,6 +2071,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::worker_request_approve_min_percent);
             calc_median(&chain_properties_22::sbd_debt_convert_rate);
             calc_median(&chain_properties_22::vote_regeneration_per_day);
+            calc_median(&chain_properties_22::witness_skipping_reset_time);
             calc_median(&chain_properties_22::witness_idleness_time);
             calc_median(&chain_properties_22::account_idleness_time);
 
@@ -4261,6 +4262,9 @@ namespace golos { namespace chain {
                         const auto &witness_missed = get_witness(get_scheduled_witness(
                                 i + 1));
                         if (witness_missed.owner != b.witness) {
+                            const auto& median_props = get_witness_schedule_object().median_props;
+                            auto reset_blocks = median_props.witness_skipping_reset_time / STEEMIT_BLOCK_INTERVAL;
+
                             modify(witness_missed, [&](witness_object &w) {
                                 w.total_missed++;
                                 if (is_transit_enabled()) {
@@ -4271,13 +4275,13 @@ namespace golos { namespace chain {
                                             push_virtual_operation(shutdown_witness_operation(w.owner));
                                         }
                                     } else if ((has_hardfork(STEEMIT_HARDFORK_0_22__79)
-                                            && (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_HOUR*6))
+                                            && (head_block_num() - w.last_confirmed_block_num > reset_blocks))
                                             || (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_DAY)) {
                                         w.signing_key = public_key_type();
                                         push_virtual_operation(shutdown_witness_operation(w.owner));
                                     }
                                 } else if (has_hardfork(STEEMIT_HARDFORK_0_22__79)) {
-                                    if (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_HOUR*6) {
+                                    if (head_block_num() - w.last_confirmed_block_num > reset_blocks) {
                                         w.signing_key = public_key_type();
                                         push_virtual_operation(shutdown_witness_operation(w.owner));
                                     }

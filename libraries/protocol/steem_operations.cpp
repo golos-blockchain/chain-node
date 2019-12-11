@@ -325,6 +325,7 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_VALUE_LE(worker_request_approve_min_percent, STEEMIT_100_PERCENT);
             GOLOS_CHECK_VALUE_LE(sbd_debt_convert_rate, STEEMIT_100_PERCENT);
             GOLOS_CHECK_VALUE_LE(vote_regeneration_per_day, STEEMIT_100_PERCENT);
+            GOLOS_CHECK_VALUE_GE(witness_skipping_reset_time, GOLOS_MIN_WITNESS_SKIPPING_RESET_TIME);
             GOLOS_CHECK_VALUE_GE(witness_idleness_time, GOLOS_MIN_WITNESS_IDLENESS_TIME);
             GOLOS_CHECK_VALUE_GE(account_idleness_time, GOLOS_MIN_ACCOUNT_IDLENESS_TIME);
         }

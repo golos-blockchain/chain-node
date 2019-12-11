@@ -57,6 +57,7 @@ namespace golos { namespace api {
 
         fc::optional<uint32_t> vote_regeneration_per_day;
 
+        fc::optional<uint32_t> witness_skipping_reset_time;
         fc::optional<uint32_t> witness_idleness_time;
         fc::optional<uint32_t> account_idleness_time;
     };
@@ -76,4 +77,4 @@ FC_REFLECT(
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
-    (witness_idleness_time)(account_idleness_time))
+    (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))

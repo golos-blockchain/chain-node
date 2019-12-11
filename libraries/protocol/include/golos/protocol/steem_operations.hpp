@@ -704,6 +704,11 @@ namespace golos { namespace protocol {
             uint32_t vote_regeneration_per_day = STEEMIT_VOTE_REGENERATION_PER_DAY;
 
             /**
+             * The minimum time of witness skipping blocks to erase its signing key.
+             */
+            uint32_t witness_skipping_reset_time = GOLOS_DEF_WITNESS_SKIPPING_RESET_TIME;
+
+            /**
              * The minimum time of witness idleness to periodically clear all its votes.
              */
             uint32_t witness_idleness_time = GOLOS_DEF_WITNESS_IDLENESS_TIME;
@@ -1450,7 +1455,7 @@ FC_REFLECT_DERIVED(
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
-    (witness_idleness_time)(account_idleness_time))
+    (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

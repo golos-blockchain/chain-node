@@ -43,6 +43,7 @@ namespace golos { namespace api {
             worker_request_approve_min_percent = src.worker_request_approve_min_percent;
             sbd_debt_convert_rate = src.sbd_debt_convert_rate;
             vote_regeneration_per_day = src.vote_regeneration_per_day;
+            witness_skipping_reset_time = src.witness_skipping_reset_time;
             witness_idleness_time = src.witness_idleness_time;
             account_idleness_time = src.account_idleness_time;
         }

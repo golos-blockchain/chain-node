@@ -359,6 +359,7 @@ namespace golos { namespace wallet {
                         result["worker_request_approve_min_percent"] = median_props.worker_request_approve_min_percent;
                         result["sbd_debt_convert_rate"] = median_props.sbd_debt_convert_rate;
                         result["vote_regeneration_per_day"] = median_props.vote_regeneration_per_day;
+                        result["witness_skipping_reset_time"] = median_props.witness_skipping_reset_time;
                         result["witness_idleness_time"] = median_props.witness_idleness_time;
                         result["account_idleness_time"]  = median_props.account_idleness_time;
                     }
@@ -2302,6 +2303,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 SET_PROP(p22, worker_request_approve_min_percent);
                 SET_PROP(p22, sbd_debt_convert_rate);
                 SET_PROP(p22, vote_regeneration_per_day);
+                SET_PROP(p22, witness_skipping_reset_time);
                 SET_PROP(p22, witness_idleness_time);
                 SET_PROP(p22, account_idleness_time);
                 op.props = p22;
