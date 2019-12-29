@@ -70,5 +70,11 @@ namespace golos { namespace plugins { namespace tags {
         return result;
     }
 
+    bool discussion_query::is_good_category(
+        const discussion& d
+    ) const {
+        return !category || d.category == *category;
+    }
+
 } } } // golos::plugins::tags
 
