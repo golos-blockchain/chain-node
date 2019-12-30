@@ -73,7 +73,7 @@ namespace golos { namespace plugins { namespace tags {
     bool discussion_query::is_good_category(
         const discussion& d
     ) const {
-        return !category || d.category == *category;
+        return !select_categories.size() || select_categories.count(d.category);
     }
 
 } } } // golos::plugins::tags
