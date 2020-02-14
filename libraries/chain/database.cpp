@@ -1308,7 +1308,7 @@ namespace golos { namespace chain {
             }
         }
 
-        inline const void database::push_virtual_operation(const operation &op, bool force) {
+        const void database::push_virtual_operation(const operation &op, bool force) {
             if (!force && _skip_virtual_ops ) {
                 return;
             }
@@ -1515,6 +1515,92 @@ namespace golos { namespace chain {
                 } else {
                     return;
                 }
+            }
+        }
+
+        void database::check_witness_idleness(bool periodically) {
+            if (periodically) {
+                if (head_block_num() % GOLOS_WITNESS_IDLENESS_CHECK_INTERVAL != 0) return;
+
+                if (!has_hardfork(STEEMIT_HARDFORK_0_22__77)) return;
+            }
+
+            uint32_t top_count = periodically ? GOLOS_WITNESS_IDLENESS_TOP_COUNT : UINT32_MAX;
+
+            const auto& median_props = get_witness_schedule_object().median_props;
+            const auto old_block_num = head_block_num() - (median_props.witness_idleness_time / STEEMIT_BLOCK_INTERVAL);
+
+            std::vector<witness_id_type> witnesses_to_clear;
+            uint32_t i = 0;
+            const auto& widx = get_index<witness_index, by_vote_name>();
+            for (auto itr = widx.begin(); itr != widx.end() && i < top_count; ++itr, ++i) {
+                if (itr->last_confirmed_block_num == 0 || itr->last_confirmed_block_num > old_block_num) continue;
+                witnesses_to_clear.push_back(itr->id);
+            }
+
+            const auto& vidx = get_index<witness_vote_index, by_witness_account>();
+            for (auto& witn : witnesses_to_clear) {
+                auto vitr = vidx.lower_bound(std::make_tuple(witn, account_id_type()));
+                while (vitr != vidx.end() && vitr->witness == witn) {
+                    const auto& voter = get(vitr->account);
+                    const auto witness_vote_weight = voter.witness_vote_weight();
+
+                    auto old_delta = witness_vote_weight / voter.witnesses_voted_for;
+                    auto new_delta = witness_vote_weight / std::max(uint16_t(voter.witnesses_voted_for-1), uint16_t(1));
+
+                    adjust_witness_votes(voter, -old_delta + new_delta);
+                    adjust_witness_vote(get(witn), -new_delta);
+
+                    modify(voter, [&](auto& a) {
+                        a.witnesses_voted_for--;
+                    });
+
+                    const auto& current = *vitr;
+                    ++vitr;
+                    remove(current);
+                }
+            }
+        }
+
+        void database::check_account_idleness() {
+            if (head_block_num() % GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL != 0) return;
+
+            if (!has_hardfork(STEEMIT_HARDFORK_0_22__78)) return;
+
+            const auto now = head_block_time();
+            const auto& median_props = get_witness_schedule_object().median_props;
+            const auto old_time = now - median_props.account_idleness_time;
+
+            const auto& vdo_idx = get_index<vesting_delegation_index, by_delegation>();
+
+            const auto& idx = get_index<account_index, by_last_active_operation>();
+            auto itr = idx.lower_bound(old_time);
+            for (; itr != idx.end(); ++itr) {
+                if (!itr->vesting_shares.amount.value || itr->to_withdraw.value) continue;
+
+                auto vdo_itr = vdo_idx.lower_bound(itr->name);
+                while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == itr->name) {
+                    modify(*itr, [&](auto& a) {
+                        a.delegated_vesting_shares -= vdo_itr->vesting_shares;
+                    });
+                    modify(get_account(vdo_itr->delegatee), [&](auto& a) {
+                        a.received_vesting_shares -= vdo_itr->vesting_shares;
+                    });
+                    push_virtual_operation(return_vesting_delegation_operation(vdo_itr->delegator, vdo_itr->vesting_shares));
+
+                    const auto& current = *vdo_itr;
+                    ++vdo_itr;
+                    remove(current);
+                }
+
+                modify(*itr, [&](auto& a) {
+                    a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
+                    if (a.vesting_withdraw_rate.amount == 0)
+                        a.vesting_withdraw_rate.amount = 1;
+                    a.next_vesting_withdrawal = now + fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);
+                    a.to_withdraw = a.vesting_shares.amount;
+                    a.withdrawn = 0;
+                });
             }
         }
 
@@ -1919,7 +2005,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_19 median_props;
+            chain_properties_22 median_props;
 
             auto median = active.size() / 2;
 
@@ -1978,6 +2064,27 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_19::curation_reward_curve);
             calc_median(&chain_properties_19::allow_distribute_auction_reward);
             calc_median(&chain_properties_19::allow_return_auction_reward_to_fund);
+            calc_median(&chain_properties_22::worker_reward_percent);
+            calc_median(&chain_properties_22::witness_reward_percent);
+            calc_median(&chain_properties_22::vesting_reward_percent);
+            calc_median(&chain_properties_22::worker_request_creation_fee);
+            calc_median(&chain_properties_22::worker_request_approve_min_percent);
+            calc_median(&chain_properties_22::sbd_debt_convert_rate);
+            calc_median(&chain_properties_22::vote_regeneration_per_day);
+            calc_median(&chain_properties_22::witness_skipping_reset_time);
+            calc_median(&chain_properties_22::witness_idleness_time);
+            calc_median(&chain_properties_22::account_idleness_time);
+
+            std::nth_element(
+                active.begin(), active.begin() + median, active.end(),
+                [&](const auto* a, const auto* b) {
+                    return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
+                        < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
+                }
+            );
+            median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
+            median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
+            median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -2018,6 +2125,9 @@ namespace golos { namespace chain {
                      i >= 0; --i) {
                     total_delta += delta[i];
                 }
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
+                    total_delta /= std::max(a.witnesses_voted_for, uint16_t(1));
+                }
                 adjust_witness_votes(a, total_delta);
             }
         }
@@ -2037,6 +2147,9 @@ namespace golos { namespace chain {
 
                 adjust_proxied_witness_votes(proxy, delta, depth + 1);
             } else {
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
+                    delta /= std::max(a.witnesses_voted_for, uint16_t(1));
+                }
                 adjust_witness_votes(a, delta);
             }
         }
@@ -2058,7 +2171,8 @@ namespace golos { namespace chain {
                 w.virtual_position += delta_pos;
 
                 w.virtual_last_update = wso.current_virtual_time;
-                w.votes += delta;
+                // With staked voting it can be negative because of inaccuracy of integer division. It should be >= 0.
+                w.votes = std::max(w.votes + delta, share_type(0));
                 FC_ASSERT(w.votes <=
                           get_dynamic_global_properties().total_vesting_shares.amount, "", ("w.votes", w.votes)("props", get_dynamic_global_properties().total_vesting_shares));
 
@@ -2612,11 +2726,19 @@ namespace golos { namespace chain {
        /**
         *  At a start overall the network has an inflation rate of 15.15% of virtual golos per year.
         *  Each year the inflation rate is reduced by 0.42% and stops at 0.95% of virtual golos per year in 33 years.
+        *
+        *  Before HF22:
         *  66.67% of inflation is directed to content reward pool
         *  26.67% of inflation is directed to vesting fund
         *  6.66% of inflation is directed to witness pay
         *
-        *  This method pays out vesting, reward shares and witnesses every block.
+        *  After HF22:
+        *  15.00% of inflation (voted by witnesses) is directed to worker pay
+        *  10.00% of inflation (voted by witnesses) is directed to witness pay
+        *  10.00% of inflation (voted by witnesses) is directed to vesting fund
+        *  65.00% of inflation is directed to content reward pool
+        *
+        *  This method pays out vesting, reward shares, witnesses and workers every block.
         */
         void database::process_funds() {
             const auto& wso = get_witness_schedule_object();
@@ -2644,12 +2766,21 @@ namespace golos { namespace chain {
                         (props.virtual_supply.amount * current_inflation_rate) /
                         (int64_t(STEEMIT_100_PERCENT) * int64_t(STEEMIT_BLOCKS_PER_YEAR));
                 auto content_reward =
-                        (new_steem * STEEMIT_CONTENT_REWARD_PERCENT) /
+                        (new_steem * STEEMIT_CONTENT_REWARD_PERCENT_PRE_HF22) /
                         STEEMIT_100_PERCENT; /// 66.67% to content creator
                 auto vesting_reward =
-                        (new_steem * STEEMIT_VESTING_FUND_PERCENT) /
+                        (new_steem * STEEMIT_VESTING_FUND_PERCENT_PRE_HF22) /
                         STEEMIT_100_PERCENT; /// 26.67% to vesting fund
                 auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 6.66% to witness pay
+
+                share_type worker_reward = 0;
+                if (has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
+                    worker_reward = new_steem * wso.median_props.worker_reward_percent / STEEMIT_100_PERCENT;
+                    witness_reward = new_steem * wso.median_props.witness_reward_percent / STEEMIT_100_PERCENT;
+                    vesting_reward = new_steem * wso.median_props.vesting_reward_percent / STEEMIT_100_PERCENT;
+                    content_reward = new_steem - worker_reward - witness_reward - vesting_reward;
+                }
+
                 witness_reward *= STEEMIT_MAX_WITNESSES;
 
                 if (cwit.schedule == witness_object::timeshare) {
@@ -2665,6 +2796,11 @@ namespace golos { namespace chain {
                 witness_reward /= wso.witness_pay_normalization_factor;
 
                 new_steem = content_reward + vesting_reward + witness_reward;
+
+                if (worker_reward != 0) {
+                    new_steem += worker_reward;
+                    adjust_balance(get_account(STEEMIT_WORKER_POOL_ACCOUNT), asset(worker_reward, STEEM_SYMBOL));
+                }
 
                 modify(props, [&](dynamic_global_property_object &p) {
                     p.total_vesting_fund_steem += asset(vesting_reward, STEEM_SYMBOL);
@@ -2898,6 +3034,125 @@ namespace golos { namespace chain {
             });
         }
 
+        void database::process_sbd_debt_conversions() {
+            if (!has_hardfork(STEEMIT_HARDFORK_0_22__64) || (head_block_num() % STEEMIT_SBD_DEBT_CONVERT_INTERVAL != 0)) return;
+
+            const auto& median_props = get_witness_schedule_object().median_props;
+            if (!median_props.sbd_debt_convert_rate) return;
+
+            const auto& median_history = get_feed_history().current_median_history;
+            if (median_history.is_null()) return;
+
+            const auto& props = get_dynamic_global_properties();
+            if (props.sbd_debt_percent < STEEMIT_SBD_DEBT_CONVERT_THRESHOLD) return;
+
+            const auto& orders = get_index<limit_order_index>().indices();
+            for (auto itr = orders.begin(); itr != orders.end(); ) {
+                cancel_order(*itr);
+                itr = orders.begin();
+            }
+
+            asset net_sbd(0, SBD_SYMBOL);
+            asset net_steem(0, STEEM_SYMBOL);
+
+            for (const auto& acc : get_index<account_index>().indices()) {
+                if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) continue;
+
+                auto sbd = asset(
+                    (uint128_t(acc.sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                auto savings_sbd = asset(
+                    (uint128_t(acc.savings_sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                if (!sbd.amount.value && !savings_sbd.amount.value) continue;
+
+                asset steem(0, STEEM_SYMBOL);
+                if (sbd.amount.value) {
+                    auto steem = sbd * median_history;
+                    adjust_balance(acc, -sbd);
+                    adjust_balance(acc, steem);
+                    net_sbd += sbd;
+                    net_steem += steem;
+                }
+
+                asset savings_steem(0, STEEM_SYMBOL);
+                if (savings_sbd.amount.value) {
+                    auto savings_steem = savings_sbd * median_history;
+                    adjust_savings_balance(acc, -savings_sbd);
+                    adjust_savings_balance(acc, savings_steem);
+                    net_sbd += savings_sbd;
+                    net_steem += savings_steem;
+                }
+
+                push_virtual_operation(convert_sbd_debt_operation(acc.name, sbd, steem, savings_sbd, savings_steem));
+            }
+
+            const auto& escrows = get_index<escrow_index>().indices();
+            for (auto itr = escrows.begin(); itr != escrows.end(); ++itr) {
+                if (!itr->sbd_balance.amount.value && (itr->pending_fee.symbol != SBD_SYMBOL || !itr->pending_fee.amount.value)) continue;
+
+                if (itr->sbd_balance.amount.value) {
+                    auto sbd = asset(
+                        (uint128_t(itr->sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                    auto steem = sbd * median_history;
+
+                    modify(*itr, [&](auto& e) {
+                        e.sbd_balance -= sbd;
+                        e.steem_balance += steem;
+                    });
+
+                    net_sbd += sbd;
+                    net_steem += steem;
+                }
+
+                if (itr->pending_fee.symbol == SBD_SYMBOL && itr->pending_fee.amount.value) {
+                    auto fee_sbd = asset(
+                        (uint128_t(itr->pending_fee.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                    auto fee_steem = fee_sbd * median_history;
+
+                    modify(*itr, [&](auto& e) {
+                        e.pending_fee -= fee_sbd;
+                    });
+
+                    adjust_balance(get_account(itr->agent), fee_steem);
+
+                    net_sbd += fee_sbd;
+                    net_steem += fee_steem;
+                }
+            }
+
+            const auto& withdraws = get_index<savings_withdraw_index>().indices();
+            for (auto itr = withdraws.begin(); itr != withdraws.end(); ++itr) {
+                if (itr->amount.symbol != SBD_SYMBOL || !itr->amount.amount.value) continue;
+
+                auto sbd = asset(
+                    (uint128_t(itr->amount.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                auto steem = sbd * median_history;
+
+                adjust_balance(get_account(itr->to), steem);
+
+                if (itr->amount == sbd) {
+                    remove(*itr);
+
+                    modify(get_account(itr->from), [&](account_object& a) {
+                        a.savings_withdraw_requests--;
+                    });
+                } else {
+                    modify(*itr, [&](auto& w) {
+                        w.amount -= sbd;
+                    });
+                }
+
+                net_sbd += sbd;
+                net_steem += steem;
+            }
+
+            modify(props, [&](auto& p) {
+                p.current_supply += net_steem;
+                p.current_sbd_supply -= net_sbd;
+                p.virtual_supply += net_steem;
+                p.virtual_supply -= net_sbd * median_history;
+            });
+        }
+
         asset database::to_sbd(const asset &steem) const {
             FC_ASSERT(steem.symbol == STEEM_SYMBOL);
             const auto &feed_history = get_feed_history();
@@ -3106,6 +3361,9 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<proposal_delete_evaluator>();
             _my->_evaluator_registry.register_evaluator<chain_properties_update_evaluator>();
             _my->_evaluator_registry.register_evaluator<break_free_referral_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_request_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_request_delete_evaluator>();
+            _my->_evaluator_registry.register_evaluator<worker_request_vote_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -3151,6 +3409,8 @@ namespace golos { namespace chain {
             add_core_index<account_metadata_index>(*this);
             add_core_index<proposal_index>(*this);
             add_core_index<required_approval_index>(*this);
+            add_core_index<worker_request_index>(*this);
+            add_core_index<worker_request_vote_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3698,6 +3958,7 @@ namespace golos { namespace chain {
                 clear_expired_orders();
                 clear_expired_delegations();
 
+                check_witness_idleness();
                 update_witness_schedule();
 
                 update_median_feed();
@@ -3706,7 +3967,11 @@ namespace golos { namespace chain {
                 clear_null_account_balance();
                 process_funds();
                 process_conversions();
+                process_sbd_debt_conversions();
                 process_comment_cashout();
+                process_worker_votes();
+                process_worker_cashout();
+                check_account_idleness();
                 process_vesting_withdrawals();
                 process_savings_withdraws();
                 pay_liquidity_reward();
@@ -3827,7 +4092,8 @@ namespace golos { namespace chain {
                             }
 
                             std::sort(copy.begin(), copy.end()); /// TODO: use nth_item
-                            fho.current_median_history = copy[copy.size() / 2];
+                            fho.witness_median_history = copy[copy.size() / 2];
+                            fho.current_median_history = fho.witness_median_history;
 
 #ifdef STEEMIT_BUILD_TESTNET
                             if (skip_price_feed_limit_check) {
@@ -3890,6 +4156,16 @@ namespace golos { namespace chain {
                             break;
                         } else if (has_hardfork(STEEMIT_HARDFORK_0_19__924) && is_custom_json_operation(op)) {
                             update_account_bandwidth(props, acnt, trx_size * props.custom_ops_bandwidth_multiplier, bandwidth_type::custom_json);
+                            break;
+                        }
+                    }
+
+                    const auto now = head_block_time();
+                    for (const auto& op : trx.operations) {
+                        if (is_active_operation(op)) {
+                            modify(acnt, [&](auto& a) {
+                                a.last_active_operation = now;
+                            });
                             break;
                         }
                     }
@@ -3986,9 +4262,30 @@ namespace golos { namespace chain {
                         const auto &witness_missed = get_witness(get_scheduled_witness(
                                 i + 1));
                         if (witness_missed.owner != b.witness) {
+                            const auto& median_props = get_witness_schedule_object().median_props;
+                            auto reset_blocks = median_props.witness_skipping_reset_time / STEEMIT_BLOCK_INTERVAL;
+
                             modify(witness_missed, [&](witness_object &w) {
                                 w.total_missed++;
-                                if (has_hardfork(STEEMIT_HARDFORK_0_14__278)) {
+                                if (is_transit_enabled()) {
+                                    //hack, in order to switch off missing delates faster
+                                    if (head_block_num() - _dgp.transit_block_num < 210) {
+                                        if(head_block_num() - w.last_confirmed_block_num > 30) {
+                                            w.signing_key = public_key_type();
+                                            push_virtual_operation(shutdown_witness_operation(w.owner));
+                                        }
+                                    } else if ((has_hardfork(STEEMIT_HARDFORK_0_22__79)
+                                            && (head_block_num() - w.last_confirmed_block_num > reset_blocks))
+                                            || (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_DAY)) {
+                                        w.signing_key = public_key_type();
+                                        push_virtual_operation(shutdown_witness_operation(w.owner));
+                                    }
+                                } else if (has_hardfork(STEEMIT_HARDFORK_0_22__79)) {
+                                    if (head_block_num() - w.last_confirmed_block_num > reset_blocks) {
+                                        w.signing_key = public_key_type();
+                                        push_virtual_operation(shutdown_witness_operation(w.owner));
+                                    }
+                                } else if (has_hardfork(STEEMIT_HARDFORK_0_14__278)) {
                                     if (head_block_num() - w.last_confirmed_block_num > STEEMIT_BLOCKS_PER_DAY) {
                                         w.signing_key = public_key_type();
                                         push_virtual_operation(shutdown_witness_operation(w.owner));
@@ -4099,6 +4396,14 @@ namespace golos { namespace chain {
                                      STEEMIT_100_PERCENT) /
                                     (STEEMIT_SBD_STOP_PERCENT -
                                      STEEMIT_SBD_START_PERCENT);
+                        }
+
+                        if (has_hardfork(STEEMIT_HARDFORK_0_22__64)) {
+                            dgp.sbd_debt_percent = uint16_t((
+                                (fc::uint128_t((dgp.current_sbd_supply *
+                                                get_feed_history().witness_median_history).amount.value) *
+                                 STEEMIT_100_PERCENT)
+                                / dgp.virtual_supply.amount.value).to_uint64());
                         }
                     }
                 });
@@ -4615,6 +4920,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_21 == 21, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_21] = fc::time_point_sec(STEEMIT_HARDFORK_0_21_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_21] = STEEMIT_HARDFORK_0_21_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_22 == 22, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_22] = fc::time_point_sec(STEEMIT_HARDFORK_0_22_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_22] = STEEMIT_HARDFORK_0_22_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -4873,6 +5181,34 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_20:
                     break;
                 case STEEMIT_HARDFORK_0_21:
+                    break;
+                case STEEMIT_HARDFORK_0_22: {
+#ifdef STEEMIT_BUILD_TESTNET
+                    create<account_object>([&](auto& a) {
+                        a.name = STEEMIT_WORKER_POOL_ACCOUNT;
+                    });
+                    if (store_metadata_for_account(STEEMIT_WORKER_POOL_ACCOUNT)) {
+                        create<account_metadata_object>([&](auto& m) {
+                            m.account = STEEMIT_WORKER_POOL_ACCOUNT;
+                        });
+                    }
+                    create<account_authority_object>([&](auto& auth) {
+                        auth.account = STEEMIT_WORKER_POOL_ACCOUNT;
+                        auth.owner.weight_threshold = 1;
+                        auth.active.weight_threshold = 1;
+                    });
+#else
+                    const auto& workers_pool = get_account(STEEMIT_WORKER_POOL_ACCOUNT);
+                    authority empty_owner;
+                    empty_owner.weight_threshold = 1;
+                    update_owner_authority(workers_pool, empty_owner);
+                    modify(get_authority(workers_pool.name), [&](auto& o) {
+                        o.active = authority();
+                        o.active.weight_threshold = 1;
+                        o.posting = authority();
+                        o.posting.weight_threshold = 1;
+                    });
+#endif
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -4896,7 +5232,9 @@ namespace golos { namespace chain {
                         }                
                     }
 #endif
-                    break;
+                    retally_witness_votes_hf22();
+                    check_witness_idleness(false);
+                    } break;
                 default:
                     break;
             }
@@ -5160,6 +5498,37 @@ namespace golos { namespace chain {
                 auto wit_itr = vidx.lower_bound(boost::make_tuple(a.id, witness_id_type()));
                 while (wit_itr != vidx.end() && wit_itr->account == a.id) {
                     adjust_witness_vote(get(wit_itr->witness), a.witness_vote_weight());
+                    ++wit_itr;
+                }
+            }
+        }
+
+        void database::retally_witness_votes_hf22() {
+            const auto& witness_idx = get_index<witness_index>().indices();
+
+            // Clear all witness votes
+            for (auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr) {
+                modify(*itr, [&](auto& w) {
+                    w.votes = 0;
+                    w.virtual_position = 0;
+                });
+            }
+
+            const auto& account_idx = get_index<account_index>().indices();
+            const auto& vidx = get_index<witness_vote_index>().indices().get<by_account_witness>();
+
+            // Apply all existing votes by account
+            for (auto itr = account_idx.begin(); itr != account_idx.end(); ++itr) {
+                if (itr->proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT) {
+                    continue;
+                }
+
+                const auto& a = *itr;
+                auto weight = a.witness_vote_weight() / std::max(a.witnesses_voted_for, uint16_t(1));
+
+                auto wit_itr = vidx.lower_bound(std::make_tuple(a.id, witness_id_type()));
+                while (wit_itr != vidx.end() && wit_itr->account == a.id) {
+                    adjust_witness_vote(get(wit_itr->witness), weight);
                     ++wit_itr;
                 }
             }

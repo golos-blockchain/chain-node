@@ -513,6 +513,30 @@ if (options.count(name)) { \
         void operator()(const proposal_delete_operation& op) {
             insert_pair(op.requester, op.author);
         }
+
+        void operator()(const worker_request_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const worker_request_delete_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const worker_request_vote_operation& op) {
+            insert_pair(op.voter, op.author);
+        }
+
+        void operator()(const worker_reward_operation& op) {
+            insert_pair(op.worker_request_author, op.worker);
+        }
+
+        void operator()(const worker_state_operation& op) {
+            insert_receiver(op.author);
+        }
+
+        void operator()(const convert_sbd_debt_operation& op) {
+            insert_dual(op.owner);
+        }
     };
 
     void operation_get_impacted_accounts(const operation& op, impacted_accounts& result) {

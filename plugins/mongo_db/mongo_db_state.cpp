@@ -272,6 +272,7 @@ namespace mongo_db {
 
             format_value(body, "witnesses_voted_for", account.witnesses_voted_for);
 
+            format_value(body, "last_comment", account.last_comment);
             format_value(body, "last_post", account.last_post);
 
             format_value(body, "referrer_account", account.referrer_account);
@@ -1516,6 +1517,18 @@ namespace mongo_db {
         }
     }
 
+    auto state_writer::operator()(const worker_request_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_request_delete_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_request_vote_operation& op) -> result_type {
+
+    }
+
     auto state_writer::operator()(const fill_convert_request_operation& op) -> result_type {
         try {
             format_account(op.owner);
@@ -1932,6 +1945,18 @@ namespace mongo_db {
     }
 
     auto state_writer::operator()(const total_comment_reward_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_state_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const worker_reward_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const convert_sbd_debt_operation& op) -> result_type {
 
     }
 

@@ -7,10 +7,6 @@
 
 namespace golos { namespace plugins { namespace private_message {
 
-    static inline void validate_account_name(const string& name) {
-        GOLOS_CHECK_VALUE(is_valid_account_name(name), "Account name ${name} is invalid", ("name", name));
-    }
-
     static inline bool is_valid_contact_type(private_contact_type type) {
         switch(type) {
             case unknown:

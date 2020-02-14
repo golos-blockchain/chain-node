@@ -357,7 +357,7 @@ namespace golos { namespace plugins { namespace tags {
                 }
 
                 discussion d = create_discussion(*comment);
-                if (!query.is_good_tags(d, tags_number, tag_max_length)) {
+                if (!query.is_good_tags(d, tags_number, tag_max_length) || !query.is_good_category(d)) {
                     continue;
                 }
 
@@ -402,7 +402,7 @@ namespace golos { namespace plugins { namespace tags {
             discussion d = create_discussion(*comment);
             d.promoted = asset(itr->promoted_balance, SBD_SYMBOL);
 
-            if (!select(d) || !query.is_good_tags(d, tags_number, tag_max_length)) {
+            if (!select(d) || !query.is_good_tags(d, tags_number, tag_max_length) || !query.is_good_category(d)) {
                 continue;
             }
 
@@ -641,7 +641,7 @@ namespace golos { namespace plugins { namespace tags {
                     discussion p;
                     auto& comment = db.get_comment(itr->comment);
                     pimpl->fill_comment_api_object(db.get_comment(comment.root_comment), p);
-                    if (!query.is_good_tags(p, pimpl->tags_number, pimpl->tag_max_length) ||
+                    if (!query.is_good_tags(p, pimpl->tags_number, pimpl->tag_max_length) || !query.is_good_category(p) ||
                         !query.is_good_author(p.author)
                     ) {
                         continue;

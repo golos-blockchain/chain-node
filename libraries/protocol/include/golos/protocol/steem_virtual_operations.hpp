@@ -3,6 +3,7 @@
 #include <golos/protocol/base.hpp>
 #include <golos/protocol/block_header.hpp>
 #include <golos/protocol/asset.hpp>
+#include <golos/protocol/worker_operations.hpp>
 
 #include <fc/utf8.hpp>
 
@@ -253,6 +254,46 @@ namespace golos { namespace protocol {
             asset curator_reward;
             int64_t net_rshares;
         };
+
+        struct worker_reward_operation : public virtual_operation {
+            worker_reward_operation() {
+            }
+            worker_reward_operation(const account_name_type& w, const account_name_type& wra, const string& wrp, const asset& r, const asset& vr)
+                    : worker(w), worker_request_author(wra), worker_request_permlink(wrp), reward(r), reward_in_vests_if_vest(vr) {
+            }
+
+            account_name_type worker;
+            account_name_type worker_request_author;
+            string worker_request_permlink;
+            asset reward;
+            asset reward_in_vests_if_vest;
+        };
+
+        struct worker_state_operation : public virtual_operation {
+            worker_state_operation() {
+            }
+            worker_state_operation(const account_name_type& a, const string& p, const worker_request_state& s)
+                    : author(a), permlink(p), state(s) {
+            }
+
+            account_name_type author;
+            string permlink;
+            worker_request_state state;
+        };
+
+        struct convert_sbd_debt_operation : public virtual_operation {
+            convert_sbd_debt_operation() {
+            }
+            convert_sbd_debt_operation(const account_name_type& o, const asset& sbd, const asset& steem, const asset& ssbd, const asset& ssteem)
+                    : owner(o), sbd_amount(sbd), steem_amount(steem), savings_sbd_amount(ssbd), savings_steem_amount(ssteem) {
+            }
+
+            account_name_type owner;
+            asset sbd_amount;
+            asset steem_amount;
+            asset savings_sbd_amount;
+            asset savings_steem_amount;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -273,3 +314,6 @@ FC_REFLECT((golos::protocol::return_vesting_delegation_operation), (account)(ves
 FC_REFLECT((golos::protocol::producer_reward_operation), (producer)(vesting_shares))
 FC_REFLECT((golos::protocol::delegation_reward_operation), (delegator)(delegatee)(payout_strategy)(vesting_shares))
 FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
+FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_author)(worker_request_permlink)(reward)(reward_in_vests_if_vest))
+FC_REFLECT((golos::protocol::worker_state_operation), (author)(permlink)(state))
+FC_REFLECT((golos::protocol::convert_sbd_debt_operation), (owner)(sbd_amount)(steem_amount)(savings_sbd_amount)(savings_steem_amount))

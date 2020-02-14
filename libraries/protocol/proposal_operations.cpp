@@ -14,12 +14,6 @@
 
 namespace golos { namespace protocol {
 
-    // TODO: reuse code from steem_operations.cpp
-    static inline void validate_account_name(const string &name) {
-        GOLOS_CHECK_VALUE(is_valid_account_name(name), "Account name ${name} is invalid", ("name", name));
-    }
-
-
     void proposal_create_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(author);
         GOLOS_CHECK_PARAM(title, {

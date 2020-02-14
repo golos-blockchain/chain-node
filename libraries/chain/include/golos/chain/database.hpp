@@ -2,6 +2,7 @@
 
 #include <golos/chain/global_property_object.hpp>
 #include <golos/chain/node_property_object.hpp>
+#include <golos/chain/worker_objects.hpp>
 #include <golos/chain/fork_database.hpp>
 #include <golos/chain/block_log.hpp>
 #include <golos/chain/hardfork.hpp>
@@ -125,6 +126,8 @@ namespace golos { namespace chain {
             void set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws);
             bool store_memo_in_savings_withdraws() const;
 
+            void set_clear_old_worker_votes(bool clear_old_worker_votes);
+
             /**
              * @brief wipe Delete database from disk, and potentially the raw chain as well.
              * @param include_blocks If true, delete the raw chain as well as the database.
@@ -178,6 +181,9 @@ namespace golos { namespace chain {
             const proposal_object& get_proposal(const account_name_type&, const std::string&) const;
             const proposal_object* find_proposal(const account_name_type&, const std::string&) const;
             void        throw_if_exists_proposal(const account_name_type&, const std::string&) const;
+
+            const worker_request_object& get_worker_request(const comment_id_type& post) const;
+            const worker_request_object* find_worker_request(const comment_id_type& post) const;
 
             const comment_object &get_comment(const account_name_type &author, const shared_string &permlink) const;
 
@@ -296,7 +302,7 @@ namespace golos { namespace chain {
 
             void notify_post_apply_operation(const operation_notification &note);
 
-            inline const void push_virtual_operation(const operation &op, bool force = false); // vops are not needed for low mem. Force will push them on low mem.
+            const void push_virtual_operation(const operation &op, bool force = false); // vops are not needed for low mem. Force will push them on low mem.
             void notify_applied_block(const signed_block &block);
 
             void notify_on_pending_transaction(const signed_transaction &tx);
@@ -390,6 +396,10 @@ namespace golos { namespace chain {
 
             asset create_vesting(const account_object &to_account, asset steem);
 
+            void check_witness_idleness(bool periodically = true);
+
+            void check_account_idleness();
+
             void update_witness_schedule();
 
             void adjust_liquidity_reward(const account_object &owner, const asset &volume, bool is_bid);
@@ -453,9 +463,21 @@ namespace golos { namespace chain {
 
             void process_comment_cashout();
 
+            void clear_worker_request_votes(const worker_request_object& wro);
+
+            void close_worker_request(const worker_request_object& wro, worker_request_state closed_state);
+
+            void send_worker_state(const comment_object& post, worker_request_state closed_state);
+
+            void process_worker_votes();
+
+            void process_worker_cashout();
+
             void process_funds();
 
             void process_conversions();
+
+            void process_sbd_debt_conversions();
 
             void process_savings_withdraws();
 
@@ -536,6 +558,8 @@ namespace golos { namespace chain {
             void retally_comment_children();
 
             void retally_witness_votes();
+
+            void retally_witness_votes_hf22();
 
             void retally_witness_vote_counts(bool force = false);
 
@@ -676,6 +700,8 @@ namespace golos { namespace chain {
             std::vector<std::string> _accounts_to_store_metadata;
 
             bool _store_memo_in_savings_withdraws = true;
+
+            bool _clear_old_worker_votes = false;
 
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;

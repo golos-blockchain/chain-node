@@ -144,7 +144,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
 
             validate_database();
 
-            const auto vote_denom = gpo.vote_regeneration_per_day * STEEMIT_VOTE_REGENERATION_SECONDS / (60 * 60 * 24);
+            const auto vote_denom = STEEMIT_VOTE_REGENERATION_PER_DAY_PRE_HF_22 * STEEMIT_VOTE_REGENERATION_SECONDS / (60 * 60 * 24);
 
             const auto bob_power = (STEEMIT_100_PERCENT + vote_denom - 1) / vote_denom;
             const auto bob_vshares = bob_account.vesting_shares.amount.value * bob_power / STEEMIT_100_PERCENT;

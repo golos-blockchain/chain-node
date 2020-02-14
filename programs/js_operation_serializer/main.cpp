@@ -205,6 +205,13 @@ namespace detail_ns {
     };
 
     template<>
+    struct js_name<worker_request_state> {
+        static std::string name() {
+            return "worker_request_state";
+        }
+    };
+
+    template<>
     struct js_name<curation_curve> {
         static std::string name() {
             return "curation_curve";
@@ -443,6 +450,25 @@ namespace detail_ns {
             std::cout << "ChainTypes." << js_name<delegator_payout_strategy>::name() << " =\n";
             for (uint8_t i = uint8_t(delegator_payout_strategy::to_delegator); i < uint8_t(delegator_payout_strategy::_size); ++i) {
                 std::cout << "    " << fc::json::to_string(delegator_payout_strategy(i)) << ": " << int(i) << "\n";
+            }
+            std::cout << "\n";
+        }
+    };
+
+    template<>
+    struct serializer<worker_request_state, true> {
+        static void init() {
+            static bool init = false;
+            if (!init) {
+                init = true;
+                register_serializer(js_name<worker_request_state>::name(), [=]() { generate(); });
+            }
+        }
+
+        static void generate() {
+            std::cout << "ChainTypes." << js_name<worker_request_state>::name() << " =\n";
+            for (uint8_t i = uint8_t(worker_request_state::created); i < uint8_t(worker_request_state::_size); ++i) {
+                std::cout << "    " << fc::json::to_string(worker_request_state(i)) << ": " << int(i) << "\n";
             }
             std::cout << "\n";
         }

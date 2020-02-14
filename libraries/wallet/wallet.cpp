@@ -351,6 +351,18 @@ namespace golos { namespace wallet {
                         result["max_curation_percent"] = median_props.max_curation_percent;
                         result["curation_reward_curve"] = median_props.curation_reward_curve;
                     }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
+                        result["worker_reward_percent"] = median_props.worker_reward_percent;
+                        result["witness_reward_percent"] = median_props.witness_reward_percent;
+                        result["vesting_reward_percent"] = median_props.vesting_reward_percent;
+                        result["worker_request_creation_fee"] = median_props.worker_request_creation_fee;
+                        result["worker_request_approve_min_percent"] = median_props.worker_request_approve_min_percent;
+                        result["sbd_debt_convert_rate"] = median_props.sbd_debt_convert_rate;
+                        result["vote_regeneration_per_day"] = median_props.vote_regeneration_per_day;
+                        result["witness_skipping_reset_time"] = median_props.witness_skipping_reset_time;
+                        result["witness_idleness_time"] = median_props.witness_idleness_time;
+                        result["account_idleness_time"]  = median_props.account_idleness_time;
+                    }
 
                     return result;
                 }
@@ -2239,7 +2251,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             chain_properties_update_operation op;
             chain_api_properties ap;
-            chain_properties_18 p;
+            chain_properties_19 p;
 
             // copy defaults in case of missing witness object
             ap.account_creation_fee = p.account_creation_fee;
@@ -2261,37 +2273,40 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             SET_PROP(p, create_account_min_delegation);
             SET_PROP(p, create_account_delegation_time);
             SET_PROP(p, min_delegation);
+            SET_PROP(p, max_referral_interest_rate);
+            SET_PROP(p, max_referral_term_sec);
+            SET_PROP(p, min_referral_break_fee);
+            SET_PROP(p, max_referral_break_fee);
+            SET_PROP(p, posts_window);
+            SET_PROP(p, posts_per_window);
+            SET_PROP(p, comments_window);
+            SET_PROP(p, comments_per_window);
+            SET_PROP(p, votes_window);
+            SET_PROP(p, votes_per_window);
+            SET_PROP(p, auction_window_size);
+            SET_PROP(p, max_delegated_vesting_interest_rate);
+            SET_PROP(p, custom_ops_bandwidth_multiplier);
+            SET_PROP(p, min_curation_percent);
+            SET_PROP(p, max_curation_percent);
+            SET_PROP(p, curation_reward_curve);
+            SET_PROP(p, allow_distribute_auction_reward);
+            SET_PROP(p, allow_return_auction_reward_to_fund);
             op.props = p;
             auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_19) || !!props.max_referral_interest_rate
-                    || !!props.max_referral_term_sec || !!props.min_referral_break_fee || !!props.max_referral_break_fee
-                    || !!props.posts_window || !!props.posts_per_window
-                    || !!props.comments_window || !!props.comments_per_window
-                    || !!props.votes_window || !!props.votes_per_window
-                    || !!props.auction_window_size || !!props.max_delegated_vesting_interest_rate || !!props.custom_ops_bandwidth_multiplier
-                    || !!props.min_curation_percent || !!props.max_curation_percent || !!props.curation_reward_curve
-                    || !!props.allow_return_auction_reward_to_fund || !!props.allow_distribute_auction_reward) {
-                chain_properties_19 p19;
-                p19 = p;
-                SET_PROP(p19, max_referral_interest_rate);
-                SET_PROP(p19, max_referral_term_sec);
-                SET_PROP(p19, min_referral_break_fee);
-                SET_PROP(p19, max_referral_break_fee);
-                SET_PROP(p19, posts_window);
-                SET_PROP(p19, posts_per_window);
-                SET_PROP(p19, comments_window);
-                SET_PROP(p19, comments_per_window);
-                SET_PROP(p19, votes_window);
-                SET_PROP(p19, votes_per_window);
-                SET_PROP(p19, auction_window_size);
-                SET_PROP(p19, max_delegated_vesting_interest_rate);
-                SET_PROP(p19, custom_ops_bandwidth_multiplier);
-                SET_PROP(p19, min_curation_percent);
-                SET_PROP(p19, max_curation_percent);
-                SET_PROP(p19, curation_reward_curve);
-                SET_PROP(p19, allow_distribute_auction_reward);
-                SET_PROP(p19, allow_return_auction_reward_to_fund);
-                op.props = p19;
+            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
+                chain_properties_22 p22;
+                p22 = p;
+                SET_PROP(p22, worker_reward_percent);
+                SET_PROP(p22, witness_reward_percent);
+                SET_PROP(p22, vesting_reward_percent);
+                SET_PROP(p22, worker_request_creation_fee);
+                SET_PROP(p22, worker_request_approve_min_percent);
+                SET_PROP(p22, sbd_debt_convert_rate);
+                SET_PROP(p22, vote_regeneration_per_day);
+                SET_PROP(p22, witness_skipping_reset_time);
+                SET_PROP(p22, witness_idleness_time);
+                SET_PROP(p22, account_idleness_time);
+                op.props = p22;
             }
 #undef SET_PROP
 
@@ -3128,6 +3143,60 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( trx, broadcast );
         }
 
+        annotated_signed_transaction wallet_api::worker_request(
+                const std::string& author, const std::string& permlink, const std::string& worker,
+                const asset& required_amount_min, const asset& required_amount_max, bool vest_reward, uint32_t duration,
+                bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_request_operation op;
+            op.author = author;
+            op.permlink = permlink;
+            op.worker = worker;
+            op.required_amount_min = required_amount_min;
+            op.required_amount_max = required_amount_max;
+            op.vest_reward = vest_reward;
+            op.duration = duration;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::delete_worker_request(
+                const std::string& author, const std::string& permlink, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_request_delete_operation op;
+            op.author = author;
+            op.permlink = permlink;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::vote_worker_request(
+                const std::string& voter, const std::string& author, const std::string& permlink,
+                int16_t vote_percent, bool broadcast
+        ) {
+            WALLET_CHECK_UNLOCKED();
+
+            worker_request_vote_operation op;
+            op.voter = voter;
+            op.author = author;
+            op.permlink = permlink;
+            op.vote_percent = vote_percent;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+            return my->sign_transaction(tx, broadcast);
+        }
 } } // golos::wallet
 
 FC_REFLECT_ENUM(golos::wallet::logic_errors::types,

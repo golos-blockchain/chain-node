@@ -9,6 +9,7 @@
 namespace golos {
     namespace chain {
 
+        using golos::protocol::asset_symbol_type;
         using golos::protocol::asset;
         using golos::protocol::price;
 
@@ -77,6 +78,8 @@ namespace golos {
 
             uint16_t sbd_print_rate = STEEMIT_100_PERCENT;
 
+            uint16_t sbd_debt_percent = 0;
+
             /**
              *  This property switches off fee for SBD holders
              */
@@ -136,17 +139,12 @@ namespace golos {
              */
             uint64_t current_reserve_ratio = 1;
 
-            /**
-             * The number of votes regenerated per day.  Any user voting slower than this rate will be
-             * "wasting" voting power through spillover; any user voting faster than this rate will have
-             * their votes reduced.
-             */
-            uint32_t vote_regeneration_per_day = 40;
-
             uint16_t custom_ops_bandwidth_multiplier = STEEMIT_CUSTOM_OPS_BANDWIDTH_MULTIPLIER;
 
             uint32_t transit_block_num = UINT32_MAX;
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
+
+            flat_map<asset_symbol_type, uint32_t> worker_requests;
         };
 
         typedef multi_index_container <
@@ -181,6 +179,7 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (total_reward_shares2)
                 (sbd_interest_rate)
                 (sbd_print_rate)
+                (sbd_debt_percent)
                 (average_block_size)
                 (maximum_block_size)
                 (current_aslot)
@@ -189,10 +188,10 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (last_irreversible_block_num)
                 (max_virtual_bandwidth)
                 (current_reserve_ratio)
-                (vote_regeneration_per_day)
                 (custom_ops_bandwidth_multiplier)
                 (is_forced_min_price)
                 (transit_block_num)
                 (transit_witnesses)
+                (worker_requests)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::dynamic_global_property_object, golos::chain::dynamic_global_property_index)

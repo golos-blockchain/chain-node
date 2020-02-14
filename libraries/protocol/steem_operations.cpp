@@ -4,17 +4,13 @@
 #include <fc/io/json.hpp>
 
 namespace golos { namespace protocol {
-
-        /// TODO: after the hardfork, we can rename this method validate_permlink because it is strictily less restrictive than before
-        ///  Issue #56 contains the justificiation for allowing any UTF-8 string to serve as a permlink, content will be grouped by tags
-        ///  going forward.
-        inline void validate_permlink(const string &permlink) {
-            GOLOS_CHECK_VALUE(permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH, "permlink is too long");
-            GOLOS_CHECK_VALUE(fc::is_utf8(permlink), "permlink not formatted in UTF8");
+        void validate_account_name(const std::string &name) {
+            GOLOS_CHECK_VALUE(is_valid_account_name(name), "Account name ${name} is invalid", ("name", name));
         }
 
-        static inline void validate_account_name(const string &name) {
-            GOLOS_CHECK_VALUE(is_valid_account_name(name), "Account name ${name} is invalid", ("name", name));
+        void validate_permlink(const string &permlink) {
+            GOLOS_CHECK_VALUE(permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH, "permlink is too long");
+            GOLOS_CHECK_VALUE(fc::is_utf8(permlink), "permlink not formatted in UTF8");
         }
 
         inline void validate_account_json_metadata(const string& json_metadata) {
@@ -320,6 +316,18 @@ namespace golos { namespace protocol {
                     allow_return_auction_reward_to_fund || allow_distribute_auction_reward,
                     "One or both options should be enabled: allow_return_auction_reward_to_fund and allow_distribute_auction_reward");
             });
+        }
+
+        void chain_properties_22::validate() const {
+            chain_properties_19::validate();
+            GOLOS_CHECK_VALUE_LE(worker_reward_percent + witness_reward_percent + vesting_reward_percent, STEEMIT_100_PERCENT);
+            GOLOS_CHECK_ASSET_GE0(worker_request_creation_fee, GBG);
+            GOLOS_CHECK_VALUE_LE(worker_request_approve_min_percent, STEEMIT_100_PERCENT);
+            GOLOS_CHECK_VALUE_LE(sbd_debt_convert_rate, STEEMIT_100_PERCENT);
+            GOLOS_CHECK_VALUE_LE(vote_regeneration_per_day, STEEMIT_100_PERCENT);
+            GOLOS_CHECK_VALUE_GE(witness_skipping_reset_time, GOLOS_MIN_WITNESS_SKIPPING_RESET_TIME);
+            GOLOS_CHECK_VALUE_GE(witness_idleness_time, GOLOS_MIN_WITNESS_IDLENESS_TIME);
+            GOLOS_CHECK_VALUE_GE(account_idleness_time, GOLOS_MIN_ACCOUNT_IDLENESS_TIME);
         }
 
         void witness_update_operation::validate() const {

@@ -71,6 +71,20 @@ namespace golos { namespace wallet {
 
             fc::optional<bool> allow_distribute_auction_reward;
             fc::optional<bool> allow_return_auction_reward_to_fund;
+
+            fc::optional<uint16_t> worker_reward_percent;
+            fc::optional<uint16_t> witness_reward_percent;
+            fc::optional<uint16_t> vesting_reward_percent;
+            fc::optional<uint16_t> worker_request_approve_min_percent;
+            fc::optional<asset> worker_request_creation_fee;
+
+            fc::optional<uint16_t> sbd_debt_convert_rate;
+
+            fc::optional<uint32_t> vote_regeneration_per_day;
+
+            fc::optional<uint32_t> witness_skipping_reset_time;
+            fc::optional<uint32_t> witness_idleness_time;
+            fc::optional<uint32_t> account_idleness_time;
         };
 
         struct optional_private_box_query {
@@ -1397,6 +1411,47 @@ namespace golos { namespace wallet {
                 const std::string& from, const std::string& to,
                 const std::string& start_date, const std::string& stop_date, bool broadcast);
 
+            /**
+             * Create or update worker request based on specified post, for specified worker proposal
+             *
+             * @param author author of the post
+             * @param permlink permlink of the post
+             * @param worker worker who will do request or done if premade
+             * @param required_amount_min required_amount_min
+             * @param required_amount_max required_amount_max
+             * @param vest_reward vest reward or not
+             * @param duration duration
+             * @param broadcast true if you wish to broadcast the transaction
+             */
+            annotated_signed_transaction worker_request(
+                const std::string& author, const std::string& permlink, const std::string& worker,
+                const asset& required_amount_min, const asset& required_amount_max, bool vest_reward, uint32_t duration, bool broadcast
+                );
+
+            /**
+             * Delete worker request based on specified post
+             *
+             * @param author author of the post
+             * @param permlink permlink of the post
+             * @param broadcast true if you wish to broadcast the transaction
+             */
+            annotated_signed_transaction delete_worker_request(
+                const std::string& author, const std::string& permlink, bool broadcast
+                );
+
+            /**
+             * Upvote or downvote worker request based on specified post, or cancel it
+             *
+             * @param voter account with non-zero Vesting Shares
+             * @param author author of the post
+             * @param permlink permlink of the post
+             * @param vote_percent from -10000 (-100%) to 10000 (100%)
+             * @param broadcast true if you wish to broadcast the transaction
+             */
+            annotated_signed_transaction vote_worker_request(
+                const std::string& voter, const std::string& author, const std::string& permlink,
+                int16_t vote_percent, bool broadcast
+                );
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1534,6 +1589,10 @@ FC_API( golos::wallet::wallet_api,
                 (delete_outbox_private_messages)
                 (mark_private_message)
                 (mark_private_messages)
+
+                (worker_request)
+                (delete_worker_request)
+                (vote_worker_request)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))
@@ -1559,7 +1618,11 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (max_referral_interest_rate)(max_referral_term_sec)(min_referral_break_fee)(max_referral_break_fee)
     (posts_window)(posts_per_window)(comments_window)(comments_per_window)(votes_window)(votes_per_window)(auction_window_size)
     (max_delegated_vesting_interest_rate)(custom_ops_bandwidth_multiplier)(min_curation_percent)(max_curation_percent)
-    (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund))
+    (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund)
+    (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
+    (worker_request_creation_fee)(worker_request_approve_min_percent)
+    (sbd_debt_convert_rate)(vote_regeneration_per_day)
+    (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))
 
 FC_REFLECT(
     (golos::wallet::message_body),

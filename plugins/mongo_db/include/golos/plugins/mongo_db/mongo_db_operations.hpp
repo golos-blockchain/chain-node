@@ -67,6 +67,9 @@ namespace mongo_db {
         result_type operator()(const proposal_create_operation& op);
         result_type operator()(const proposal_update_operation& op);
         result_type operator()(const proposal_delete_operation& op);
+        result_type operator()(const worker_request_operation& op);
+        result_type operator()(const worker_request_delete_operation& op);
+        result_type operator()(const worker_request_vote_operation& op);
 //
         result_type operator()(const fill_convert_request_operation& op);
         result_type operator()(const author_reward_operation& op);
@@ -89,6 +92,9 @@ namespace mongo_db {
         result_type operator()(const delegation_reward_operation& op);
         result_type operator()(const auction_window_reward_operation& op);
         result_type operator()(const total_comment_reward_operation& op);
+        result_type operator()(const worker_state_operation& op);
+        result_type operator()(const worker_reward_operation& op);
+        result_type operator()(const convert_sbd_debt_operation& op);
     };
 
 }}} // golos::plugins::mongo_db

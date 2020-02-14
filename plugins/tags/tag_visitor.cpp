@@ -229,7 +229,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     double operation_visitor::calculate_hot(const share_type& score, const time_point_sec& created) const {
-        return calculate_score<10000000, 10000>(score, created);
+        return calculate_score<10000000, 100000>(score, created);
     }
 
     double operation_visitor::calculate_trending(const share_type& score, const time_point_sec& created) const {

@@ -10,6 +10,10 @@
 
 namespace golos { namespace protocol {
 
+        void validate_account_name(const std::string &name);
+
+        void validate_permlink(const std::string &permlink);
+
         struct account_create_operation : public base_operation {
             asset fee;
             account_name_type creator;
@@ -164,7 +168,7 @@ namespace golos { namespace protocol {
                 : percent(perc) {
             }
 
-            uint16_t percent = STEEMIT_MIN_CURATION_PERCENT;
+            uint16_t percent = STEEMIT_DEF_CURATION_PERCENT;
 
             void validate() const;
         };
@@ -660,6 +664,80 @@ namespace golos { namespace protocol {
             chain_properties_19& operator=(const chain_properties_19&) = default;
         };
 
+        struct chain_properties_22 : public chain_properties_19 {
+
+            /**
+             * Percent of emission on each block being redirected to worker fund
+             */
+            uint16_t worker_reward_percent = GOLOS_WORKER_REWARD_PERCENT;
+
+            /**
+             * Percent of emission on each block being redirected to witness fund
+             */
+            uint16_t witness_reward_percent = GOLOS_WITNESS_REWARD_PERCENT;
+
+            /**
+             * Percent of emission on each block being redirected to vesting fund
+             */
+            uint16_t vesting_reward_percent = GOLOS_VESTING_REWARD_PERCENT;
+
+            /**
+             * Amount of fee in GBG have to be claimed from worker request author on creating request
+             */
+            asset worker_request_creation_fee = GOLOS_WORKER_REQUEST_CREATION_FEE;
+
+            /**
+             * Minimum percent of total vesting shares have to be voted for request in period to approve payments
+             */
+            uint16_t worker_request_approve_min_percent = GOLOS_WORKER_REQUEST_APPROVE_MIN_PERCENT;
+
+            /**
+             * Percent of each account balance (incl. saving) to be converted on each SBD debt conversion
+             */
+            uint16_t sbd_debt_convert_rate = STEEMIT_SBD_DEBT_CONVERT_RATE;
+
+            /**
+             * The number of votes regenerated per day.  Any user voting slower than this rate will be
+             * "wasting" voting power through spillover; any user voting faster than this rate will have
+             * their votes reduced.
+             */
+            uint32_t vote_regeneration_per_day = STEEMIT_VOTE_REGENERATION_PER_DAY;
+
+            /**
+             * The minimum time of witness skipping blocks to erase its signing key.
+             */
+            uint32_t witness_skipping_reset_time = GOLOS_DEF_WITNESS_SKIPPING_RESET_TIME;
+
+            /**
+             * The minimum time of witness idleness to periodically clear all its votes.
+             */
+            uint32_t witness_idleness_time = GOLOS_DEF_WITNESS_IDLENESS_TIME;
+
+            /**
+             * The minimum time of account idleness to lower its vesting shares.
+             */
+            uint32_t account_idleness_time = GOLOS_DEF_ACCOUNT_IDLENESS_TIME;
+
+            void validate() const;
+
+            chain_properties_22& operator=(const chain_properties_17& src) {
+                chain_properties_19::operator=(src);
+                return *this;
+            }
+
+            chain_properties_22& operator=(const chain_properties_18& src) {
+                chain_properties_19::operator=(src);
+                return *this;
+            }
+
+            chain_properties_22& operator=(const chain_properties_19& src) {
+                chain_properties_19::operator=(src);
+                return *this;
+            }
+
+            chain_properties_22& operator=(const chain_properties_22&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -670,7 +748,8 @@ namespace golos { namespace protocol {
         using versioned_chain_properties = fc::static_variant<
             chain_properties_17,
             chain_properties_18,
-            chain_properties_19
+            chain_properties_19,
+            chain_properties_22
         >;
 
         /**
@@ -1371,6 +1450,12 @@ FC_REFLECT_DERIVED(
     (posts_window)(posts_per_window)(comments_window)(comments_per_window)(votes_window)(votes_per_window)(auction_window_size)
     (max_delegated_vesting_interest_rate)(custom_ops_bandwidth_multiplier)(min_curation_percent)(max_curation_percent)
     (curation_reward_curve)(allow_distribute_auction_reward)(allow_return_auction_reward_to_fund))
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_22), ((golos::protocol::chain_properties_19)),
+    (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
+    (worker_request_creation_fee)(worker_request_approve_min_percent)
+    (sbd_debt_convert_rate)(vote_regeneration_per_day)
+    (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

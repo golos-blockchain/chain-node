@@ -3,18 +3,7 @@
 #include <golos/chain/custom_operation_interpreter.hpp>
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/block_summary_object.hpp>
-
-#define GOLOS_CHECK_BALANCE(ACCOUNT, TYPE, REQUIRED ...) \
-    FC_EXPAND_MACRO( \
-        FC_MULTILINE_MACRO_BEGIN \
-            asset exist = get_balance(ACCOUNT, TYPE, (REQUIRED).symbol); \
-            if( UNLIKELY( exist < (REQUIRED) )) { \
-                FC_THROW_EXCEPTION( golos::insufficient_funds, \
-                        "Account \"${account}\" does not have enough ${balance}: required ${required}, exist ${exist}", \
-                        ("account",ACCOUNT.name)("balance",get_balance_name(TYPE))("required",REQUIRED)("exist",exist)); \
-            } \
-        FC_MULTILINE_MACRO_END \
-    )
+#include <golos/chain/worker_objects.hpp>
 
 #define GOLOS_CHECK_BANDWIDTH(NOW, NEXT, TYPE, MSG, ...) \
     GOLOS_ASSERT((NOW) > (NEXT), golos::bandwidth_exception, MSG, \
@@ -23,63 +12,6 @@
 
 namespace golos { namespace chain {
         using fc::uint128_t;
-
-    enum balance_type {
-        MAIN_BALANCE,
-        SAVINGS,
-        VESTING,
-        EFFECTIVE_VESTING,
-        HAVING_VESTING,
-        AVAILABLE_VESTING
-    };
-
-    asset get_balance(const account_object &account, balance_type type, asset_symbol_type symbol) {
-        switch(type) {
-            case MAIN_BALANCE:
-                switch (symbol) {
-                    case STEEM_SYMBOL:
-                        return account.balance;
-                    case SBD_SYMBOL:
-                        return account.sbd_balance;
-                    default:
-                        GOLOS_CHECK_VALUE(false, "invalid symbol");
-                }
-            case SAVINGS:
-                switch (symbol) {
-                    case STEEM_SYMBOL:
-                        return account.savings_balance;
-                    case SBD_SYMBOL:
-                        return account.savings_sbd_balance;
-                    default:
-                        GOLOS_CHECK_VALUE(false, "invalid symbol");
-                }
-            case VESTING:
-                GOLOS_CHECK_VALUE(symbol == VESTS_SYMBOL, "invalid symbol");
-                return account.vesting_shares;
-            case EFFECTIVE_VESTING:
-                GOLOS_CHECK_VALUE(symbol == VESTS_SYMBOL, "invalid symbol");
-                return account.effective_vesting_shares();
-            case HAVING_VESTING:
-                GOLOS_CHECK_VALUE(symbol == VESTS_SYMBOL, "invalid symbol");
-                return account.available_vesting_shares(false);
-            case AVAILABLE_VESTING:
-                GOLOS_CHECK_VALUE(symbol == VESTS_SYMBOL, "invalid symbol");
-                return account.available_vesting_shares(true);
-            default: FC_ASSERT(false, "invalid balance type");
-        }
-    }
-
-    std::string get_balance_name(balance_type type) {
-        switch(type) {
-            case MAIN_BALANCE: return "fund";
-            case SAVINGS: return "savings";
-            case VESTING: return "vesting shares";
-            case EFFECTIVE_VESTING: return "effective vesting shares";
-            case HAVING_VESTING: return "having vesting shares";
-            case AVAILABLE_VESTING: return "available vesting shares";
-            default: FC_ASSERT(false, "invalid balance type");
-        }
-    }
 
         inline void validate_permlink_0_1(const string &permlink) {
             GOLOS_CHECK_VALUE(permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH &&
@@ -211,6 +143,7 @@ namespace golos { namespace chain {
                 acc.memo_key = o.memo_key;
                 acc.created = props.time;
                 acc.last_vote_time = props.time;
+                acc.last_active_operation = props.time;
                 acc.mined = false;
 
                 if (!_db.has_hardfork(STEEMIT_HARDFORK_0_11__169)) {
@@ -315,6 +248,7 @@ namespace golos { namespace chain {
                 acc.memo_key = o.memo_key;
                 acc.created = now;
                 acc.last_vote_time = now;
+                acc.last_active_operation = now;
                 acc.mined = false;
                 acc.recovery_account = o.creator;
                 acc.received_vesting_shares = o.delegation;
@@ -441,6 +375,15 @@ namespace golos { namespace chain {
             }
 
             const auto &comment = _db.get_comment(o.author, o.permlink);
+
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__8)
+                && comment.parent_author == STEEMIT_ROOT_POST_PARENT) {
+                const auto* wto = _db.find_worker_request(comment.id);
+                GOLOS_CHECK_LOGIC(!wto,
+                    logic_exception::cannot_delete_post_with_worker_request,
+                    "Cannot delete a post with worker request.");
+            }
+
             GOLOS_CHECK_LOGIC(comment.children == 0,
                     logic_exception::cannot_delete_comment_with_replies,
                     "Cannot delete a comment with replies.");
@@ -640,6 +583,7 @@ namespace golos { namespace chain {
             const chain_properties& mprops;
             const account_object& auth;
             mutable const account_bandwidth_object* band = nullptr;
+            mutable time_point_sec last_post_comment;
 
             uint16_t calc_reward_weight() const {
                 band = db.find<account_bandwidth_object, by_account_bandwidth_type>(
@@ -652,7 +596,11 @@ namespace golos { namespace chain {
                     });
                 }
 
-                if (db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
+                last_post_comment = std::max<time_point_sec>(auth.last_comment, auth.last_post);
+
+                if (db.has_hardfork(STEEMIT_HARDFORK_0_22__67)) {
+                    hf22();
+                } else if (db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
                     hf19();
                 } else if (db.has_hardfork(STEEMIT_HARDFORK_0_12__176)) {
                     hf12();
@@ -697,8 +645,56 @@ namespace golos { namespace chain {
                 return reward_weight;
             }
 
+            void hf22() const {
+                if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
+                    auto consumption = mprops.posts_window / mprops.posts_per_window;
+
+                    auto elapsed_seconds = (now - auth.last_post).to_seconds();
+
+                    auto regenerated_capacity = std::min(
+                        uint32_t(mprops.posts_window),
+                        uint32_t(elapsed_seconds));
+
+                    auto current_capacity = std::min(
+                        uint16_t(auth.posts_capacity + regenerated_capacity),
+                        mprops.posts_window);
+
+                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                        bandwidth_exception::post_bandwidth,
+                        "You may only post ${posts_per_window} times in ${posts_window} seconds.",
+                        ("posts_per_window", mprops.posts_per_window)
+                        ("posts_window", mprops.posts_window));
+
+                    db.modify(auth, [&](account_object& a) {
+                        a.posts_capacity = current_capacity - consumption;
+                    });
+                } else {
+                    auto consumption = mprops.comments_window / mprops.comments_per_window;
+
+                    auto elapsed_seconds = (now - auth.last_comment).to_seconds();
+
+                    auto regenerated_capacity = std::min(
+                        uint32_t(mprops.comments_window),
+                        uint32_t(elapsed_seconds));
+
+                    auto current_capacity = std::min(
+                        uint16_t(auth.comments_capacity + regenerated_capacity),
+                        mprops.comments_window);
+
+                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                        bandwidth_exception::comment_bandwidth,
+                        "You may only comment ${comments_per_window} times in ${comments_window} seconds.",
+                        ("comments_per_window", mprops.comments_per_window)
+                        ("comments_window", mprops.comments_window));
+
+                    db.modify(auth, [&](account_object& a) {
+                        a.comments_capacity = current_capacity - consumption;
+                    });
+                }
+            }
+
             void hf19() const {
-                auto elapsed_seconds = (now - auth.last_post).to_seconds();
+                auto elapsed_seconds = (now - last_post_comment).to_seconds();
 
                 if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
                     auto consumption = mprops.posts_window / mprops.posts_per_window;
@@ -717,11 +713,9 @@ namespace golos { namespace chain {
                         ("posts_per_window", mprops.posts_per_window)
                         ("posts_window", mprops.posts_window));
 
-
                     db.modify(auth, [&](account_object& a) {
                         a.posts_capacity = current_capacity - consumption;
                     });
-
                 } else {
                     auto consumption = mprops.comments_window / mprops.comments_per_window;
 
@@ -751,7 +745,7 @@ namespace golos { namespace chain {
                         bandwidth_exception::post_bandwidth,
                         "You may only post once every 5 minutes.");
                 } else {
-                    GOLOS_CHECK_BANDWIDTH(now, auth.last_post + STEEMIT_MIN_REPLY_INTERVAL,
+                    GOLOS_CHECK_BANDWIDTH(now, last_post_comment + STEEMIT_MIN_REPLY_INTERVAL,
                         golos::bandwidth_exception::comment_bandwidth,
                         "You may only comment once every 20 seconds.");
                 }
@@ -759,23 +753,23 @@ namespace golos { namespace chain {
 
             void hf6() const {
                 if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
-                    GOLOS_CHECK_BANDWIDTH(now, auth.last_post + STEEMIT_MIN_ROOT_COMMENT_INTERVAL,
+                    GOLOS_CHECK_BANDWIDTH(now, last_post_comment + STEEMIT_MIN_ROOT_COMMENT_INTERVAL,
                         bandwidth_exception::post_bandwidth,
                         "You may only post once every 5 minutes.");
                 } else {
-                    GOLOS_CHECK_BANDWIDTH(now, auth.last_post + STEEMIT_MIN_REPLY_INTERVAL,
+                    GOLOS_CHECK_BANDWIDTH(now, last_post_comment + STEEMIT_MIN_REPLY_INTERVAL,
                         bandwidth_exception::comment_bandwidth,
                         "You may only comment once every 20 seconds.");
                 }
             }
 
             void hf0() const {
-                GOLOS_CHECK_BANDWIDTH(now, auth.last_post + 60,
+                GOLOS_CHECK_BANDWIDTH(now, last_post_comment + 60,
                     bandwidth_exception::post_bandwidth,
                     "You may only post once per minute.");
             }
 
-        }; // struct check_comment_bandwidth
+        }; // struct comment_bandwidth
 
         void comment_evaluator::do_apply(const comment_operation &o) {
             try {
@@ -826,11 +820,12 @@ namespace golos { namespace chain {
                     uint16_t reward_weight = comment_bandwidth{_db, now, o, mprops, auth}.calc_reward_weight();
 
                     db().modify(auth, [&](account_object &a) {
-                        a.last_post = now;
                         if (o.parent_author != STEEMIT_ROOT_POST_PARENT) {
                             a.comment_count++;
+                            a.last_comment = now;
                         } else {
                             a.post_count++;
+                            a.last_post = now;
                         }
                     });
 
@@ -851,10 +846,13 @@ namespace golos { namespace chain {
                             com.auction_window_size = mprops.auction_window_size;
                         }
 
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__324)) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__66)) {
+                            com.curation_rewards_percent = std::max(mprops.min_curation_percent,
+                                std::min(uint16_t(STEEMIT_DEF_CURATION_PERCENT), mprops.max_curation_percent));
+                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__324)) {
                             com.curation_rewards_percent = mprops.min_curation_percent;
                         } else {
-                            com.curation_rewards_percent = STEEMIT_MIN_CURATION_PERCENT;
+                            com.curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
                         }
 
                         com.author = o.author;
@@ -1335,6 +1333,7 @@ namespace golos { namespace chain {
             GOLOS_CHECK_LOGIC(voter.proxy.size() == 0,
                     logic_exception::cannot_vote_when_route_are_set,
                     "A proxy is currently set, please clear the proxy before voting for a witness.");
+            const auto witness_vote_weight = voter.witness_vote_weight();
 
             if (o.approve)
                 GOLOS_CHECK_LOGIC(voter.can_vote,
@@ -1357,15 +1356,26 @@ namespace golos { namespace chain {
                             "Account has voted for too many witnesses.",
                             ("max_votes", STEEMIT_MAX_ACCOUNT_WITNESS_VOTES)); // TODO: Remove after hardfork 2
 
-                    _db.create<witness_vote_object>([&](witness_vote_object &v) {
-                        v.witness = witness.id;
-                        v.account = voter.id;
-                    });
-
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
-                        _db.adjust_witness_vote(witness, voter.witness_vote_weight());
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
+                        auto old_delta = witness_vote_weight / std::max(voter.witnesses_voted_for, uint16_t(1));
+                        auto new_delta = witness_vote_weight / (voter.witnesses_voted_for+1);
+                        _db.adjust_witness_votes(voter, -old_delta + new_delta);
+                        _db.create<witness_vote_object>([&](witness_vote_object &v) {
+                            v.witness = witness.id;
+                            v.account = voter.id;
+                        });
+                        _db.adjust_witness_vote(witness, new_delta);
                     } else {
-                        _db.adjust_proxied_witness_votes(voter, voter.witness_vote_weight());
+                        _db.create<witness_vote_object>([&](witness_vote_object &v) {
+                            v.witness = witness.id;
+                            v.account = voter.id;
+                        });
+
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
+                            _db.adjust_witness_vote(witness, witness_vote_weight);
+                        } else {
+                            _db.adjust_proxied_witness_votes(voter, witness_vote_weight);
+                        }
                     }
 
                 } else {
@@ -1375,7 +1385,7 @@ namespace golos { namespace chain {
                         v.account = voter.id;
                     });
                     _db.modify(witness, [&](witness_object &w) {
-                        w.votes += voter.witness_vote_weight();
+                        w.votes += witness_vote_weight;
                     });
 
                 }
@@ -1389,14 +1399,19 @@ namespace golos { namespace chain {
                         "Vote currently exists, user must indicate a desire to reject witness.");
 
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_2)) {
-                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
-                        _db.adjust_witness_vote(witness, -voter.witness_vote_weight());
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__68)) {
+                        auto old_delta = witness_vote_weight / voter.witnesses_voted_for;
+                        auto new_delta = witness_vote_weight / std::max(uint16_t(voter.witnesses_voted_for-1), uint16_t(1));
+                        _db.adjust_witness_votes(voter, -old_delta + new_delta);
+                        _db.adjust_witness_vote(witness, -new_delta);
+                    } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
+                        _db.adjust_witness_vote(witness, -witness_vote_weight);
                     } else {
-                        _db.adjust_proxied_witness_votes(voter, -voter.witness_vote_weight());
+                        _db.adjust_proxied_witness_votes(voter, -witness_vote_weight);
                     }
                 } else {
                     _db.modify(witness, [&](witness_object &w) {
-                        w.votes -= voter.witness_vote_weight();
+                        w.votes -= witness_vote_weight;
                     });
                 }
                 _db.modify(voter, [&](account_object &a) {
@@ -1486,12 +1501,13 @@ namespace golos { namespace chain {
                 int64_t abs_weight = abs(o.weight);
                 int64_t used_power = (current_power * abs_weight) / STEEMIT_100_PERCENT;
 
-                const dynamic_global_property_object &dgpo = _db.get_dynamic_global_properties();
-
                 // used_power = (current_power * abs_weight / STEEMIT_100_PERCENT) * (reserve / max_vote_denom)
                 // The second multiplication is rounded up as of HF 259
-                int64_t max_vote_denom = dgpo.vote_regeneration_per_day *
-                    STEEMIT_VOTE_REGENERATION_SECONDS / (60 * 60 * 24);
+                int64_t max_vote_denom  = STEEMIT_VOTE_REGENERATION_PER_DAY_PRE_HF_22;
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__76)) {
+                    max_vote_denom = mprops.vote_regeneration_per_day;
+                }
+                max_vote_denom = max_vote_denom * STEEMIT_VOTE_REGENERATION_SECONDS / (60 * 60 * 24);
                 GOLOS_ASSERT(max_vote_denom > 0, golos::internal_error, "max_vote_denom is too small");
                 if (!_db.has_hardfork(STEEMIT_HARDFORK_0_14__259)) {
                     used_power = (used_power / max_vote_denom) + 1;
@@ -1847,6 +1863,7 @@ namespace golos { namespace chain {
                     acc.memo_key = o.work.worker;
                     acc.created = dgp.time;
                     acc.last_vote_time = dgp.time;
+                    acc.last_active_operation = dgp.time;
 
                     if (!db.has_hardfork(STEEMIT_HARDFORK_0_11__169)) {
                         acc.recovery_account = STEEMIT_INIT_MINER_NAME;
@@ -1989,6 +2006,7 @@ namespace golos { namespace chain {
                     acc.memo_key = *o.new_owner_key;
                     acc.created = dgp.time;
                     acc.last_vote_time = dgp.time;
+                    acc.last_active_operation = dgp.time;
                     acc.recovery_account = ""; /// highest voted witness at time of recovery
                 });
                 store_account_json_metadata(db, worker_account, "");

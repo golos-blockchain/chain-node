@@ -610,6 +610,24 @@ namespace mongo_db {
         return body;
     }
 
+    auto operation_writer::operator()(const worker_request_operation& op) -> result_type {
+        result_type body;
+
+        return body;
+    }
+
+    auto operation_writer::operator()(const worker_request_delete_operation& op) -> result_type {
+        result_type body;
+
+        return body;
+    }
+
+    auto operation_writer::operator()(const worker_request_vote_operation& op) -> result_type {
+        result_type body;
+
+        return body;
+    }
+
 //
 
     auto operation_writer::operator()(const fill_convert_request_operation& op) -> result_type {
@@ -775,6 +793,21 @@ namespace mongo_db {
     }
 
     auto operation_writer::operator()(const total_comment_reward_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const worker_state_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const worker_reward_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const convert_sbd_debt_operation& op) -> result_type {
         result_type body;
         return body;
     }

@@ -1,0 +1,23 @@
+#ifndef STEEMIT_HARDFORK_0_22
+#define STEEMIT_HARDFORK_0_22 22
+
+#define STEEMIT_HARDFORK_0_22__8 (STEEMIT_HARDFORK_0_22) // Workers
+#define STEEMIT_HARDFORK_0_22__65 (STEEMIT_HARDFORK_0_22) // Remove limit on max delegate interest witness prop
+#define STEEMIT_HARDFORK_0_22__66 (STEEMIT_HARDFORK_0_22) // Remove limit on min curation percent witness prop
+#define STEEMIT_HARDFORK_0_22__67 (STEEMIT_HARDFORK_0_22) // Fix post bandwidth
+#define STEEMIT_HARDFORK_0_22__68 (STEEMIT_HARDFORK_0_22) // Voting with stake for witnesses
+#define STEEMIT_HARDFORK_0_22__64 (STEEMIT_HARDFORK_0_22) // Force conversion SBD debt to GOLOS on account balances
+#define STEEMIT_HARDFORK_0_22__76 (STEEMIT_HARDFORK_0_22) // Make vote regeneration per day votable by witnesses
+#define STEEMIT_HARDFORK_0_22__77 (STEEMIT_HARDFORK_0_22) // Clearing votes on idling witnesses.
+#define STEEMIT_HARDFORK_0_22__78 (STEEMIT_HARDFORK_0_22) // Lowering vesting shares on idling accounts.
+#define STEEMIT_HARDFORK_0_22__79 (STEEMIT_HARDFORK_0_22) // Change block skipping timeout to reset witness signing key.
+
+#ifdef STEEMIT_BUILD_TESTNET
+#define STEEMIT_HARDFORK_0_22_TIME  1563958800 // 24 jul 2019 12:00:00 MSK
+#else
+#define STEEMIT_HARDFORK_0_22_TIME  1577293200 // 25 dec 2019 20:00:00 MSK
+#endif
+
+#define STEEMIT_HARDFORK_0_22_VERSION hardfork_version( 0, 22 )
+
+#endif

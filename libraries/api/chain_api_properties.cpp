@@ -35,6 +35,18 @@ namespace golos { namespace api {
             allow_distribute_auction_reward = src.allow_distribute_auction_reward;
             allow_return_auction_reward_to_fund = src.allow_return_auction_reward_to_fund;
         }
+        if (db.has_hardfork(STEEMIT_HARDFORK_0_22)) {
+            worker_reward_percent = src.worker_reward_percent;
+            witness_reward_percent = src.witness_reward_percent;
+            vesting_reward_percent = src.vesting_reward_percent;
+            worker_request_creation_fee = src.worker_request_creation_fee;
+            worker_request_approve_min_percent = src.worker_request_approve_min_percent;
+            sbd_debt_convert_rate = src.sbd_debt_convert_rate;
+            vote_regeneration_per_day = src.vote_regeneration_per_day;
+            witness_skipping_reset_time = src.witness_skipping_reset_time;
+            witness_idleness_time = src.witness_idleness_time;
+            account_idleness_time = src.account_idleness_time;
+        }
     }
 
 } } // golos::api
