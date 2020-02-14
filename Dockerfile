@@ -48,7 +48,7 @@ RUN \
     make -j$(nproc) && \
     make install && \
     rm -rf /usr/local/src/golos
-
+    
 RUN \
     apt-get remove -y \
         automake \
@@ -84,9 +84,9 @@ RUN \
         manpages \
         manpages-dev \
         mpi-default-dev \
-        python-dev \
-        python2.7-dev \
+        python3 \
         python3-dev \
+        python3-pip \
     && \
     apt-get autoremove -y && \
     rm -rf \
