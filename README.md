@@ -1,6 +1,6 @@
 # Introducing Golos
 
-[![Build Status](https://travis-ci.org/GolosChain/golos.svg?branch=master)](https://travis-ci.org/GolosChain/golos)
+[![Build Status](https://travis-ci.org/golos-blockchain/golos.svg?branch=master)](https://travis-ci.org/golos-blockchain/golos)
 
 Golos is an experimental Proof of Work blockchain with an unproven consensus
 algorithm.
@@ -47,7 +47,7 @@ more information about configuring, building and running of docker containers.
 # Testing
 
 ```
-git clone https://github.com/golos-classic/golos.git
+git clone https://github.com/golos-blockchain/golos.git
 cd golos
 sudo docker rm local/golos-test
 sudo docker build -t local/golos-test -f share/golosd/docker/Dockerfile-test .
