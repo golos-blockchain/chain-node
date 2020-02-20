@@ -1,19 +1,14 @@
-# Introducing Golos
+# Golos - the blockchain for decentralized applications
 
 [![Build Status](https://travis-ci.org/golos-blockchain/golos.svg?branch=master)](https://travis-ci.org/golos-blockchain/golos)
 
-Golos is an experimental Proof of Work blockchain with an unproven consensus
-algorithm.
+Welcome to the official repository GOLOS blockchain.
 
-# No Support & No Warranty
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+- Free transactions
+- Fast block confirmations (3 seconds)
+- Hierarchical role based permissions (keys)
+- Delegated Proof-of-Stake Consensus (DPOS)
+- Good choice for placing your own dApps
 
 # Code is Documentation
 
@@ -41,8 +36,7 @@ sudo docker exec -ti golos-default \
 
 # Building
 
-See the [build instruction](https://github.com/GolosChain/golos/wiki/Build-instruction), which contains 
-more information about configuring, building and running of docker containers.
+See the [hint](https://github.com/golos-blockchain/golos/wiki) or outdated [build instruction](https://github.com/GolosChain/golos/wiki/Build-instruction), which contains information about configuring, building and running of docker containers.
 
 # Testing
 
@@ -57,7 +51,8 @@ sudo docker build -t local/golos-test -f share/golosd/docker/Dockerfile-test .
 
 A list of some seed nodes to get you started can be found in
 [share/golosd/seednodes](share/golosd/seednodes).
+This same file is baked into the docker images.
 
-This same file is baked into the docker images and can be overridden by
-setting `STEEMD_SEED_NODES` in the container environment at `docker run`
-time to a whitespace delimited list of seed nodes (with port).
+# No Support & No Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
