@@ -195,7 +195,7 @@ DEFINE_API(plugin, set_block_applied_callback) {
 
     // Use default value in case of converting errors to preserve
     // previous HF behaviour, where 1st argument can be any integer
-    block_applied_callback_result_type type = block;
+    block_applied_callback_result_type type = full;
     auto arg = args.args->at(0);
     try {
         type = arg.as<block_applied_callback_result_type>();
