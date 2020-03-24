@@ -363,6 +363,9 @@ namespace golos { namespace wallet {
                         result["witness_idleness_time"] = median_props.witness_idleness_time;
                         result["account_idleness_time"]  = median_props.account_idleness_time;
                     }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_23)) {
+                        result["claim_idleness_time"]  = median_props.claim_idleness_time;
+                    }
 
                     return result;
                 }
@@ -2251,7 +2254,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             chain_properties_update_operation op;
             chain_api_properties ap;
-            chain_properties_19 p;
+            chain_properties_22 p;
 
             // copy defaults in case of missing witness object
             ap.account_creation_fee = p.account_creation_fee;
@@ -2291,22 +2294,23 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             SET_PROP(p, curation_reward_curve);
             SET_PROP(p, allow_distribute_auction_reward);
             SET_PROP(p, allow_return_auction_reward_to_fund);
+            SET_PROP(p, worker_reward_percent);
+            SET_PROP(p, witness_reward_percent);
+            SET_PROP(p, vesting_reward_percent);
+            SET_PROP(p, worker_request_creation_fee);
+            SET_PROP(p, worker_request_approve_min_percent);
+            SET_PROP(p, sbd_debt_convert_rate);
+            SET_PROP(p, vote_regeneration_per_day);
+            SET_PROP(p, witness_skipping_reset_time);
+            SET_PROP(p, witness_idleness_time);
+            SET_PROP(p, account_idleness_time);
             op.props = p;
             auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
-                chain_properties_22 p22;
-                p22 = p;
-                SET_PROP(p22, worker_reward_percent);
-                SET_PROP(p22, witness_reward_percent);
-                SET_PROP(p22, vesting_reward_percent);
-                SET_PROP(p22, worker_request_creation_fee);
-                SET_PROP(p22, worker_request_approve_min_percent);
-                SET_PROP(p22, sbd_debt_convert_rate);
-                SET_PROP(p22, vote_regeneration_per_day);
-                SET_PROP(p22, witness_skipping_reset_time);
-                SET_PROP(p22, witness_idleness_time);
-                SET_PROP(p22, account_idleness_time);
-                op.props = p22;
+            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_23)) {
+                chain_properties_23 p23;
+                p23 = p;
+                SET_PROP(p23, claim_idleness_time);
+                op.props = p23;
             }
 #undef SET_PROP
 

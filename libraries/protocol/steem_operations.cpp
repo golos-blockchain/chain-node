@@ -330,6 +330,11 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_VALUE_GE(account_idleness_time, GOLOS_MIN_ACCOUNT_IDLENESS_TIME);
         }
 
+        void chain_properties_23::validate() const {
+            chain_properties_22::validate();
+            GOLOS_CHECK_VALUE_GE(claim_idleness_time, GOLOS_MIN_CLAIM_IDLENESS_TIME);
+        }
+
         void witness_update_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
             GOLOS_CHECK_PARAM(url, {

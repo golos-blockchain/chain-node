@@ -2005,7 +2005,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_22 median_props;
+            chain_properties_23 median_props;
 
             auto median = active.size() / 2;
 
@@ -2074,6 +2074,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::witness_skipping_reset_time);
             calc_median(&chain_properties_22::witness_idleness_time);
             calc_median(&chain_properties_22::account_idleness_time);
+            calc_median(&chain_properties_23::claim_idleness_time);
 
             std::nth_element(
                 active.begin(), active.begin() + median, active.end(),
@@ -4923,6 +4924,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_22 == 22, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_22] = fc::time_point_sec(STEEMIT_HARDFORK_0_22_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_22] = STEEMIT_HARDFORK_0_22_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_23 == 23, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_23] = fc::time_point_sec(STEEMIT_HARDFORK_0_23_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_23] = STEEMIT_HARDFORK_0_23_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -5235,6 +5239,8 @@ namespace golos { namespace chain {
                     retally_witness_votes_hf22();
                     check_witness_idleness(false);
                     } break;
+                case STEEMIT_HARDFORK_0_23:
+                    break;
                 default:
                     break;
             }

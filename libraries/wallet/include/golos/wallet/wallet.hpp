@@ -85,6 +85,8 @@ namespace golos { namespace wallet {
             fc::optional<uint32_t> witness_skipping_reset_time;
             fc::optional<uint32_t> witness_idleness_time;
             fc::optional<uint32_t> account_idleness_time;
+
+            fc::optional<uint32_t> claim_idleness_time;
         };
 
         struct optional_private_box_query {
@@ -1622,7 +1624,8 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
-    (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))
+    (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time)
+    (claim_idleness_time))
 
 FC_REFLECT(
     (golos::wallet::message_body),

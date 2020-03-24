@@ -4,7 +4,7 @@
 #pragma once
 
 
-#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 22, 0))
+#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 23, 0))
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     (hardfork_version(STEEMIT_BLOCKCHAIN_VERSION))
 
 
@@ -259,6 +259,9 @@
 #define GOLOS_MIN_ACCOUNT_IDLENESS_TIME         (60*60*24*30*1) ///< 1 month
 #define GOLOS_DEF_ACCOUNT_IDLENESS_TIME         (60*60*24*30*12) ///< 12 month
 #define GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL   (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
+
+#define GOLOS_MIN_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
+#define GOLOS_DEF_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
@@ -539,6 +542,13 @@
 #else
 #define GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL   (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
 #endif
+
+#ifdef STEEMIT_BUILD_LIVETEST
+#define GOLOS_MIN_CLAIM_IDLENESS_TIME           (60*5/STEEMIT_BLOCK_INTERVAL) ///< 5 minutes
+#else
+#define GOLOS_MIN_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
+#endif
+#define GOLOS_DEF_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000

@@ -47,6 +47,9 @@ namespace golos { namespace api {
             witness_idleness_time = src.witness_idleness_time;
             account_idleness_time = src.account_idleness_time;
         }
+        if (db.has_hardfork(STEEMIT_HARDFORK_0_23)) {
+            claim_idleness_time = src.claim_idleness_time;
+        }
     }
 
 } } // golos::api

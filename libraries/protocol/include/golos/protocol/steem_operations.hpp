@@ -738,6 +738,38 @@ namespace golos { namespace protocol {
             chain_properties_22& operator=(const chain_properties_22&) = default;
         };
 
+        struct chain_properties_23 : public chain_properties_22 {
+
+            /**
+             * The minimum time of claim idleness for accumulative_balance claiming.
+             */
+            uint32_t claim_idleness_time = GOLOS_DEF_CLAIM_IDLENESS_TIME;
+
+            void validate() const;
+
+            chain_properties_23& operator=(const chain_properties_17& src) {
+                chain_properties_22::operator=(src);
+                return *this;
+            }
+
+            chain_properties_23& operator=(const chain_properties_18& src) {
+                chain_properties_22::operator=(src);
+                return *this;
+            }
+
+            chain_properties_23& operator=(const chain_properties_19& src) {
+                chain_properties_22::operator=(src);
+                return *this;
+            }
+
+            chain_properties_23& operator=(const chain_properties_22& src) {
+                chain_properties_22::operator=(src);
+                return *this;
+            }
+
+            chain_properties_23& operator=(const chain_properties_23&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -749,7 +781,8 @@ namespace golos { namespace protocol {
             chain_properties_17,
             chain_properties_18,
             chain_properties_19,
-            chain_properties_22
+            chain_properties_22,
+            chain_properties_23
         >;
 
         /**
@@ -1456,6 +1489,9 @@ FC_REFLECT_DERIVED(
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
     (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_23), ((golos::protocol::chain_properties_22)),
+    (claim_idleness_time))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
