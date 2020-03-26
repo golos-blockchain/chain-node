@@ -96,6 +96,7 @@ namespace mongo_db {
         result_type operator()(const worker_state_operation& op);
         result_type operator()(const worker_reward_operation& op);
         result_type operator()(const convert_sbd_debt_operation& op);
+        result_type operator()(const claim_operation& op);
 
         void write_global_property_object(const dynamic_global_property_object& dgpo, bool history);
 

@@ -1451,6 +1451,21 @@ namespace golos { namespace protocol {
                 a.insert(owner);
             }
         };
+
+        class claim_operation : public base_operation {
+        public:
+            account_name_type from;
+            account_name_type to;
+            asset amount;
+            bool to_vesting;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
 } } // golos::protocol
 
 
@@ -1568,3 +1583,5 @@ FC_REFLECT_ENUM(golos::protocol::delegator_payout_strategy, (to_delegator)(to_de
 FC_REFLECT((golos::protocol::delegate_vesting_shares_with_interest_operation), (delegator)(delegatee)(vesting_shares)(interest_rate)(extensions));
 FC_REFLECT((golos::protocol::reject_vesting_shares_delegation_operation), (delegator)(delegatee)(extensions));
 FC_REFLECT((golos::protocol::transit_to_cyberway_operation), (owner)(vote_to_transit));
+
+FC_REFLECT((golos::protocol::claim_operation), (from)(to)(amount)(to_vesting))

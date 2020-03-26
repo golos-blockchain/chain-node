@@ -1454,6 +1454,8 @@ namespace golos { namespace wallet {
                 const std::string& voter, const std::string& author, const std::string& permlink,
                 int16_t vote_percent, bool broadcast
                 );
+
+            annotated_signed_transaction claim(string from, string to, asset amount, bool to_vesting = false, bool broadcast = false);
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1595,6 +1597,8 @@ FC_API( golos::wallet::wallet_api,
                 (worker_request)
                 (delete_worker_request)
                 (vote_worker_request)
+
+                (claim)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))

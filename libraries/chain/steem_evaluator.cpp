@@ -2634,4 +2634,21 @@ void delegate_vesting_shares(
             _db.remove(*delegation);
         }
 
+        void claim_evaluator::do_apply(const claim_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "claim_operation");
+
+            const auto& from_account = _db.get_account(op.from);
+            const auto& to_account = op.to.size() ? _db.get_account(op.to)
+                                                 : from_account;
+
+            GOLOS_CHECK_OP_PARAM(op, amount, {
+                GOLOS_CHECK_BALANCE(from_account, ACCUMULATIVE_BALANCE, op.amount);
+                _db.modify(from_account, [&](account_object& acnt) {acnt.accumulative_balance -= op.amount;});
+                if (op.to_vesting) {
+                    _db.create_vesting(to_account, op.amount);
+                } else {
+                    _db.modify(to_account, [&](account_object& acnt) {acnt.tip_balance += op.amount;});
+                }
+            });
+        }
 } } // golos::chain

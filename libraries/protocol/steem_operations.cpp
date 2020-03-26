@@ -752,4 +752,17 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
         }
 
+        void claim_operation::validate() const {
+            GOLOS_CHECK_PARAM(from, validate_account_name(from));
+            GOLOS_CHECK_PARAM(amount, {
+                GOLOS_CHECK_VALUE(is_asset_type(amount, STEEM_SYMBOL), "Amount must be GOLOS");
+                GOLOS_CHECK_VALUE(amount > asset(0, STEEM_SYMBOL), "Must transfer a nonzero amount");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                if (to != account_name_type()) {
+                    validate_account_name(to);
+                }
+            });
+        }
+
 } } // golos::protocol

@@ -1960,4 +1960,8 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const claim_operation& op) -> result_type {
+
+    }
+
 }}}

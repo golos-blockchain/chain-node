@@ -537,6 +537,10 @@ if (options.count(name)) { \
         void operator()(const convert_sbd_debt_operation& op) {
             insert_dual(op.owner);
         }
+
+        void operator()(const claim_operation& op) {
+            insert_pair(op.from, op.to);
+        }
     };
 
     void operation_get_impacted_accounts(const operation& op, impacted_accounts& result) {

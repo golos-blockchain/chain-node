@@ -57,6 +57,8 @@ public:
 
     asset balance = asset(0, STEEM_SYMBOL);  ///< total liquid shares held by this account
     asset savings_balance = asset(0, STEEM_SYMBOL);  ///< total liquid shares held by this account
+    asset accumulative_balance = asset(0, STEEM_SYMBOL);
+    asset tip_balance = asset(0, STEEM_SYMBOL);
 
     /**
      *  SBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
@@ -524,6 +526,7 @@ FC_REFLECT((golos::chain::account_object),
     (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
     (balance)
     (savings_balance)
+    (accumulative_balance)(tip_balance)
     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
     (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
     (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
