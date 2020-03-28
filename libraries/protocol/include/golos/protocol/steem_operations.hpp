@@ -1466,6 +1466,36 @@ namespace golos { namespace protocol {
                 a.insert(from);
             }
         };
+
+        class transfer_to_tip_operation : public base_operation {
+        public:
+            account_name_type from;
+            account_name_type to;
+            asset amount;
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
+
+        class transfer_from_tip_operation : public base_operation {
+        public:
+            account_name_type from;
+            account_name_type to;
+            asset amount;
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
 } } // golos::protocol
 
 
@@ -1584,4 +1614,6 @@ FC_REFLECT((golos::protocol::delegate_vesting_shares_with_interest_operation), (
 FC_REFLECT((golos::protocol::reject_vesting_shares_delegation_operation), (delegator)(delegatee)(extensions));
 FC_REFLECT((golos::protocol::transit_to_cyberway_operation), (owner)(vote_to_transit));
 
-FC_REFLECT((golos::protocol::claim_operation), (from)(to)(amount)(to_vesting))
+FC_REFLECT((golos::protocol::claim_operation), (from)(to)(amount)(to_vesting)(extensions))
+FC_REFLECT((golos::protocol::transfer_to_tip_operation), (from)(to)(amount)(memo)(extensions))
+FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(memo)(extensions))

@@ -1456,6 +1456,25 @@ namespace golos { namespace wallet {
                 );
 
             annotated_signed_transaction claim(string from, string to, asset amount, bool to_vesting = false, bool broadcast = false);
+
+            /**
+             *  @param from       - the account that initiated the transfer
+             *  @param to         - the account getting the transfer
+             *  @param amount     - the amount of assets to be transfered
+             *  @param memo A memo for the transactionm, encrypted with the to account's public memo key
+             *  @param broadcast true if you wish to broadcast the transaction
+             */
+            annotated_signed_transaction transfer_to_tip(string from, string to, asset amount, string memo, bool broadcast = false);
+
+            /**
+             *  @param from       - the account that initiated the transfer
+             *  @param to         - the account getting the transfer
+             *  @param amount     - the amount of assets to be transfered
+             *  @param memo A memo for the transactionm, encrypted with the to account's public memo key
+             *  @param broadcast true if you wish to broadcast the transaction
+             */
+            annotated_signed_transaction transfer_from_tip(string from, string to, asset amount, string memo, bool broadcast = false);
+
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1599,6 +1618,8 @@ FC_API( golos::wallet::wallet_api,
                 (vote_worker_request)
 
                 (claim)
+                (transfer_to_tip)
+                (transfer_from_tip)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))

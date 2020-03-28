@@ -817,4 +817,14 @@ namespace mongo_db {
         return body;
     }
 
+    auto operation_writer::operator()(const transfer_to_tip_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const transfer_from_tip_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
 }}}

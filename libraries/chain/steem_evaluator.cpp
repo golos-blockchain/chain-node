@@ -2651,4 +2651,30 @@ void delegate_vesting_shares(
                 }
             });
         }
+
+        void transfer_to_tip_evaluator::do_apply(const transfer_to_tip_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_to_tip_operation");
+
+            const auto& from = _db.get_account(op.from);
+            const auto& to = op.to.size() ? _db.get_account(op.to)
+                                                 : from;
+
+            GOLOS_CHECK_BALANCE(from, MAIN_BALANCE, op.amount);
+
+            _db.adjust_balance(from, -op.amount);
+            _db.modify(to, [&](account_object& acnt) {acnt.tip_balance += op.amount;});
+        }
+
+        void transfer_from_tip_evaluator::do_apply(const transfer_from_tip_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_from_tip_operation");
+
+            const auto& from = _db.get_account(op.from);
+            const auto& to = op.to.size() ? _db.get_account(op.to)
+                                                 : from;
+
+            GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
+
+            _db.modify(from, [&](account_object& acnt) {acnt.tip_balance -= op.amount;});
+            _db.create_vesting(to, op.amount);
+        }
 } } // golos::chain

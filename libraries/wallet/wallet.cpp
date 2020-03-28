@@ -3217,6 +3217,40 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction( tx, broadcast );
         }
+
+        annotated_signed_transaction wallet_api::transfer_to_tip( string from, string to, asset amount, string memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            check_memo( memo, get_account( from ) );
+            transfer_to_tip_operation op;
+            op.from = from;
+            op.to   = to;
+            op.memo = get_encrypted_memo( from, to, memo );
+            op.amount = amount;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::transfer_from_tip( string from, string to, asset amount, string memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            check_memo( memo, get_account( from ) );
+            transfer_from_tip_operation op;
+            op.from = from;
+            op.to   = to;
+            op.memo = get_encrypted_memo( from, to, memo );
+            op.amount = amount;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
 } } // golos::wallet
 
 FC_REFLECT_ENUM(golos::wallet::logic_errors::types,
