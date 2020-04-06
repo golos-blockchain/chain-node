@@ -2643,7 +2643,10 @@ void delegate_vesting_shares(
 
             GOLOS_CHECK_OP_PARAM(op, amount, {
                 GOLOS_CHECK_BALANCE(from_account, ACCUMULATIVE_BALANCE, op.amount);
-                _db.modify(from_account, [&](account_object& acnt) {acnt.accumulative_balance -= op.amount;});
+                _db.modify(from_account, [&](account_object& acnt) {
+                    acnt.accumulative_balance -= op.amount;
+                    acnt.last_claim = _db.head_block_time();
+                });
                 if (op.to_vesting) {
                     _db.create_vesting(to_account, op.amount);
                 } else {

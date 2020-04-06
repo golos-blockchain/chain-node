@@ -116,6 +116,7 @@ public:
     asset referral_break_fee = asset(0, STEEM_SYMBOL);
 
     time_point_sec last_active_operation;
+    time_point_sec last_claim;
 
     /// This function should be used only when the account votes for a witness directly
     share_type witness_vote_weight() const {
@@ -287,6 +288,7 @@ public:
 struct by_name;
 struct by_next_vesting_withdrawal;
 struct by_last_active_operation;
+struct by_last_claim;
 
 /**
  * @ingroup object_index
@@ -308,6 +310,14 @@ typedef multi_index_container<
                     composite_key<
                         account_object,
                         member<account_object, time_point_sec, &account_object::last_active_operation>,
+                        member<account_object, account_id_type, &account_object::id>>,
+                    composite_key_compare<
+                        std::greater<time_point_sec>,
+                        std::less<account_id_type>>>,
+                ordered_unique<tag<by_last_claim>,
+                    composite_key<
+                        account_object,
+                        member<account_object, time_point_sec, &account_object::last_claim>,
                         member<account_object, account_id_type, &account_object::id>>,
                     composite_key_compare<
                         std::greater<time_point_sec>,
@@ -539,6 +549,7 @@ FC_REFLECT((golos::chain::account_object),
     (last_comment)(last_post)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
     (last_active_operation)
+    (last_claim)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_object, golos::chain::account_index)
 

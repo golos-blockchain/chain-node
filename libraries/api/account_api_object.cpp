@@ -80,6 +80,7 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
     }
 
     last_active_operation = a.last_active_operation;
+    last_claim = a.last_claim;
 }
 
 account_api_object::account_api_object() = default;

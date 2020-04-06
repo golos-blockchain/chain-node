@@ -109,6 +109,7 @@ struct account_api_object {
     asset referral_break_fee = asset(0, STEEM_SYMBOL);
 
     time_point_sec last_active_operation = time_point_sec::min();
+    time_point_sec last_claim = time_point_sec::min();
 };
 
 } } // golos::api
@@ -129,6 +130,6 @@ FC_REFLECT((golos::api::account_api_object),
     (last_comment)(last_post)(post_bandwidth)
     (witness_votes)(reputation)(posts_capacity)(comments_capacity)(voting_capacity)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
-    (last_active_operation))
+    (last_active_operation)(last_claim))
 
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP

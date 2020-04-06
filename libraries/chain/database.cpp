@@ -1604,6 +1604,31 @@ namespace golos { namespace chain {
             }
         }
 
+        void database::check_claim_idleness() {
+            if (head_block_num() % GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL != 0) return;
+
+            if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
+
+            const auto now = head_block_time();
+            const auto& median_props = get_witness_schedule_object().median_props;
+            const auto old_time = now - median_props.claim_idleness_time;
+
+            asset to_workers(0, STEEM_SYMBOL);
+
+            const auto& idx = get_index<account_index, by_last_claim>();
+            auto itr = idx.lower_bound(old_time);
+            for (; itr != idx.end() && itr->last_claim > fc::time_point_sec::min(); ++itr) {
+                if (itr->accumulative_balance.amount == 0) continue;
+
+                to_workers += itr->accumulative_balance;
+                modify(*itr, [&](account_object& acnt) {
+                    acnt.accumulative_balance.amount = 0;
+                });
+            }
+
+            if (to_workers.amount != 0) adjust_balance(get_account(STEEMIT_WORKER_POOL_ACCOUNT), to_workers);
+        }
+
         void database::update_witness_schedule4() {
             vector<account_name_type> active_witnesses;
             active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
@@ -3976,6 +4001,7 @@ namespace golos { namespace chain {
                 process_worker_votes();
                 process_worker_cashout();
                 check_account_idleness();
+                check_claim_idleness();
                 process_vesting_withdrawals();
                 process_savings_withdraws();
                 pay_liquidity_reward();
