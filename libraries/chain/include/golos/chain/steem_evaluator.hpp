@@ -56,6 +56,7 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(delegate_vesting_shares_with_interest)
         DEFINE_EVALUATOR(reject_vesting_shares_delegation)
         DEFINE_EVALUATOR(claim)
+        DEFINE_EVALUATOR(donate)
         DEFINE_EVALUATOR(transfer_to_tip)
         DEFINE_EVALUATOR(transfer_from_tip)
         DEFINE_EVALUATOR(transit_to_cyberway)

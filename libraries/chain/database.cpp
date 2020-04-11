@@ -3391,6 +3391,7 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<worker_request_delete_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_request_vote_evaluator>();
             _my->_evaluator_registry.register_evaluator<claim_evaluator>();
+            _my->_evaluator_registry.register_evaluator<donate_evaluator>();
             _my->_evaluator_registry.register_evaluator<transfer_from_tip_evaluator>();
             _my->_evaluator_registry.register_evaluator<transfer_to_tip_evaluator>();
         }

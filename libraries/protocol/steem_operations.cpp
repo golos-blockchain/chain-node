@@ -765,6 +765,14 @@ namespace golos { namespace protocol {
             });
         }
 
+        void donate_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(from);
+            GOLOS_CHECK_PARAM_ACCOUNT(to);
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_VALUE_UTF8(memo);
+            GOLOS_CHECK_VALUE(fc::json::is_valid(memo), "memo is not valid JSON");
+        }
+
         void transfer_to_tip_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(from);
             GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));

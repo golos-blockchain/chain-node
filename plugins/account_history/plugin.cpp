@@ -542,6 +542,10 @@ if (options.count(name)) { \
             insert_pair(op.from, op.to);
         }
 
+        void operator()(const donate_operation& op) {
+            insert_pair(op.from, op.to);
+        }
+
         void operator()(const transfer_to_tip_operation& op) {
             insert_pair(op.from, op.to);
         }

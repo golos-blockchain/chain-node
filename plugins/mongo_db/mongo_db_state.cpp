@@ -1964,6 +1964,10 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const donate_operation& op) -> result_type {
+
+    }
+
     auto state_writer::operator()(const transfer_to_tip_operation& op) -> result_type {
 
     }

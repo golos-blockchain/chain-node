@@ -4,6 +4,7 @@
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/block_summary_object.hpp>
 #include <golos/chain/worker_objects.hpp>
+#include <fc/io/json.hpp>
 
 #define GOLOS_CHECK_BANDWIDTH(NOW, NEXT, TYPE, MSG, ...) \
     GOLOS_ASSERT((NOW) > (NEXT), golos::bandwidth_exception, MSG, \
@@ -2652,6 +2653,27 @@ void delegate_vesting_shares(
                 } else {
                     _db.modify(to_account, [&](account_object& acnt) {acnt.tip_balance += op.amount;});
                 }
+            });
+        }
+
+        void donate_evaluator::do_apply(const donate_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "donate_operation");
+
+            const auto& from = _db.get_account(op.from);
+            const auto& to = _db.get_account(op.to);
+
+            GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
+
+            const auto& v = fc::json::from_string(op.memo);
+            donate_memo memo;
+            fc::from_variant(v, memo); // validation
+
+            _db.modify(from, [&](account_object& acnt) {
+                acnt.accumulative_balance -= op.amount;
+            });
+
+            _db.modify(to, [&](account_object& acnt) {
+                acnt.accumulative_balance += op.amount;
             });
         }
 
