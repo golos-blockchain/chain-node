@@ -3218,6 +3218,22 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
+        annotated_signed_transaction wallet_api::donate(string from, string to, asset amount, donate_memo memo, bool broadcast )
+        {
+            WALLET_CHECK_UNLOCKED();
+            donate_operation op;
+            op.from = from;
+            op.to = (to == from ? "" : to);
+            op.amount = amount;
+            op.memo = memo;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
         annotated_signed_transaction wallet_api::transfer_to_tip( string from, string to, asset amount, string memo, bool broadcast)
         {
             WALLET_CHECK_UNLOCKED();

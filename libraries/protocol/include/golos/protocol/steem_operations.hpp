@@ -1469,9 +1469,10 @@ namespace golos { namespace protocol {
 
         class donate_memo {
         public:
-            string app;
-            string version;
-            string item_id;
+            account_name_type app;
+            uint16_t version;
+            fc::variant_object target;
+            fc::optional<string> comment;
         };
 
         class donate_operation : public base_operation {
@@ -1479,7 +1480,7 @@ namespace golos { namespace protocol {
             account_name_type from;
             account_name_type to;
             asset amount;
-            string memo;
+            donate_memo memo;
 
             extensions_type extensions;
 
@@ -1637,7 +1638,7 @@ FC_REFLECT((golos::protocol::reject_vesting_shares_delegation_operation), (deleg
 FC_REFLECT((golos::protocol::transit_to_cyberway_operation), (owner)(vote_to_transit));
 
 FC_REFLECT((golos::protocol::claim_operation), (from)(to)(amount)(to_vesting)(extensions))
-FC_REFLECT((golos::protocol::donate_memo), (app)(version)(item_id))
+FC_REFLECT((golos::protocol::donate_memo), (app)(version)(target)(comment))
 FC_REFLECT((golos::protocol::donate_operation), (from)(to)(amount)(memo)(extensions))
 FC_REFLECT((golos::protocol::transfer_to_tip_operation), (from)(to)(amount)(memo)(extensions))
 FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(memo)(extensions))

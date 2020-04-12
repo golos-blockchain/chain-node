@@ -2660,20 +2660,39 @@ void delegate_vesting_shares(
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "donate_operation");
 
             const auto& from = _db.get_account(op.from);
-            const auto& to = _db.get_account(op.to);
+            const auto& to = op.to.size() ? _db.get_account(op.to)
+                                                 : from;
 
             GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
 
-            const auto& v = fc::json::from_string(op.memo);
-            donate_memo memo;
-            fc::from_variant(v, memo); // validation
+            const auto& idx = _db.get_index<donate_index, by_app_version>();
+            auto itr = idx.find(std::make_tuple(op.memo.app, op.memo.version));
+            if (itr != idx.end()) {
+                std::function<bool(const fc::variant_object&,const fc::variant_object&)> same_schema = [&](auto& memo1, auto& memo2) {
+                    for (auto& entry : memo1) {
+                        if (!memo2.contains(entry.key().c_str())) return false;
+                        auto e_obj = entry.value().is_object();
+                        auto e_obj2 = memo2[entry.key()].is_object();
+                        if (e_obj && !e_obj2) return false;
+                        if (!e_obj && e_obj2) return false;
+                        if (e_obj && e_obj2) {
+                            if (!same_schema(entry.value().get_object(), memo2[entry.key()].get_object()))
+                                return false;
+                        }
+                    }
+                    return true;
+                };
+                GOLOS_CHECK_LOGIC(same_schema(itr->target, op.memo.target) && same_schema(op.memo.target, itr->target),
+                    logic_exception::wrong_donate_target_version,
+                    "Donate target schema changed without changing API version.");
+            }
 
             _db.modify(from, [&](account_object& acnt) {
-                acnt.accumulative_balance -= op.amount;
+                acnt.tip_balance -= op.amount;
             });
 
             _db.modify(to, [&](account_object& acnt) {
-                acnt.accumulative_balance += op.amount;
+                acnt.tip_balance += op.amount;
             });
         }
 

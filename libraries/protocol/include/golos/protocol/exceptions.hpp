@@ -349,6 +349,9 @@ namespace golos {
 
             // database logic
             account_exceeded_bandwidth_per_vestring_share,
+
+            // donate operation
+            wrong_donate_target_version
         };
     };
 
@@ -629,6 +632,9 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
 
         // database logic
         (account_exceeded_bandwidth_per_vestring_share)
+
+        // donate operation
+        (wrong_donate_target_version)
 );
 
 FC_REFLECT_ENUM(golos::bandwidth_exception::bandwidth_types,

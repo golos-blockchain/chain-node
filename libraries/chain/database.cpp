@@ -3441,6 +3441,7 @@ namespace golos { namespace chain {
             add_core_index<required_approval_index>(*this);
             add_core_index<worker_request_index>(*this);
             add_core_index<worker_request_vote_index>(*this);
+            add_core_index<donate_index>(*this);
 
             _plugin_index_signal();
         }

@@ -1457,6 +1457,8 @@ namespace golos { namespace wallet {
 
             annotated_signed_transaction claim(string from, string to, asset amount, bool to_vesting = false, bool broadcast = false);
 
+            annotated_signed_transaction donate(string from, string to, asset amount, donate_memo memo, bool broadcast = false);
+
             /**
              *  @param from       - the account that initiated the transfer
              *  @param to         - the account getting the transfer
@@ -1618,6 +1620,7 @@ FC_API( golos::wallet::wallet_api,
                 (vote_worker_request)
 
                 (claim)
+                (donate)
                 (transfer_to_tip)
                 (transfer_from_tip)
 )
