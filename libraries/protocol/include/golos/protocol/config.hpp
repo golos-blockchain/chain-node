@@ -384,11 +384,7 @@
 #define GOLOS_WITNESS_REWARD_PERCENT            (10.00*STEEMIT_1_PERCENT)
 #define GOLOS_VESTING_REWARD_PERCENT            (10.00*STEEMIT_1_PERCENT)
 
-#ifdef STEEMIT_BUILD_LIVETEST
-#define GOLOS_WORKER_REQUEST_MIN_DURATION        (0)
-#else
 #define GOLOS_WORKER_REQUEST_MIN_DURATION        (60*60*24*5) ///< 5 days
-#endif
 #define GOLOS_WORKER_REQUEST_MAX_DURATION        (60*60*24*30) ///< 30 days
 #define GOLOS_WORKER_REQUEST_APPROVE_MIN_PERCENT (10.00*STEEMIT_1_PERCENT) ///< 10%
 #define GOLOS_WORKER_REQUEST_CREATION_FEE        asset(100000, SBD_SYMBOL) ///< 100.000 GBG
@@ -519,42 +515,22 @@
 
 #define STEEMIT_SBD_DEBT_CONVERT_THRESHOLD      (20*STEEMIT_1_PERCENT) ///< Start force conversion SBD debt to GOLOS on account balances at 20% Market Cap
 #define STEEMIT_SBD_DEBT_CONVERT_RATE           (STEEMIT_1_PERCENT) ///< Convert 1% of account balance (incl. savings) on each SBD debt conversion
-#ifdef STEEMIT_BUILD_LIVETEST
-#define STEEMIT_SBD_DEBT_CONVERT_INTERVAL       (60*5/STEEMIT_BLOCK_INTERVAL) ///< 5 minutes
-#else
 #define STEEMIT_SBD_DEBT_CONVERT_INTERVAL       (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
-#endif
 
 #define GOLOS_MIN_WITNESS_SKIPPING_RESET_TIME   (60*60*1) ///< 1 hour
 #define GOLOS_DEF_WITNESS_SKIPPING_RESET_TIME   (60*60*6) ///< 6 hours
 #define GOLOS_MIN_WITNESS_IDLENESS_TIME         (60*60*24*30*1) ///< 1 month
 #define GOLOS_DEF_WITNESS_IDLENESS_TIME         (60*60*24*30*12) ///< 12 month
-#ifdef STEEMIT_BUILD_LIVETEST
-#define GOLOS_WITNESS_IDLENESS_CHECK_INTERVAL   (60*5/STEEMIT_BLOCK_INTERVAL) ///< 5 minutes
-#else
 #define GOLOS_WITNESS_IDLENESS_CHECK_INTERVAL   (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
-#endif
 #define GOLOS_WITNESS_IDLENESS_TOP_COUNT        100 ///< Count of TOP voted witnesses to clear votes if idling too long
 
 #define GOLOS_MIN_ACCOUNT_IDLENESS_TIME         (60*60*24*30*1) ///< 1 month
 #define GOLOS_DEF_ACCOUNT_IDLENESS_TIME         (60*60*24*30*12) ///< 12 month
-#ifdef STEEMIT_BUILD_LIVETEST
-#define GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL   (60*5/STEEMIT_BLOCK_INTERVAL) ///< 5 minutes
-#else
 #define GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL   (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
-#endif
 
-#ifdef STEEMIT_BUILD_LIVETEST
-#define GOLOS_MIN_CLAIM_IDLENESS_TIME           (60*5/STEEMIT_BLOCK_INTERVAL) ///< 5 minutes
-#else
 #define GOLOS_MIN_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
-#endif
 #define GOLOS_DEF_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
-#ifdef STEEMIT_BUILD_LIVETEST
-#define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (60*(5+1)/STEEMIT_BLOCK_INTERVAL) ///< 5 + 1 minutes
-#else
 #define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (STEEMIT_BLOCKS_PER_HOUR*(24+1)) ///< 1 day + 1 hour
-#endif
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000

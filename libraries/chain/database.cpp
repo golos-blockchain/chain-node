@@ -5244,6 +5244,10 @@ namespace golos { namespace chain {
                         o.posting.weight_threshold = 1;
                     });
 #endif
+                    retally_witness_votes_hf22();
+                    check_witness_idleness(false);
+                    } break;
+                case STEEMIT_HARDFORK_0_23:
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -5267,10 +5271,6 @@ namespace golos { namespace chain {
                         }                
                     }
 #endif
-                    retally_witness_votes_hf22();
-                    check_witness_idleness(false);
-                    } break;
-                case STEEMIT_HARDFORK_0_23:
                     break;
                 default:
                     break;
