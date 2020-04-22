@@ -59,6 +59,7 @@ namespace golos {
             asset confidential_sbd_supply = asset(0, SBD_SYMBOL); ///< total asset held in confidential balances
             asset total_vesting_fund_steem = asset(0, STEEM_SYMBOL);
             asset total_vesting_shares = asset(0, VESTS_SYMBOL);
+            asset accumulative_balance = asset(0, STEEM_SYMBOL);
             asset total_reward_fund_steem = asset(0, STEEM_SYMBOL);
             fc::uint128_t total_reward_shares2; ///< the running total of REWARD^2
 
@@ -175,6 +176,7 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (confidential_sbd_supply)
                 (total_vesting_fund_steem)
                 (total_vesting_shares)
+                (accumulative_balance)
                 (total_reward_fund_steem)
                 (total_reward_shares2)
                 (sbd_interest_rate)

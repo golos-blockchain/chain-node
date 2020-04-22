@@ -1609,6 +1609,8 @@ namespace golos { namespace chain {
 
             if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
 
+            const auto& props = get_dynamic_global_properties();
+
             const auto now = head_block_time();
             const auto& median_props = get_witness_schedule_object().median_props;
             const auto old_time = now - median_props.claim_idleness_time;
@@ -1618,15 +1620,18 @@ namespace golos { namespace chain {
             const auto& idx = get_index<account_index, by_last_claim>();
             auto itr = idx.lower_bound(old_time);
             for (; itr != idx.end() && itr->last_claim > fc::time_point_sec::min(); ++itr) {
-                if (itr->accumulative_balance.amount == 0) continue;
+                if (itr->vesting_shares.amount == 0) continue;
 
-                to_workers += itr->accumulative_balance;
-                modify(*itr, [&](account_object& acnt) {
-                    acnt.accumulative_balance.amount = 0;
-                });
+                auto to_claim = (uint128_t(props.accumulative_balance.amount.value) * itr->vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64();
+                to_workers += asset(to_claim, STEEM_SYMBOL);
             }
 
-            if (to_workers.amount != 0) adjust_balance(get_account(STEEMIT_WORKER_POOL_ACCOUNT), to_workers);
+            if (to_workers.amount != 0) {
+                adjust_balance(get_account(STEEMIT_WORKER_POOL_ACCOUNT), to_workers);
+                modify(props, [&](auto& p) {
+                    p.accumulative_balance -= to_workers;
+                });
+            }
         }
 
         void database::update_witness_schedule4() {
@@ -2829,7 +2834,11 @@ namespace golos { namespace chain {
                 }
 
                 modify(props, [&](dynamic_global_property_object &p) {
-                    p.total_vesting_fund_steem += asset(vesting_reward, STEEM_SYMBOL);
+                    if (has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
+                        p.accumulative_balance += asset(vesting_reward, STEEM_SYMBOL);
+                    } else {
+                        p.total_vesting_fund_steem += asset(vesting_reward, STEEM_SYMBOL);
+                    }
                     p.total_reward_fund_steem += asset(content_reward, STEEM_SYMBOL);
                     p.current_supply += asset(new_steem, STEEM_SYMBOL);
                     p.virtual_supply += asset(new_steem, STEEM_SYMBOL);
@@ -5271,6 +5280,12 @@ namespace golos { namespace chain {
                         }                
                     }
 #endif
+                    for (const auto& acnt : get_index<account_index>().indices()) {
+                        const auto now = head_block_time();
+                        modify(acnt, [&](auto& acnt) {
+                            acnt.last_claim = now;
+                        });
+                    }
                     break;
                 default:
                     break;

@@ -72,7 +72,6 @@ namespace golos {
             EFFECTIVE_VESTING,
             HAVING_VESTING,
             AVAILABLE_VESTING,
-            ACCUMULATIVE_BALANCE,
             TIP_BALANCE
         };
 
