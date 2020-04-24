@@ -288,8 +288,6 @@ namespace golos { namespace protocol {
                     "Maximum break free must be GOLOS");
                 GOLOS_CHECK_VALUE(max_referral_break_fee >= min_referral_break_fee,
                     "Maximum break free cann't be more than minimum break free");
-                GOLOS_CHECK_VALUE(max_referral_break_fee <= GOLOS_MAX_REFERRAL_BREAK_FEE,
-                    "Maximum break free cann't be more than ${max}", ("max", GOLOS_MAX_REFERRAL_BREAK_FEE));
             });
 
             GOLOS_CHECK_VALUE_LEGE(posts_window, 1, std::numeric_limits<uint16_t>::max() / 2);

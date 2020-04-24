@@ -89,8 +89,8 @@ namespace golos { namespace plugins { namespace account_history {
             (get_account_history)
         )
 
-    private:
         struct plugin_impl;
+    private:
         std::unique_ptr<plugin_impl> pimpl;
     };
 

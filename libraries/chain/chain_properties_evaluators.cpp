@@ -61,6 +61,13 @@ namespace golos { namespace chain {
                     auto max_curation_percent = props.max_curation_percent;
                     GOLOS_CHECK_VALUE_LEGE(min_curation_percent, STEEMIT_MIN_CURATION_PERCENT_PRE_HF22, max_curation_percent);
                 }
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_23__93)) {
+                    auto max_referral_break_fee = props.max_referral_break_fee;
+                    GOLOS_CHECK_PARAM(max_referral_break_fee, {
+                        GOLOS_CHECK_VALUE(max_referral_break_fee <= GOLOS_MAX_REFERRAL_BREAK_FEE_PRE_HF22,
+                            "Maximum break free cann't be more than ${max}", ("max", GOLOS_MAX_REFERRAL_BREAK_FEE_PRE_HF22));
+                    });
+                }
             });
             _wprops = props;
         }

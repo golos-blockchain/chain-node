@@ -576,7 +576,7 @@ namespace golos { namespace protocol {
             /**
              * Max fee for breaking referral deductions by referral
              */
-            asset max_referral_break_fee = GOLOS_MAX_REFERRAL_BREAK_FEE;
+            asset max_referral_break_fee = GOLOS_MAX_REFERRAL_BREAK_FEE_PRE_HF22;
 
             /**
              * Time window for commenting by account

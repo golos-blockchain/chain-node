@@ -2695,8 +2695,18 @@ void delegate_vesting_shares(
                 acnt.tip_balance -= op.amount;
             });
 
+            auto to_amount = op.amount;
+            if (to.referrer_account != account_name_type()) {
+                auto ref_amount = asset(
+                    (uint128_t(to_amount.amount.value) * to.referrer_interest_rate / STEEMIT_100_PERCENT).to_uint64(),
+                    STEEM_SYMBOL);
+                _db.modify(_db.get_account(to.referrer_account), [&](auto& acnt) {
+                    acnt.tip_balance += ref_amount;
+                });
+                to_amount -= ref_amount;
+            }
             _db.modify(to, [&](account_object& acnt) {
-                acnt.tip_balance += op.amount;
+                acnt.tip_balance += to_amount;
             });
         }
 
