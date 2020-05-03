@@ -26,11 +26,8 @@ namespace golos {
                 : public object<dynamic_global_property_object_type, dynamic_global_property_object> {
         public:
             template<typename Constructor, typename Allocator>
-            dynamic_global_property_object(Constructor &&c, allocator <Allocator> a) {
+            dynamic_global_property_object(Constructor &&c, allocator <Allocator> a) : recent_slots_filled(0), worker_requests(a) {
                 c(*this);
-            }
-
-            dynamic_global_property_object() {
             }
 
             id_type id;
@@ -145,19 +142,19 @@ namespace golos {
             uint32_t transit_block_num = UINT32_MAX;
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
 
-            flat_map<asset_symbol_type, uint32_t> worker_requests;
+            flat_map<asset_symbol_type, uint32_t, std::less<asset_symbol_type>, allocator<std::pair<asset_symbol_type, uint32_t>>> worker_requests;
         };
 
-        typedef multi_index_container <
-        dynamic_global_property_object,
-        indexed_by<
-                ordered_unique < tag < by_id>,
-        member<dynamic_global_property_object, dynamic_global_property_object::id_type, &dynamic_global_property_object::id>>
-        >,
-        allocator <dynamic_global_property_object>
-        >
-        dynamic_global_property_index;
-
+        using dynamic_global_property_index = multi_index_container<
+            dynamic_global_property_object,
+            indexed_by<
+                ordered_unique<
+                    tag<by_id>,
+                    member<dynamic_global_property_object, dynamic_global_property_object::id_type, &dynamic_global_property_object::id>
+                >
+            >,
+            allocator<dynamic_global_property_object>
+        >;
     }
 } // golos::chain
 
