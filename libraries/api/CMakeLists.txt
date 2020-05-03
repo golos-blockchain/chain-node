@@ -5,6 +5,7 @@ list(APPEND CURRENT_TARGET_HEADERS
     include/golos/api/comment_api_object.hpp
     include/golos/api/chain_api_properties.hpp
     include/golos/api/witness_api_object.hpp
+    include/golos/api/dynamic_global_property_api_object.hpp
     include/golos/api/discussion.hpp
     include/golos/api/vote_state.hpp
     include/golos/api/account_vote.hpp
@@ -17,6 +18,7 @@ list(APPEND CURRENT_TARGET_SOURCES
     discussion_helper.cpp
     chain_api_properties.cpp
     witness_api_object.cpp
+    dynamic_global_property_api_object.cpp
     block_objects.cpp
 )
 

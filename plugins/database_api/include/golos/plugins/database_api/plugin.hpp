@@ -17,6 +17,7 @@
 #include <golos/plugins/chain/plugin.hpp>
 
 #include <golos/api/chain_api_properties.hpp>
+#include <golos/api/dynamic_global_property_api_object.hpp>
 
 #include "forward.hpp"
 

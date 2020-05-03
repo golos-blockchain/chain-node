@@ -50,7 +50,7 @@ struct remote_database_api {
     optional< golos::api::annotated_signed_block > get_block( uint32_t );
     optional< block_header > get_block_header( uint32_t );
     fc::variant_object get_config();
-    database_api::dynamic_global_property_object get_dynamic_global_properties();
+    database_api::dynamic_global_property_api_object get_dynamic_global_properties();
     chain_properties get_chain_properties();
     hardfork_version get_hardfork_version();
     database_api::scheduled_hardfork get_next_scheduled_hardfork();
