@@ -64,6 +64,24 @@ namespace golos { namespace protocol {
             }
         };
 
+        struct account_create_with_invite_operation: public base_operation {
+            string invite_secret;
+            account_name_type creator;
+            account_name_type new_account_name;
+            authority owner;
+            authority active;
+            authority posting;
+            public_key_type memo_key;
+            string json_metadata;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
 
         struct account_update_operation : public base_operation {
             account_name_type account;
@@ -744,6 +762,11 @@ namespace golos { namespace protocol {
              * The minimum time of claim idleness for accumulative_balance claiming.
              */
             uint32_t claim_idleness_time = GOLOS_DEF_CLAIM_IDLENESS_TIME;
+
+            /**
+             * Minimum amount to create invite
+             */
+            asset min_invite_balance = GOLOS_DEF_MIN_INVITE_BALANCE;
 
             void validate() const;
 
@@ -1519,6 +1542,34 @@ namespace golos { namespace protocol {
                 a.insert(from);
             }
         };
+
+        class invite_operation : public base_operation {
+        public:
+            account_name_type creator;
+            asset balance;
+            public_key_type invite_key;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
+        class invite_claim_operation : public base_operation {
+        public:
+            account_name_type initiator;
+            account_name_type receiver;
+            string invite_secret;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(initiator);
+            }
+        };
 } } // golos::protocol
 
 
@@ -1559,7 +1610,7 @@ FC_REFLECT_DERIVED(
     (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_23), ((golos::protocol::chain_properties_22)),
-    (claim_idleness_time))
+    (claim_idleness_time)(min_invite_balance))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
@@ -1581,6 +1632,9 @@ FC_REFLECT((golos::protocol::account_referral_options), (referrer)(interest_rate
 FC_REFLECT_TYPENAME((golos::protocol::account_create_with_delegation_extension));
 FC_REFLECT((golos::protocol::account_create_with_delegation_operation),
     (fee)(delegation)(creator)(new_account_name)(owner)(active)(posting)(memo_key)(json_metadata)(extensions));
+
+FC_REFLECT((golos::protocol::account_create_with_invite_operation),
+    (invite_secret)(creator)(new_account_name)(owner)(active)(posting)(memo_key)(json_metadata)(extensions));
 
 FC_REFLECT((golos::protocol::account_update_operation),
         (account)
@@ -1642,3 +1696,6 @@ FC_REFLECT((golos::protocol::donate_memo), (app)(version)(target)(comment))
 FC_REFLECT((golos::protocol::donate_operation), (from)(to)(amount)(memo)(extensions))
 FC_REFLECT((golos::protocol::transfer_to_tip_operation), (from)(to)(amount)(memo)(extensions))
 FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(memo)(extensions))
+
+FC_REFLECT((golos::protocol::invite_operation), (creator)(balance)(invite_key)(extensions))
+FC_REFLECT((golos::protocol::invite_claim_operation), (initiator)(receiver)(invite_secret)(extensions))

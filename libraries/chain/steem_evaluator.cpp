@@ -5,6 +5,7 @@
 #include <golos/chain/block_summary_object.hpp>
 #include <golos/chain/worker_objects.hpp>
 #include <fc/io/json.hpp>
+#include <graphene/utilities/key_conversion.hpp>
 
 #define GOLOS_CHECK_BANDWIDTH(NOW, NEXT, TYPE, MSG, ...) \
     GOLOS_ASSERT((NOW) > (NEXT), golos::bandwidth_exception, MSG, \
@@ -278,6 +279,51 @@ namespace golos { namespace chain {
             for (auto& e : o.extensions) {
                 e.visit(account_create_with_delegation_extension_visitor(new_account, _db));
             }
+        }
+
+        void account_create_with_invite_evaluator::do_apply(const account_create_with_invite_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "account_create_with_invite_operation");
+
+            _db.get_account(op.creator);
+
+            auto invite_secret = golos::utilities::wif_to_key(op.invite_secret);
+            const auto& inv = _db.get_invite(invite_secret->get_public_key());
+
+            for (auto& a : op.owner.account_auths) {
+                _db.get_account(a.first);
+            }
+            for (auto& a : op.active.account_auths) {
+                _db.get_account(a.first);
+            }
+            for (auto& a : op.posting.account_auths) {
+                _db.get_account(a.first);
+            }
+
+            const auto now = _db.head_block_time();
+
+            GOLOS_CHECK_OBJECT_MISSING(_db, account, op.new_account_name);
+
+            const auto& new_account = _db.create<account_object>([&](account_object& acc) {
+                acc.name = op.new_account_name;
+                acc.memo_key = op.memo_key;
+                acc.created = now;
+                acc.last_vote_time = now;
+                acc.last_active_operation = now;
+                acc.mined = false;
+                acc.recovery_account = op.creator;
+            });
+            store_account_json_metadata(_db, op.new_account_name, op.json_metadata);
+
+            _db.create<account_authority_object>([&](account_authority_object& auth) {
+                auth.account = op.new_account_name;
+                auth.owner = op.owner;
+                auth.active = op.active;
+                auth.posting = op.posting;
+                auth.last_owner_update = fc::time_point_sec::min();
+            });
+
+            _db.create_vesting(new_account, inv.balance);
+            _db.remove(inv);
         }
 
         void account_update_evaluator::do_apply(const account_update_operation &o) {
@@ -2735,4 +2781,38 @@ void delegate_vesting_shares(
             _db.modify(from, [&](account_object& acnt) {acnt.tip_balance -= op.amount;});
             _db.create_vesting(to, op.amount);
         }
+
+        void invite_evaluator::do_apply(const invite_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_operation");
+
+            const auto& creator = _db.get_account(op.creator);
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+
+            GOLOS_CHECK_OP_PARAM(op, balance, {
+                GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, op.balance);
+                GOLOS_CHECK_VALUE(op.balance >= median_props.min_invite_balance,
+                    "Insufficient invite balance: ${f} required, ${p} provided.", ("f", op.balance)("p", median_props.min_invite_balance));
+            });
+
+            GOLOS_CHECK_OBJECT_MISSING(_db, invite, op.invite_key);
+
+            _db.adjust_balance(creator, -op.balance);
+            _db.create<invite_object>([&](auto& c) {
+                c.creator = op.creator;
+                c.invite_key = op.invite_key;
+                c.balance = op.balance;
+                c.time = _db.head_block_time();
+            });
+        }
+
+        void invite_claim_evaluator::do_apply(const invite_claim_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_claim_operation");
+            const auto& initiator = _db.get_account(op.initiator);
+
+            auto invite_secret = golos::utilities::wif_to_key(op.invite_secret);
+            const auto& inv = _db.get_invite(invite_secret->get_public_key());
+            _db.adjust_balance(initiator, inv.balance);
+            _db.remove(inv);
+        }
+
 } } // golos::chain

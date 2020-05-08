@@ -100,6 +100,9 @@ namespace mongo_db {
         result_type operator()(const donate_operation& op);
         result_type operator()(const transfer_to_tip_operation& op);
         result_type operator()(const transfer_from_tip_operation& op);
+        result_type operator()(const invite_operation& op);
+        result_type operator()(const invite_claim_operation& op);
+        result_type operator()(const account_create_with_invite_operation& op);
 
         void write_global_property_object(const dynamic_global_property_object& dgpo, bool history);
 

@@ -264,6 +264,9 @@
 #define GOLOS_DEF_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
 #define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (STEEMIT_BLOCKS_PER_HOUR*(24+1)) ///< 1 day + 1 hour
 
+#define GOLOS_MIN_INVITE_BALANCE                1000
+#define GOLOS_DEF_MIN_INVITE_BALANCE            asset(10000, STEEM_SYMBOL)
+
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
 
@@ -535,6 +538,9 @@
 #else
 #define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (STEEMIT_BLOCKS_PER_HOUR*(24+1)) ///< 1 day + 1 hour
 #endif
+
+#define GOLOS_MIN_INVITE_BALANCE                1000
+#define GOLOS_DEF_MIN_INVITE_BALANCE            asset(10000, STEEM_SYMBOL)
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000

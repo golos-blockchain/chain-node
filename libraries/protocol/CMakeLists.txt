@@ -58,7 +58,7 @@ set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGE
 
 #add_dependencies(golos_${CURRENT_TARGET} golos::version)
 
-target_link_libraries(golos_${CURRENT_TARGET} fc) #golos::version)
+target_link_libraries(golos_${CURRENT_TARGET} graphene_utilities fc) #golos::version)
 target_include_directories(golos_${CURRENT_TARGET}
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../../version/include" "${CMAKE_CURRENT_BINARY_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/../../version/include")
 

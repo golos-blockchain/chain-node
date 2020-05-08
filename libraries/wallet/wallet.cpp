@@ -365,6 +365,7 @@ namespace golos { namespace wallet {
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_23)) {
                         result["claim_idleness_time"]  = median_props.claim_idleness_time;
+                        result["min_invite_balance"]  = median_props.min_invite_balance;
                     }
 
                     return result;
@@ -1846,6 +1847,43 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             FC_CAPTURE_AND_RETHROW((referral));
         }
 
+        /**
+         *  This method will generate new owner, active, posting and memo keys for the new account
+         *  which will be controlable by this wallet. Also it will add the referral duty to the new account.
+         */
+        annotated_signed_transaction wallet_api::create_account_invite(
+            string creator, string new_account_name, string json_meta, 
+            string invite_secret, bool broadcast
+        ) {
+            try {
+                WALLET_CHECK_UNLOCKED();
+                auto owner = suggest_brain_key();
+                auto active = suggest_brain_key();
+                auto posting = suggest_brain_key();
+                auto memo = suggest_brain_key();
+                import_key(owner.wif_priv_key);
+                import_key(active.wif_priv_key);
+                import_key(posting.wif_priv_key);
+                import_key(memo.wif_priv_key);
+
+                account_create_with_invite_operation op;
+                op.invite_secret = invite_secret;
+                op.creator = creator;
+                op.new_account_name = new_account_name;
+                op.owner = authority(1, owner.pub_key, 1);
+                op.active = authority(1, active.pub_key, 1);
+                op.posting = authority(1, posting.pub_key, 1);
+                op.memo_key = memo.pub_key;
+                op.json_metadata = json_meta;
+
+                signed_transaction tx;
+                tx.operations.push_back(op);
+                tx.validate();
+                return my->sign_transaction(tx, broadcast);
+            }
+            FC_CAPTURE_AND_RETHROW((creator)(new_account_name)(json_meta));
+        }
+
 /**
  * This method is used by faucets to create new accounts for other users which must
  * provide their desired keys. The resulting account may not be controllable by this
@@ -2310,6 +2348,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 chain_properties_23 p23;
                 p23 = p;
                 SET_PROP(p23, claim_idleness_time);
+                SET_PROP(p23, min_invite_balance);
                 op.props = p23;
             }
 #undef SET_PROP
@@ -3260,6 +3299,38 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             op.to   = to;
             op.memo = get_encrypted_memo( from, to, memo );
             op.amount = amount;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::invite(account_name_type creator, asset balance, public_key_type invite_key, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            invite_operation op;
+            op.creator = creator;
+            op.balance = balance;
+            op.invite_key = invite_key;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::claim_invite(account_name_type initiator, account_name_type receiver, string invite_secret, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            invite_claim_operation op;
+            op.initiator = initiator;
+            op.receiver = receiver;
+            op.invite_secret = invite_secret;
 
             signed_transaction tx;
             tx.operations.push_back( op );

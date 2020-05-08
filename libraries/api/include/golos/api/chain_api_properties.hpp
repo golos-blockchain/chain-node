@@ -62,6 +62,7 @@ namespace golos { namespace api {
         fc::optional<uint32_t> account_idleness_time;
 
         fc::optional<uint32_t> claim_idleness_time;
+        fc::optional<asset> min_invite_balance;
     };
 
 } } // golos::api
@@ -80,4 +81,4 @@ FC_REFLECT(
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
     (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time)
-    (claim_idleness_time))
+    (claim_idleness_time)(min_invite_balance))

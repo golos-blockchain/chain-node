@@ -49,6 +49,7 @@ namespace golos { namespace api {
         }
         if (db.has_hardfork(STEEMIT_HARDFORK_0_23)) {
             claim_idleness_time = src.claim_idleness_time;
+            min_invite_balance = src.min_invite_balance;
         }
     }
 

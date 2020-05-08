@@ -310,6 +310,10 @@ if (options.count(name)) { \
             insert_pair(op.creator, op.new_account_name);
         }
 
+        void operator()(const account_create_with_invite_operation& op) {
+            insert_pair(op.creator, op.new_account_name);
+        }
+
         void operator()(const account_update_operation& op) {
             insert_dual(op.account);
         }
@@ -557,6 +561,14 @@ if (options.count(name)) { \
 
         void operator()(const transfer_from_tip_operation& op) {
             insert_pair(op.from, op.to);
+        }
+
+        void operator()(const invite_operation& op) {
+            insert_dual(op.creator);
+        }
+
+        void operator()(const invite_claim_operation& op) {
+            insert_pair(op.initiator, op.receiver);
         }
     };
 

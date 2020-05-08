@@ -882,6 +882,22 @@ DEFINE_API(plugin, get_proposed_transactions) {
     });
 }
 
+DEFINE_API(plugin, get_invite) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (public_key_type,           invite_key)
+    );
+    return my->database().with_weak_read_lock([&]() {
+        optional<invite_api_object> result;
+
+        try {
+            result = my->database().get_invite(invite_key);
+        } catch (...) {
+        }
+
+        return result;
+    });
+}
+
 void plugin::plugin_initialize(const boost::program_options::variables_map& options) {
     ilog("database_api plugin: plugin_initialize() begin");
     my = std::make_unique<api_impl>();

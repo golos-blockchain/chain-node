@@ -832,4 +832,19 @@ namespace mongo_db {
         return body;
     }
 
+    auto operation_writer::operator()(const invite_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const invite_claim_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const account_create_with_invite_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
 }}}

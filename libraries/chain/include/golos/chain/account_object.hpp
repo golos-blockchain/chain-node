@@ -284,6 +284,22 @@ public:
     time_point_sec effective_on;
 };
 
+class invite_object
+        : public object<invite_object_type, invite_object> {
+public:
+    template<typename Constructor, typename Allocator>
+    invite_object(Constructor &&c, allocator<Allocator> a) {
+        c(*this);
+    }
+
+    id_type id;
+
+    account_name_type creator;
+    public_key_type invite_key;
+    asset balance;
+    time_point_sec time;
+};
+
 struct by_name;
 struct by_next_vesting_withdrawal;
 struct by_last_active_operation;
@@ -525,6 +541,15 @@ allocator<change_recovery_account_request_object>
 >
 change_recovery_account_request_index;
 
+struct by_invite_key;
+
+using invite_index = multi_index_container<
+    invite_object,
+    indexed_by<
+        ordered_unique<tag<by_id>, member<invite_object, invite_object::id_type, &invite_object::id>>,
+        ordered_unique<tag<by_invite_key>, member<invite_object, public_key_type, &invite_object::invite_key>>>,
+    allocator<invite_object>>;
+
 } } // golos::chain
 
 
@@ -584,3 +609,8 @@ FC_REFLECT((golos::chain::change_recovery_account_request_object),
         (id)(account_to_recover)(recovery_account)(effective_on)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::change_recovery_account_request_object, golos::chain::change_recovery_account_request_index)
+
+FC_REFLECT((golos::chain::invite_object),
+        (id)(creator)(invite_key)(balance)(time)
+)
+CHAINBASE_SET_INDEX_TYPE(golos::chain::invite_object, golos::chain::invite_index)
