@@ -1591,10 +1591,13 @@ namespace golos { namespace chain {
 
             const auto& vdo_idx = get_index<vesting_delegation_index, by_delegation>();
 
+            bool has_hf_23 = has_hardfork(STEEMIT_HARDFORK_0_23);
+
             const auto& idx = get_index<account_index, by_last_active_operation>();
             auto itr = idx.lower_bound(old_time);
             for (; itr != idx.end(); ++itr) {
                 if (!itr->vesting_shares.amount.value || itr->to_withdraw.value) continue;
+                if (has_hf_23 && itr->effective_vesting_shares().amount.value < 30000000) continue;
 
                 auto vdo_itr = vdo_idx.lower_bound(itr->name);
                 while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == itr->name) {
@@ -2125,16 +2128,40 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_23::claim_idleness_time);
             calc_median(&chain_properties_23::min_invite_balance);
 
-            std::nth_element(
-                active.begin(), active.begin() + median, active.end(),
-                [&](const auto* a, const auto* b) {
-                    return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
-                        < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
-                }
-            );
-            median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
-            median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
-            median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
+            if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
+                #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
+                    std::nth_element( \
+                        FROM.begin(), FROM.begin() + FROM.size() / 2, FROM.end(), \
+                        [&](const auto* a, const auto* b) { \
+                            return a->props.FIELD < b->props.FIELD; \
+                        } \
+                    ); \
+                    vector<const witness_object*> TO; \
+                    std::copy_if(FROM.begin(), FROM.end(), back_inserter(TO), [&](auto& el) { return el->props.FIELD == active[FROM.size() / 2]->props.FIELD; });
+
+                COPY_ALL_MEDIAN(active, act_worker, worker_reward_percent);
+                COPY_ALL_MEDIAN(act_worker, act_witness, witness_reward_percent);
+                std::nth_element(
+                    act_witness.begin(), act_witness.begin() + act_witness.size() / 2, act_witness.end(),
+                    [&](const auto* a, const auto* b) { \
+                        return a->props.vesting_reward_percent < b->props.vesting_reward_percent;
+                    }
+                );
+                median_props.worker_reward_percent = act_witness[act_witness.size() / 2]->props.worker_reward_percent;
+                median_props.witness_reward_percent = act_witness[act_witness.size() / 2]->props.witness_reward_percent;
+                median_props.vesting_reward_percent = act_witness[act_witness.size() / 2]->props.vesting_reward_percent;
+            } else {
+                std::nth_element(
+                    active.begin(), active.begin() + median, active.end(),
+                    [&](const auto* a, const auto* b) {
+                        return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
+                            < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
+                    }
+                );
+                median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
+                median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
+                median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
+            }
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
