@@ -50,9 +50,9 @@ public:
 
     bool can_vote = true;
     uint16_t voting_power = STEEMIT_100_PERCENT;   ///< current voting power of this account, it falls after every vote
-    uint16_t posts_capacity = STEEMIT_POSTS_WINDOW;
-    uint16_t comments_capacity = STEEMIT_COMMENTS_WINDOW;
-    uint16_t voting_capacity = STEEMIT_VOTES_WINDOW;
+    uint32_t posts_capacity = STEEMIT_POSTS_WINDOW;
+    uint32_t comments_capacity = STEEMIT_COMMENTS_WINDOW;
+    uint32_t voting_capacity = STEEMIT_VOTES_WINDOW;
     time_point_sec last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
 
     asset balance = asset(0, STEEM_SYMBOL);  ///< total liquid shares held by this account
