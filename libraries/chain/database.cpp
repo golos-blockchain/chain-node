@@ -1635,8 +1635,6 @@ namespace golos { namespace chain {
 
             if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
 
-            const auto& props = get_dynamic_global_properties();
-
             const auto now = head_block_time();
             const auto& median_props = get_witness_schedule_object().median_props;
             const auto old_time = now - median_props.claim_idleness_time;
@@ -1646,17 +1644,15 @@ namespace golos { namespace chain {
             const auto& idx = get_index<account_index, by_last_claim>();
             auto itr = idx.lower_bound(old_time);
             for (; itr != idx.end() && itr->last_claim > fc::time_point_sec::min(); ++itr) {
-                if (itr->vesting_shares.amount == 0) continue;
-
-                auto to_claim = (uint128_t(props.accumulative_balance.amount.value) * itr->vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64();
-                to_workers += asset(to_claim, STEEM_SYMBOL);
+                if (itr->accumulative_balance.amount == 0) continue;
+                to_workers += itr->accumulative_balance;
+                modify(*itr, [&](auto& a) {
+                    a.accumulative_balance = asset(0, STEEM_SYMBOL);
+                });
             }
 
             if (to_workers.amount != 0) {
                 adjust_balance(get_account(STEEMIT_WORKER_POOL_ACCOUNT), to_workers);
-                modify(props, [&](auto& p) {
-                    p.accumulative_balance -= to_workers;
-                });
             }
         }
 
@@ -2937,6 +2933,37 @@ namespace golos { namespace chain {
                 push_virtual_operation(producer_reward_operation(wacc.name, *producer_reward));
         }
 
+        void database::process_accumulative_distributions() {
+            if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
+
+            const auto& props = get_dynamic_global_properties();
+            if ((head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) && props.next_account_to_accumulate == account_name_type()) return;
+
+            uint32_t acc_num = 0;
+            const auto& acc_idx = get_index<account_index, by_name>();
+            auto acc_itr = acc_idx.lower_bound(props.next_account_to_accumulate);
+            for (; acc_itr != acc_idx.end() && acc_num < GOLOS_ACCUM_DISTRIBUTION_STEP; acc_itr++, acc_num++) {
+                const auto& acc = *acc_itr;
+                modify(acc, [&](auto& a) {
+                    a.accumulative_balance += asset((uint128_t(props.accumulative_balance.amount.value) * a.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
+                });
+            }
+
+            if (acc_itr == acc_idx.end()) {
+                modify(--(acc_idx.end()), [&](auto& a) {
+                    a.accumulative_balance += asset(props.accumulative_balance, STEEM_SYMBOL);
+                });
+                modify(props, [&](auto& props) {
+                    props.next_account_to_accumulate = account_name_type();
+                    props.accumulative_balance = asset(0, STEEM_SYMBOL);
+                });
+            } else {
+                modify(props, [&](auto& props) {
+                    props.next_account_to_accumulate = acc_itr->name;
+                });
+            }
+        }
+
         void database::process_savings_withdraws() {
             const auto &idx = get_index<savings_withdraw_index>().indices().get<by_complete_from_rid>();
             auto itr = idx.begin();
@@ -3160,7 +3187,7 @@ namespace golos { namespace chain {
             uint32_t acc_num = 0;
             uint32_t acc_max = has_hf23 ? 100 : UINT32_MAX;
             const auto& acc_idx = get_index<account_index, by_name>();
-            auto acc_itr = acc_idx.upper_bound(props.last_account_in_loop);
+            auto acc_itr = acc_idx.lower_bound(props.last_account_in_loop);
             for (; acc_itr != acc_idx.end() && acc_num < acc_max; acc_itr++, acc_num++) {
                 const auto& acc = *acc_itr;
                 if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) continue;
@@ -3252,6 +3279,7 @@ namespace golos { namespace chain {
                     net_sbd += sbd;
                     net_steem += steem;
                 }
+            }
 
             modify(props, [&](auto& p) {
                 p.current_supply += net_steem;
@@ -4085,6 +4113,7 @@ namespace golos { namespace chain {
 
                 clear_null_account_balance();
                 process_funds();
+                process_accumulative_distributions();
                 process_conversions();
                 process_sbd_debt_conversions();
                 process_comment_cashout();

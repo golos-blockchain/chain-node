@@ -18,5 +18,6 @@ namespace golos { namespace api {
         transit_block_num(dgp.transit_block_num), transit_witnesses(dgp.transit_witnesses) {
             worker_requests.insert(dgp.worker_requests.begin(), dgp.worker_requests.end());
             last_account_in_loop = dgp.last_account_in_loop;
+            next_account_to_accumulate = dgp.next_account_to_accumulate;
     }
 } } // golos::api

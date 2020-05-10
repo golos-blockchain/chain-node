@@ -46,6 +46,7 @@ namespace golos { namespace api {
         fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
         flat_map<asset_symbol_type, uint32_t> worker_requests;
         account_name_type last_account_in_loop;
+        account_name_type next_account_to_accumulate;
     };
 
 } } // golos::api
@@ -86,4 +87,5 @@ FC_REFLECT(
     (transit_block_num)
     (transit_witnesses)
     (worker_requests)
-    (last_account_in_loop))
+    (last_account_in_loop)
+    (next_account_to_accumulate))

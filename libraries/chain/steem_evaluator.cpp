@@ -2759,19 +2759,14 @@ void delegate_vesting_shares(
         void claim_evaluator::do_apply(const claim_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "claim_operation");
 
-            const auto& props = _db.get_dynamic_global_properties();
-
             const auto& from_account = _db.get_account(op.from);
             const auto& to_account = op.to.size() ? _db.get_account(op.to)
                                                  : from_account;
 
-            auto to_claim = (uint128_t(props.accumulative_balance.amount.value) * from_account.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64();
-            GOLOS_CHECK_LOGIC(op.amount <= asset(to_claim, STEEM_SYMBOL), logic_exception::not_enough_accumulative_balance, "Not enough accumulative balance");
+            GOLOS_CHECK_LOGIC(op.amount <= from_account.accumulative_balance, logic_exception::not_enough_accumulative_balance, "Not enough accumulative balance");
 
-            _db.modify(props, [&](auto& p) {
-                p.accumulative_balance -= op.amount;
-            });
             _db.modify(from_account, [&](account_object& acnt) {
+                acnt.accumulative_balance -= op.amount;
                 acnt.last_claim = _db.head_block_time();
             });
             if (op.to_vesting) {

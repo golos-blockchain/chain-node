@@ -481,6 +481,8 @@ namespace golos { namespace chain {
 
             void process_funds();
 
+            void process_accumulative_distributions();
+
             void process_conversions();
 
             void process_sbd_debt_conversions();

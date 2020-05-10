@@ -20,7 +20,7 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         posts_capacity(a.posts_capacity), comments_capacity(a.comments_capacity), voting_capacity(a.voting_capacity),
         can_vote(a.can_vote),
         voting_power(a.voting_power), last_vote_time(a.last_vote_time),
-        balance(a.balance), savings_balance(a.savings_balance), tip_balance(a.tip_balance),
+        balance(a.balance), savings_balance(a.savings_balance), accumulative_balance(a.accumulative_balance), tip_balance(a.tip_balance),
         sbd_balance(a.sbd_balance), sbd_seconds(a.sbd_seconds),
         sbd_seconds_last_update(a.sbd_seconds_last_update),
         sbd_last_interest_payment(a.sbd_last_interest_payment),
