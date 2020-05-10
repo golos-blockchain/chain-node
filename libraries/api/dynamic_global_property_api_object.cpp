@@ -8,7 +8,7 @@ namespace golos { namespace api {
         current_supply(dgp.current_supply), confidential_supply(dgp.confidential_supply),
         current_sbd_supply(dgp.current_sbd_supply), confidential_sbd_supply(dgp.confidential_sbd_supply),
         total_vesting_fund_steem(dgp.total_vesting_fund_steem), total_vesting_shares(dgp.total_vesting_shares),
-        total_reward_fund_steem(dgp.total_reward_fund_steem), accumulative_balance(dgp.accumulative_balance), total_reward_shares2(dgp.total_reward_shares2),
+        accumulative_balance(dgp.accumulative_balance), total_reward_fund_steem(dgp.total_reward_fund_steem), total_reward_shares2(dgp.total_reward_shares2),
         sbd_interest_rate(dgp.sbd_interest_rate), sbd_print_rate(dgp.sbd_print_rate), sbd_debt_percent(dgp.sbd_debt_percent),
         is_forced_min_price(dgp.is_forced_min_price), average_block_size(dgp.average_block_size),
         maximum_block_size(dgp.maximum_block_size), current_aslot(dgp.current_aslot),
@@ -17,5 +17,6 @@ namespace golos { namespace api {
         current_reserve_ratio(dgp.current_reserve_ratio), custom_ops_bandwidth_multiplier(dgp.custom_ops_bandwidth_multiplier),
         transit_block_num(dgp.transit_block_num), transit_witnesses(dgp.transit_witnesses) {
             worker_requests.insert(dgp.worker_requests.begin(), dgp.worker_requests.end());
+            last_account_in_loop = dgp.last_account_in_loop;
     }
 } } // golos::api
