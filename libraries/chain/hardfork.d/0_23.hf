@@ -6,6 +6,7 @@
 #define STEEMIT_HARDFORK_0_23__84 (STEEMIT_HARDFORK_0_23) // Transfer SBD payouts to workers instead of authors
 #define STEEMIT_HARDFORK_0_23__98 (STEEMIT_HARDFORK_0_23) // Invites
 #define STEEMIT_HARDFORK_0_23__94 (STEEMIT_HARDFORK_0_23) // Bandwidth windows in minutes
+#define STEEMIT_HARDFORK_0_23__104 (STEEMIT_HARDFORK_0_23) // Set vesting withdraw interval to 8 weeks
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_23_TIME  1585558800 // 30 mar 2020 12:00:00 MSK

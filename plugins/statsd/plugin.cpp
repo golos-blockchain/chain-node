@@ -249,7 +249,13 @@ void plugin::plugin_impl::pre_operation(const operation_notification &o) {
 
         auto new_vesting_withdrawal_rate =
                 op.vesting_shares.amount /
+                STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23;
+
+        if (db.has_hardfork(STEEMIT_HARDFORK_0_23__104)) {
+            new_vesting_withdrawal_rate =
+                op.vesting_shares.amount /
                 STEEMIT_VESTING_WITHDRAW_INTERVALS;
+        }
 
         if (op.vesting_shares.amount > 0 && new_vesting_withdrawal_rate == 0) {
                 new_vesting_withdrawal_rate = 1;

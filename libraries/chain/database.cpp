@@ -1614,8 +1614,13 @@ namespace golos { namespace chain {
                     remove(current);
                 }
 
+                bool has_hf_23 = has_hardfork(STEEMIT_HARDFORK_0_23__104);
                 modify(*itr, [&](auto& a) {
-                    a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
+                    if (has_hf_23) {
+                        a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
+                    } else {
+                        a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23, VESTS_SYMBOL);
+                    }
                     if (a.vesting_withdraw_rate.amount == 0)
                         a.vesting_withdraw_rate.amount = 1;
                     a.next_vesting_withdrawal = now + fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);

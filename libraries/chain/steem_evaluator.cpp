@@ -1289,8 +1289,11 @@ namespace golos { namespace chain {
                 });
             } else {
                 int vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_16;
-                if (_db.has_hardfork(STEEMIT_HARDFORK_0_16__551)) {
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_23__104)) {
                     vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS;
+                } /// 8 weeks
+                else if (_db.has_hardfork(STEEMIT_HARDFORK_0_16__551)) {
+                    vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23;
                 } /// 13 weeks = 1 quarter of a year
 
                 _db.modify(account, [&](account_object &a) {
