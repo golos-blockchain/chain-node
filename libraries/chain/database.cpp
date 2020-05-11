@@ -2950,9 +2950,6 @@ namespace golos { namespace chain {
             }
 
             if (acc_itr == acc_idx.end()) {
-                modify(--(acc_idx.end()), [&](auto& a) {
-                    a.accumulative_balance += asset(props.accumulative_balance, STEEM_SYMBOL);
-                });
                 modify(props, [&](auto& props) {
                     props.next_account_to_accumulate = account_name_type();
                     props.accumulative_balance = asset(0, STEEM_SYMBOL);
