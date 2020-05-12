@@ -5362,6 +5362,9 @@ namespace golos { namespace chain {
                     check_witness_idleness(false);
                     } break;
                 case STEEMIT_HARDFORK_0_23:
+                    modify(get_account(STEEMIT_WORKER_POOL_ACCOUNT), [&](auto& acnt) {
+                        acnt.recovery_account = account_name_type();
+                    });
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
