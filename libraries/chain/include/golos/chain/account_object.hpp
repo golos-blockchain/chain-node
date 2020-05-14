@@ -305,6 +305,8 @@ struct by_name;
 struct by_next_vesting_withdrawal;
 struct by_last_active_operation;
 struct by_last_claim;
+struct by_vesting_shares;
+struct by_sbd;
 
 /**
  * @ingroup object_index
@@ -337,7 +339,17 @@ typedef multi_index_container<
                         member<account_object, account_id_type, &account_object::id>>,
                     composite_key_compare<
                         std::greater<time_point_sec>,
-                        std::less<account_id_type>>>>,
+                        std::less<account_id_type>>>,
+                ordered_non_unique<tag<by_sbd>,
+                    composite_key<
+                        account_object,
+                        member<account_object, asset, &account_object::sbd_balance>,
+                        member<account_object, asset, &account_object::savings_sbd_balance>>,
+                    composite_key_compare<
+                        std::less<asset>,
+                        std::less<asset>>>,
+                ordered_non_unique<tag<by_vesting_shares>,
+                        member<account_object, asset, &account_object::vesting_shares>>>,
     allocator<account_object>
 >
 account_index;
