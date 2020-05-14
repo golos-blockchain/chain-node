@@ -2937,28 +2937,20 @@ namespace golos { namespace chain {
             if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
 
             const auto& props = get_dynamic_global_properties();
-            if ((head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) && props.next_account_to_accumulate == account_name_type()) return;
+            if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) return;
 
-            uint32_t acc_num = 0;
-            const auto& acc_idx = get_index<account_index, by_name>();
-            auto acc_itr = acc_idx.lower_bound(props.next_account_to_accumulate);
-            for (; acc_itr != acc_idx.end() && acc_num < GOLOS_ACCUM_DISTRIBUTION_STEP; acc_itr++, acc_num++) {
+            const auto& acc_idx = get_index<account_index, by_vesting_shares>();
+            auto acc_itr = acc_idx.upper_bound(asset(0, VESTS_SYMBOL));
+            for (; acc_itr != acc_idx.end(); acc_itr++) {
                 const auto& acc = *acc_itr;
                 modify(acc, [&](auto& a) {
                     a.accumulative_balance += asset((uint128_t(props.accumulative_balance.amount.value) * a.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
                 });
             }
 
-            if (acc_itr == acc_idx.end()) {
-                modify(props, [&](auto& props) {
-                    props.next_account_to_accumulate = account_name_type();
-                    props.accumulative_balance = asset(0, STEEM_SYMBOL);
-                });
-            } else {
-                modify(props, [&](auto& props) {
-                    props.next_account_to_accumulate = acc_itr->name;
-                });
-            }
+            modify(props, [&](auto& props) {
+                props.accumulative_balance = asset(0, STEEM_SYMBOL);
+            });
         }
 
         void database::process_savings_withdraws() {
@@ -3152,17 +3144,7 @@ namespace golos { namespace chain {
         }
 
         void database::process_sbd_debt_conversions() {
-            if (!has_hardfork(STEEMIT_HARDFORK_0_22__64)) return;
-
-            const auto& props = get_dynamic_global_properties();
-
-            bool has_hf23 = has_hardfork(STEEMIT_HARDFORK_0_23);
-
-            if (has_hf23) {
-                if (head_block_num() % STEEMIT_SBD_DEBT_CONVERT_INTERVAL != 0 && props.last_account_in_loop == account_name_type()) return;
-            } else {
-                if (head_block_num() % STEEMIT_SBD_DEBT_CONVERT_INTERVAL != 0) return;
-            }
+            if (!has_hardfork(STEEMIT_HARDFORK_0_22__64) || (head_block_num() % STEEMIT_SBD_DEBT_CONVERT_INTERVAL != 0)) return;
 
             const auto& median_props = get_witness_schedule_object().median_props;
             if (!median_props.sbd_debt_convert_rate) return;
@@ -3170,6 +3152,7 @@ namespace golos { namespace chain {
             const auto& median_history = get_feed_history().current_median_history;
             if (median_history.is_null()) return;
 
+            const auto& props = get_dynamic_global_properties();
             if (props.sbd_debt_percent < STEEMIT_SBD_DEBT_CONVERT_THRESHOLD) return;
 
             const auto& orders = get_index<limit_order_index>().indices();
@@ -3181,13 +3164,10 @@ namespace golos { namespace chain {
             asset net_sbd(0, SBD_SYMBOL);
             asset net_steem(0, STEEM_SYMBOL);
 
-            uint32_t acc_num = 0;
-            uint32_t acc_max = has_hf23 ? 100 : UINT32_MAX;
-            const auto& acc_idx = get_index<account_index, by_name>();
-            auto acc_itr = acc_idx.lower_bound(props.last_account_in_loop);
-            for (; acc_itr != acc_idx.end() && acc_num < acc_max; acc_itr++, acc_num++) {
-                const auto& acc = *acc_itr;
-                if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) continue;
+            auto& idx = get_index<account_index, by_sbd>();
+            for (auto itr = idx.upper_bound(std::make_tuple(asset(0, SBD_SYMBOL), asset(0, SBD_SYMBOL)));
+                itr != idx.end(); itr++) {
+                const auto& acc = *itr;
 
                 auto sbd = asset(
                     (uint128_t(acc.sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
@@ -3216,66 +3196,64 @@ namespace golos { namespace chain {
                 push_virtual_operation(convert_sbd_debt_operation(acc.name, sbd, steem, savings_sbd, savings_steem));
             }
 
-            if (props.last_account_in_loop == account_name_type()) {
-                const auto& escrows = get_index<escrow_index>().indices();
-                for (auto itr = escrows.begin(); itr != escrows.end(); ++itr) {
-                    if (!itr->sbd_balance.amount.value && (itr->pending_fee.symbol != SBD_SYMBOL || !itr->pending_fee.amount.value)) continue;
+            const auto& escrows = get_index<escrow_index>().indices();
+            for (auto itr = escrows.begin(); itr != escrows.end(); ++itr) {
+                if (!itr->sbd_balance.amount.value && (itr->pending_fee.symbol != SBD_SYMBOL || !itr->pending_fee.amount.value)) continue;
 
-                    if (itr->sbd_balance.amount.value) {
-                        auto sbd = asset(
-                            (uint128_t(itr->sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
-                        auto steem = sbd * median_history;
-
-                        modify(*itr, [&](auto& e) {
-                            e.sbd_balance -= sbd;
-                            e.steem_balance += steem;
-                        });
-
-                        net_sbd += sbd;
-                        net_steem += steem;
-                    }
-
-                    if (itr->pending_fee.symbol == SBD_SYMBOL && itr->pending_fee.amount.value) {
-                        auto fee_sbd = asset(
-                            (uint128_t(itr->pending_fee.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
-                        auto fee_steem = fee_sbd * median_history;
-
-                        modify(*itr, [&](auto& e) {
-                            e.pending_fee -= fee_sbd;
-                        });
-
-                        adjust_balance(get_account(itr->agent), fee_steem);
-
-                        net_sbd += fee_sbd;
-                        net_steem += fee_steem;
-                    }
-                }
-
-                const auto& withdraws = get_index<savings_withdraw_index>().indices();
-                for (auto itr = withdraws.begin(); itr != withdraws.end(); ++itr) {
-                    if (itr->amount.symbol != SBD_SYMBOL || !itr->amount.amount.value) continue;
-
+                if (itr->sbd_balance.amount.value) {
                     auto sbd = asset(
-                        (uint128_t(itr->amount.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                        (uint128_t(itr->sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
                     auto steem = sbd * median_history;
 
-                    adjust_balance(get_account(itr->to), steem);
-
-                    if (itr->amount == sbd) {
-                        remove(*itr);
-
-                        modify(get_account(itr->from), [&](account_object& a) {
-                            a.savings_withdraw_requests--;
-                        });
-                    } else {
-                        modify(*itr, [&](auto& w) {
-                            w.amount -= sbd;
-                        });
-                    }
+                    modify(*itr, [&](auto& e) {
+                        e.sbd_balance -= sbd;
+                        e.steem_balance += steem;
+                    });
 
                     net_sbd += sbd;
                     net_steem += steem;
                 }
+
+                if (itr->pending_fee.symbol == SBD_SYMBOL && itr->pending_fee.amount.value) {
+                    auto fee_sbd = asset(
+                        (uint128_t(itr->pending_fee.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                    auto fee_steem = fee_sbd * median_history;
+
+                    modify(*itr, [&](auto& e) {
+                        e.pending_fee -= fee_sbd;
+                    });
+
+                    adjust_balance(get_account(itr->agent), fee_steem);
+
+                    net_sbd += fee_sbd;
+                    net_steem += fee_steem;
+                }
+            }
+
+            const auto& withdraws = get_index<savings_withdraw_index>().indices();
+            for (auto itr = withdraws.begin(); itr != withdraws.end(); ++itr) {
+                if (itr->amount.symbol != SBD_SYMBOL || !itr->amount.amount.value) continue;
+
+                auto sbd = asset(
+                    (uint128_t(itr->amount.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
+                auto steem = sbd * median_history;
+
+                adjust_balance(get_account(itr->to), steem);
+
+                if (itr->amount == sbd) {
+                    remove(*itr);
+
+                    modify(get_account(itr->from), [&](account_object& a) {
+                        a.savings_withdraw_requests--;
+                    });
+                } else {
+                    modify(*itr, [&](auto& w) {
+                        w.amount -= sbd;
+                    });
+                }
+
+                net_sbd += sbd;
+                net_steem += steem;
             }
 
             modify(props, [&](auto& p) {
@@ -3283,8 +3261,6 @@ namespace golos { namespace chain {
                 p.current_sbd_supply -= net_sbd;
                 p.virtual_supply += net_steem;
                 p.virtual_supply -= net_sbd * median_history;
-                if (has_hf23)
-                    p.last_account_in_loop = (acc_itr != acc_idx.end() ? acc_itr->name : account_name_type());
             });
         }
 

@@ -143,9 +143,6 @@ namespace golos {
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
 
             flat_map<asset_symbol_type, uint32_t, std::less<asset_symbol_type>, allocator<std::pair<asset_symbol_type, uint32_t>>> worker_requests;
-
-            account_name_type last_account_in_loop;
-            account_name_type next_account_to_accumulate;
         };
 
         using dynamic_global_property_index = multi_index_container<
@@ -195,7 +192,5 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (transit_block_num)
                 (transit_witnesses)
                 (worker_requests)
-                (last_account_in_loop)
-                (next_account_to_accumulate)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::dynamic_global_property_object, golos::chain::dynamic_global_property_index)
