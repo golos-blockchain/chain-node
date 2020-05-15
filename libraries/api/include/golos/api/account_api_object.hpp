@@ -46,9 +46,9 @@ struct account_api_object {
     uint32_t comment_count;
     uint32_t lifetime_vote_count;
     uint32_t post_count;
-    uint32_t posts_capacity;
-    uint32_t comments_capacity;
-    uint32_t voting_capacity;
+    uint16_t posts_capacity;
+    uint16_t comments_capacity;
+    uint16_t voting_capacity;
 
     bool can_vote;
     uint16_t voting_power;

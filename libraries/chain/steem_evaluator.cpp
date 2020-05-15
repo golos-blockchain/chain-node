@@ -648,9 +648,7 @@ namespace golos { namespace chain {
 
                 last_post_comment = std::max<time_point_sec>(auth.last_comment, auth.last_post);
 
-                if (db.has_hardfork(STEEMIT_HARDFORK_0_23__94)) {
-                    hf23();
-                } else if (db.has_hardfork(STEEMIT_HARDFORK_0_22__67)) {
+                if (db.has_hardfork(STEEMIT_HARDFORK_0_22__67)) {
                     hf22();
                 } else if (db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
                     hf19();
@@ -695,56 +693,6 @@ namespace golos { namespace chain {
                 }
 
                 return reward_weight;
-            }
-
-            void hf23() const {
-                if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
-                    auto posts_window = uint32_t(mprops.posts_window) * 60;
-                    auto consumption = posts_window / mprops.posts_per_window;
-
-                    auto elapsed_seconds = (now - auth.last_post).to_seconds();
-
-                    auto regenerated_capacity = std::min(
-                        posts_window,
-                        uint32_t(elapsed_seconds));
-
-                    auto current_capacity = std::min(
-                        auth.posts_capacity + regenerated_capacity,
-                        posts_window);
-
-                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
-                        bandwidth_exception::post_bandwidth,
-                        "You may only post ${posts_per_window} times in ${posts_window} seconds.",
-                        ("posts_per_window", mprops.posts_per_window)
-                        ("posts_window", posts_window));
-
-                    db.modify(auth, [&](account_object& a) {
-                        a.posts_capacity = current_capacity - consumption;
-                    });
-                } else {
-                    auto comments_window = uint32_t(mprops.comments_window) * 60;
-                    auto consumption = comments_window / mprops.comments_per_window;
-
-                    auto elapsed_seconds = (now - auth.last_comment).to_seconds();
-
-                    auto regenerated_capacity = std::min(
-                        comments_window,
-                        uint32_t(elapsed_seconds));
-
-                    auto current_capacity = std::min(
-                        auth.comments_capacity + regenerated_capacity,
-                        comments_window);
-
-                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
-                        bandwidth_exception::comment_bandwidth,
-                        "You may only comment ${comments_per_window} times in ${comments_window} seconds.",
-                        ("comments_per_window", mprops.comments_per_window)
-                        ("comments_window", comments_window));
-
-                    db.modify(auth, [&](account_object& a) {
-                        a.comments_capacity = current_capacity - consumption;
-                    });
-                }
             }
 
             void hf22() const {
@@ -1575,22 +1523,7 @@ namespace golos { namespace chain {
 
                 auto elapsed_seconds = (_db.head_block_time() - voter.last_vote_time).to_seconds();
 
-                if (_db.has_hardfork(STEEMIT_HARDFORK_0_23__94)) {
-                    auto votes_window = uint32_t(mprops.votes_window) * 60;
-                    auto consumption = votes_window / mprops.votes_per_window;
-
-                    auto regenerated_capacity = std::min(votes_window, uint32_t(elapsed_seconds));
-                    auto current_capacity = std::min(voter.voting_capacity + regenerated_capacity, votes_window);
-
-                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
-                        bandwidth_exception::vote_bandwidth,
-                        "Can only vote ${votes_per_window} times in ${votes_window} seconds.",
-                        ("votes_per_window", mprops.votes_per_window)("votes_window", votes_window));
-
-                    _db.modify(voter, [&](account_object &a) {
-                        a.voting_capacity = current_capacity - consumption;
-                    });
-                } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
                     auto consumption = mprops.votes_window / mprops.votes_per_window;
 
                     auto regenerated_capacity = std::min(uint32_t(mprops.votes_window), uint32_t(elapsed_seconds));
