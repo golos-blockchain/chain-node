@@ -64,6 +64,24 @@ namespace golos { namespace protocol {
             }
         };
 
+        struct account_create_with_invite_operation: public base_operation {
+            string invite_secret;
+            account_name_type creator;
+            account_name_type new_account_name;
+            authority owner;
+            authority active;
+            authority posting;
+            public_key_type memo_key;
+            string json_metadata;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
 
         struct account_update_operation : public base_operation {
             account_name_type account;
@@ -576,7 +594,7 @@ namespace golos { namespace protocol {
             /**
              * Max fee for breaking referral deductions by referral
              */
-            asset max_referral_break_fee = GOLOS_MAX_REFERRAL_BREAK_FEE;
+            asset max_referral_break_fee = GOLOS_MAX_REFERRAL_BREAK_FEE_PRE_HF22;
 
             /**
              * Time window for commenting by account
@@ -738,6 +756,43 @@ namespace golos { namespace protocol {
             chain_properties_22& operator=(const chain_properties_22&) = default;
         };
 
+        struct chain_properties_23 : public chain_properties_22 {
+
+            /**
+             * The minimum time of claim idleness for accumulative_balance claiming.
+             */
+            uint32_t claim_idleness_time = GOLOS_DEF_CLAIM_IDLENESS_TIME;
+
+            /**
+             * Minimum amount to create invite
+             */
+            asset min_invite_balance = GOLOS_DEF_MIN_INVITE_BALANCE;
+
+            void validate() const;
+
+            chain_properties_23& operator=(const chain_properties_17& src) {
+                chain_properties_22::operator=(src);
+                return *this;
+            }
+
+            chain_properties_23& operator=(const chain_properties_18& src) {
+                chain_properties_22::operator=(src);
+                return *this;
+            }
+
+            chain_properties_23& operator=(const chain_properties_19& src) {
+                chain_properties_22::operator=(src);
+                return *this;
+            }
+
+            chain_properties_23& operator=(const chain_properties_22& src) {
+                chain_properties_22::operator=(src);
+                return *this;
+            }
+
+            chain_properties_23& operator=(const chain_properties_23&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -749,7 +804,8 @@ namespace golos { namespace protocol {
             chain_properties_17,
             chain_properties_18,
             chain_properties_19,
-            chain_properties_22
+            chain_properties_22,
+            chain_properties_23
         >;
 
         /**
@@ -1418,6 +1474,102 @@ namespace golos { namespace protocol {
                 a.insert(owner);
             }
         };
+
+        class claim_operation : public base_operation {
+        public:
+            account_name_type from;
+            account_name_type to;
+            asset amount;
+            bool to_vesting;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
+
+        class donate_memo {
+        public:
+            account_name_type app;
+            uint16_t version;
+            fc::variant_object target;
+            fc::optional<string> comment;
+        };
+
+        class donate_operation : public base_operation {
+        public:
+            account_name_type from;
+            account_name_type to;
+            asset amount;
+            donate_memo memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
+
+        class transfer_to_tip_operation : public base_operation {
+        public:
+            account_name_type from;
+            account_name_type to;
+            asset amount;
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
+
+        class transfer_from_tip_operation : public base_operation {
+        public:
+            account_name_type from;
+            account_name_type to;
+            asset amount;
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
+
+        class invite_operation : public base_operation {
+        public:
+            account_name_type creator;
+            asset balance;
+            public_key_type invite_key;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
+        class invite_claim_operation : public base_operation {
+        public:
+            account_name_type initiator;
+            account_name_type receiver;
+            string invite_secret;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(initiator);
+            }
+        };
 } } // golos::protocol
 
 
@@ -1456,6 +1608,9 @@ FC_REFLECT_DERIVED(
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
     (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_23), ((golos::protocol::chain_properties_22)),
+    (claim_idleness_time)(min_invite_balance))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
@@ -1477,6 +1632,9 @@ FC_REFLECT((golos::protocol::account_referral_options), (referrer)(interest_rate
 FC_REFLECT_TYPENAME((golos::protocol::account_create_with_delegation_extension));
 FC_REFLECT((golos::protocol::account_create_with_delegation_operation),
     (fee)(delegation)(creator)(new_account_name)(owner)(active)(posting)(memo_key)(json_metadata)(extensions));
+
+FC_REFLECT((golos::protocol::account_create_with_invite_operation),
+    (invite_secret)(creator)(new_account_name)(owner)(active)(posting)(memo_key)(json_metadata)(extensions));
 
 FC_REFLECT((golos::protocol::account_update_operation),
         (account)
@@ -1532,3 +1690,12 @@ FC_REFLECT_ENUM(golos::protocol::delegator_payout_strategy, (to_delegator)(to_de
 FC_REFLECT((golos::protocol::delegate_vesting_shares_with_interest_operation), (delegator)(delegatee)(vesting_shares)(interest_rate)(extensions));
 FC_REFLECT((golos::protocol::reject_vesting_shares_delegation_operation), (delegator)(delegatee)(extensions));
 FC_REFLECT((golos::protocol::transit_to_cyberway_operation), (owner)(vote_to_transit));
+
+FC_REFLECT((golos::protocol::claim_operation), (from)(to)(amount)(to_vesting)(extensions))
+FC_REFLECT((golos::protocol::donate_memo), (app)(version)(target)(comment))
+FC_REFLECT((golos::protocol::donate_operation), (from)(to)(amount)(memo)(extensions))
+FC_REFLECT((golos::protocol::transfer_to_tip_operation), (from)(to)(amount)(memo)(extensions))
+FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(memo)(extensions))
+
+FC_REFLECT((golos::protocol::invite_operation), (creator)(balance)(invite_key)(extensions))
+FC_REFLECT((golos::protocol::invite_claim_operation), (initiator)(receiver)(invite_secret)(extensions))

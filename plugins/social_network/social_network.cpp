@@ -94,6 +94,10 @@ namespace golos { namespace plugins { namespace social_network {
             const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset
         ) const ;
 
+        std::vector<donate_object> select_donates (
+            const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
+        ) const ;
+
         std::vector<discussion> get_content_replies(
             const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset
         ) const;
@@ -174,6 +178,50 @@ namespace golos { namespace plugins { namespace social_network {
         const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset
     ) const {
         return helper->select_active_votes(author, permlink, limit, offset);
+    }
+
+    std::vector<donate_object> social_network::impl::select_donates(
+        const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
+    ) const {
+        if (limit == 0) {
+            return {};
+        }
+
+        std::vector<donate_object> result;
+        result.reserve(limit);
+
+        auto fill_donates = [&](const auto& idx, auto& itr, auto&& verify) {
+            uint32_t i = 0;
+            for (; itr != idx.end() && verify(itr) && result.size() < limit; ++itr, ++i) {
+                if (i < offset) continue;
+                result.push_back(*itr);
+            }
+        };
+
+        if (from.size()) {
+            const auto& from_to_idx = db.get_index<donate_index, by_from_to>();
+            if (to.size()) {
+                auto itr = from_to_idx.lower_bound(std::make_tuple(from, to));
+                fill_donates(from_to_idx, itr,
+                    [&](auto& itr) {
+                    return itr->from == from && itr->to == to;
+                });
+            } else {
+                auto itr = from_to_idx.lower_bound(std::make_tuple(from));
+                fill_donates(from_to_idx, itr,
+                    [&](auto& itr) {
+                    return itr->from == from;
+                });
+            }
+        } else if (to.size()) {
+            const auto& to_from_idx = db.get_index<donate_index, by_to_from>();
+            auto itr = to_from_idx.lower_bound(std::make_tuple(to));
+            fill_donates(to_from_idx, itr,
+                [&](auto& itr) {
+                return itr->to == to;
+            });
+        }
+        return result;
     }
 
     bool social_network::impl::set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update) const {
@@ -449,6 +497,23 @@ namespace golos { namespace plugins { namespace social_network {
             }
 
             impl.benef_payout_gests += op.reward;
+        }
+
+        result_type operator()(const donate_operation& op) const {
+            if (!db.has_index<donate_index>()) {
+                return;
+            }
+
+            db.create<donate_object>([&](auto& don) {
+            	don.from = op.from;
+            	don.to = op.to;
+            	don.amount = op.amount;
+                don.app = op.memo.app;
+                don.version = op.memo.version;
+                don.target = op.memo.target;
+                if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
+            	don.time = db.head_block_time();
+            });
         }
     };
 
@@ -776,6 +841,18 @@ namespace golos { namespace plugins { namespace social_network {
         );
         return pimpl->db.with_weak_read_lock([&]() {
             return pimpl->select_active_votes(author, permlink, vote_limit, vote_offset);
+        });
+    }
+
+    DEFINE_API(social_network, get_donates) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (string,   from)
+            (string,   to)
+            (uint32_t, limit, DEFAULT_VOTE_LIMIT)
+            (uint32_t, offset, 0)
+        );
+        return pimpl->db.with_weak_read_lock([&]() {
+            return pimpl->select_donates(from, to, limit, offset);
         });
     }
 

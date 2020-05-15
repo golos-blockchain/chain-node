@@ -75,7 +75,12 @@ namespace mongo_db {
 
             blocks[block.block_num()] = block;
 
-            dgp_s[block.block_num()] = _db.get_dynamic_global_properties();
+            const auto& props = _db.get_dynamic_global_properties();
+            try {
+                dgp_s.at(block.block_num()) = props;
+            } catch (std::out_of_range& ex) {
+                dgp_s.insert(std::pair<uint32_t, dynamic_global_property_object>(block.block_num(), props));
+            }
             wso_s[block.block_num()] = _db.get_witness_schedule_object();
 
             // Update last irreversible block number
@@ -96,9 +101,9 @@ namespace mongo_db {
                         state_writer st_writer(all_docs, head_iter->second);
 
                         if (store_history_mode_dgp != 0 && (head_iter->second.block_num() % store_history_mode_dgp == 0)) {
-                            st_writer.write_global_property_object(dgp_s[head_iter->first], true);
+                            st_writer.write_global_property_object(dgp_s.at(head_iter->first), true);
                         }
-                        st_writer.write_global_property_object(dgp_s[head_iter->first], false);
+                        st_writer.write_global_property_object(dgp_s.at(head_iter->first), false);
 
                         if (store_history_mode_wso != 0 && (head_iter->second.block_num() % store_history_mode_wso == 0)) {
                             st_writer.write_witness_schedule_object(wso_s[head_iter->first], true);
@@ -133,10 +138,8 @@ namespace mongo_db {
 
                 for (auto& it : all_docs) {
                     if (!it.is_removal) {
-                        //wlog(it.collection_name);
                         write_document(it);
                     } else {
-                        //wlog(it.collection_name + std::string("_REM"));
                         remove_document(it);
                     }
                 }

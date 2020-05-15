@@ -50,13 +50,15 @@ public:
 
     bool can_vote = true;
     uint16_t voting_power = STEEMIT_100_PERCENT;   ///< current voting power of this account, it falls after every vote
-    uint16_t posts_capacity = STEEMIT_POSTS_WINDOW;
-    uint16_t comments_capacity = STEEMIT_COMMENTS_WINDOW;
-    uint16_t voting_capacity = STEEMIT_VOTES_WINDOW;
+    uint32_t posts_capacity = STEEMIT_POSTS_WINDOW;
+    uint32_t comments_capacity = STEEMIT_COMMENTS_WINDOW;
+    uint32_t voting_capacity = STEEMIT_VOTES_WINDOW;
     time_point_sec last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
 
     asset balance = asset(0, STEEM_SYMBOL);  ///< total liquid shares held by this account
     asset savings_balance = asset(0, STEEM_SYMBOL);  ///< total liquid shares held by this account
+    asset accumulative_balance = asset(0, STEEM_SYMBOL);
+    asset tip_balance = asset(0, STEEM_SYMBOL);
 
     /**
      *  SBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
@@ -114,6 +116,7 @@ public:
     asset referral_break_fee = asset(0, STEEM_SYMBOL);
 
     time_point_sec last_active_operation;
+    time_point_sec last_claim;
 
     /// This function should be used only when the account votes for a witness directly
     share_type witness_vote_weight() const {
@@ -282,9 +285,28 @@ public:
     time_point_sec effective_on;
 };
 
+class invite_object
+        : public object<invite_object_type, invite_object> {
+public:
+    template<typename Constructor, typename Allocator>
+    invite_object(Constructor &&c, allocator<Allocator> a) {
+        c(*this);
+    }
+
+    id_type id;
+
+    account_name_type creator;
+    public_key_type invite_key;
+    asset balance;
+    time_point_sec time;
+};
+
 struct by_name;
 struct by_next_vesting_withdrawal;
 struct by_last_active_operation;
+struct by_last_claim;
+struct by_vesting_shares;
+struct by_sbd;
 
 /**
  * @ingroup object_index
@@ -309,7 +331,25 @@ typedef multi_index_container<
                         member<account_object, account_id_type, &account_object::id>>,
                     composite_key_compare<
                         std::greater<time_point_sec>,
-                        std::less<account_id_type>>>>,
+                        std::less<account_id_type>>>,
+                ordered_unique<tag<by_last_claim>,
+                    composite_key<
+                        account_object,
+                        member<account_object, time_point_sec, &account_object::last_claim>,
+                        member<account_object, account_id_type, &account_object::id>>,
+                    composite_key_compare<
+                        std::greater<time_point_sec>,
+                        std::less<account_id_type>>>,
+                ordered_non_unique<tag<by_sbd>,
+                    composite_key<
+                        account_object,
+                        member<account_object, asset, &account_object::sbd_balance>,
+                        member<account_object, asset, &account_object::savings_sbd_balance>>,
+                    composite_key_compare<
+                        std::less<asset>,
+                        std::less<asset>>>,
+                ordered_non_unique<tag<by_vesting_shares>,
+                        member<account_object, asset, &account_object::vesting_shares>>>,
     allocator<account_object>
 >
 account_index;
@@ -514,6 +554,15 @@ allocator<change_recovery_account_request_object>
 >
 change_recovery_account_request_index;
 
+struct by_invite_key;
+
+using invite_index = multi_index_container<
+    invite_object,
+    indexed_by<
+        ordered_unique<tag<by_id>, member<invite_object, invite_object::id_type, &invite_object::id>>,
+        ordered_unique<tag<by_invite_key>, member<invite_object, public_key_type, &invite_object::invite_key>>>,
+    allocator<invite_object>>;
+
 } } // golos::chain
 
 
@@ -524,6 +573,8 @@ FC_REFLECT((golos::chain::account_object),
     (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
     (balance)
     (savings_balance)
+    (accumulative_balance)
+    (tip_balance)
     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
     (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
     (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
@@ -536,6 +587,7 @@ FC_REFLECT((golos::chain::account_object),
     (last_comment)(last_post)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
     (last_active_operation)
+    (last_claim)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_object, golos::chain::account_index)
 
@@ -571,3 +623,8 @@ FC_REFLECT((golos::chain::change_recovery_account_request_object),
         (id)(account_to_recover)(recovery_account)(effective_on)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::change_recovery_account_request_object, golos::chain::change_recovery_account_request_index)
+
+FC_REFLECT((golos::chain::invite_object),
+        (id)(creator)(invite_key)(balance)(time)
+)
+CHAINBASE_SET_INDEX_TYPE(golos::chain::invite_object, golos::chain::invite_index)

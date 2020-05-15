@@ -2,6 +2,7 @@
 #include <golos/protocol/exceptions.hpp>
 #include <golos/protocol/validate_helper.hpp>
 #include <fc/io/json.hpp>
+#include <graphene/utilities/key_conversion.hpp>
 
 namespace golos { namespace protocol {
         void validate_account_name(const std::string &name) {
@@ -67,6 +68,19 @@ namespace golos { namespace protocol {
             for (auto& e : extensions) {
                 e.visit(account_create_with_delegation_extension_validate_visitor());
             }
+        }
+
+        void account_create_with_invite_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(new_account_name);
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(invite_secret, {
+                GOLOS_CHECK_VALUE(invite_secret.size(), "Invite secret cannot be blank.");
+                GOLOS_CHECK_VALUE(golos::utilities::wif_to_key(invite_secret), "Invite secret must be WIF.");
+            });
+            GOLOS_CHECK_PARAM_VALIDATE(owner);
+            GOLOS_CHECK_PARAM_VALIDATE(active);
+            GOLOS_CHECK_PARAM_VALIDATE(posting);
+            GOLOS_CHECK_PARAM(json_metadata, validate_account_json_metadata(json_metadata));
         }
 
         void account_update_operation::validate() const {
@@ -288,8 +302,6 @@ namespace golos { namespace protocol {
                     "Maximum break free must be GOLOS");
                 GOLOS_CHECK_VALUE(max_referral_break_fee >= min_referral_break_fee,
                     "Maximum break free cann't be more than minimum break free");
-                GOLOS_CHECK_VALUE(max_referral_break_fee <= GOLOS_MAX_REFERRAL_BREAK_FEE,
-                    "Maximum break free cann't be more than ${max}", ("max", GOLOS_MAX_REFERRAL_BREAK_FEE));
             });
 
             GOLOS_CHECK_VALUE_LEGE(posts_window, 1, std::numeric_limits<uint16_t>::max() / 2);
@@ -328,6 +340,12 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_VALUE_GE(witness_skipping_reset_time, GOLOS_MIN_WITNESS_SKIPPING_RESET_TIME);
             GOLOS_CHECK_VALUE_GE(witness_idleness_time, GOLOS_MIN_WITNESS_IDLENESS_TIME);
             GOLOS_CHECK_VALUE_GE(account_idleness_time, GOLOS_MIN_ACCOUNT_IDLENESS_TIME);
+        }
+
+        void chain_properties_23::validate() const {
+            chain_properties_22::validate();
+            GOLOS_CHECK_VALUE_GE(claim_idleness_time, GOLOS_MIN_CLAIM_IDLENESS_TIME);
+            GOLOS_CHECK_ASSET_GE(min_invite_balance, GOLOS, GOLOS_MIN_INVITE_BALANCE);
         }
 
         void witness_update_operation::validate() const {
@@ -747,4 +765,74 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
         }
 
+        void claim_operation::validate() const {
+            GOLOS_CHECK_PARAM(from, validate_account_name(from));
+            GOLOS_CHECK_PARAM(amount, {
+                GOLOS_CHECK_VALUE(is_asset_type(amount, STEEM_SYMBOL), "Amount must be GOLOS");
+                GOLOS_CHECK_VALUE(amount > asset(0, STEEM_SYMBOL), "Must transfer a nonzero amount");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                if (to != account_name_type()) {
+                    validate_account_name(to);
+                }
+            });
+        }
+
+        void donate_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(from);
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_PARAM_ACCOUNT(memo.app);
+            });
+            GOLOS_CHECK_PARAM(to, {
+                if (to != account_name_type()) {
+                    validate_account_name(to);
+                }
+            });
+        }
+
+        void transfer_to_tip_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(from);
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
+                GOLOS_CHECK_VALUE_UTF8(memo);
+            });
+            GOLOS_CHECK_PARAM(to, {
+                if (to != account_name_type()) {
+                    validate_account_name(to);
+                }
+            });
+        }
+
+        void transfer_from_tip_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(from);
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
+                GOLOS_CHECK_VALUE_UTF8(memo);
+            });
+            GOLOS_CHECK_PARAM(to, {
+                if (to != account_name_type()) {
+                    validate_account_name(to);
+                }
+            });
+        }
+
+        void invite_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(balance, GOLOS_CHECK_ASSET_GT0(balance, GOLOS));
+            GOLOS_CHECK_PARAM(invite_key, {
+                GOLOS_CHECK_VALUE(invite_key != public_key_type(), "Invite key cannot be blank.");
+            });
+        }
+
+        void invite_claim_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(initiator);
+            GOLOS_CHECK_PARAM_ACCOUNT(receiver);
+            GOLOS_CHECK_PARAM(invite_secret, {
+                GOLOS_CHECK_VALUE(invite_secret.size(), "Invite secret cannot be blank.");
+                GOLOS_CHECK_VALUE(golos::utilities::wif_to_key(invite_secret), "Invite secret must be WIF.");
+            });
+        }
 } } // golos::protocol

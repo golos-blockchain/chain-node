@@ -245,6 +245,8 @@ if (options.count(name)) { \
         uint32_t history_blocks = UINT32_MAX;
     };
 
+    static plugin::plugin_impl* myimpl;
+
     DEFINE_API(plugin, get_account_history) {
         PLUGIN_API_VALIDATE_ARGS(
             (account_name_type, account)
@@ -305,6 +307,10 @@ if (options.count(name)) { \
         }
 
         void operator()(const account_create_with_delegation_operation& op) {
+            insert_pair(op.creator, op.new_account_name);
+        }
+
+        void operator()(const account_create_with_invite_operation& op) {
             insert_pair(op.creator, op.new_account_name);
         }
 
@@ -537,6 +543,33 @@ if (options.count(name)) { \
         void operator()(const convert_sbd_debt_operation& op) {
             insert_dual(op.owner);
         }
+
+        void operator()(const claim_operation& op) {
+            insert_pair(op.from, op.to);
+        }
+
+        void operator()(const donate_operation& op) {
+            insert_sender(op.from);
+            insert_receiver(op.to);
+            const auto& to_account = myimpl->db.get_account(op.to);
+            insert_receiver(to_account.referrer_account);
+        }
+
+        void operator()(const transfer_to_tip_operation& op) {
+            insert_pair(op.from, op.to);
+        }
+
+        void operator()(const transfer_from_tip_operation& op) {
+            insert_pair(op.from, op.to);
+        }
+
+        void operator()(const invite_operation& op) {
+            insert_dual(op.creator);
+        }
+
+        void operator()(const invite_claim_operation& op) {
+            insert_pair(op.initiator, op.receiver);
+        }
     };
 
     void operation_get_impacted_accounts(const operation& op, impacted_accounts& result) {
@@ -562,6 +595,7 @@ if (options.count(name)) { \
     void plugin::plugin_initialize(const bpo::variables_map& options) {
         ilog("account_history plugin: plugin_initialize() begin");
         pimpl = std::make_unique<plugin_impl>();
+        myimpl = pimpl.get();
 
         if (options.count("history-blocks")) {
             uint32_t history_blocks = options.at("history-blocks").as<uint32_t>();

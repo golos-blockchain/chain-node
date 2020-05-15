@@ -71,7 +71,8 @@ namespace golos {
             VESTING,
             EFFECTIVE_VESTING,
             HAVING_VESTING,
-            AVAILABLE_VESTING
+            AVAILABLE_VESTING,
+            TIP_BALANCE
         };
 
         asset get_balance(const account_object &account, balance_type type, asset_symbol_type symbol);

@@ -1877,7 +1877,11 @@ namespace mongo_db {
 
             format_value(body, "current_reserve_ratio", dgpo.current_reserve_ratio);
 
-            format_value(body, "vote_regeneration_per_day", dgpo.vote_regeneration_per_day);
+            if (db_.has_hardfork(STEEMIT_HARDFORK_0_22__76)) {
+                format_value(body, "vote_regeneration_per_day", db_.get_witness_schedule_object().median_props.vote_regeneration_per_day);
+            } else {
+                format_value(body, "vote_regeneration_per_day", STEEMIT_VOTE_REGENERATION_PER_DAY_PRE_HF_22);
+            }
 
             if (!history) {
                 body << close_document;
@@ -1957,6 +1961,34 @@ namespace mongo_db {
     }
 
     auto state_writer::operator()(const convert_sbd_debt_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const claim_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const donate_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const transfer_to_tip_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const transfer_from_tip_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const invite_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const invite_claim_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const account_create_with_invite_operation& op) -> result_type {
 
     }
 

@@ -34,6 +34,9 @@ namespace golos { namespace chain {
                 case AVAILABLE_VESTING:
                     GOLOS_CHECK_VALUE(symbol == VESTS_SYMBOL, "invalid symbol");
                     return account.available_vesting_shares(true);
+                case TIP_BALANCE:
+                    GOLOS_CHECK_VALUE(symbol == STEEM_SYMBOL, "invalid symbol");
+                    return account.tip_balance;
                 default: FC_ASSERT(false, "invalid balance type");
             }
         }
@@ -46,6 +49,7 @@ namespace golos { namespace chain {
                 case EFFECTIVE_VESTING: return "effective vesting shares";
                 case HAVING_VESTING: return "having vesting shares";
                 case AVAILABLE_VESTING: return "available vesting shares";
+                case TIP_BALANCE: return "tip balance";
                 default: FC_ASSERT(false, "invalid balance type");
             }
         }

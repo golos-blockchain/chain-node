@@ -72,7 +72,9 @@ namespace golos { namespace chain {
             proposal_object_type,
             required_approval_object_type,
             worker_request_object_type,
-            worker_request_vote_object_type
+            worker_request_vote_object_type,
+            donate_object_type,
+            invite_object_type
         };
 
         class dynamic_global_property_object;
@@ -106,6 +108,8 @@ namespace golos { namespace chain {
         class account_metadata_object;
         class worker_request_object;
         class worker_request_vote_object;
+        class donate_object;
+        class invite_object;
 
         typedef object_id<dynamic_global_property_object> dynamic_global_property_id_type;
         typedef object_id<account_object> account_id_type;
@@ -138,6 +142,8 @@ namespace golos { namespace chain {
         typedef object_id<required_approval_object> required_approval_object_id_type;
         typedef object_id<worker_request_object> worker_request_object_id_type;
         typedef object_id<worker_request_vote_object> worker_request_vote_object_id_type;
+        typedef object_id<donate_object> donate_object_id_type;
+        typedef object_id<invite_object> invite_object_id_type;
 
         enum bandwidth_type {
             post,         ///< Rate limiting posting reward eligibility over time
@@ -241,6 +247,8 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (required_approval_object_type)
                 (worker_request_object_type)
                 (worker_request_vote_object_type)
+                (donate_object_type)
+                (invite_object_type)
 )
 
 FC_REFLECT_TYPENAME((golos::chain::shared_string))

@@ -10,7 +10,7 @@ namespace golos { namespace plugins { namespace social_network {
     enum social_network_types {
         comment_content_object_type = (SOCIAL_NETWORK_SPACE_ID << 8),
         comment_last_update_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 1,
-        comment_reward_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 2
+        comment_reward_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 2,
     };
 
 

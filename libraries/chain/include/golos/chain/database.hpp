@@ -213,6 +213,10 @@ namespace golos { namespace chain {
             const savings_withdraw_object* find_savings_withdraw(const account_name_type& owner, uint32_t request_id) const;
             void                throw_if_exists_savings_withdraw(const account_name_type& owner, uint32_t request_id) const;
 
+            const invite_object& get_invite(const public_key_type& invite_key) const;
+            const invite_object* find_invite(const public_key_type& invite_key) const;
+            void                 throw_if_exists_invite(const public_key_type& invite_key) const;
+
             const account_authority_object &get_authority(const account_name_type &name) const;
 
             const dynamic_global_property_object &get_dynamic_global_properties() const;
@@ -400,6 +404,8 @@ namespace golos { namespace chain {
 
             void check_account_idleness();
 
+            void check_claim_idleness();
+
             void update_witness_schedule();
 
             void adjust_liquidity_reward(const account_object &owner, const asset &volume, bool is_bid);
@@ -474,6 +480,8 @@ namespace golos { namespace chain {
             void process_worker_cashout();
 
             void process_funds();
+
+            void process_accumulative_distributions();
 
             void process_conversions();
 

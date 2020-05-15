@@ -363,6 +363,10 @@ namespace golos { namespace wallet {
                         result["witness_idleness_time"] = median_props.witness_idleness_time;
                         result["account_idleness_time"]  = median_props.account_idleness_time;
                     }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_23)) {
+                        result["claim_idleness_time"]  = median_props.claim_idleness_time;
+                        result["min_invite_balance"]  = median_props.min_invite_balance;
+                    }
 
                     return result;
                 }
@@ -1843,6 +1847,43 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             FC_CAPTURE_AND_RETHROW((referral));
         }
 
+        /**
+         *  This method will generate new owner, active, posting and memo keys for the new account
+         *  which will be controlable by this wallet. Also it will add the referral duty to the new account.
+         */
+        annotated_signed_transaction wallet_api::create_account_invite(
+            string creator, string new_account_name, string json_meta, 
+            string invite_secret, bool broadcast
+        ) {
+            try {
+                WALLET_CHECK_UNLOCKED();
+                auto owner = suggest_brain_key();
+                auto active = suggest_brain_key();
+                auto posting = suggest_brain_key();
+                auto memo = suggest_brain_key();
+                import_key(owner.wif_priv_key);
+                import_key(active.wif_priv_key);
+                import_key(posting.wif_priv_key);
+                import_key(memo.wif_priv_key);
+
+                account_create_with_invite_operation op;
+                op.invite_secret = invite_secret;
+                op.creator = creator;
+                op.new_account_name = new_account_name;
+                op.owner = authority(1, owner.pub_key, 1);
+                op.active = authority(1, active.pub_key, 1);
+                op.posting = authority(1, posting.pub_key, 1);
+                op.memo_key = memo.pub_key;
+                op.json_metadata = json_meta;
+
+                signed_transaction tx;
+                tx.operations.push_back(op);
+                tx.validate();
+                return my->sign_transaction(tx, broadcast);
+            }
+            FC_CAPTURE_AND_RETHROW((creator)(new_account_name)(json_meta));
+        }
+
 /**
  * This method is used by faucets to create new accounts for other users which must
  * provide their desired keys. The resulting account may not be controllable by this
@@ -2251,7 +2292,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             chain_properties_update_operation op;
             chain_api_properties ap;
-            chain_properties_19 p;
+            chain_properties_22 p;
 
             // copy defaults in case of missing witness object
             ap.account_creation_fee = p.account_creation_fee;
@@ -2291,22 +2332,24 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             SET_PROP(p, curation_reward_curve);
             SET_PROP(p, allow_distribute_auction_reward);
             SET_PROP(p, allow_return_auction_reward_to_fund);
+            SET_PROP(p, worker_reward_percent);
+            SET_PROP(p, witness_reward_percent);
+            SET_PROP(p, vesting_reward_percent);
+            SET_PROP(p, worker_request_creation_fee);
+            SET_PROP(p, worker_request_approve_min_percent);
+            SET_PROP(p, sbd_debt_convert_rate);
+            SET_PROP(p, vote_regeneration_per_day);
+            SET_PROP(p, witness_skipping_reset_time);
+            SET_PROP(p, witness_idleness_time);
+            SET_PROP(p, account_idleness_time);
             op.props = p;
             auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
-                chain_properties_22 p22;
-                p22 = p;
-                SET_PROP(p22, worker_reward_percent);
-                SET_PROP(p22, witness_reward_percent);
-                SET_PROP(p22, vesting_reward_percent);
-                SET_PROP(p22, worker_request_creation_fee);
-                SET_PROP(p22, worker_request_approve_min_percent);
-                SET_PROP(p22, sbd_debt_convert_rate);
-                SET_PROP(p22, vote_regeneration_per_day);
-                SET_PROP(p22, witness_skipping_reset_time);
-                SET_PROP(p22, witness_idleness_time);
-                SET_PROP(p22, account_idleness_time);
-                op.props = p22;
+            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_23)) {
+                chain_properties_23 p23;
+                p23 = p;
+                SET_PROP(p23, claim_idleness_time);
+                SET_PROP(p23, min_invite_balance);
+                op.props = p23;
             }
 #undef SET_PROP
 
@@ -3196,6 +3239,104 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             tx.operations.push_back(op);
             tx.validate();
             return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::claim(string from, string to, asset amount, bool to_vesting, bool broadcast )
+        {
+            WALLET_CHECK_UNLOCKED();
+            claim_operation op;
+            op.from = from;
+            op.to = (to == from ? "" : to);
+            op.amount = amount;
+            op.to_vesting = to_vesting;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::donate(string from, string to, asset amount, donate_memo memo, bool broadcast )
+        {
+            WALLET_CHECK_UNLOCKED();
+            donate_operation op;
+            op.from = from;
+            op.to = (to == from ? "" : to);
+            op.amount = amount;
+            op.memo = memo;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::transfer_to_tip( string from, string to, asset amount, string memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            check_memo( memo, get_account( from ) );
+            transfer_to_tip_operation op;
+            op.from = from;
+            op.to   = to;
+            op.memo = get_encrypted_memo( from, to, memo );
+            op.amount = amount;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::transfer_from_tip( string from, string to, asset amount, string memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            check_memo( memo, get_account( from ) );
+            transfer_from_tip_operation op;
+            op.from = from;
+            op.to   = to;
+            op.memo = get_encrypted_memo( from, to, memo );
+            op.amount = amount;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::invite(account_name_type creator, asset balance, public_key_type invite_key, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            invite_operation op;
+            op.creator = creator;
+            op.balance = balance;
+            op.invite_key = invite_key;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::claim_invite(account_name_type initiator, account_name_type receiver, string invite_secret, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            invite_claim_operation op;
+            op.initiator = initiator;
+            op.receiver = receiver;
+            op.invite_secret = invite_secret;
+
+            signed_transaction tx;
+            tx.operations.push_back( op );
+            tx.validate();
+
+            return my->sign_transaction( tx, broadcast );
         }
 } } // golos::wallet
 

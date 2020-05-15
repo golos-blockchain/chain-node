@@ -27,6 +27,9 @@ namespace golos { namespace plugins { namespace account_by_key {
                     void operator()(const account_create_with_delegation_operation& op) const {
                         _plugin.my->clear_cache();
                     }
+                    void operator()(const account_create_with_invite_operation& op) const {
+                        _plugin.my->clear_cache();
+                    }
 
                     void operator()(const account_update_operation &op) const {
                         _plugin.my->clear_cache();
@@ -85,6 +88,13 @@ namespace golos { namespace plugins { namespace account_by_key {
                     }
 
                     void operator()(const account_create_with_delegation_operation& op) const {
+                        auto itr = _plugin.my->database().find<account_authority_object, by_account>(op.new_account_name);
+                        if (itr) {
+                            _plugin.my->update_key_lookup(*itr);
+                        }
+                    }
+
+                    void operator()(const account_create_with_invite_operation& op) const {
                         auto itr = _plugin.my->database().find<account_authority_object, by_account>(op.new_account_name);
                         if (itr) {
                             _plugin.my->update_key_lookup(*itr);

@@ -4,6 +4,8 @@
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/block_summary_object.hpp>
 #include <golos/chain/worker_objects.hpp>
+#include <fc/io/json.hpp>
+#include <graphene/utilities/key_conversion.hpp>
 
 #define GOLOS_CHECK_BANDWIDTH(NOW, NEXT, TYPE, MSG, ...) \
     GOLOS_ASSERT((NOW) > (NEXT), golos::bandwidth_exception, MSG, \
@@ -144,6 +146,7 @@ namespace golos { namespace chain {
                 acc.created = props.time;
                 acc.last_vote_time = props.time;
                 acc.last_active_operation = props.time;
+                acc.last_claim = props.time;
                 acc.mined = false;
 
                 if (!_db.has_hardfork(STEEMIT_HARDFORK_0_11__169)) {
@@ -249,6 +252,7 @@ namespace golos { namespace chain {
                 acc.created = now;
                 acc.last_vote_time = now;
                 acc.last_active_operation = now;
+                acc.last_claim = now;
                 acc.mined = false;
                 acc.recovery_account = o.creator;
                 acc.received_vesting_shares = o.delegation;
@@ -277,6 +281,52 @@ namespace golos { namespace chain {
             for (auto& e : o.extensions) {
                 e.visit(account_create_with_delegation_extension_visitor(new_account, _db));
             }
+        }
+
+        void account_create_with_invite_evaluator::do_apply(const account_create_with_invite_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "account_create_with_invite_operation");
+
+            _db.get_account(op.creator);
+
+            auto invite_secret = golos::utilities::wif_to_key(op.invite_secret);
+            const auto& inv = _db.get_invite(invite_secret->get_public_key());
+
+            for (auto& a : op.owner.account_auths) {
+                _db.get_account(a.first);
+            }
+            for (auto& a : op.active.account_auths) {
+                _db.get_account(a.first);
+            }
+            for (auto& a : op.posting.account_auths) {
+                _db.get_account(a.first);
+            }
+
+            const auto now = _db.head_block_time();
+
+            GOLOS_CHECK_OBJECT_MISSING(_db, account, op.new_account_name);
+
+            const auto& new_account = _db.create<account_object>([&](account_object& acc) {
+                acc.name = op.new_account_name;
+                acc.memo_key = op.memo_key;
+                acc.created = now;
+                acc.last_vote_time = now;
+                acc.last_active_operation = now;
+                acc.last_claim = now;
+                acc.mined = false;
+                acc.recovery_account = op.creator;
+            });
+            store_account_json_metadata(_db, op.new_account_name, op.json_metadata);
+
+            _db.create<account_authority_object>([&](account_authority_object& auth) {
+                auth.account = op.new_account_name;
+                auth.owner = op.owner;
+                auth.active = op.active;
+                auth.posting = op.posting;
+                auth.last_owner_update = fc::time_point_sec::min();
+            });
+
+            _db.create_vesting(new_account, inv.balance);
+            _db.remove(inv);
         }
 
         void account_update_evaluator::do_apply(const account_update_operation &o) {
@@ -598,7 +648,9 @@ namespace golos { namespace chain {
 
                 last_post_comment = std::max<time_point_sec>(auth.last_comment, auth.last_post);
 
-                if (db.has_hardfork(STEEMIT_HARDFORK_0_22__67)) {
+                if (db.has_hardfork(STEEMIT_HARDFORK_0_23__94)) {
+                    hf23();
+                } else if (db.has_hardfork(STEEMIT_HARDFORK_0_22__67)) {
                     hf22();
                 } else if (db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
                     hf19();
@@ -643,6 +695,56 @@ namespace golos { namespace chain {
                 }
 
                 return reward_weight;
+            }
+
+            void hf23() const {
+                if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
+                    auto posts_window = uint32_t(mprops.posts_window) * 60;
+                    auto consumption = posts_window / mprops.posts_per_window;
+
+                    auto elapsed_seconds = (now - auth.last_post).to_seconds();
+
+                    auto regenerated_capacity = std::min(
+                        posts_window,
+                        uint32_t(elapsed_seconds));
+
+                    auto current_capacity = std::min(
+                        auth.posts_capacity + regenerated_capacity,
+                        posts_window);
+
+                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                        bandwidth_exception::post_bandwidth,
+                        "You may only post ${posts_per_window} times in ${posts_window} seconds.",
+                        ("posts_per_window", mprops.posts_per_window)
+                        ("posts_window", posts_window));
+
+                    db.modify(auth, [&](account_object& a) {
+                        a.posts_capacity = current_capacity - consumption;
+                    });
+                } else {
+                    auto comments_window = uint32_t(mprops.comments_window) * 60;
+                    auto consumption = comments_window / mprops.comments_per_window;
+
+                    auto elapsed_seconds = (now - auth.last_comment).to_seconds();
+
+                    auto regenerated_capacity = std::min(
+                        comments_window,
+                        uint32_t(elapsed_seconds));
+
+                    auto current_capacity = std::min(
+                        auth.comments_capacity + regenerated_capacity,
+                        comments_window);
+
+                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                        bandwidth_exception::comment_bandwidth,
+                        "You may only comment ${comments_per_window} times in ${comments_window} seconds.",
+                        ("comments_per_window", mprops.comments_per_window)
+                        ("comments_window", comments_window));
+
+                    db.modify(auth, [&](account_object& a) {
+                        a.comments_capacity = current_capacity - consumption;
+                    });
+                }
             }
 
             void hf22() const {
@@ -1187,8 +1289,11 @@ namespace golos { namespace chain {
                 });
             } else {
                 int vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_16;
-                if (_db.has_hardfork(STEEMIT_HARDFORK_0_16__551)) {
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_23__104)) {
                     vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS;
+                } /// 8 weeks
+                else if (_db.has_hardfork(STEEMIT_HARDFORK_0_16__551)) {
+                    vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23;
                 } /// 13 weeks = 1 quarter of a year
 
                 _db.modify(account, [&](account_object &a) {
@@ -1470,7 +1575,22 @@ namespace golos { namespace chain {
 
                 auto elapsed_seconds = (_db.head_block_time() - voter.last_vote_time).to_seconds();
 
-                if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_23__94)) {
+                    auto votes_window = uint32_t(mprops.votes_window) * 60;
+                    auto consumption = votes_window / mprops.votes_per_window;
+
+                    auto regenerated_capacity = std::min(votes_window, uint32_t(elapsed_seconds));
+                    auto current_capacity = std::min(voter.voting_capacity + regenerated_capacity, votes_window);
+
+                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                        bandwidth_exception::vote_bandwidth,
+                        "Can only vote ${votes_per_window} times in ${votes_window} seconds.",
+                        ("votes_per_window", mprops.votes_per_window)("votes_window", votes_window));
+
+                    _db.modify(voter, [&](account_object &a) {
+                        a.voting_capacity = current_capacity - consumption;
+                    });
+                } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
                     auto consumption = mprops.votes_window / mprops.votes_per_window;
 
                     auto regenerated_capacity = std::min(uint32_t(mprops.votes_window), uint32_t(elapsed_seconds));
@@ -1864,6 +1984,7 @@ namespace golos { namespace chain {
                     acc.created = dgp.time;
                     acc.last_vote_time = dgp.time;
                     acc.last_active_operation = dgp.time;
+                    acc.last_claim = dgp.time;
 
                     if (!db.has_hardfork(STEEMIT_HARDFORK_0_11__169)) {
                         acc.recovery_account = STEEMIT_INIT_MINER_NAME;
@@ -2007,6 +2128,7 @@ namespace golos { namespace chain {
                     acc.created = dgp.time;
                     acc.last_vote_time = dgp.time;
                     acc.last_active_operation = dgp.time;
+                    acc.last_claim = dgp.time;
                     acc.recovery_account = ""; /// highest voted witness at time of recovery
                 });
                 store_account_json_metadata(db, worker_account, "");
@@ -2632,6 +2754,135 @@ void delegate_vesting_shares(
             });
 
             _db.remove(*delegation);
+        }
+
+        void claim_evaluator::do_apply(const claim_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "claim_operation");
+
+            const auto& from_account = _db.get_account(op.from);
+            const auto& to_account = op.to.size() ? _db.get_account(op.to)
+                                                 : from_account;
+
+            GOLOS_CHECK_LOGIC(op.amount <= from_account.accumulative_balance, logic_exception::not_enough_accumulative_balance, "Not enough accumulative balance");
+
+            _db.modify(from_account, [&](account_object& acnt) {
+                acnt.accumulative_balance -= op.amount;
+                acnt.last_claim = _db.head_block_time();
+            });
+            if (op.to_vesting) {
+                _db.create_vesting(to_account, op.amount);
+            } else {
+                _db.modify(to_account, [&](account_object& acnt) {acnt.tip_balance += op.amount;});
+            }
+        }
+
+        void donate_evaluator::do_apply(const donate_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "donate_operation");
+
+            const auto& from = _db.get_account(op.from);
+            const auto& to = op.to.size() ? _db.get_account(op.to)
+                                                 : from;
+
+            GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
+
+            const auto& idx = _db.get_index<donate_index, by_app_version>();
+            auto itr = idx.find(std::make_tuple(op.memo.app, op.memo.version));
+            if (itr != idx.end()) {
+                std::function<bool(const fc::variant_object&,const fc::variant_object&)> same_schema = [&](auto& memo1, auto& memo2) {
+                    for (auto& entry : memo1) {
+                        if (!memo2.contains(entry.key().c_str())) return false;
+                        auto e_obj = entry.value().is_object();
+                        auto e_obj2 = memo2[entry.key()].is_object();
+                        if (e_obj && !e_obj2) return false;
+                        if (!e_obj && e_obj2) return false;
+                        if (e_obj && e_obj2) {
+                            if (!same_schema(entry.value().get_object(), memo2[entry.key()].get_object()))
+                                return false;
+                        }
+                    }
+                    return true;
+                };
+                GOLOS_CHECK_LOGIC(same_schema(itr->target, op.memo.target) && same_schema(op.memo.target, itr->target),
+                    logic_exception::wrong_donate_target_version,
+                    "Donate target schema changed without changing API version.");
+            }
+
+            _db.modify(from, [&](account_object& acnt) {
+                acnt.tip_balance -= op.amount;
+            });
+
+            auto to_amount = op.amount;
+            if (to.referrer_account != account_name_type()) {
+                auto ref_amount = asset(
+                    (uint128_t(to_amount.amount.value) * to.referrer_interest_rate / STEEMIT_100_PERCENT).to_uint64(),
+                    STEEM_SYMBOL);
+                _db.modify(_db.get_account(to.referrer_account), [&](auto& acnt) {
+                    acnt.tip_balance += ref_amount;
+                });
+                to_amount -= ref_amount;
+            }
+            _db.modify(to, [&](account_object& acnt) {
+                acnt.tip_balance += to_amount;
+            });
+        }
+
+        void transfer_to_tip_evaluator::do_apply(const transfer_to_tip_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_to_tip_operation");
+
+            const auto& from = _db.get_account(op.from);
+            const auto& to = op.to.size() ? _db.get_account(op.to)
+                                                 : from;
+
+            GOLOS_CHECK_BALANCE(from, MAIN_BALANCE, op.amount);
+
+            _db.adjust_balance(from, -op.amount);
+            _db.modify(to, [&](account_object& acnt) {acnt.tip_balance += op.amount;});
+        }
+
+        void transfer_from_tip_evaluator::do_apply(const transfer_from_tip_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_from_tip_operation");
+
+            const auto& from = _db.get_account(op.from);
+            const auto& to = op.to.size() ? _db.get_account(op.to)
+                                                 : from;
+
+            GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
+
+            _db.modify(from, [&](account_object& acnt) {acnt.tip_balance -= op.amount;});
+            _db.create_vesting(to, op.amount);
+        }
+
+        void invite_evaluator::do_apply(const invite_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_operation");
+
+            const auto& creator = _db.get_account(op.creator);
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+
+            GOLOS_CHECK_OP_PARAM(op, balance, {
+                GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, op.balance);
+                GOLOS_CHECK_VALUE(op.balance >= median_props.min_invite_balance,
+                    "Insufficient invite balance: ${f} required, ${p} provided.", ("f", op.balance)("p", median_props.min_invite_balance));
+            });
+
+            GOLOS_CHECK_OBJECT_MISSING(_db, invite, op.invite_key);
+
+            _db.adjust_balance(creator, -op.balance);
+            _db.create<invite_object>([&](auto& c) {
+                c.creator = op.creator;
+                c.invite_key = op.invite_key;
+                c.balance = op.balance;
+                c.time = _db.head_block_time();
+            });
+        }
+
+        void invite_claim_evaluator::do_apply(const invite_claim_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_claim_operation");
+            const auto& initiator = _db.get_account(op.initiator);
+
+            auto invite_secret = golos::utilities::wif_to_key(op.invite_secret);
+            const auto& inv = _db.get_invite(invite_secret->get_public_key());
+            _db.adjust_balance(initiator, inv.balance);
+            _db.remove(inv);
         }
 
 } } // golos::chain

@@ -26,11 +26,8 @@ namespace golos {
                 : public object<dynamic_global_property_object_type, dynamic_global_property_object> {
         public:
             template<typename Constructor, typename Allocator>
-            dynamic_global_property_object(Constructor &&c, allocator <Allocator> a) {
+            dynamic_global_property_object(Constructor &&c, allocator <Allocator> a) : recent_slots_filled(0), worker_requests(a) {
                 c(*this);
-            }
-
-            dynamic_global_property_object() {
             }
 
             id_type id;
@@ -59,6 +56,7 @@ namespace golos {
             asset confidential_sbd_supply = asset(0, SBD_SYMBOL); ///< total asset held in confidential balances
             asset total_vesting_fund_steem = asset(0, STEEM_SYMBOL);
             asset total_vesting_shares = asset(0, VESTS_SYMBOL);
+            asset accumulative_balance = asset(0, STEEM_SYMBOL);
             asset total_reward_fund_steem = asset(0, STEEM_SYMBOL);
             fc::uint128_t total_reward_shares2; ///< the running total of REWARD^2
 
@@ -144,19 +142,19 @@ namespace golos {
             uint32_t transit_block_num = UINT32_MAX;
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
 
-            flat_map<asset_symbol_type, uint32_t> worker_requests;
+            flat_map<asset_symbol_type, uint32_t, std::less<asset_symbol_type>, allocator<std::pair<asset_symbol_type, uint32_t>>> worker_requests;
         };
 
-        typedef multi_index_container <
-        dynamic_global_property_object,
-        indexed_by<
-                ordered_unique < tag < by_id>,
-        member<dynamic_global_property_object, dynamic_global_property_object::id_type, &dynamic_global_property_object::id>>
-        >,
-        allocator <dynamic_global_property_object>
-        >
-        dynamic_global_property_index;
-
+        using dynamic_global_property_index = multi_index_container<
+            dynamic_global_property_object,
+            indexed_by<
+                ordered_unique<
+                    tag<by_id>,
+                    member<dynamic_global_property_object, dynamic_global_property_object::id_type, &dynamic_global_property_object::id>
+                >
+            >,
+            allocator<dynamic_global_property_object>
+        >;
     }
 } // golos::chain
 
@@ -175,6 +173,7 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (confidential_sbd_supply)
                 (total_vesting_fund_steem)
                 (total_vesting_shares)
+                (accumulative_balance)
                 (total_reward_fund_steem)
                 (total_reward_shares2)
                 (sbd_interest_rate)

@@ -316,7 +316,7 @@ DEFINE_API(plugin, get_chain_properties) {
 }
 
 dynamic_global_property_api_object plugin::api_impl::get_dynamic_global_properties() const {
-    return database().get(dynamic_global_property_object::id_type());
+    return dynamic_global_property_api_object(database().get(dynamic_global_property_object::id_type()));
 }
 
 DEFINE_API(plugin, get_hardfork_version) {
@@ -879,6 +879,22 @@ DEFINE_API(plugin, get_proposed_transactions) {
 
     return my->database().with_weak_read_lock([&]() {
         return my->get_proposed_transactions(account, from, limit);
+    });
+}
+
+DEFINE_API(plugin, get_invite) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (public_key_type,           invite_key)
+    );
+    return my->database().with_weak_read_lock([&]() {
+        optional<invite_api_object> result;
+
+        try {
+            result = my->database().get_invite(invite_key);
+        } catch (...) {
+        }
+
+        return result;
     });
 }
 

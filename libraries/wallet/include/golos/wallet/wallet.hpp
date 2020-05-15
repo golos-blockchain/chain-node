@@ -85,6 +85,9 @@ namespace golos { namespace wallet {
             fc::optional<uint32_t> witness_skipping_reset_time;
             fc::optional<uint32_t> witness_idleness_time;
             fc::optional<uint32_t> account_idleness_time;
+
+            fc::optional<uint32_t> claim_idleness_time;
+            fc::optional<asset> min_invite_balance;
         };
 
         struct optional_private_box_query {
@@ -633,6 +636,10 @@ namespace golos { namespace wallet {
             annotated_signed_transaction create_account_referral(
                 string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta,
                 account_referral_options referral_options, bool broadcast);
+
+            annotated_signed_transaction create_account_invite(
+                string creator, string new_account_name, string json_meta, 
+                string invite_secret, bool broadcast);
 
             /**
              *  This method pays the break fee to remove the referral duty from an account.
@@ -1452,6 +1459,33 @@ namespace golos { namespace wallet {
                 const std::string& voter, const std::string& author, const std::string& permlink,
                 int16_t vote_percent, bool broadcast
                 );
+
+            annotated_signed_transaction claim(string from, string to, asset amount, bool to_vesting = false, bool broadcast = false);
+
+            annotated_signed_transaction donate(string from, string to, asset amount, donate_memo memo, bool broadcast = false);
+
+            /**
+             *  @param from       - the account that initiated the transfer
+             *  @param to         - the account getting the transfer
+             *  @param amount     - the amount of assets to be transfered
+             *  @param memo A memo for the transactionm, encrypted with the to account's public memo key
+             *  @param broadcast true if you wish to broadcast the transaction
+             */
+            annotated_signed_transaction transfer_to_tip(string from, string to, asset amount, string memo, bool broadcast = false);
+
+            /**
+             *  @param from       - the account that initiated the transfer
+             *  @param to         - the account getting the transfer
+             *  @param amount     - the amount of assets to be transfered
+             *  @param memo A memo for the transactionm, encrypted with the to account's public memo key
+             *  @param broadcast true if you wish to broadcast the transaction
+             */
+            annotated_signed_transaction transfer_from_tip(string from, string to, asset amount, string memo, bool broadcast = false);
+
+            annotated_signed_transaction invite(account_name_type creator, asset balance, public_key_type invite_key, bool broadcast = false);
+
+            annotated_signed_transaction claim_invite(account_name_type initiator, account_name_type receiver, string invite_secret, bool broadcast = false);
+
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1511,6 +1545,7 @@ FC_API( golos::wallet::wallet_api,
                 (create_account_delegated)
                 (create_account_with_keys_delegated)
                 (create_account_referral)
+                (create_account_invite)
                 (update_account)
                 (update_account_auth_key)
                 (update_account_auth_account)
@@ -1593,6 +1628,13 @@ FC_API( golos::wallet::wallet_api,
                 (worker_request)
                 (delete_worker_request)
                 (vote_worker_request)
+
+                (claim)
+                (donate)
+                (transfer_to_tip)
+                (transfer_from_tip)
+                (invite)
+                (claim_invite)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))
@@ -1622,7 +1664,8 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
-    (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time))
+    (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time)
+    (claim_idleness_time)(min_invite_balance))
 
 FC_REFLECT(
     (golos::wallet::message_body),

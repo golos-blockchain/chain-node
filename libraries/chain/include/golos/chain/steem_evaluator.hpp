@@ -10,6 +10,7 @@ namespace golos { namespace chain {
 
         DEFINE_EVALUATOR(account_create)
         DEFINE_EVALUATOR(account_create_with_delegation)
+        DEFINE_EVALUATOR(account_create_with_invite)
         DEFINE_EVALUATOR(account_update)
         DEFINE_EVALUATOR(account_metadata)
         DEFINE_EVALUATOR(transfer)
@@ -55,6 +56,12 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(break_free_referral)
         DEFINE_EVALUATOR(delegate_vesting_shares_with_interest)
         DEFINE_EVALUATOR(reject_vesting_shares_delegation)
+        DEFINE_EVALUATOR(claim)
+        DEFINE_EVALUATOR(donate)
+        DEFINE_EVALUATOR(transfer_to_tip)
+        DEFINE_EVALUATOR(transfer_from_tip)
+        DEFINE_EVALUATOR(invite)
+        DEFINE_EVALUATOR(invite_claim)
         DEFINE_EVALUATOR(transit_to_cyberway)
 
         class proposal_create_evaluator: public evaluator_impl<proposal_create_evaluator> {

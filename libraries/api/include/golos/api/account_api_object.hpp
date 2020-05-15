@@ -46,9 +46,9 @@ struct account_api_object {
     uint32_t comment_count;
     uint32_t lifetime_vote_count;
     uint32_t post_count;
-    uint16_t posts_capacity;
-    uint16_t comments_capacity;
-    uint16_t voting_capacity;
+    uint32_t posts_capacity;
+    uint32_t comments_capacity;
+    uint32_t voting_capacity;
 
     bool can_vote;
     uint16_t voting_power;
@@ -56,6 +56,8 @@ struct account_api_object {
 
     asset balance;
     asset savings_balance;
+    asset accumulative_balance;
+    asset tip_balance;
 
     asset sbd_balance;
     uint128_t sbd_seconds;
@@ -107,6 +109,7 @@ struct account_api_object {
     asset referral_break_fee = asset(0, STEEM_SYMBOL);
 
     time_point_sec last_active_operation = time_point_sec::min();
+    time_point_sec last_claim = time_point_sec::min();
 };
 
 } } // golos::api
@@ -116,7 +119,7 @@ FC_REFLECT((golos::api::account_api_object),
     (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
     (created)(mined)(owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)
     (recovery_account)(last_account_recovery)(reset_account)(comment_count)(lifetime_vote_count)
-    (post_count)(can_vote)(voting_power)(last_vote_time)(balance)(savings_balance)(sbd_balance)
+    (post_count)(can_vote)(voting_power)(last_vote_time)(balance)(savings_balance)(accumulative_balance)(tip_balance)(sbd_balance)
     (sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)(savings_sbd_balance)
     (savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)
     (savings_withdraw_requests)(vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
@@ -127,6 +130,6 @@ FC_REFLECT((golos::api::account_api_object),
     (last_comment)(last_post)(post_bandwidth)
     (witness_votes)(reputation)(posts_capacity)(comments_capacity)(voting_capacity)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
-    (last_active_operation))
+    (last_active_operation)(last_claim))
 
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP

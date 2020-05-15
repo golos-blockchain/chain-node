@@ -731,6 +731,24 @@ namespace golos { namespace chain {
             return find<savings_withdraw_object, by_from_rid>(boost::make_tuple(owner, request_id));
         }
 
+        const invite_object* database::find_invite(const public_key_type& invite_key) const {
+            return find<invite_object, by_invite_key>(invite_key);
+        }
+
+        void database::throw_if_exists_invite(const public_key_type& invite_key) const {
+            if (nullptr != find_invite(invite_key)) {
+                GOLOS_THROW_OBJECT_ALREADY_EXIST("invite", invite_key);
+            }
+        }
+
+        const invite_object& database::get_invite(const public_key_type& invite_key) const {
+            try {
+                return get<invite_object, by_invite_key>(invite_key);
+            } catch(const std::out_of_range& e) {
+                GOLOS_THROW_MISSING_OBJECT("invite", invite_key);
+            } FC_CAPTURE_AND_RETHROW((invite_key))
+        }
+
         const dynamic_global_property_object& database::get_dynamic_global_properties() const {
             try {
                 return get<dynamic_global_property_object>();
@@ -1573,10 +1591,13 @@ namespace golos { namespace chain {
 
             const auto& vdo_idx = get_index<vesting_delegation_index, by_delegation>();
 
+            bool has_hf_23 = has_hardfork(STEEMIT_HARDFORK_0_23);
+
             const auto& idx = get_index<account_index, by_last_active_operation>();
             auto itr = idx.lower_bound(old_time);
             for (; itr != idx.end(); ++itr) {
                 if (!itr->vesting_shares.amount.value || itr->to_withdraw.value) continue;
+                if (has_hf_23 && itr->effective_vesting_shares().amount.value < 30000000) continue;
 
                 auto vdo_itr = vdo_idx.lower_bound(itr->name);
                 while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == itr->name) {
@@ -1593,14 +1614,45 @@ namespace golos { namespace chain {
                     remove(current);
                 }
 
+                bool has_hf_23 = has_hardfork(STEEMIT_HARDFORK_0_23__104);
                 modify(*itr, [&](auto& a) {
-                    a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
+                    if (has_hf_23) {
+                        a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
+                    } else {
+                        a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23, VESTS_SYMBOL);
+                    }
                     if (a.vesting_withdraw_rate.amount == 0)
                         a.vesting_withdraw_rate.amount = 1;
                     a.next_vesting_withdrawal = now + fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);
                     a.to_withdraw = a.vesting_shares.amount;
                     a.withdrawn = 0;
                 });
+            }
+        }
+
+        void database::check_claim_idleness() {
+            if (head_block_num() % GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL != 0) return;
+
+            if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
+
+            const auto now = head_block_time();
+            const auto& median_props = get_witness_schedule_object().median_props;
+            const auto old_time = now - median_props.claim_idleness_time;
+
+            asset to_workers(0, STEEM_SYMBOL);
+
+            const auto& idx = get_index<account_index, by_last_claim>();
+            auto itr = idx.lower_bound(old_time);
+            for (; itr != idx.end() && itr->last_claim > fc::time_point_sec::min(); ++itr) {
+                if (itr->accumulative_balance.amount == 0) continue;
+                to_workers += itr->accumulative_balance;
+                modify(*itr, [&](auto& a) {
+                    a.accumulative_balance = asset(0, STEEM_SYMBOL);
+                });
+            }
+
+            if (to_workers.amount != 0) {
+                adjust_balance(get_account(STEEMIT_WORKER_POOL_ACCOUNT), to_workers);
             }
         }
 
@@ -2005,7 +2057,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_22 median_props;
+            chain_properties_23 median_props;
 
             auto median = active.size() / 2;
 
@@ -2074,17 +2126,43 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::witness_skipping_reset_time);
             calc_median(&chain_properties_22::witness_idleness_time);
             calc_median(&chain_properties_22::account_idleness_time);
+            calc_median(&chain_properties_23::claim_idleness_time);
+            calc_median(&chain_properties_23::min_invite_balance);
 
-            std::nth_element(
-                active.begin(), active.begin() + median, active.end(),
-                [&](const auto* a, const auto* b) {
-                    return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
-                        < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
-                }
-            );
-            median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
-            median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
-            median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
+            if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
+                #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
+                    std::nth_element( \
+                        FROM.begin(), FROM.begin() + FROM.size() / 2, FROM.end(), \
+                        [&](const auto* a, const auto* b) { \
+                            return a->props.FIELD < b->props.FIELD; \
+                        } \
+                    ); \
+                    vector<const witness_object*> TO; \
+                    std::copy_if(FROM.begin(), FROM.end(), back_inserter(TO), [&](auto& el) { return el->props.FIELD == active[FROM.size() / 2]->props.FIELD; });
+
+                COPY_ALL_MEDIAN(active, act_worker, worker_reward_percent);
+                COPY_ALL_MEDIAN(act_worker, act_witness, witness_reward_percent);
+                std::nth_element(
+                    act_witness.begin(), act_witness.begin() + act_witness.size() / 2, act_witness.end(),
+                    [&](const auto* a, const auto* b) { \
+                        return a->props.vesting_reward_percent < b->props.vesting_reward_percent;
+                    }
+                );
+                median_props.worker_reward_percent = act_witness[act_witness.size() / 2]->props.worker_reward_percent;
+                median_props.witness_reward_percent = act_witness[act_witness.size() / 2]->props.witness_reward_percent;
+                median_props.vesting_reward_percent = act_witness[act_witness.size() / 2]->props.vesting_reward_percent;
+            } else {
+                std::nth_element(
+                    active.begin(), active.begin() + median, active.end(),
+                    [&](const auto* a, const auto* b) {
+                        return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
+                            < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
+                    }
+                );
+                median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
+                median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
+                median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
+            }
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -2617,10 +2695,17 @@ namespace golos { namespace chain {
 
                         const auto &author = get_account(comment.author);
                         auto vest_created = create_vesting(author, vesting_steem);
-                        auto sbd_payout = create_sbd(author, sbd_steem);
+                        auto sbd_payout = create_sbd(author, asset(0, STEEM_SYMBOL));
+                        auto sbd_side_payout = create_sbd(author, asset(0, STEEM_SYMBOL));
+                        if (has_hardfork(STEEMIT_HARDFORK_0_23__84)) {
+                            sbd_side_payout = create_sbd(get_account(STEEMIT_WORKER_POOL_ACCOUNT), sbd_steem);
+                        } else {
+                            sbd_payout = create_sbd(author, sbd_steem);
+                        }
 
                         // stats only.. TODO: Move to plugin...
                         total_payout = to_sbd(asset(reward_tokens.to_uint64(), STEEM_SYMBOL));
+                        total_payout -= sbd_side_payout.first;
 
                         push_virtual_operation(author_reward_operation(comment.author, to_string(comment.permlink), sbd_payout.first, sbd_payout.second, vest_created, asset(sbd_steem, STEEM_SYMBOL), asset(vesting_steem, STEEM_SYMBOL)));
                         push_virtual_operation(comment_reward_operation(comment.author, to_string(comment.permlink), total_payout));
@@ -2803,7 +2888,11 @@ namespace golos { namespace chain {
                 }
 
                 modify(props, [&](dynamic_global_property_object &p) {
-                    p.total_vesting_fund_steem += asset(vesting_reward, STEEM_SYMBOL);
+                    if (has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
+                        p.accumulative_balance += asset(vesting_reward, STEEM_SYMBOL);
+                    } else {
+                        p.total_vesting_fund_steem += asset(vesting_reward, STEEM_SYMBOL);
+                    }
                     p.total_reward_fund_steem += asset(content_reward, STEEM_SYMBOL);
                     p.current_supply += asset(new_steem, STEEM_SYMBOL);
                     p.virtual_supply += asset(new_steem, STEEM_SYMBOL);
@@ -2842,6 +2931,26 @@ namespace golos { namespace chain {
 
             if (producer_reward)
                 push_virtual_operation(producer_reward_operation(wacc.name, *producer_reward));
+        }
+
+        void database::process_accumulative_distributions() {
+            if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
+
+            const auto& props = get_dynamic_global_properties();
+            if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) return;
+
+            const auto& acc_idx = get_index<account_index, by_vesting_shares>();
+            auto acc_itr = acc_idx.upper_bound(asset(0, VESTS_SYMBOL));
+            for (; acc_itr != acc_idx.end(); acc_itr++) {
+                const auto& acc = *acc_itr;
+                modify(acc, [&](auto& a) {
+                    a.accumulative_balance += asset((uint128_t(props.accumulative_balance.amount.value) * a.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
+                });
+            }
+
+            modify(props, [&](auto& props) {
+                props.accumulative_balance = asset(0, STEEM_SYMBOL);
+            });
         }
 
         void database::process_savings_withdraws() {
@@ -3055,8 +3164,10 @@ namespace golos { namespace chain {
             asset net_sbd(0, SBD_SYMBOL);
             asset net_steem(0, STEEM_SYMBOL);
 
-            for (const auto& acc : get_index<account_index>().indices()) {
-                if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) continue;
+            auto& idx = get_index<account_index, by_sbd>();
+            for (auto itr = idx.upper_bound(std::make_tuple(asset(0, SBD_SYMBOL), asset(0, SBD_SYMBOL)));
+                itr != idx.end(); itr++) {
+                const auto& acc = *itr;
 
                 auto sbd = asset(
                     (uint128_t(acc.sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
@@ -3364,6 +3475,13 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<worker_request_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_request_delete_evaluator>();
             _my->_evaluator_registry.register_evaluator<worker_request_vote_evaluator>();
+            _my->_evaluator_registry.register_evaluator<claim_evaluator>();
+            _my->_evaluator_registry.register_evaluator<donate_evaluator>();
+            _my->_evaluator_registry.register_evaluator<transfer_from_tip_evaluator>();
+            _my->_evaluator_registry.register_evaluator<transfer_to_tip_evaluator>();
+            _my->_evaluator_registry.register_evaluator<account_create_with_invite_evaluator>();
+            _my->_evaluator_registry.register_evaluator<invite_evaluator>();
+            _my->_evaluator_registry.register_evaluator<invite_claim_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -3411,6 +3529,8 @@ namespace golos { namespace chain {
             add_core_index<required_approval_index>(*this);
             add_core_index<worker_request_index>(*this);
             add_core_index<worker_request_vote_index>(*this);
+            add_core_index<donate_index>(*this);
+            add_core_index<invite_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3966,12 +4086,14 @@ namespace golos { namespace chain {
 
                 clear_null_account_balance();
                 process_funds();
+                process_accumulative_distributions();
                 process_conversions();
                 process_sbd_debt_conversions();
                 process_comment_cashout();
                 process_worker_votes();
                 process_worker_cashout();
                 check_account_idleness();
+                check_claim_idleness();
                 process_vesting_withdrawals();
                 process_savings_withdraws();
                 pay_liquidity_reward();
@@ -4923,6 +5045,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_22 == 22, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_22] = fc::time_point_sec(STEEMIT_HARDFORK_0_22_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_22] = STEEMIT_HARDFORK_0_22_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_23 == 23, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_23] = fc::time_point_sec(STEEMIT_HARDFORK_0_23_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_23] = STEEMIT_HARDFORK_0_23_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -5209,6 +5334,13 @@ namespace golos { namespace chain {
                         o.posting.weight_threshold = 1;
                     });
 #endif
+                    retally_witness_votes_hf22();
+                    check_witness_idleness(false);
+                    } break;
+                case STEEMIT_HARDFORK_0_23:
+                    modify(get_account(STEEMIT_WORKER_POOL_ACCOUNT), [&](auto& acnt) {
+                        acnt.recovery_account = account_name_type();
+                    });
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -5232,9 +5364,13 @@ namespace golos { namespace chain {
                         }                
                     }
 #endif
-                    retally_witness_votes_hf22();
-                    check_witness_idleness(false);
-                    } break;
+                    for (const auto& acnt : get_index<account_index>().indices()) {
+                        const auto now = head_block_time();
+                        modify(acnt, [&](auto& acnt) {
+                            acnt.last_claim = now;
+                        });
+                    }
+                    break;
                 default:
                     break;
             }
