@@ -254,7 +254,7 @@ namespace golos {
             donate_object() = delete;
 
             template<typename Constructor, typename Allocator>
-            donate_object(Constructor&& c, allocator<Allocator> a) : comment(a) {
+            donate_object(Constructor&& c, allocator<Allocator> a) : target(a), comment(a) {
                 c(*this);
             }
 
@@ -265,7 +265,8 @@ namespace golos {
             asset amount;
             account_name_type app;
             uint16_t version;
-            fc::variant_object target;
+            shared_string target;
+            fc::sha256 target_id;
             shared_string comment;
             time_point_sec time;
         };
@@ -496,8 +497,8 @@ namespace golos {
 
         struct by_from_to;
         struct by_to_from;
+        struct by_target_from_to;
         struct by_app_version;
-        struct by_item_id;
 
         using donate_index = multi_index_container<
             donate_object,
@@ -510,6 +511,11 @@ namespace golos {
                 ordered_non_unique<tag<by_to_from>, composite_key<donate_object,
                     member<donate_object, account_name_type, &donate_object::to>,
                     member<donate_object, account_name_type, &donate_object::from>
+                >>,
+                ordered_non_unique<tag<by_target_from_to>, composite_key<donate_object,
+                    member<donate_object, fc::sha256, &donate_object::target_id>,
+                    member<donate_object, account_name_type, &donate_object::from>,
+                    member<donate_object, account_name_type, &donate_object::to>
                 >>,
                 ordered_non_unique<tag<by_app_version>, composite_key<donate_object,
                     member<donate_object, account_name_type, &donate_object::app>,
@@ -559,5 +565,5 @@ FC_REFLECT((golos::chain::decline_voting_rights_request_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::decline_voting_rights_request_object, golos::chain::decline_voting_rights_request_index)
 
 FC_REFLECT((golos::chain::donate_object),
-        (id)(from)(to)(amount)(app)(version)(target)(comment)(time))
+        (id)(from)(to)(amount)(app)(version)(target)(target_id)(comment)(time))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::donate_object, golos::chain::donate_index)

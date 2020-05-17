@@ -551,7 +551,7 @@ if (options.count(name)) { \
         void operator()(const donate_operation& op) {
             insert_sender(op.from);
             insert_receiver(op.to);
-            const auto& to_account = myimpl->db.get_account(op.to);
+            const auto& to_account = myimpl->db.get_account(op.to.size() ? op.to : op.from);
             insert_receiver(to_account.referrer_account);
         }
 

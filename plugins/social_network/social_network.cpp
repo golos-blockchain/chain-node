@@ -95,7 +95,7 @@ namespace golos { namespace plugins { namespace social_network {
         ) const ;
 
         std::vector<donate_object> select_donates (
-            const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
+            const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
         ) const ;
 
         std::vector<discussion> get_content_replies(
@@ -181,7 +181,7 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     std::vector<donate_object> social_network::impl::select_donates(
-        const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
+        const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
     ) const {
         if (limit == 0) {
             return {};
@@ -198,26 +198,23 @@ namespace golos { namespace plugins { namespace social_network {
             }
         };
 
-        if (from.size()) {
-            const auto& from_to_idx = db.get_index<donate_index, by_from_to>();
-            if (to.size()) {
-                auto itr = from_to_idx.lower_bound(std::make_tuple(from, to));
-                fill_donates(from_to_idx, itr,
-                    [&](auto& itr) {
-                    return itr->from == from && itr->to == to;
-                });
-            } else {
-                auto itr = from_to_idx.lower_bound(std::make_tuple(from));
-                fill_donates(from_to_idx, itr,
-                    [&](auto& itr) {
-                    return itr->from == from;
-                });
-            }
+        if (target.size()) {
+            const auto target_id = fc::sha256::hash(fc::json::to_string(target));
+            const auto& idx = db.get_index<donate_index, by_target_from_to>();
+            auto itr = idx.lower_bound(std::make_tuple(target_id, from, to));
+            fill_donates(idx, itr, [&](auto& itr) {
+                return itr->target_id == target_id && (!from.size() || itr->from == from) && (!to.size() || itr->to == to);
+            });
+        } else if (from.size()) {
+            const auto& idx = db.get_index<donate_index, by_from_to>();
+            auto itr = idx.lower_bound(std::make_tuple(from, to));
+            fill_donates(idx, itr, [&](auto& itr) {
+                return itr->from == from && (!to.size() || itr->to == to);
+            });
         } else if (to.size()) {
-            const auto& to_from_idx = db.get_index<donate_index, by_to_from>();
-            auto itr = to_from_idx.lower_bound(std::make_tuple(to));
-            fill_donates(to_from_idx, itr,
-                [&](auto& itr) {
+            const auto& idx = db.get_index<donate_index, by_to_from>();
+            auto itr = idx.lower_bound(std::make_tuple(to));
+            fill_donates(idx, itr, [&](auto& itr) {
                 return itr->to == to;
             });
         }
@@ -510,8 +507,13 @@ namespace golos { namespace plugins { namespace social_network {
             	don.amount = op.amount;
                 don.app = op.memo.app;
                 don.version = op.memo.version;
-                don.target = op.memo.target;
+
+                const auto& target = fc::json::to_string(op.memo.target);
+                from_string(don.target, target);
+                don.target_id = fc::sha256::hash(target);
+
                 if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
+
             	don.time = db.head_block_time();
             });
         }
@@ -846,13 +848,14 @@ namespace golos { namespace plugins { namespace social_network {
 
     DEFINE_API(social_network, get_donates) {
         PLUGIN_API_VALIDATE_ARGS(
-            (string,   from)
-            (string,   to)
-            (uint32_t, limit, DEFAULT_VOTE_LIMIT)
-            (uint32_t, offset, 0)
+            (fc::variant_object, target)
+            (string,             from)
+            (string,             to)
+            (uint32_t,           limit, DEFAULT_VOTE_LIMIT)
+            (uint32_t,           offset, 0)
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->select_donates(from, to, limit, offset);
+            return pimpl->select_donates(target, from, to, limit, offset);
         });
     }
 
