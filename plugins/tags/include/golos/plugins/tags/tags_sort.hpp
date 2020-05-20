@@ -111,10 +111,10 @@ namespace golos { namespace plugins { namespace tags { namespace sort {
 
     struct by_children {
         bool operator()(const discussion& first, const discussion& second) const {
-            if (std::less<int32_t>()(first.children, second.children)) {
+            if (std::greater<int32_t>()(first.children, second.children)) {
                 return true;
             } else if (std::equal_to<int32_t>()(first.children, second.children)) {
-                return std::less<comment_object::id_type>()(first.id, second.id);
+                return std::greater<comment_object::id_type>()(first.id, second.id);
             }
             return false;
         }
