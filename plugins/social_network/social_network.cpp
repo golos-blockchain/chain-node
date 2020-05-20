@@ -404,6 +404,20 @@ namespace golos { namespace plugins { namespace social_network {
             }
         }
 
+        void operator()(const golos::protocol::vote_operation& op) const {
+            const auto* comment = db.find_comment(op.author, op.permlink);
+            if (comment == nullptr) {
+                return;
+            }
+
+            const auto* comment_content = impl.find_comment_content(comment->id);
+            if (comment_content != nullptr) {
+                db.modify(*comment_content, [&](auto& con) {
+                    con.net_rshares = comment->net_rshares;
+                });
+            }
+        }
+
         result_type operator()(const author_reward_operation& op) const {
             if (!db.has_index<comment_reward_index>()) {
                 return;
@@ -502,9 +516,9 @@ namespace golos { namespace plugins { namespace social_network {
             }
 
             db.create<donate_object>([&](auto& don) {
-            	don.from = op.from;
-            	don.to = op.to;
-            	don.amount = op.amount;
+                don.from = op.from;
+                don.to = op.to;
+                don.amount = op.amount;
                 don.app = op.memo.app;
                 don.version = op.memo.version;
 
@@ -937,6 +951,7 @@ namespace golos { namespace plugins { namespace social_network {
                 con.title = to_string(content->title);
                 con.body = to_string(content->body);
                 con.json_metadata = to_string(content->json_metadata);
+                con.net_rshares = content->net_rshares;
             }
 
             const auto root_content = db.find<comment_content_object, by_comment>(co.root_comment);

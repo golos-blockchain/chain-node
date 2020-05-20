@@ -32,6 +32,7 @@ namespace golos { namespace plugins { namespace social_network {
         shared_string title;
         shared_string body;
         shared_string json_metadata;
+        share_type net_rshares;
 
         uint32_t block_number;
     };
