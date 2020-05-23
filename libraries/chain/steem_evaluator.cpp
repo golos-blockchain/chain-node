@@ -2742,6 +2742,14 @@ void delegate_vesting_shares(
                     "Donate target schema changed without changing API version.");
             }
 
+            _db.create<donate_object>([&](auto& don) {
+                don.app = op.memo.app;
+                don.version = op.memo.version;
+
+                const auto& target = fc::json::to_string(op.memo.target);
+                from_string(don.target, target);
+            });
+
             _db.modify(from, [&](account_object& acnt) {
                 acnt.tip_balance -= op.amount;
             });

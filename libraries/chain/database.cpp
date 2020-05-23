@@ -741,6 +741,14 @@ namespace golos { namespace chain {
             }
         }
 
+        const donate_object& database::get_donate(const donate_object_id_type& donate_id) const {
+            try {
+                return get<donate_object, by_id>(donate_id);
+            } catch(const std::out_of_range& e) {
+                GOLOS_THROW_MISSING_OBJECT("donate", donate_id);
+            } FC_CAPTURE_AND_RETHROW((donate_id))
+        }
+
         const invite_object& database::get_invite(const public_key_type& invite_key) const {
             try {
                 return get<invite_object, by_invite_key>(invite_key);

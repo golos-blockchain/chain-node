@@ -254,21 +254,15 @@ namespace golos {
             donate_object() = delete;
 
             template<typename Constructor, typename Allocator>
-            donate_object(Constructor&& c, allocator<Allocator> a) : target(a), comment(a) {
+            donate_object(Constructor&& c, allocator<Allocator> a) : target(a) {
                 c(*this);
             }
 
             id_type id;
 
-            account_name_type from;
-            account_name_type to;
-            asset amount;
             account_name_type app;
             uint16_t version;
             shared_string target;
-            fc::sha256 target_id;
-            shared_string comment;
-            time_point_sec time;
         };
 
         struct by_price;
@@ -495,28 +489,12 @@ namespace golos {
         >
         decline_voting_rights_request_index;
 
-        struct by_from_to;
-        struct by_to_from;
-        struct by_target_from_to;
         struct by_app_version;
 
         using donate_index = multi_index_container<
             donate_object,
             indexed_by<
-                ordered_unique<tag<by_id>, member<donate_object, donate_object::id_type, &donate_object::id>>,
-                ordered_non_unique<tag<by_from_to>, composite_key<donate_object,
-                    member<donate_object, account_name_type, &donate_object::from>,
-                    member<donate_object, account_name_type, &donate_object::to>
-                >>,
-                ordered_non_unique<tag<by_to_from>, composite_key<donate_object,
-                    member<donate_object, account_name_type, &donate_object::to>,
-                    member<donate_object, account_name_type, &donate_object::from>
-                >>,
-                ordered_non_unique<tag<by_target_from_to>, composite_key<donate_object,
-                    member<donate_object, fc::sha256, &donate_object::target_id>,
-                    member<donate_object, account_name_type, &donate_object::from>,
-                    member<donate_object, account_name_type, &donate_object::to>
-                >>,
+                ordered_unique<tag<by_id>, member<donate_object, donate_object_id_type, &donate_object::id>>,
                 ordered_non_unique<tag<by_app_version>, composite_key<donate_object,
                     member<donate_object, account_name_type, &donate_object::app>,
                     member<donate_object, uint16_t, &donate_object::version>
@@ -564,6 +542,4 @@ FC_REFLECT((golos::chain::decline_voting_rights_request_object),
         (id)(account)(effective_date))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::decline_voting_rights_request_object, golos::chain::decline_voting_rights_request_index)
 
-FC_REFLECT((golos::chain::donate_object),
-        (id)(from)(to)(amount)(app)(version)(target)(target_id)(comment)(time))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::donate_object, golos::chain::donate_index)

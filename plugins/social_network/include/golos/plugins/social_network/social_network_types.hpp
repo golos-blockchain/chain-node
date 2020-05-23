@@ -1,5 +1,7 @@
 #pragma once
 
+#include <golos/chain/steem_objects.hpp>
+
 namespace golos { namespace plugins { namespace social_network {
     using namespace golos::chain;
 
@@ -11,6 +13,7 @@ namespace golos { namespace plugins { namespace social_network {
         comment_content_object_type = (SOCIAL_NETWORK_SPACE_ID << 8),
         comment_last_update_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 1,
         comment_reward_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 2,
+        donate_data_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 3
     };
 
 
@@ -133,6 +136,80 @@ namespace golos { namespace plugins { namespace social_network {
             ordered_unique<tag<by_id>, member<comment_reward_object, comment_reward_object::id_type, &comment_reward_object::id>>,
             ordered_unique<tag<by_comment>, member<comment_reward_object, comment_object::id_type, &comment_reward_object::comment>>>,
         allocator<comment_reward_object>>;
+
+    class donate_data_object
+            : public object<donate_data_object_type, donate_data_object> {
+    public:
+        donate_data_object() = delete;
+
+        template<typename Constructor, typename Allocator>
+        donate_data_object(Constructor&& c, allocator <Allocator> a)
+                : comment(a) {
+            c(*this);
+        }
+
+        id_type id;
+
+        donate_object_id_type donate;
+        account_name_type from;
+        account_name_type to;
+        asset amount;
+        fc::sha256 target_id;
+        shared_string comment;
+        time_point_sec time;
+    };
+
+    class donate_api_object {
+    public:
+        account_name_type from;
+        account_name_type to;
+        asset amount;
+        account_name_type app;
+        uint16_t version;
+        string target;
+        fc::sha256 target_id;
+        string comment;
+        time_point_sec time;
+
+        donate_api_object(const donate_data_object& don, const database& db) {
+            from = don.from; to = don.to; amount = don.amount;
+            auto donate = db.get_donate(don.donate);
+            app = donate.app;
+            version = donate.version;
+            target = to_string(donate.target);
+            target_id = don.target_id;
+            comment = to_string(don.comment);
+            time = don.time;
+        }
+    };
+
+    using donate_data_id_type = object_id<donate_data_object>;
+
+    struct by_donate;
+    struct by_from_to;
+    struct by_to_from;
+    struct by_target_from_to;
+
+    using donate_data_index = multi_index_container<
+        donate_data_object,
+        indexed_by<
+            ordered_unique<tag<by_id>, member<donate_data_object, donate_data_id_type, &donate_data_object::id>>,
+            ordered_unique<tag<by_donate>, member<donate_data_object, donate_object_id_type, &donate_data_object::donate>>,
+            ordered_non_unique<tag<by_from_to>, composite_key<donate_data_object,
+                member<donate_data_object, account_name_type, &donate_data_object::from>,
+                member<donate_data_object, account_name_type, &donate_data_object::to>
+            >>,
+            ordered_non_unique<tag<by_to_from>, composite_key<donate_data_object,
+                member<donate_data_object, account_name_type, &donate_data_object::to>,
+                member<donate_data_object, account_name_type, &donate_data_object::from>
+            >>,
+            ordered_non_unique<tag<by_target_from_to>, composite_key<donate_data_object,
+                member<donate_data_object, fc::sha256, &donate_data_object::target_id>,
+                member<donate_data_object, account_name_type, &donate_data_object::from>,
+                member<donate_data_object, account_name_type, &donate_data_object::to>
+            >>>,
+        allocator<donate_data_object>
+    >;
 } } }
 
 
@@ -148,3 +225,9 @@ CHAINBASE_SET_INDEX_TYPE(
 CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::social_network::comment_reward_object,
     golos::plugins::social_network::comment_reward_index)
+
+CHAINBASE_SET_INDEX_TYPE(
+    golos::plugins::social_network::donate_data_object,
+    golos::plugins::social_network::donate_data_index)
+FC_REFLECT((golos::plugins::social_network::donate_api_object),
+    (from)(to)(amount)(app)(version)(target)(target_id)(comment)(time))

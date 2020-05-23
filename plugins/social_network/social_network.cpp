@@ -94,7 +94,7 @@ namespace golos { namespace plugins { namespace social_network {
             const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset
         ) const ;
 
-        std::vector<donate_object> select_donates (
+        std::vector<donate_api_object> select_donates (
             const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
         ) const ;
 
@@ -180,39 +180,39 @@ namespace golos { namespace plugins { namespace social_network {
         return helper->select_active_votes(author, permlink, limit, offset);
     }
 
-    std::vector<donate_object> social_network::impl::select_donates(
+    std::vector<donate_api_object> social_network::impl::select_donates(
         const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
     ) const {
         if (limit == 0) {
             return {};
         }
 
-        std::vector<donate_object> result;
+        std::vector<donate_api_object> result;
         result.reserve(limit);
 
         auto fill_donates = [&](const auto& idx, auto& itr, auto&& verify) {
             uint32_t i = 0;
             for (; itr != idx.end() && verify(itr) && result.size() < limit; ++itr, ++i) {
                 if (i < offset) continue;
-                result.push_back(*itr);
+                result.emplace_back(*itr, db);
             }
         };
 
         if (target.size()) {
             const auto target_id = fc::sha256::hash(fc::json::to_string(target));
-            const auto& idx = db.get_index<donate_index, by_target_from_to>();
+            const auto& idx = db.get_index<donate_data_index, by_target_from_to>();
             auto itr = idx.lower_bound(std::make_tuple(target_id, from, to));
             fill_donates(idx, itr, [&](auto& itr) {
                 return itr->target_id == target_id && (!from.size() || itr->from == from) && (!to.size() || itr->to == to);
             });
         } else if (from.size()) {
-            const auto& idx = db.get_index<donate_index, by_from_to>();
+            const auto& idx = db.get_index<donate_data_index, by_from_to>();
             auto itr = idx.lower_bound(std::make_tuple(from, to));
             fill_donates(idx, itr, [&](auto& itr) {
                 return itr->from == from && (!to.size() || itr->to == to);
             });
         } else if (to.size()) {
-            const auto& idx = db.get_index<donate_index, by_to_from>();
+            const auto& idx = db.get_index<donate_data_index, by_to_from>();
             auto itr = idx.lower_bound(std::make_tuple(to));
             fill_donates(idx, itr, [&](auto& itr) {
                 return itr->to == to;
@@ -266,8 +266,9 @@ namespace golos { namespace plugins { namespace social_network {
         using result_type = void;
 
         TImpl& impl;
+        golos::chain::database& db;
 
-        delete_visitor(TImpl& impl) : impl(impl) {
+        delete_visitor(TImpl& impl) : impl(impl), db(impl.db) {
         }
 
         template<class T>
@@ -275,7 +276,7 @@ namespace golos { namespace plugins { namespace social_network {
         }
 
         void operator()(const delete_comment_operation& o) const {
-            const auto* comment = impl.db.find_comment(o.author, o.permlink);
+            const auto* comment = db.find_comment(o.author, o.permlink);
             if (comment == nullptr) {
                 return;
             }
@@ -286,18 +287,17 @@ namespace golos { namespace plugins { namespace social_network {
                 impl.db.remove(*content);
             }
 
-            if (impl.db.template has_index<comment_last_update_index>()) {
+            if (db.has_index<comment_last_update_index>()) {
                 impl.activate_parent_comments(*comment);
-
-                auto& idx = impl.db.template get_index<comment_last_update_index>().indices().template get<by_comment>();
+                auto& idx = db.get_index<comment_last_update_index, by_comment>();
                 auto itr = idx.find(comment->id);
                 if (idx.end() != itr) {
                     impl.db.remove(*itr);
                 }
             }
 
-            if (impl.db.template has_index<comment_reward_index>()) {
-                auto& idx = impl.db.template get_index<comment_reward_index>().indices().template get<by_comment>();
+            if (db.has_index<comment_reward_index>()) {
+                auto& idx = db.get_index<comment_reward_index, by_comment>();
                 auto itr = idx.find(comment->id);
                 if (idx.end() != itr) {
                     impl.db.remove(*itr);
@@ -456,11 +456,10 @@ namespace golos { namespace plugins { namespace social_network {
             asset curator_payout_gbg = db.to_sbd(curator_payout_golos);
 
             if (total_payout_golos.amount.value || benef_payout_golos.amount.value || curator_payout_golos.amount.value ) {
-                const auto& cr_idx = db.get_index<comment_reward_index>().indices()
-                    .template get<golos::plugins::social_network::by_comment>();
+                const auto& cr_idx = db.get_index<comment_reward_index, by_comment>();
                 auto cr_itr = cr_idx.find(comment.id);
                 if (cr_itr == cr_idx.end()) {
-                    db.create<comment_reward_object>([&](golos::plugins::social_network::comment_reward_object& cr) {
+                    db.create<comment_reward_object>([&](auto& cr) {
                         cr.comment = comment.id;
                         cr.author_rewards = author_rewards;
                         cr.author_gbg_payout_value = impl.author_gbg_payout_value;
@@ -511,23 +510,20 @@ namespace golos { namespace plugins { namespace social_network {
         }
 
         result_type operator()(const donate_operation& op) const {
-            if (!db.has_index<donate_index>()) {
+            if (!db.has_index<donate_data_index>()) {
                 return;
             }
 
-            db.create<donate_object>([&](auto& don) {
+            const auto& donate_idx = db.get_index<donate_index, by_id>();
+            auto donate = --donate_idx.end();
+
+            db.create<donate_data_object>([&](auto& don) {
+                don.donate = donate->id;
                 don.from = op.from;
-                don.to = op.to;
+                don.to = op.to.size() ? op.to : op.from;
                 don.amount = op.amount;
-                don.app = op.memo.app;
-                don.version = op.memo.version;
-
-                const auto& target = fc::json::to_string(op.memo.target);
-                from_string(don.target, target);
-                don.target_id = fc::sha256::hash(target);
-
+                don.target_id = fc::sha256::hash(to_string(donate->target));
                 if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
-
             	don.time = db.head_block_time();
             });
         }
@@ -676,6 +672,8 @@ namespace golos { namespace plugins { namespace social_network {
         if (options.at("store-comment-rewards").as<bool>()) {
             add_plugin_index<comment_reward_index>(db);
         }
+
+        add_plugin_index<donate_data_index>(db);
 
         db.pre_apply_operation.connect([&](const operation_notification &o) {
             pimpl->pre_operation(o);
