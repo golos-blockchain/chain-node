@@ -3164,10 +3164,8 @@ namespace golos { namespace chain {
             asset net_sbd(0, SBD_SYMBOL);
             asset net_steem(0, STEEM_SYMBOL);
 
-            auto& idx = get_index<account_index, by_sbd>();
-            for (auto itr = idx.upper_bound(std::make_tuple(asset(0, SBD_SYMBOL), asset(0, SBD_SYMBOL)));
-                itr != idx.end(); itr++) {
-                const auto& acc = *itr;
+            for (const auto& acc : get_index<account_index>().indices()) {
+                if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) continue;
 
                 auto sbd = asset(
                     (uint128_t(acc.sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
