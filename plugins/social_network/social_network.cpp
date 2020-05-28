@@ -526,6 +526,22 @@ namespace golos { namespace plugins { namespace social_network {
                 if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
             	don.time = db.head_block_time();
             });
+
+            if (op.memo.app == "golos-id") {
+                try {
+                    auto author = account_name_type(op.memo.target["author"].as_string());
+                    auto permlink = op.memo.target["permlink"].as_string();
+                    const auto* comment = db.find_comment(author, permlink);
+                    if (comment != nullptr) {
+                        const auto content = impl.find_comment_content(comment->id);
+                        if (content != nullptr) {
+                            db.modify(*content, [&](auto& con) {
+                                con.donates += op.amount;
+                            });
+                        }
+                    }
+                } catch (...) {}
+            }
         }
     };
 
@@ -950,6 +966,7 @@ namespace golos { namespace plugins { namespace social_network {
                 con.body = to_string(content->body);
                 con.json_metadata = to_string(content->json_metadata);
                 con.net_rshares = content->net_rshares;
+                con.donates = content->donates;
             }
 
             const auto root_content = db.find<comment_content_object, by_comment>(co.root_comment);

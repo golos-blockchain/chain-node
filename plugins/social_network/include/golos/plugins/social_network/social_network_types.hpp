@@ -36,6 +36,7 @@ namespace golos { namespace plugins { namespace social_network {
         shared_string body;
         shared_string json_metadata;
         share_type net_rshares;
+        asset donates = asset(0, STEEM_SYMBOL);
 
         uint32_t block_number;
     };
