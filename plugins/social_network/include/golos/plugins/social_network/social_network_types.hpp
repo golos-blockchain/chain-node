@@ -190,6 +190,7 @@ namespace golos { namespace plugins { namespace social_network {
     struct by_from_to;
     struct by_to_from;
     struct by_target_from_to;
+    struct by_target_amount;
 
     using donate_data_index = multi_index_container<
         donate_data_object,
@@ -208,7 +209,11 @@ namespace golos { namespace plugins { namespace social_network {
                 member<donate_data_object, fc::sha256, &donate_data_object::target_id>,
                 member<donate_data_object, account_name_type, &donate_data_object::from>,
                 member<donate_data_object, account_name_type, &donate_data_object::to>
-            >>>,
+            >>,
+            ordered_non_unique<tag<by_target_amount>, composite_key<donate_data_object,
+                member<donate_data_object, fc::sha256, &donate_data_object::target_id>,
+                member<donate_data_object, asset, &donate_data_object::amount>
+            >, composite_key_compare<std::less<fc::sha256>, std::greater<asset>>>>,
         allocator<donate_data_object>
     >;
 } } }

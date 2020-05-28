@@ -200,10 +200,10 @@ namespace golos { namespace plugins { namespace social_network {
 
         if (target.size()) {
             const auto target_id = fc::sha256::hash(fc::json::to_string(target));
-            const auto& idx = db.get_index<donate_data_index, by_target_from_to>();
-            auto itr = idx.lower_bound(std::make_tuple(target_id, from, to));
+            const auto& idx = db.get_index<donate_data_index, by_target_amount>();
+            auto itr = idx.lower_bound(target_id);
             fill_donates(idx, itr, [&](auto& itr) {
-                return itr->target_id == target_id && (!from.size() || itr->from == from) && (!to.size() || itr->to == to);
+                return itr->target_id == target_id;
             });
         } else if (from.size()) {
             const auto& idx = db.get_index<donate_data_index, by_from_to>();
