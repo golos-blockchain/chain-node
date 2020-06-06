@@ -786,6 +786,20 @@ namespace golos { namespace plugins { namespace tags {
         );
     }
 
+    DEFINE_API(tags_plugin, get_discussions_by_donates) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (discussion_query, query)
+        );
+        query.prepare();
+        query.validate();
+        return pimpl->select_ordered_discussions<sort::by_donates>(
+            query,
+            [&](const discussion& d) -> bool {
+                return true;
+            }
+        );
+    }
+
     std::vector<tag_api_object>
     tags_plugin::impl::get_trending_tags(const std::string& after, uint32_t limit) const {
         limit = std::min(limit, uint32_t(1000));

@@ -87,6 +87,7 @@ namespace golos { namespace plugins { namespace tags {
         int32_t children = 0;
         double hot = 0;
         double trending = 0;
+        asset donates = asset(0, STEEM_SYMBOL);
 
         share_type promoted_balance = 0;
 
@@ -210,6 +211,15 @@ namespace golos { namespace plugins { namespace tags {
                     member<tag_object, tag_id_type, &tag_object::id> >,
                 composite_key_compare<
                     std::greater<int32_t>,
+                    std::less<tag_id_type>>>,
+            ordered_non_unique<
+                tag<sort::by_donates>,
+                composite_key<
+                    tag_object,
+                    member<tag_object, asset, &tag_object::donates>,
+                    member<tag_object, tag_id_type, &tag_object::id> >,
+                composite_key_compare<
+                    std::greater<asset>,
                     std::less<tag_id_type>>>,
             ordered_non_unique<
                 tag<sort::by_hot>,

@@ -32,6 +32,7 @@ namespace golos { namespace plugins { namespace tags {
     DEFINE_API_ARGS(get_discussions_by_comments,           msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_discussions_by_promoted,           msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_discussions_by_author_before_date, msg_pack, std::vector<discussion>)
+    DEFINE_API_ARGS(get_discussions_by_donates,            msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_languages,                         msg_pack, get_languages_result);
 
     class tags_plugin final: public appbase::plugin<tags_plugin> {
@@ -144,6 +145,8 @@ namespace golos { namespace plugins { namespace tags {
              *  the eariler to the two metrics will be used. This should allow easy pagination.
              */
             (get_discussions_by_author_before_date)
+
+            (get_discussions_by_donates)
 
             (get_languages)
         )
