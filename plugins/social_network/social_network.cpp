@@ -95,7 +95,7 @@ namespace golos { namespace plugins { namespace social_network {
         ) const ;
 
         std::vector<donate_api_object> select_donates (
-            const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
+            const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
         ) const ;
 
         std::vector<discussion> get_content_replies(
@@ -181,7 +181,7 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     std::vector<donate_api_object> social_network::impl::select_donates(
-        const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset
+        const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
     ) const {
         if (limit == 0) {
             return {};
@@ -192,9 +192,25 @@ namespace golos { namespace plugins { namespace social_network {
 
         auto fill_donates = [&](const auto& idx, auto& itr, auto&& verify) {
             uint32_t i = 0;
+            bool need_sort = false;
             for (; itr != idx.end() && verify(itr) && result.size() < limit; ++itr, ++i) {
                 if (i < offset) continue;
+                if (join_froms) {
+                    auto join_itr = std::find_if(result.begin(), result.end(), [&](auto& dao) {
+                        return dao.from == itr->from;
+                    });
+                    if (join_itr != result.end()) {
+                        join_itr->amount += itr->amount;
+                        need_sort = true;
+                        continue;
+                    }
+                }
                 result.emplace_back(*itr, db);
+            }
+            if (need_sort) {
+                std::sort(result.begin(), result.end(), [&](auto& lhs, auto& rhs) {
+                    return lhs.amount > rhs.amount;
+                });
             }
         };
 
@@ -881,9 +897,10 @@ namespace golos { namespace plugins { namespace social_network {
             (string,             to)
             (uint32_t,           limit, DEFAULT_VOTE_LIMIT)
             (uint32_t,           offset, 0)
+            (bool,               join_froms, false)
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->select_donates(target, from, to, limit, offset);
+            return pimpl->select_donates(target, from, to, limit, offset, join_froms);
         });
     }
 
