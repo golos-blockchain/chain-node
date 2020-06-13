@@ -335,7 +335,7 @@ namespace golos { namespace plugins { namespace tags {
             part.reserve(4);
             auto path = op.memo;
             boost::split(part, path, boost::is_any_of("/"));
-            if (!part[0].empty() && part[0][0] == '@') {
+            if (!part[0].empty() && part[0][0] == '@' && part.size() >= 2) {
                 auto acnt = part[0].substr(1);
                 auto perm = part[1];
 
@@ -447,9 +447,6 @@ namespace golos { namespace plugins { namespace tags {
 
         if (cashout_time != fc::time_point_sec::maximum()) {
             update_tags(op.author, op.permlink);
-        } else {
-            // it can be the end of a cashout window
-            remove_tags(op.author, op.permlink);
         }
     }
 
