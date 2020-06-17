@@ -53,7 +53,7 @@ namespace golos { namespace plugins { namespace account_history {
     class account_history_object final: public object<account_history_object_type, account_history_object> {
     public:
         template <typename Constructor, typename Allocator>
-        account_history_object(Constructor&& c, allocator <Allocator> a) {
+        account_history_object(Constructor&& c, allocator <Allocator> a) : json_metadata(a) {
             c(*this);
         }
 
@@ -64,6 +64,7 @@ namespace golos { namespace plugins { namespace account_history {
         uint32_t sequence = 0;
         uint8_t op_tag;
         operation_direction dir;
+        shared_string json_metadata;
 
         operation_id_type op;
     };

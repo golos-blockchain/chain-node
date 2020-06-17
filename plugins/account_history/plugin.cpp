@@ -44,6 +44,8 @@ if (options.count(name)) { \
         }
     };
 
+    using golos::plugins::operation_history::donate_meta;
+
     struct operation_visitor final {
         operation_visitor(
             golos::chain::database& db,
@@ -63,8 +65,7 @@ if (options.count(name)) { \
         std::string account;
         operation_direction dir;
 
-        template<typename Op>
-        void operator()(Op &&) const {
+        void write_operation(std::string json_metadata = "{}") const {
             const auto& idx = db.get_index<account_history_index>().indices().get<by_account>();
 
             auto itr = idx.lower_bound(std::make_tuple(account, uint32_t(-1)));
@@ -78,9 +79,27 @@ if (options.count(name)) { \
                 history.account = account;
                 history.sequence = sequence;
                 history.dir = dir;
+                from_string(history.json_metadata, json_metadata);
                 history.op_tag = note.op.which();
                 history.op = operation_history::operation_id_type(note.db_id);
             });
+        }
+
+        void operator()(const donate_operation& op) const {
+            donate_meta meta;
+            const auto& to = db.get_account(op.to);
+            if (to.referrer_account != account_name_type()) {
+                meta.referrer = to.referrer_account;
+                meta.referrer_interest = asset(
+                        (uint128_t(op.amount.amount.value) * to.referrer_interest_rate / STEEMIT_100_PERCENT).to_uint64(),
+                        STEEM_SYMBOL);
+            }
+            write_operation(std::move(fc::json::to_string(meta)));
+        }
+
+        template<typename Op>
+        void operator()(Op&) const {
+            write_operation();
         }
     };
 
@@ -133,6 +152,7 @@ if (options.count(name)) { \
             auto end = idx.upper_bound(std::make_tuple(account, std::max(int64_t(0), int64_t(itr->sequence) - limit)));
             for (; itr != end; ++itr) {
                 result[itr->sequence] = db.get(itr->op);
+                result[itr->sequence].json_metadata = to_string(itr->json_metadata);
             }
             return result;
         }
@@ -229,6 +249,7 @@ if (options.count(name)) { \
                 auto itr = itrs.top().itr;
                 itrs.pop();
                 result[itr->sequence] = db.get(itr->op);
+                result[itr->sequence].json_metadata = to_string(itr->json_metadata);
                 auto o = itr->op_tag;
                 auto d = itr->dir;
                 auto next = sequenced_itr(++itr);

@@ -18,10 +18,20 @@ namespace golos { namespace plugins { namespace operation_history {
         uint64_t virtual_op = 0;
         fc::time_point_sec timestamp;
         golos::protocol::operation op;
+        string json_metadata;
+    };
+
+    struct donate_meta final {
+        account_name_type referrer;
+        asset referrer_interest = asset(0, STEEM_SYMBOL);
     };
 
 } } } // golos::plugins::operation_history
 
 FC_REFLECT(
     (golos::plugins::operation_history::applied_operation),
-    (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op))
+    (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op)(json_metadata))
+
+FC_REFLECT(
+    (golos::plugins::operation_history::donate_meta),
+    (referrer)(referrer_interest))
