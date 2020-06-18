@@ -35,9 +35,6 @@ namespace golos { namespace plugins { namespace tags {
         void on_block (const protocol::signed_block& b) {
             const auto ttl = uint32_t(clear_tags_older_n_blocks) * STEEMIT_BLOCK_INTERVAL;
             const auto& idx = database_.get_index<tag_index, sort::by_created>();
-            if (b.block_num() == 1 || b.block_num() % 10000 == 0) {
-                wlog(std::to_string(idx.size()));
-            }
             auto itr = idx.lower_bound(database_.head_block_time() - ttl);
             while (itr != idx.end()) {
                 const auto& tag = *itr;
@@ -406,11 +403,16 @@ namespace golos { namespace plugins { namespace tags {
         Order&& order
     ) const {
         auto& db = database();
+        auto now = db.head_block_time().sec_since_epoch();
         for (; itr != etr && !exit(*itr); ++itr) {
             if (id_set.count(itr->comment)) {
                 continue;
             }
             id_set.insert(itr->comment);
+
+            if (query.period_sec && (itr->created.sec_since_epoch() < now - *query.period_sec)) {
+                continue;
+            }
 
             if (!query.is_good_parent(itr->parent) || !query.is_good_author(itr->author)) {
                 continue;
