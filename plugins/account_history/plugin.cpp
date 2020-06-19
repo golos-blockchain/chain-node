@@ -573,7 +573,8 @@ if (options.count(name)) { \
             insert_sender(op.from);
             insert_receiver(op.to);
             const auto& to_account = myimpl->db.get_account(op.to.size() ? op.to : op.from);
-            insert_receiver(to_account.referrer_account);
+            if (to_account.referrer_account != account_name_type())
+                insert_receiver(to_account.referrer_account);
         }
 
         void operator()(const transfer_to_tip_operation& op) {
