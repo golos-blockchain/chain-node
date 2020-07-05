@@ -447,6 +447,9 @@ namespace golos { namespace plugins { namespace tags {
 
         if (cashout_time != fc::time_point_sec::maximum()) {
             update_tags(op.author, op.permlink);
+        } else {
+            // it can be the end of a cashout window
+            remove_tags(op.author, op.permlink);
         }
     }
 

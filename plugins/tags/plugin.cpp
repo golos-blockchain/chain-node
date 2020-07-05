@@ -32,17 +32,6 @@ namespace golos { namespace plugins { namespace tags {
 
         ~impl() {}
 
-        void on_block (const protocol::signed_block& b) {
-            const auto ttl = uint32_t(clear_tags_older_n_blocks) * STEEMIT_BLOCK_INTERVAL;
-            const auto& idx = database_.get_index<tag_index, sort::by_created>();
-            auto itr = idx.lower_bound(database_.head_block_time() - ttl);
-            while (itr != idx.end()) {
-                const auto& tag = *itr;
-                ++itr;
-                database_.remove(tag);
-            }
-        }
-
         void on_operation(const operation_notification& note) {
             try {
                 /// plugins shouldn't ever throw
@@ -111,7 +100,6 @@ namespace golos { namespace plugins { namespace tags {
 
         std::size_t tags_number;
         std::size_t tag_max_length;
-        uint32_t clear_tags_older_n_blocks = 0xFFFFFFFF;
     private:
         golos::chain::database& database_;
         std::unique_ptr<discussion_helper> helper;
@@ -207,18 +195,12 @@ namespace golos { namespace plugins { namespace tags {
             ) (
                 "tag-max-length", boost::program_options::value<uint16_t>()->default_value(512),
                 "Maximum length of tag"
-            ) (
-                "clear-tags-older-n-blocks", boost::program_options::value<uint32_t>()->default_value(10512000),
-                "Clear tags (discussion ribbon) older n blocks"
             );
     }
 
     void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options) {
         pimpl = std::make_unique<impl>();
         auto& db = pimpl->database();
-        db.applied_block.connect([&](const protocol::signed_block& b) {
-            pimpl->on_block(b);
-        });
         db.post_apply_operation.connect([&](const operation_notification& note) {
             pimpl->on_operation(note);
         });
@@ -229,7 +211,6 @@ namespace golos { namespace plugins { namespace tags {
 
         pimpl->tags_number = options.at("tags-number").as<uint16_t>();
         pimpl->tag_max_length = options.at("tag-max-length").as<uint16_t>();
-        pimpl->clear_tags_older_n_blocks = options.at("clear-tags-older-n-blocks").as<uint32_t>();
 
         JSON_RPC_REGISTER_API (name());
 
@@ -403,16 +384,11 @@ namespace golos { namespace plugins { namespace tags {
         Order&& order
     ) const {
         auto& db = database();
-        auto now = db.head_block_time().sec_since_epoch();
         for (; itr != etr && !exit(*itr); ++itr) {
             if (id_set.count(itr->comment)) {
                 continue;
             }
             id_set.insert(itr->comment);
-
-            if (query.period_sec && (itr->created.sec_since_epoch() < now - *query.period_sec)) {
-                continue;
-            }
 
             if (!query.is_good_parent(itr->parent) || !query.is_good_author(itr->author)) {
                 continue;
