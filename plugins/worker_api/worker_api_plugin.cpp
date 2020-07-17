@@ -82,16 +82,38 @@ struct post_operation_visitor {
 
         uint32_t upvotes = 0;
         uint32_t downvotes = 0;
+        share_type upvote_rshares;
+        share_type upvote_total;
 
         const auto& vote_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
         auto vote_itr = vote_idx.lower_bound(post.id);
         for (; vote_itr != vote_idx.end() && vote_itr->post == post.id; ++vote_itr) {
-            (vote_itr->vote_percent > 0) ? upvotes++ : downvotes++;
+            if (vote_itr->vote_percent > 0) {
+                upvotes++;
+                upvote_rshares += vote_itr->rshares;
+                upvote_total += vote_itr->stake;
+            } else {
+                downvotes++;
+            }
         }
 
         _db.modify(*wrmo_itr, [&](auto& o) {
             o.upvotes = upvotes;
             o.downvotes = downvotes;
+            o.upvote_rshares = upvote_rshares;
+            o.upvote_total = upvote_total;
+        });
+    }
+
+    result_type operator()(const worker_reward_operation& op) const {
+        const auto& post = _db.get_comment(op.worker_request_author, op.worker_request_permlink);
+
+        const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
+        auto wrmo_itr = wrmo_idx.find(post.id);
+
+        _db.modify(*wrmo_itr, [&](auto& o) {
+            o.paid_out += op.reward;
+            o.paid_out_vests += op.reward_in_vests_if_vest;
         });
     }
 };
