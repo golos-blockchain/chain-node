@@ -116,6 +116,21 @@ struct post_operation_visitor {
             o.paid_out_vests += op.reward_in_vests_if_vest;
         });
     }
+
+    result_type operator()(const worker_state_operation& op) const {
+        if (op.state != worker_request_state::payment_complete) {
+            return;
+        }
+
+        const auto& post = _db.get_comment(op.author, op.permlink);
+
+        const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
+        auto wrmo_itr = wrmo_idx.find(post.id);
+
+        _db.modify(*wrmo_itr, [&](auto& o) {
+            o.payment_end_time = _db.head_block_time();
+        });
+    }
 };
 
 class worker_api_plugin::worker_api_plugin_impl final {

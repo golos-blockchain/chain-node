@@ -37,6 +37,7 @@ namespace golos { namespace plugins { namespace worker_api {
         share_type upvote_total;
         asset paid_out;
         asset paid_out_vests;
+        time_point_sec payment_end_time;
     };
 
     struct by_net_rshares;
@@ -94,7 +95,8 @@ namespace golos { namespace plugins { namespace worker_api {
               upvote_rshares(o.upvote_rshares),
               upvote_total(o.upvote_total),
               paid_out(o.paid_out),
-              paid_out_vests(o.paid_out_vests) {
+              paid_out_vests(o.paid_out_vests),
+              payment_end_time(o.payment_end_time) {
         }
 
         worker_request_api_object() {
@@ -135,6 +137,7 @@ namespace golos { namespace plugins { namespace worker_api {
         asset paid_out;
         asset paid_out_vests;
         asset remaining_payment;
+        time_point_sec payment_end_time;
     };
 
 } } } // golos::plugins::worker_api
@@ -150,5 +153,5 @@ FC_REFLECT((golos::plugins::worker_api::worker_request_api_object),
     (creation_fee)
     (upvotes)(downvotes)
     (stake_rshares)(stake_total)(upvote_rshares)(upvote_total)
-    (paid_out)(paid_out_vests)(remaining_payment)
+    (paid_out)(paid_out_vests)(remaining_payment)(payment_end_time)
 )
