@@ -35,6 +35,11 @@ std::ostream& operator<<(std::ostream& out, const fc::uint128_t& v) {
     return out;
 }
 
+std::ostream& operator<<(std::ostream& out, const fc::uint128lh_t& v) {
+    out << static_cast<std::string>(v);
+    return out;
+}
+
 std::ostream& operator<<(std::ostream& out, const fc::fixed_string<fc::uint128_t>& v) {
     out << static_cast<std::string>(v);
     return out;

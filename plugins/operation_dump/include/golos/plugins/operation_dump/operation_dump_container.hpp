@@ -2,7 +2,7 @@
 
 #include <sstream>
 #include <boost/filesystem/fstream.hpp>
-#include <fc/io/raw.hpp>
+#include <golos/protocol/types.hpp>
 
 namespace golos { namespace plugins { namespace operation_dump {
 

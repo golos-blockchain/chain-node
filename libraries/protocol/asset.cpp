@@ -18,6 +18,9 @@ namespace golos {
         uint8_t asset::decimals() const {
             auto a = (const char *)&symbol;
             uint8_t result = uint8_t(a[0]);
+            if (result >= 100) {
+                result -= 100;
+            }
             FC_ASSERT(result < 15);
             return result;
         }
@@ -25,12 +28,17 @@ namespace golos {
         void asset::set_decimals(uint8_t d) {
             FC_ASSERT(d < 15);
             auto a = (char *)&symbol;
+            if (a[0] >= 100) d += 100;
             a[0] = d;
         }
 
         std::string asset::symbol_name() const {
             auto a = (const char *)&symbol;
-            FC_ASSERT(a[7] == 0);
+            if (a[0] >= 100) {
+                FC_ASSERT(a[15] == 0);
+            } else {
+                FC_ASSERT(a[7] == 0);
+            }
             return &a[1];
         }
 
@@ -94,8 +102,13 @@ namespace golos {
                 size_t symbol_size = symbol.size();
 
                 if (symbol_size > 0) {
-                    GOLOS_CHECK_VALUE(symbol_size <= 6, "Asset symbol is too long");
+                    // checks compliance with version 2.
+                    // (in all evaluators in case before HF we should also check compliance with version 1, i.e. symbol_size <= 6)
+                    GOLOS_CHECK_VALUE(symbol_size <= 14, "Asset symbol is too long");
                     memcpy(sy + 1, symbol.c_str(), symbol_size);
+                    if (symbol_size > 6) {
+                        sy[0] += 100; // mark version as 2 - with long symbol
+                    }
                 }
 
                 return result;

@@ -2948,7 +2948,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
         FC_LOG_AND_RETHROW()
     }
 
-    BOOST_AUTO_TEST_CASE(limit_order_create_validate) {
+    /*BOOST_AUTO_TEST_CASE(limit_order_create_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_create_validate");
             limit_order_create_operation op;
@@ -3939,7 +3939,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                           ASSET("0.000 GBG").amount.value);
         }
         FC_LOG_AND_RETHROW()
-    }
+    }*/
 
     BOOST_AUTO_TEST_CASE(pow_validate) {
         try {
