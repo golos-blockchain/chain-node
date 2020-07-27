@@ -5,6 +5,7 @@
 #include <golos/chain/database.hpp>
 #include <golos/chain/shared_authority.hpp>
 #include <golos/protocol/exceptions.hpp>
+#include <golos/protocol/uint128lh_t.hpp>
 #include <golos/plugins/debug_node/plugin.hpp>
 #include <golos/plugins/account_history/plugin.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
@@ -279,6 +280,7 @@ namespace fc {
 std::ostream& operator<<(std::ostream& out, const fc::exception& e);
 std::ostream& operator<<(std::ostream& out, const fc::time_point& v);
 std::ostream& operator<<(std::ostream& out, const fc::uint128_t& v);
+std::ostream& operator<<(std::ostream& out, const fc::uint128lh_t& v);
 std::ostream& operator<<(std::ostream& out, const fc::fixed_string<fc::uint128_t>& v);
 std::ostream& operator<<(std::ostream& out, const fc::variant_object& v);
 

@@ -3734,19 +3734,15 @@ namespace golos { namespace chain {
                         a.memo_key = account.keys.memo_key;
                         a.recovery_account = STEEMIT_INIT_MINER_NAME;
 #ifdef STEEMIT_BUILD_TESTNET
-                        for(asset &amount : account.balances.assets) {
-                            switch (amount.symbol) {
-                                case STEEM_SYMBOL:
-                                    a.balance.amount = amount.amount;
-                                    break;
-                                case SBD_SYMBOL:
-                                    a.sbd_balance.amount = amount.amount;
-                                    break;
-                                case VESTS_SYMBOL:
-                                    a.vesting_shares.amount = amount.amount;
-                                    break;
-                                default:
-                                    FC_ASSERT(false, "Unknown asset in snapshot");
+                        for (auto& amount : account.balances.assets) {
+                            if (amount.symbol == STEEM_SYMBOL) {
+                                a.balance.amount = amount.amount;
+                            } else if (amount.symbol == SBD_SYMBOL) {
+                                a.sbd_balance.amount = amount.amount;
+                            } else if (amount.symbol == VESTS_SYMBOL) {
+                                a.vesting_shares.amount = amount.amount;
+                            } else {
+                                FC_ASSERT(false, "Unknown asset in snapshot");
                             }
                         }
                         //assume price of GOLOS = GBG, just for testnet
@@ -4832,15 +4828,12 @@ namespace golos { namespace chain {
         }
 
         void database::adjust_balance(const account_object &a, const asset &delta) {
-            switch (delta.symbol) {
-                case STEEM_SYMBOL:
-                    modify(a, [&](account_object &acnt) {acnt.balance += delta;});
-                    break;
-                case SBD_SYMBOL:
-                    adjust_sbd_balance(a, delta);
-                    break;
-                default:
-                    GOLOS_CHECK_VALUE(false, "invalid symbol");
+            if (delta.symbol == STEEM_SYMBOL) {
+                modify(a, [&](auto& acnt) {acnt.balance += delta;});
+            } else if (delta.symbol == SBD_SYMBOL) {
+                adjust_sbd_balance(a, delta);
+            } else {
+                GOLOS_CHECK_VALUE(false, "invalid symbol");
             }
         }
 
@@ -4884,45 +4877,42 @@ namespace golos { namespace chain {
 
         void database::adjust_savings_balance(const account_object &a, const asset &delta) {
             modify(a, [&](account_object &acnt) {
-                switch (delta.symbol) {
-                    case STEEM_SYMBOL:
-                        acnt.savings_balance += delta;
-                        break;
-                    case SBD_SYMBOL:
-                        if (a.savings_sbd_seconds_last_update !=
-                            head_block_time()) {
-                            acnt.savings_sbd_seconds +=
-                                    fc::uint128_t(a.savings_sbd_balance.amount.value) *
-                                    (head_block_time() -
-                                     a.savings_sbd_seconds_last_update).to_seconds();
-                            acnt.savings_sbd_seconds_last_update = head_block_time();
+                if (delta.symbol == STEEM_SYMBOL) {
+                    acnt.savings_balance += delta;
+                } else if (delta.symbol == SBD_SYMBOL) {
+                    if (a.savings_sbd_seconds_last_update !=
+                        head_block_time()) {
+                        acnt.savings_sbd_seconds +=
+                                fc::uint128_t(a.savings_sbd_balance.amount.value) *
+                                (head_block_time() -
+                                 a.savings_sbd_seconds_last_update).to_seconds();
+                        acnt.savings_sbd_seconds_last_update = head_block_time();
 
-                            if (acnt.savings_sbd_seconds > 0 &&
-                                (acnt.savings_sbd_seconds_last_update -
-                                 acnt.savings_sbd_last_interest_payment).to_seconds() >
-                                STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC) {
-                                auto interest = acnt.savings_sbd_seconds /
-                                                STEEMIT_SECONDS_PER_YEAR;
-                                interest *= get_dynamic_global_properties().sbd_interest_rate;
-                                interest /= STEEMIT_100_PERCENT;
-                                asset interest_paid(interest.to_uint64(), SBD_SYMBOL);
-                                acnt.savings_sbd_balance += interest_paid;
-                                acnt.savings_sbd_seconds = 0;
-                                acnt.savings_sbd_last_interest_payment = head_block_time();
+                        if (acnt.savings_sbd_seconds > 0 &&
+                            (acnt.savings_sbd_seconds_last_update -
+                             acnt.savings_sbd_last_interest_payment).to_seconds() >
+                            STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC) {
+                            auto interest = acnt.savings_sbd_seconds /
+                                            STEEMIT_SECONDS_PER_YEAR;
+                            interest *= get_dynamic_global_properties().sbd_interest_rate;
+                            interest /= STEEMIT_100_PERCENT;
+                            asset interest_paid(interest.to_uint64(), SBD_SYMBOL);
+                            acnt.savings_sbd_balance += interest_paid;
+                            acnt.savings_sbd_seconds = 0;
+                            acnt.savings_sbd_last_interest_payment = head_block_time();
 
-                                push_virtual_operation(interest_operation(a.name, interest_paid));
+                            push_virtual_operation(interest_operation(a.name, interest_paid));
 
-                                modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
-                                    props.current_sbd_supply += interest_paid;
-                                    props.virtual_supply += interest_paid *
-                                                            get_feed_history().current_median_history;
-                                });
-                            }
+                            modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
+                                props.current_sbd_supply += interest_paid;
+                                props.virtual_supply += interest_paid *
+                                                        get_feed_history().current_median_history;
+                            });
                         }
-                        acnt.savings_sbd_balance += delta;
-                        break;
-                    default:
-                        GOLOS_CHECK_VALUE(false, "invalid symbol");
+                    }
+                    acnt.savings_sbd_balance += delta;
+                } else {
+                    GOLOS_CHECK_VALUE(false, "invalid symbol");
                 }
             });
         }
@@ -4935,50 +4925,44 @@ namespace golos { namespace chain {
                 adjust_vesting = false;
             }
 
-            modify(props, [&](dynamic_global_property_object &props) {
-                switch (delta.symbol) {
-                    case STEEM_SYMBOL: {
-                        asset new_vesting((adjust_vesting && delta.amount > 0) ?
-                                          delta.amount * 9 : 0, STEEM_SYMBOL);
-                        props.current_supply += delta + new_vesting;
-                        props.virtual_supply += delta + new_vesting;
-                        props.total_vesting_fund_steem += new_vesting;
-                        assert(props.current_supply.amount.value >= 0);
-                        break;
-                    }
-                    case SBD_SYMBOL:
-                        props.current_sbd_supply += delta;
-                        props.virtual_supply = props.current_sbd_supply *
-                                               get_feed_history().current_median_history +
-                                               props.current_supply;
-                        assert(props.current_sbd_supply.amount.value >= 0);
-                        break;
-                    default:
-                        GOLOS_CHECK_VALUE(false, "invalid symbol");
+            modify(props, [&](dynamic_global_property_object& props) {
+                if (delta.symbol == STEEM_SYMBOL) {
+                    asset new_vesting((adjust_vesting && delta.amount > 0) ?
+                                      delta.amount * 9 : 0, STEEM_SYMBOL);
+                    props.current_supply += delta + new_vesting;
+                    props.virtual_supply += delta + new_vesting;
+                    props.total_vesting_fund_steem += new_vesting;
+                    assert(props.current_supply.amount.value >= 0);
+                } else if (delta.symbol == SBD_SYMBOL) {
+                    props.current_sbd_supply += delta;
+                    props.virtual_supply = props.current_sbd_supply *
+                                           get_feed_history().current_median_history +
+                                           props.current_supply;
+                    assert(props.current_sbd_supply.amount.value >= 0);
+                } else {
+                    GOLOS_CHECK_VALUE(false, "invalid symbol");
                 }
             });
         }
 
 
-        asset database::get_balance(const account_object &a, asset_symbol_type symbol) const {
-            switch (symbol) {
-                case STEEM_SYMBOL:
-                    return a.balance;
-                case SBD_SYMBOL:
-                    return a.sbd_balance;
-                default:
-                    GOLOS_CHECK_VALUE(false, "invalid symbol");
+        asset database::get_balance(const account_object& a, asset_symbol_type symbol) const {
+            if (symbol == STEEM_SYMBOL) {
+                return a.balance;
+            } else if (symbol == SBD_SYMBOL) {
+                return a.sbd_balance;
+            } else {
+                GOLOS_CHECK_VALUE(false, "invalid symbol");
             }
         }
 
         asset database::get_savings_balance(const account_object &a, asset_symbol_type symbol) const {
-            switch (symbol) {
-                case STEEM_SYMBOL:
-                    return a.savings_balance;
-                case SBD_SYMBOL:
-                    return a.savings_sbd_balance;
-                default:
-                    GOLOS_CHECK_VALUE(false, "invalid symbol");
+            if (symbol == STEEM_SYMBOL) {
+                return a.savings_balance;
+            } else if (symbol == SBD_SYMBOL) {
+                return a.savings_sbd_balance;
+            } else {
+                GOLOS_CHECK_VALUE(false, "invalid symbol");
             }
         }
 
