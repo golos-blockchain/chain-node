@@ -2722,6 +2722,7 @@ void delegate_vesting_shares(
             auto itr = idx.find(std::make_tuple(op.memo.app, op.memo.version));
             if (itr != idx.end()) {
                 std::function<bool(const fc::variant_object&,const fc::variant_object&)> same_schema = [&](auto& memo1, auto& memo2) {
+                    if (memo1.size() != memo2.size()) return false;
                     for (auto& entry : memo1) {
                         if (!memo2.contains(entry.key().c_str())) return false;
                         auto e_obj = entry.value().is_object();
@@ -2735,10 +2736,19 @@ void delegate_vesting_shares(
                     }
                     return true;
                 };
-                GOLOS_CHECK_LOGIC(same_schema(itr->target, op.memo.target) && same_schema(op.memo.target, itr->target),
+                const auto target = fc::json::from_string(to_string(itr->target)).get_object();
+                GOLOS_CHECK_LOGIC(same_schema(target, op.memo.target) && same_schema(op.memo.target, target),
                     logic_exception::wrong_donate_target_version,
                     "Donate target schema changed without changing API version.");
             }
+
+            _db.create<donate_object>([&](auto& don) {
+                don.app = op.memo.app;
+                don.version = op.memo.version;
+
+                const auto& target = fc::json::to_string(op.memo.target);
+                from_string(don.target, target);
+            });
 
             _db.modify(from, [&](account_object& acnt) {
                 acnt.tip_balance -= op.amount;

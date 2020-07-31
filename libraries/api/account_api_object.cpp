@@ -72,6 +72,13 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         last_market_bandwidth_update = market->last_bandwidth_update;
     }
 
+    auto custom_json = db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(name, bandwidth_type::custom_json));
+    if (custom_json != nullptr) {
+        average_custom_json_bandwidth = custom_json->average_bandwidth;
+        lifetime_custom_json_bandwidth = custom_json->lifetime_bandwidth;
+        last_custom_json_bandwidth_update = custom_json->last_bandwidth_update;
+    }
+
     if (db.head_block_time() < a.referral_end_date) {
         referrer_account = a.referrer_account;
         referrer_interest_rate = a.referrer_interest_rate;
@@ -81,6 +88,23 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
 
     last_active_operation = a.last_active_operation;
     last_claim = a.last_claim;
+
+    if (db.has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
+        auto now = db.head_block_time().sec_since_epoch();
+        auto now_block = db.head_block_num();
+
+        auto expire_block = now_block;
+        auto expire = last_claim.sec_since_epoch() + db.get_witness_schedule_object().median_props.claim_idleness_time;
+        if (expire > now) {
+            expire_block += ((expire - now) / STEEMIT_BLOCK_INTERVAL);
+        }
+
+        auto interval = GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL;
+        expire_block += (interval - expire_block % interval);
+
+        expire = now + (expire_block - now_block) * STEEMIT_BLOCK_INTERVAL;
+        claim_expiration = time_point_sec(expire);
+    }
 }
 
 account_api_object::account_api_object() = default;

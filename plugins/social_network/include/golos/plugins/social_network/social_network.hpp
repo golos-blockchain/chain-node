@@ -22,7 +22,7 @@ namespace golos { namespace plugins { namespace social_network {
     DEFINE_API_ARGS(get_all_content_replies,    msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_account_votes,          msg_pack, std::vector<account_vote>)
     DEFINE_API_ARGS(get_active_votes,           msg_pack, std::vector<vote_state>)
-    DEFINE_API_ARGS(get_donates,                msg_pack, std::vector<donate_object>)
+    DEFINE_API_ARGS(get_donates,                msg_pack, std::vector<donate_api_object>)
     DEFINE_API_ARGS(get_replies_by_last_update, msg_pack, std::vector<discussion>)
 
     class social_network final: public appbase::plugin<social_network> {

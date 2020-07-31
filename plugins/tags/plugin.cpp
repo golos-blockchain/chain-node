@@ -242,13 +242,23 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     bool tags_plugin::impl::filter_authors(discussion_query& query) const {
+        auto& db = database();
+
+        auto filter_authors = std::move(query.filter_authors);
+        for (auto& name: filter_authors) {
+            auto* author = db.find_account(name);
+            if (author) {
+                query.filter_author_ids.insert(author->id);
+                query.filter_authors.insert(name);
+            }
+        }
+
         if (query.select_authors.empty()) {
             return true;
         }
-
-        auto& db = database();
         auto select_authors = std::move(query.select_authors);
         for (auto& name: select_authors) {
+            if (query.filter_authors.count(name)) continue;
             auto* author = db.find_account(name);
             if (author) {
                 query.select_author_ids.insert(author->id);
@@ -782,6 +792,20 @@ namespace golos { namespace plugins { namespace tags {
             query,
             [&](const discussion& d) -> bool {
                 return d.net_rshares > 0;
+            }
+        );
+    }
+
+    DEFINE_API(tags_plugin, get_discussions_by_donates) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (discussion_query, query)
+        );
+        query.prepare();
+        query.validate();
+        return pimpl->select_ordered_discussions<sort::by_donates>(
+            query,
+            [&](const discussion& d) -> bool {
+                return true;
             }
         );
     }

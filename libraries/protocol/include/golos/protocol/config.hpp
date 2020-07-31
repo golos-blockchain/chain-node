@@ -261,9 +261,9 @@
 #define GOLOS_DEF_ACCOUNT_IDLENESS_TIME         (60*60*24*30*12) ///< 12 month
 #define GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL   (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
 
-#define GOLOS_MIN_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
-#define GOLOS_DEF_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
-#define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (STEEMIT_BLOCKS_PER_HOUR*(24+1)) ///< 1 day + 1 hour
+#define GOLOS_MIN_CLAIM_IDLENESS_TIME           (20) ///< 1 day
+#define GOLOS_DEF_CLAIM_IDLENESS_TIME           (20) ///< 1 day
+#define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (10) ///< 1 day + 1 hour
 #define GOLOS_ACCUM_DISTRIBUTION_INTERVAL       (60*2) ///< 2 minutes
 #define GOLOS_ACCUM_DISTRIBUTION_STEP           2 ///< accounts receiving their VS share per block
 

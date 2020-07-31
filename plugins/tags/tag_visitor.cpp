@@ -335,7 +335,7 @@ namespace golos { namespace plugins { namespace tags {
             part.reserve(4);
             auto path = op.memo;
             boost::split(part, path, boost::is_any_of("/"));
-            if (!part[0].empty() && part[0][0] == '@') {
+            if (!part[0].empty() && part[0][0] == '@' && part.size() >= 2) {
                 auto acnt = part[0].substr(1);
                 auto perm = part[1];
 
@@ -351,6 +351,27 @@ namespace golos { namespace plugins { namespace tags {
                         });
                         ++citr;
                     }
+                }
+            }
+        }
+    }
+
+    void operation_visitor::operator()(const donate_operation& op) const {
+        if (op.memo.app == "golos-id") {
+            const comment_object* comment = nullptr;
+            try {
+                auto author = account_name_type(op.memo.target["author"].as_string());
+                auto permlink = op.memo.target["permlink"].as_string();
+                comment = db_.find_comment(author, permlink);
+            } catch (...) {}
+            if (comment != nullptr) {
+                const auto& comment_idx = db_.get_index<tag_index, by_comment>();
+                auto citr = comment_idx.lower_bound(comment->id);
+                while (citr != comment_idx.end() && citr->comment == comment->id) {
+                    db_.modify(*citr, [&](auto& t) {
+                        t.donates += op.amount;
+                    });
+                    ++citr;
                 }
             }
         }

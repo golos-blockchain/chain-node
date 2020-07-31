@@ -46,6 +46,7 @@ namespace golos { namespace plugins { namespace tags {
         uint32_t                          vote_limit = DEFAULT_VOTE_LIMIT; ///< limit for active votes
         uint32_t                          vote_offset = 0; ///< an amount of skipping votes
         std::set<std::string>             select_authors; ///< list of authors to select
+        std::set<std::string>             filter_authors; ///< list of authors to filter
         fc::optional<std::string>         start_author; ///< the author of discussion to start searching from
         fc::optional<std::string>         start_permlink; ///< the permlink of discussion to start searching from
         fc::optional<std::string>         parent_author; ///< the author of parent discussion
@@ -54,6 +55,7 @@ namespace golos { namespace plugins { namespace tags {
         discussion                        start_comment;
         discussion                        parent_comment;
         std::set<account_object::id_type> select_author_ids;
+        std::set<account_object::id_type> filter_author_ids;
 
         bool has_tags_selector() const {
             return !select_tags.empty();
@@ -80,11 +82,11 @@ namespace golos { namespace plugins { namespace tags {
         }
 
         bool is_good_author(const account_object::id_type& id) const {
-            return !has_author_selector() || select_author_ids.count(id);
+            return (!has_author_selector() || select_author_ids.count(id)) && !filter_author_ids.count(id);
         }
 
         bool is_good_author(const std::string& name) const {
-            return !has_author_selector() || select_authors.count(name);
+            return (!has_author_selector() || select_authors.count(name)) && !filter_authors.count(name);
         }
 
         bool has_parent_comment() const {
@@ -111,7 +113,7 @@ namespace golos { namespace plugins { namespace tags {
 } } } // golos::plugins::tags
 
 FC_REFLECT((golos::plugins::tags::discussion_query),
-        (select_tags)(filter_tags)(select_categories)(select_authors)(truncate_body)(vote_limit)(vote_offset)
+        (select_tags)(filter_tags)(select_categories)(select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
         (start_author)(start_permlink)(parent_author)
         (parent_permlink)(limit)(select_languages)(filter_languages)
 );

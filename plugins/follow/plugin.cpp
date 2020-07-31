@@ -173,29 +173,27 @@ namespace golos {
                             return;
                         }
 
-                        const auto& idx = db.get_index<follow_index>().indices().get<by_following_follower>();
-                        const auto& comment_idx = db.get_index<feed_index>().indices().get<by_comment>();
+                        const auto& comment_idx = db.get_index<feed_index, by_comment>();
+                        const auto& feed_idx = db.get_index<feed_index, by_feed>();
+
+                        const auto& idx = db.get_index<follow_index, by_following_follower>();
                         auto itr = idx.find(op.author);
-
-                        const auto& feed_idx = db.get_index<feed_index>().indices().get<by_feed>();
-
-                        while (itr != idx.end() && itr->following == op.author) {
+                        for (; itr != idx.end() && itr->following == op.author; ++itr) {
                             if (itr->what & (1 << blog)) {
                                 uint32_t next_id = 0;
                                 auto last_feed = feed_idx.lower_bound(itr->follower);
-
                                 if (last_feed != feed_idx.end() && last_feed->account == itr->follower) {
                                     next_id = last_feed->account_feed_id + 1;
                                 }
 
-                                if (comment_idx.find(boost::make_tuple(c.id, itr->follower)) == comment_idx.end()) {
-                                    db.create<feed_object>([&](feed_object& f) {
+                                if (comment_idx.find(std::make_tuple(c.id, itr->follower)) == comment_idx.end()) {
+                                    db.create<feed_object>([&](auto& f) {
                                         f.account = itr->follower;
                                         f.comment = c.id;
                                         f.account_feed_id = next_id;
                                     });
 
-                                    const auto& old_feed_idx = db.get_index<feed_index>().indices().get<by_old_feed>();
+                                    const auto& old_feed_idx = db.get_index<feed_index, by_old_feed>();
                                     auto old_feed = old_feed_idx.lower_bound(itr->follower);
 
                                     while (old_feed->account == itr->follower &&
@@ -205,34 +203,22 @@ namespace golos {
                                     }
                                 }
                             }
-
-                            ++itr;
                         }
 
-                        const auto& blog_idx = db.get_index<blog_index>().indices().get<by_blog>();
-                        const auto& comment_blog_idx = db.get_index<blog_index>().indices().get<by_comment>();
+                        const auto& blog_idx = db.get_index<blog_index, by_blog>();
                         auto last_blog = blog_idx.lower_bound(op.author);
                         uint32_t next_id = 0;
-
                         if (last_blog != blog_idx.end() && last_blog->account == op.author) {
                             next_id = last_blog->blog_feed_id + 1;
                         }
 
-                        if (comment_blog_idx.find(boost::make_tuple(c.id, op.author)) == comment_blog_idx.end()) {
-                            db.create<blog_object>([&](blog_object& b) {
+                        const auto& comment_blog_idx = db.get_index<blog_index, by_comment>();
+                        if (comment_blog_idx.find(std::make_tuple(c.id, op.author)) == comment_blog_idx.end()) {
+                            db.create<blog_object>([&](auto& b) {
                                 b.account = op.author;
                                 b.comment = c.id;
                                 b.blog_feed_id = next_id;
                             });
-
-                            const auto& old_blog_idx = db.get_index<blog_index>().indices().get<by_old_blog>();
-                            auto old_blog = old_blog_idx.lower_bound(op.author);
-
-                            while (old_blog->account == op.author &&
-                                   next_id - old_blog->blog_feed_id > _plugin.max_feed_size()) {
-                                db.remove(*old_blog);
-                                old_blog = old_blog_idx.lower_bound(op.author);
-                            }
                         }
                     } FC_LOG_AND_RETHROW()
                 }
