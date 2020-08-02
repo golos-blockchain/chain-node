@@ -2828,4 +2828,38 @@ void delegate_vesting_shares(
             _db.remove(inv);
         }
 
+        void asset_create_evaluator::do_apply(const asset_create_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_create_operation");
+
+            GOLOS_CHECK_OBJECT_MISSING(_db, asset, op.max_supply.symbol);
+
+            const auto symbol_name = op.max_supply.symbol_name();
+            const auto dot = symbol_name.find('.');
+            if (dot != std::string::npos) {
+                const auto& idx = _db.get_index<asset_index, by_symbol_name>();
+                auto parent_itr = idx.find(symbol_name.substr(0, dot));
+                GOLOS_CHECK_VALUE(parent_itr != idx.end() && parent_itr->creator == op.creator, "You should be a creator of parent asset.");
+            }
+
+            auto fee = _db.get_witness_schedule_object().median_props.asset_creation_fee;
+            if (fee.amount != 0) {
+                if (symbol_name.size() == 3) {
+                    fee *= 50;
+                } else if (symbol_name.size() == 4) {
+                    fee *= 10;
+                }
+                const auto& creator = _db.get_account(op.creator);
+                GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, fee);
+                _db.adjust_balance(creator, -fee);
+                _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), fee);
+            }
+
+            _db.create<asset_object>([&](auto& a) {
+                a.creator = op.creator;
+                a.max_supply = op.max_supply;
+                a.supply = asset(0, op.max_supply.symbol);
+                a.created = _db.head_block_time();
+            });
+        }
+
 } } // golos::chain

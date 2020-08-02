@@ -1992,4 +1992,8 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const asset_create_operation& op) -> result_type {
+
+    }
+
 }}}

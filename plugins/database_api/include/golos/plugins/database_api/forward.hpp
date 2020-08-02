@@ -20,6 +20,7 @@ namespace golos { namespace plugins { namespace database_api {
 using vesting_delegation_api_object = golos::chain::vesting_delegation_object;
 using vesting_delegation_expiration_api_object = golos::chain::vesting_delegation_expiration_object;
 using invite_api_object = golos::chain::invite_object;
+using asset_api_object = golos::chain::asset_object;
 
 } } } // golos::plugins::database_api
 

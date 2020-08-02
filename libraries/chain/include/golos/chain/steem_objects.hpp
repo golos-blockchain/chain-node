@@ -265,6 +265,31 @@ namespace golos {
             shared_string target;
         };
 
+        class asset_object: public object<asset_object_type, asset_object> {
+        public:
+            asset_object() = delete;
+
+            template<typename Constructor, typename Allocator>
+            asset_object(Constructor&& c, allocator<Allocator> a) {
+                c(*this);
+            }
+
+            id_type id;
+
+            account_name_type creator;
+            asset max_supply;
+            asset supply;
+            time_point_sec created;
+
+            asset_symbol_type symbol() const {
+                return supply.symbol;
+            }
+
+            std::string symbol_name() const {
+                return supply.symbol_name();
+            }
+        };
+
         struct by_price;
         struct by_expiration;
         struct by_account;
@@ -500,6 +525,28 @@ namespace golos {
                     member<donate_object, uint16_t, &donate_object::version>
                 >>>,
             allocator<donate_object>>;
+
+        struct by_creator_symbol;
+        struct by_symbol;
+        struct by_symbol_name;
+
+        using asset_index = multi_index_container<
+            asset_object,
+            indexed_by<
+                ordered_unique<tag<by_id>,
+                    member<asset_object, asset_object_id_type, &asset_object::id>
+                >,
+                ordered_unique<tag<by_creator_symbol>, composite_key<asset_object,
+                    member<asset_object, account_name_type, &asset_object::creator>,
+                    const_mem_fun<asset_object, asset_symbol_type, &asset_object::symbol>
+                >>,
+                ordered_unique<tag<by_symbol>,
+                    const_mem_fun<asset_object, asset_symbol_type, &asset_object::symbol>
+                >,
+                ordered_unique<tag<by_symbol_name>,
+                    const_mem_fun<asset_object, std::string, &asset_object::symbol_name>
+                >
+            >, allocator<asset_object>>;
     }
 } // golos::chain
 
@@ -543,3 +590,7 @@ FC_REFLECT((golos::chain::decline_voting_rights_request_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::decline_voting_rights_request_object, golos::chain::decline_voting_rights_request_index)
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::donate_object, golos::chain::donate_index)
+
+FC_REFLECT((golos::chain::asset_object),
+        (id)(creator)(max_supply)(supply)(created))
+CHAINBASE_SET_INDEX_TYPE(golos::chain::asset_object, golos::chain::asset_index)

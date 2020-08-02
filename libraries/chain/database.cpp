@@ -741,6 +741,21 @@ namespace golos { namespace chain {
             }
         }
 
+        const asset_object* database::find_asset(const asset_symbol_type& symbol) const {
+            return find<asset_object, by_symbol>(symbol);
+        }
+
+        void database::throw_if_exists_asset(const asset_symbol_type& symbol) const {
+            GOLOS_CHECK_VALUE(symbol != STEEM_SYMBOL
+                && symbol != SBD_SYMBOL
+                && symbol != VESTS_SYMBOL
+                && symbol != STMD_SYMBOL,
+                "Symbol already used for internal asset.");
+            if (nullptr != find_asset(symbol)) {
+                GOLOS_THROW_OBJECT_ALREADY_EXIST("asset", symbol);
+            }
+        }
+
         const donate_object& database::get_donate(const donate_object_id_type& donate_id) const {
             try {
                 return get<donate_object, by_id>(donate_id);
@@ -755,6 +770,14 @@ namespace golos { namespace chain {
             } catch(const std::out_of_range& e) {
                 GOLOS_THROW_MISSING_OBJECT("invite", invite_key);
             } FC_CAPTURE_AND_RETHROW((invite_key))
+        }
+
+        const asset_object& database::get_asset(const asset_symbol_type& symbol) const {
+            try {
+                return get<asset_object, by_symbol>(symbol);
+            } catch(const std::out_of_range& e) {
+                GOLOS_THROW_MISSING_OBJECT("asset", symbol);
+            } FC_CAPTURE_AND_RETHROW((symbol))
         }
 
         const dynamic_global_property_object& database::get_dynamic_global_properties() const {
@@ -3489,6 +3512,7 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<account_create_with_invite_evaluator>();
             _my->_evaluator_registry.register_evaluator<invite_evaluator>();
             _my->_evaluator_registry.register_evaluator<invite_claim_evaluator>();
+            _my->_evaluator_registry.register_evaluator<asset_create_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -3538,6 +3562,7 @@ namespace golos { namespace chain {
             add_core_index<worker_request_vote_index>(*this);
             add_core_index<donate_index>(*this);
             add_core_index<invite_index>(*this);
+            add_core_index<asset_index>(*this);
 
             _plugin_index_signal();
         }

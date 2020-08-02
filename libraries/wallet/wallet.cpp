@@ -3342,6 +3342,21 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction( tx, broadcast );
         }
+
+        annotated_signed_transaction wallet_api::create_asset(account_name_type creator, asset max_supply, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            asset_create_operation op;
+            op.creator = creator;
+            op.max_supply = max_supply;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
 } } // golos::wallet
 
 FC_REFLECT_ENUM(golos::wallet::logic_errors::types,

@@ -592,6 +592,10 @@ if (options.count(name)) { \
         void operator()(const invite_claim_operation& op) {
             insert_pair(op.initiator, op.receiver);
         }
+
+        void operator()(const asset_create_operation& op) {
+            insert_dual(op.creator);
+        }
     };
 
     void operation_get_impacted_accounts(const operation& op, impacted_accounts& result) {

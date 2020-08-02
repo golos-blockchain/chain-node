@@ -3,6 +3,7 @@
 #include <golos/protocol/validate_helper.hpp>
 #include <fc/io/json.hpp>
 #include <graphene/utilities/key_conversion.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace golos { namespace protocol {
         void validate_account_name(const std::string &name) {
@@ -23,6 +24,27 @@ namespace golos { namespace protocol {
 
         bool inline is_asset_type(asset asset, asset_symbol_type symbol) {
             return asset.symbol == symbol;
+        }
+
+        inline bool is_valid_symbol_name(const std::string& name) {
+            if (name.size() > 14) return false;
+
+            std::vector<std::string> parts;
+            parts.reserve(2);
+            boost::split(parts, name, boost::is_any_of("."));
+            if (parts.size() == 0 || parts.size() > 2) return false;
+
+            for (const auto& part : parts) {
+                if (part.size() < 3) return false;
+                for (const auto& c : part) {
+                    if (!('A' <= c && c <= 'Z')) return false;
+                }
+            }
+            return true;
+        }
+
+        inline void validate_symbol_name(const std::string& name) {
+            GOLOS_CHECK_VALUE(is_valid_symbol_name(name), "Symbol name ${name} is invalid", ("name", name));
         }
 
         void account_create_operation::validate() const {
@@ -838,6 +860,14 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(invite_secret, {
                 GOLOS_CHECK_VALUE(invite_secret.size(), "Invite secret cannot be blank.");
                 GOLOS_CHECK_VALUE(golos::utilities::wif_to_key(invite_secret), "Invite secret must be WIF.");
+            });
+        }
+
+        void asset_create_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(max_supply, {
+                validate_symbol_name(max_supply.symbol_name());
+                GOLOS_CHECK_VALUE_GT(max_supply.amount, 0);
             });
         }
 } } // golos::protocol

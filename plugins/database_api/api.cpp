@@ -105,6 +105,8 @@ public:
     std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type) const;
     std::vector<proposal_api_object> get_proposed_transactions(const std::string&, uint32_t, uint32_t) const;
 
+    std::vector<asset_api_object> get_assets(const std::string& creator, const std::vector<asset_symbol_type>& symbols, asset_symbol_type from, uint32_t limit) const ;
+
     golos::chain::database& database() const {
         return _db;
     }
@@ -895,6 +897,55 @@ DEFINE_API(plugin, get_invite) {
         }
 
         return result;
+    });
+}
+
+std::vector<asset_api_object> plugin::api_impl::get_assets(
+        const std::string& creator,
+        const std::vector<asset_symbol_type>& symbols,
+        asset_symbol_type from, uint32_t limit) const {
+    std::vector<asset_api_object> results;
+    results.reserve(limit);
+
+    if (creator.size()) {
+        const auto& cre_idx = _db.get_index<asset_index, by_creator_symbol>();
+        auto itr = cre_idx.lower_bound(std::make_tuple(creator, from));
+        for (; itr != cre_idx.end() && itr->creator == creator; ++itr) {
+            if (results.size() == limit) break;
+            results.push_back(*itr);
+        }
+    } else {
+        const auto& sym_idx = _db.get_index<asset_index, by_symbol>();
+        if (symbols.size()) {
+            for (auto symbol : symbols) {
+                auto itr = sym_idx.find(symbol);
+                if (itr != sym_idx.end()) {
+                    results.push_back(*itr);
+                }
+            }
+        } else {
+            auto itr = sym_idx.lower_bound(from);
+            for (; itr != sym_idx.end(); ++itr) {
+                if (results.size() == limit) break;
+                results.push_back(*itr);
+            }
+        }
+    }
+
+    return results;
+}
+
+DEFINE_API(plugin, get_assets) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (string, creator)
+        (std::vector<asset_symbol_type>, symbols)
+        (asset_symbol_type, from)
+        (uint32_t, limit)
+    );
+    GOLOS_CHECK_LIMIT_PARAM(limit, 100);
+
+    return my->database().with_weak_read_lock([&]() {
+        return my->get_assets(creator, symbols, from, limit);
     });
 }
 

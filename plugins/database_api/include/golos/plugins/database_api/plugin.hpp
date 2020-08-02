@@ -130,6 +130,7 @@ DEFINE_API_ARGS(verify_account_authority,         msg_pack, bool)
 DEFINE_API_ARGS(get_database_info,                msg_pack, database_info)
 DEFINE_API_ARGS(get_proposed_transactions,        msg_pack, std::vector<proposal_api_object>)
 DEFINE_API_ARGS(get_invite,                       msg_pack, optional<invite_api_object>)
+DEFINE_API_ARGS(get_assets,                       msg_pack, std::vector<asset_api_object>)
 
 
 /**
@@ -322,6 +323,8 @@ public:
         (get_proposed_transactions)
 
         (get_invite)
+
+        (get_assets)
     )
 
 private:

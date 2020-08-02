@@ -1608,6 +1608,18 @@ namespace golos { namespace protocol {
                 a.insert(initiator);
             }
         };
+
+        struct asset_create_operation : public base_operation {
+            account_name_type creator;
+            asset max_supply; // also stores asset symbol
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
 } } // golos::protocol
 
 
@@ -1740,3 +1752,4 @@ FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(me
 
 FC_REFLECT((golos::protocol::invite_operation), (creator)(balance)(invite_key)(extensions))
 FC_REFLECT((golos::protocol::invite_claim_operation), (initiator)(receiver)(invite_secret)(extensions))
+FC_REFLECT((golos::protocol::asset_create_operation), (creator)(max_supply)(extensions))

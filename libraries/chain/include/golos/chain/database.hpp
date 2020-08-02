@@ -219,6 +219,10 @@ namespace golos { namespace chain {
             const invite_object* find_invite(const public_key_type& invite_key) const;
             void                 throw_if_exists_invite(const public_key_type& invite_key) const;
 
+            const asset_object&  get_asset(const asset_symbol_type& symbol) const;
+            const asset_object*  find_asset(const asset_symbol_type& symbol) const;
+            void                 throw_if_exists_asset(const asset_symbol_type& symbol) const;
+
             const account_authority_object &get_authority(const account_name_type &name) const;
 
             const dynamic_global_property_object &get_dynamic_global_properties() const;
