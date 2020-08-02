@@ -75,7 +75,7 @@ struct operation_process {
 
         if (op.amount.symbol == STEEM_SYMBOL) {
             stat_sender->current_bucket.steem_transferred += op.amount.amount;
-        } else {
+        } else if (op.amount.symbol == SBD_SYMBOL) {
             stat_sender->current_bucket.sbd_transferred += op.amount.amount;
         }
     }

@@ -3563,6 +3563,7 @@ namespace golos { namespace chain {
             add_core_index<donate_index>(*this);
             add_core_index<invite_index>(*this);
             add_core_index<asset_index>(*this);
+            add_core_index<account_balance_index>(*this);
 
             _plugin_index_signal();
         }
@@ -4859,7 +4860,23 @@ namespace golos { namespace chain {
             } else if (delta.symbol == SBD_SYMBOL) {
                 adjust_sbd_balance(a, delta);
             } else {
-                GOLOS_CHECK_VALUE(false, "invalid symbol");
+                GOLOS_CHECK_VALUE(has_hardfork(STEEMIT_HARDFORK_0_24__95), "invalid symbol");
+
+                const auto& idx = get_index<account_balance_index, by_symbol_account>();
+                auto itr = idx.find(std::make_tuple(delta.symbol, a.name));
+                if (itr != idx.end()) {
+                    modify(*itr, [&](auto& o) {o.balance += delta;});
+                } else {
+                    const auto& sym_idx = get_index<asset_index, by_symbol>();
+                    auto sym_itr = sym_idx.find(delta.symbol);
+                    GOLOS_CHECK_VALUE(sym_itr != sym_idx.end(), "invalid symbol");
+
+                    create<account_balance_object>([&](auto& o) {
+                        o.account = a.name;
+                        o.balance = delta;
+                        o.tip_balance = asset(0, delta.symbol);
+                    });
+                }
             }
         }
 

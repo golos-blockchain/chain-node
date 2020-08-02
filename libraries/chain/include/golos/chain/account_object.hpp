@@ -301,6 +301,28 @@ public:
     time_point_sec time;
 };
 
+class account_balance_object
+        : public object<account_balance_object_type, account_balance_object> {
+public:
+    template<typename Constructor, typename Allocator>
+    account_balance_object(Constructor &&c, allocator<Allocator> a) {
+        c(*this);
+    }
+
+    account_balance_object() {
+    }
+
+    id_type id;
+
+    account_name_type account;
+    asset balance;
+    asset tip_balance;
+
+    asset_symbol_type symbol() const {
+        return balance.symbol;
+    }
+};
+
 struct by_name;
 struct by_next_vesting_withdrawal;
 struct by_last_active_operation;
@@ -563,6 +585,25 @@ using invite_index = multi_index_container<
         ordered_unique<tag<by_invite_key>, member<invite_object, public_key_type, &invite_object::invite_key>>>,
     allocator<invite_object>>;
 
+struct by_symbol_account; // best for internal purposes
+struct by_account_symbol; // for API
+
+using account_balance_index = multi_index_container<
+    account_balance_object,
+    indexed_by<
+        ordered_unique<tag<by_id>,
+            member<account_balance_object, account_balance_object::id_type, &account_balance_object::id>
+        >,
+        ordered_unique<tag<by_symbol_account>, composite_key<account_balance_object,
+            const_mem_fun<account_balance_object, asset_symbol_type, &account_balance_object::symbol>,
+            member<account_balance_object, account_name_type, &account_balance_object::account>
+        >>,
+        ordered_unique<tag<by_account_symbol>, composite_key<account_balance_object,
+            member<account_balance_object, account_name_type, &account_balance_object::account>,
+            const_mem_fun<account_balance_object, asset_symbol_type, &account_balance_object::symbol>
+        >>
+    >, allocator<account_balance_object>>;
+
 } } // golos::chain
 
 
@@ -628,3 +669,8 @@ FC_REFLECT((golos::chain::invite_object),
         (id)(creator)(invite_key)(balance)(time)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::invite_object, golos::chain::invite_index)
+
+FC_REFLECT((golos::chain::account_balance_object),
+        (id)(account)(balance)(tip_balance)
+)
+CHAINBASE_SET_INDEX_TYPE(golos::chain::account_balance_object, golos::chain::account_balance_index)

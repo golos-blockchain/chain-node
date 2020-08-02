@@ -107,7 +107,7 @@ namespace golos { namespace chain {
         void account_create_evaluator::do_apply(const account_create_operation &o) {
             const auto& creator = _db.get_account(o.creator);
 
-            GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, o.fee);
+            GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, o.fee);
 
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
                 const auto& median_props = _db.get_witness_schedule_object().median_props;
@@ -206,8 +206,8 @@ namespace golos { namespace chain {
 
         void account_create_with_delegation_evaluator::do_apply(const account_create_with_delegation_operation& o) {
             const auto& creator = _db.get_account(o.creator);
-            GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, o.fee);
-            GOLOS_CHECK_BALANCE(creator, AVAILABLE_VESTING, o.delegation);
+            GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, o.fee);
+            GOLOS_CHECK_BALANCE(_db, creator, AVAILABLE_VESTING, o.delegation);
 
             const auto& v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
             const auto& median_props = _db.get_witness_schedule_object().median_props;
@@ -1003,8 +1003,8 @@ namespace golos { namespace chain {
                 } else {
                     sbd_spent += o.fee;
                 }
-                GOLOS_CHECK_BALANCE(from_account, MAIN_BALANCE, steem_spent);
-                GOLOS_CHECK_BALANCE(from_account, MAIN_BALANCE, sbd_spent);
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, steem_spent);
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, sbd_spent);
                 _db.adjust_balance(from_account, -steem_spent);
                 _db.adjust_balance(from_account, -sbd_spent);
 
@@ -1183,7 +1183,7 @@ namespace golos { namespace chain {
             }
 
             GOLOS_CHECK_OP_PARAM(o, amount, {
-                GOLOS_CHECK_BALANCE(from_account, MAIN_BALANCE, o.amount);
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, o.amount);
                 _db.adjust_balance(from_account, -o.amount);
                 _db.adjust_balance(to_account, o.amount);
             });
@@ -1195,7 +1195,7 @@ namespace golos { namespace chain {
                                                  : from_account;
 
             GOLOS_CHECK_OP_PARAM(o, amount, {
-                GOLOS_CHECK_BALANCE(from_account, MAIN_BALANCE, o.amount);
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, o.amount);
                 _db.adjust_balance(from_account, -o.amount);
                 _db.create_vesting(to_account, o.amount);
             });
@@ -1204,8 +1204,8 @@ namespace golos { namespace chain {
         void withdraw_vesting_evaluator::do_apply(const withdraw_vesting_operation &o) {
             const auto &account = _db.get_account(o.account);
 
-            GOLOS_CHECK_BALANCE(account, VESTING, asset(0, VESTS_SYMBOL));
-            GOLOS_CHECK_BALANCE(account, HAVING_VESTING, o.vesting_shares);
+            GOLOS_CHECK_BALANCE(_db, account, VESTING, asset(0, VESTS_SYMBOL));
+            GOLOS_CHECK_BALANCE(_db, account, HAVING_VESTING, o.vesting_shares);
 
             if (!account.mined && _db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
                 const auto &props = _db.get_dynamic_global_properties();
@@ -2116,7 +2116,7 @@ namespace golos { namespace chain {
 
         void convert_evaluator::do_apply(const convert_operation &o) {
             const auto &owner = _db.get_account(o.owner);
-            GOLOS_CHECK_BALANCE(owner, MAIN_BALANCE, o.amount);
+            GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount);
 
             _db.adjust_balance(owner, -o.amount);
 
@@ -2150,7 +2150,7 @@ namespace golos { namespace chain {
 
             const auto &owner = _db.get_account(o.owner);
 
-            GOLOS_CHECK_BALANCE(owner, MAIN_BALANCE, o.amount_to_sell);
+            GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount_to_sell);
             _db.adjust_balance(owner, -o.amount_to_sell);
 
             GOLOS_CHECK_OBJECT_MISSING(_db, limit_order, o.owner, o.orderid);
@@ -2179,7 +2179,7 @@ namespace golos { namespace chain {
 
             const auto &owner = _db.get_account(o.owner);
 
-            GOLOS_CHECK_BALANCE(owner, MAIN_BALANCE, o.amount_to_sell);
+            GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount_to_sell);
             _db.adjust_balance(owner, -o.amount_to_sell);
 
             GOLOS_CHECK_OBJECT_MISSING(_db, limit_order, o.owner, o.orderid);
@@ -2427,7 +2427,7 @@ namespace {
             const auto& from = _db.get_account(op.from);
             const auto& to = _db.get_account(op.to);
 
-            GOLOS_CHECK_BALANCE(from, MAIN_BALANCE, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, MAIN_BALANCE, op.amount);
 
             _db.adjust_balance(from, -op.amount);
             _db.adjust_savings_balance(to, op.amount);
@@ -2442,7 +2442,7 @@ namespace {
                 "Account has reached limit for pending withdraw requests.",
                 ("limit",STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT));
 
-            GOLOS_CHECK_BALANCE(from, SAVINGS, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, SAVINGS, op.amount);
             _db.adjust_savings_balance(from, -op.amount);
 
             GOLOS_CHECK_OBJECT_MISSING(_db, savings_withdraw, op.from, op.request_id);
@@ -2559,7 +2559,7 @@ void delegate_vesting_shares(
 
     if (increasing) {
         auto delegated = delegator.delegated_vesting_shares;
-        GOLOS_CHECK_BALANCE(delegator, AVAILABLE_VESTING, delta);
+        GOLOS_CHECK_BALANCE(_db, delegator, AVAILABLE_VESTING, delta);
         auto elapsed_seconds = (now - delegator.last_vote_time).to_seconds();
         auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) / STEEMIT_VOTE_REGENERATION_SECONDS;
         auto current_power = std::min<int64_t>(delegator.voting_power + regenerated_power, STEEMIT_100_PERCENT);
@@ -2631,7 +2631,7 @@ void delegate_vesting_shares(
                 logic_exception::no_right_to_break_referral,
                 "This referral account has no right to break referral");
 
-            GOLOS_CHECK_BALANCE(referral, MAIN_BALANCE, referral.referral_break_fee);
+            GOLOS_CHECK_BALANCE(_db, referral, MAIN_BALANCE, referral.referral_break_fee);
             _db.adjust_balance(referral, -referral.referral_break_fee);
             _db.adjust_balance(referrer, referral.referral_break_fee);
 
@@ -2716,7 +2716,7 @@ void delegate_vesting_shares(
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
-            GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, op.amount);
 
             const auto& idx = _db.get_index<donate_index, by_app_version>();
             auto itr = idx.find(std::make_tuple(op.memo.app, op.memo.version));
@@ -2776,7 +2776,7 @@ void delegate_vesting_shares(
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
-            GOLOS_CHECK_BALANCE(from, MAIN_BALANCE, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, MAIN_BALANCE, op.amount);
 
             _db.adjust_balance(from, -op.amount);
             _db.modify(to, [&](account_object& acnt) {acnt.tip_balance += op.amount;});
@@ -2789,7 +2789,7 @@ void delegate_vesting_shares(
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
-            GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, op.amount);
 
             _db.modify(from, [&](account_object& acnt) {acnt.tip_balance -= op.amount;});
             _db.create_vesting(to, op.amount);
@@ -2802,7 +2802,7 @@ void delegate_vesting_shares(
             const auto& median_props = _db.get_witness_schedule_object().median_props;
 
             GOLOS_CHECK_OP_PARAM(op, balance, {
-                GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, op.balance);
+                GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, op.balance);
                 GOLOS_CHECK_VALUE(op.balance >= median_props.min_invite_balance,
                     "Insufficient invite balance: ${f} required, ${p} provided.", ("f", op.balance)("p", median_props.min_invite_balance));
             });
@@ -2849,7 +2849,7 @@ void delegate_vesting_shares(
                     fee *= 10;
                 }
                 const auto& creator = _db.get_account(op.creator);
-                GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, fee);
+                GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, fee);
                 _db.adjust_balance(creator, -fee);
                 _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), fee);
             }
@@ -2857,9 +2857,14 @@ void delegate_vesting_shares(
             _db.create<asset_object>([&](auto& a) {
                 a.creator = op.creator;
                 a.max_supply = op.max_supply;
-                a.supply = asset(0, op.max_supply.symbol);
+                //a.supply = asset(0, op.max_supply.symbol);
+                // TODO: for test purposes until market implemented
+                a.supply = op.max_supply;
                 a.created = _db.head_block_time();
             });
+
+            // TODO: for test purposes until market implemented
+            _db.adjust_balance(_db.get_account(op.creator), op.max_supply);
         }
 
 } } // golos::chain

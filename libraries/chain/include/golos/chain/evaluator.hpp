@@ -12,10 +12,10 @@
 #define ASSERT_REQ_HF(HF, FEATURE) \
     ASSERT_REQ_HF_IN_DB(HF, FEATURE, _db)
 
-#define GOLOS_CHECK_BALANCE(ACCOUNT, TYPE, REQUIRED ...) \
+#define GOLOS_CHECK_BALANCE(DATABASE, ACCOUNT, TYPE, REQUIRED ...) \
     FC_EXPAND_MACRO( \
         FC_MULTILINE_MACRO_BEGIN \
-            asset exist = get_balance(ACCOUNT, TYPE, (REQUIRED).symbol); \
+            asset exist = get_balance(DATABASE, ACCOUNT, TYPE, (REQUIRED).symbol); \
             if( UNLIKELY( exist < (REQUIRED) )) { \
                 FC_THROW_EXCEPTION( golos::insufficient_funds, \
                         "Account \"${account}\" does not have enough ${balance}: required ${required}, exist ${exist}", \
@@ -75,7 +75,7 @@ namespace golos {
             TIP_BALANCE
         };
 
-        asset get_balance(const account_object &account, balance_type type, asset_symbol_type symbol);
+        asset get_balance(const database& _db, const account_object &account, balance_type type, asset_symbol_type symbol);
 
         std::string get_balance_name(balance_type type);
     }
