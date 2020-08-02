@@ -348,6 +348,11 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_ASSET_GE(min_invite_balance, GOLOS, GOLOS_MIN_INVITE_BALANCE);
         }
 
+        void chain_properties_24::validate() const {
+            chain_properties_23::validate();
+            GOLOS_CHECK_ASSET_GE(asset_creation_fee, GBG, GOLOS_MIN_ASSET_CREATION_FEE);
+        }
+
         void witness_update_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
             GOLOS_CHECK_PARAM(url, {

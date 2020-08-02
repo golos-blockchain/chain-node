@@ -2065,7 +2065,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_23 median_props;
+            chain_properties_24 median_props;
 
             auto median = active.size() / 2;
 
@@ -2136,6 +2136,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::account_idleness_time);
             calc_median(&chain_properties_23::claim_idleness_time);
             calc_median(&chain_properties_23::min_invite_balance);
+            calc_median(&chain_properties_24::asset_creation_fee);
 
             if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
                 #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \

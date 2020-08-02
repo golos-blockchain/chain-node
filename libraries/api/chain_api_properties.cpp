@@ -51,6 +51,9 @@ namespace golos { namespace api {
             claim_idleness_time = src.claim_idleness_time;
             min_invite_balance = src.min_invite_balance;
         }
+        if (db.has_hardfork(STEEMIT_HARDFORK_0_24)) {
+            asset_creation_fee = src.asset_creation_fee;
+        }
     }
 
 } } // golos::api

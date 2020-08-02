@@ -793,6 +793,43 @@ namespace golos { namespace protocol {
             chain_properties_23& operator=(const chain_properties_23&) = default;
         };
 
+        struct chain_properties_24 : public chain_properties_23 {
+
+            /**
+             * Amount of fee in GBG have to be claimed on creating asset
+             */
+            asset asset_creation_fee = GOLOS_DEF_ASSET_CREATION_FEE;
+
+            void validate() const;
+
+            chain_properties_24& operator=(const chain_properties_17& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_18& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_19& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_22& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_23& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_24&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -805,7 +842,8 @@ namespace golos { namespace protocol {
             chain_properties_18,
             chain_properties_19,
             chain_properties_22,
-            chain_properties_23
+            chain_properties_23,
+            chain_properties_24
         >;
 
         /**
@@ -1611,6 +1649,9 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_23), ((golos::protocol::chain_properties_22)),
     (claim_idleness_time)(min_invite_balance))
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_24), ((golos::protocol::chain_properties_23)),
+    (asset_creation_fee))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

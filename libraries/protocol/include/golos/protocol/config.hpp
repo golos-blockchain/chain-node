@@ -270,6 +270,9 @@
 #define GOLOS_MIN_INVITE_BALANCE                1000
 #define GOLOS_DEF_MIN_INVITE_BALANCE            asset(10000, STEEM_SYMBOL)
 
+#define GOLOS_MIN_ASSET_CREATION_FEE            0
+#define GOLOS_DEF_ASSET_CREATION_FEE            asset(0, SBD_SYMBOL)
+
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
 
@@ -543,6 +546,14 @@
 
 #define GOLOS_MIN_INVITE_BALANCE                1000
 #define GOLOS_DEF_MIN_INVITE_BALANCE            asset(10000, STEEM_SYMBOL)
+
+#ifdef STEEMIT_BUILD_LIVETEST
+#define GOLOS_MIN_ASSET_CREATION_FEE            100000
+#define GOLOS_DEF_ASSET_CREATION_FEE            asset(2000000, SBD_SYMBOL)
+#else
+#define GOLOS_MIN_ASSET_CREATION_FEE            100000
+#define GOLOS_DEF_ASSET_CREATION_FEE            asset(2000000, SBD_SYMBOL)
+#endif
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
