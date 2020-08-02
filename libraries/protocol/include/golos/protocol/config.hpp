@@ -4,7 +4,7 @@
 #pragma once
 
 
-#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 23, 0))
+#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 24, 0))
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     (hardfork_version(STEEMIT_BLOCKCHAIN_VERSION))
 
 
@@ -537,11 +537,7 @@
 
 #define GOLOS_MIN_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
 #define GOLOS_DEF_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
-#ifdef STEEMIT_BUILD_LIVETEST
-#define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (60*(5+1)/STEEMIT_BLOCK_INTERVAL) ///< 5 + 1 minutes
-#else
 #define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (STEEMIT_BLOCKS_PER_HOUR*(24+1)) ///< 1 day + 1 hour
-#endif
 #define GOLOS_ACCUM_DISTRIBUTION_INTERVAL       (60*60*1) ///< 1 hour
 #define GOLOS_ACCUM_DISTRIBUTION_STEP           100 ///< accounts receiving their VS share per block
 

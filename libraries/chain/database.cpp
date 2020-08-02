@@ -5054,6 +5054,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_23 == 23, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_23] = fc::time_point_sec(STEEMIT_HARDFORK_0_23_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_23] = STEEMIT_HARDFORK_0_23_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_24 == 24, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_24] = fc::time_point_sec(STEEMIT_HARDFORK_0_24_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_24] = STEEMIT_HARDFORK_0_24_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -5347,6 +5350,14 @@ namespace golos { namespace chain {
                     modify(get_account(STEEMIT_WORKER_POOL_ACCOUNT), [&](auto& acnt) {
                         acnt.recovery_account = account_name_type();
                     });
+                    for (const auto& acnt : get_index<account_index>().indices()) {
+                        const auto now = head_block_time();
+                        modify(acnt, [&](auto& acnt) {
+                            acnt.last_claim = now;
+                        });
+                    }
+                    break;
+                case STEEMIT_HARDFORK_0_24:
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -5370,12 +5381,6 @@ namespace golos { namespace chain {
                         }                
                     }
 #endif
-                    for (const auto& acnt : get_index<account_index>().indices()) {
-                        const auto now = head_block_time();
-                        modify(acnt, [&](auto& acnt) {
-                            acnt.last_claim = now;
-                        });
-                    }
                     break;
                 default:
                     break;
