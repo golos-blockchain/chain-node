@@ -105,7 +105,7 @@ public:
     std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type) const;
     std::vector<proposal_api_object> get_proposed_transactions(const std::string&, uint32_t, uint32_t) const;
 
-    std::vector<asset_api_object> get_assets(const std::string& creator, const std::vector<asset_symbol_type>& symbols, asset_symbol_type from, uint32_t limit) const ;
+    std::vector<asset_api_object> get_assets(const std::string& creator, const std::vector<std::string>& symbols, const std::string& from, uint32_t limit) const ;
     std::vector<account_balances_map_api_object> get_accounts_balances(const std::vector<std::string>& account_names) const;
 
     golos::chain::database& database() const {
@@ -903,8 +903,8 @@ DEFINE_API(plugin, get_invite) {
 
 std::vector<asset_api_object> plugin::api_impl::get_assets(
         const std::string& creator,
-        const std::vector<asset_symbol_type>& symbols,
-        asset_symbol_type from, uint32_t limit) const {
+        const std::vector<std::string>& symbols,
+        const std::string& from, uint32_t limit) const {
     std::vector<asset_api_object> results;
     results.reserve(limit);
 
@@ -916,7 +916,7 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
             results.push_back(*itr);
         }
     } else {
-        const auto& sym_idx = _db.get_index<asset_index, by_symbol>();
+        const auto& sym_idx = _db.get_index<asset_index, by_symbol_name>();
         if (symbols.size()) {
             for (auto symbol : symbols) {
                 auto itr = sym_idx.find(symbol);
@@ -938,12 +938,12 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
 
 DEFINE_API(plugin, get_assets) {
     PLUGIN_API_VALIDATE_ARGS(
-        (string, creator)
-        (std::vector<asset_symbol_type>, symbols)
-        (asset_symbol_type, from)
-        (uint32_t, limit)
+        (std::string, creator, std::string())
+        (std::vector<std::string>, symbols, std::vector<std::string>())
+        (std::string, from, std::string())
+        (uint32_t, limit, 20)
     );
-    GOLOS_CHECK_LIMIT_PARAM(limit, 100);
+    GOLOS_CHECK_LIMIT_PARAM(limit, 20);
 
     return my->database().with_weak_read_lock([&]() {
         return my->get_assets(creator, symbols, from, limit);

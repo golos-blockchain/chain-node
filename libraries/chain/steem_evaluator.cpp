@@ -2831,9 +2831,9 @@ void delegate_vesting_shares(
         void asset_create_evaluator::do_apply(const asset_create_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_create_operation");
 
-            GOLOS_CHECK_OBJECT_MISSING(_db, asset, op.max_supply.symbol);
-
             const auto symbol_name = op.max_supply.symbol_name();
+            GOLOS_CHECK_OBJECT_MISSING(_db, asset, symbol_name); // Also forbids creating assets with same symbol name but with another precision
+
             const auto dot = symbol_name.find('.');
             if (dot != std::string::npos) {
                 const auto& idx = _db.get_index<asset_index, by_symbol_name>();

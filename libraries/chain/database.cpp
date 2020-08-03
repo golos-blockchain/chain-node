@@ -756,6 +756,21 @@ namespace golos { namespace chain {
             }
         }
 
+        const asset_object* database::find_asset(const std::string& symbol_name) const {
+            return find<asset_object, by_symbol_name>(symbol_name);
+        }
+
+        void database::throw_if_exists_asset(const std::string& symbol_name) const {
+            GOLOS_CHECK_VALUE(symbol_name != "GOLOS"
+                && symbol_name != "GBG"
+                && symbol_name != "GESTS"
+                && symbol_name != "STMD",
+                "Symbol already used for internal asset.");
+            if (nullptr != find_asset(symbol_name)) {
+                GOLOS_THROW_OBJECT_ALREADY_EXIST("asset", symbol_name);
+            }
+        }
+
         const donate_object& database::get_donate(const donate_object_id_type& donate_id) const {
             try {
                 return get<donate_object, by_id>(donate_id);
@@ -778,6 +793,14 @@ namespace golos { namespace chain {
             } catch(const std::out_of_range& e) {
                 GOLOS_THROW_MISSING_OBJECT("asset", symbol);
             } FC_CAPTURE_AND_RETHROW((symbol))
+        }
+
+        const asset_object& database::get_asset(const std::string& symbol_name) const {
+            try {
+                return get<asset_object, by_symbol_name>(symbol_name);
+            } catch(const std::out_of_range& e) {
+                GOLOS_THROW_MISSING_OBJECT("asset", symbol_name);
+            } FC_CAPTURE_AND_RETHROW((symbol_name))
         }
 
         const dynamic_global_property_object& database::get_dynamic_global_properties() const {
