@@ -357,7 +357,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void operation_visitor::operator()(const donate_operation& op) const {
-        if (op.memo.app == "golos-id") {
+        if (op.memo.app == "golos-id" && op.amount.symbol == STEEM_SYMBOL) {
             const comment_object* comment = nullptr;
             try {
                 auto author = account_name_type(op.memo.target["author"].as_string());

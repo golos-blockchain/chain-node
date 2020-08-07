@@ -807,7 +807,7 @@ namespace golos { namespace protocol {
 
         void donate_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(from);
-            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
             GOLOS_CHECK_PARAM(memo, {
                 GOLOS_CHECK_PARAM_ACCOUNT(memo.app);
             });
@@ -820,7 +820,7 @@ namespace golos { namespace protocol {
 
         void transfer_to_tip_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(from);
-            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
             GOLOS_CHECK_PARAM(memo, {
                 GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
                 GOLOS_CHECK_VALUE_UTF8(memo);

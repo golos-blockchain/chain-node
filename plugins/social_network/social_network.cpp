@@ -529,6 +529,9 @@ namespace golos { namespace plugins { namespace social_network {
             if (!db.has_index<donate_data_index>()) {
                 return;
             }
+            if (op.amount.symbol != STEEM_SYMBOL) {
+                return;
+            }
 
             const auto& donate_idx = db.get_index<donate_index, by_id>();
             auto donate = --donate_idx.end();

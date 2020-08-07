@@ -803,6 +803,45 @@ namespace golos { namespace chain {
             } FC_CAPTURE_AND_RETHROW((symbol_name))
         }
 
+        account_balance_object database::get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const {
+            const auto& idx = get_index<account_balance_index, by_symbol_account>();
+            auto itr = idx.find(std::make_tuple(symbol, account));
+            if (itr != idx.end()) {
+                return *itr;
+            } else {
+                const auto& sym_idx = get_index<asset_index, by_symbol>();
+                auto sym_itr = sym_idx.find(symbol);
+                GOLOS_CHECK_VALUE(sym_itr != sym_idx.end(), "invalid symbol");
+
+                account_balance_object def;
+                def.account = account;
+                def.balance = asset(0, symbol);
+                def.tip_balance = asset(0, symbol);
+                return def;
+            }
+        }
+
+        void database::adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip) {
+            const auto& idx = get_index<account_balance_index, by_symbol_account>();
+            auto itr = idx.find(std::make_tuple(delta.symbol, account));
+            if (itr != idx.end()) {
+                modify(*itr, [&](auto& o) {
+                    o.balance += delta;
+                    o.tip_balance += delta_tip;
+                });
+            } else {
+                const auto& sym_idx = get_index<asset_index, by_symbol>();
+                auto sym_itr = sym_idx.find(delta.symbol);
+                GOLOS_CHECK_VALUE(sym_itr != sym_idx.end(), "invalid symbol");
+
+                create<account_balance_object>([&](auto& o) {
+                    o.account = account;
+                    o.balance = delta;
+                    o.tip_balance = delta_tip;
+                });
+            }
+        }
+
         const dynamic_global_property_object& database::get_dynamic_global_properties() const {
             try {
                 return get<dynamic_global_property_object>();
@@ -4884,22 +4923,7 @@ namespace golos { namespace chain {
                 adjust_sbd_balance(a, delta);
             } else {
                 GOLOS_CHECK_VALUE(has_hardfork(STEEMIT_HARDFORK_0_24__95), "invalid symbol");
-
-                const auto& idx = get_index<account_balance_index, by_symbol_account>();
-                auto itr = idx.find(std::make_tuple(delta.symbol, a.name));
-                if (itr != idx.end()) {
-                    modify(*itr, [&](auto& o) {o.balance += delta;});
-                } else {
-                    const auto& sym_idx = get_index<asset_index, by_symbol>();
-                    auto sym_itr = sym_idx.find(delta.symbol);
-                    GOLOS_CHECK_VALUE(sym_itr != sym_idx.end(), "invalid symbol");
-
-                    create<account_balance_object>([&](auto& o) {
-                        o.account = a.name;
-                        o.balance = delta;
-                        o.tip_balance = asset(0, delta.symbol);
-                    });
-                }
+                adjust_account_balance(a.name, delta, asset(0, delta.symbol));
             }
         }
 

@@ -92,7 +92,7 @@ if (options.count(name)) { \
                 meta.referrer = to.referrer_account;
                 meta.referrer_interest = asset(
                         (uint128_t(op.amount.amount.value) * to.referrer_interest_rate / STEEMIT_100_PERCENT).to_uint64(),
-                        STEEM_SYMBOL);
+                        op.amount.symbol);
             }
             write_operation(std::move(fc::json::to_string(meta)));
         }

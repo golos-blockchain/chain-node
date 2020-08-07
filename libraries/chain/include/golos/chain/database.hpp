@@ -227,6 +227,9 @@ namespace golos { namespace chain {
             const asset_object*  find_asset(const std::string& symbol_name) const;
             void                 throw_if_exists_asset(const std::string& symbol_name) const;
 
+            account_balance_object get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const;
+            void                   adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip);
+
             const account_authority_object &get_authority(const account_name_type &name) const;
 
             const dynamic_global_property_object &get_dynamic_global_properties() const;
