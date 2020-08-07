@@ -848,7 +848,7 @@ namespace golos { namespace protocol {
 
         void invite_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(creator);
-            GOLOS_CHECK_PARAM(balance, GOLOS_CHECK_ASSET_GT0(balance, GOLOS));
+            GOLOS_CHECK_PARAM(balance, GOLOS_CHECK_ASSET_GT0(balance, GOLOS_OR_UIA));
             GOLOS_CHECK_PARAM(invite_key, {
                 GOLOS_CHECK_VALUE(invite_key != public_key_type(), "Invite key cannot be blank.");
             });

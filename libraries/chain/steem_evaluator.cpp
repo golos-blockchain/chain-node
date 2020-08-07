@@ -2825,13 +2825,25 @@ void delegate_vesting_shares(
         void invite_evaluator::do_apply(const invite_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_operation");
 
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto balance = op.balance;
+                GOLOS_CHECK_PARAM(balance, GOLOS_CHECK_VALUE(balance.symbol == STEEM_SYMBOL, "amount must be GOLOS"));
+            }
+
             const auto& creator = _db.get_account(op.creator);
             const auto& median_props = _db.get_witness_schedule_object().median_props;
 
             GOLOS_CHECK_OP_PARAM(op, balance, {
                 GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, op.balance);
-                GOLOS_CHECK_VALUE(op.balance >= median_props.min_invite_balance,
-                    "Insufficient invite balance: ${f} required, ${p} provided.", ("f", op.balance)("p", median_props.min_invite_balance));
+                if (op.balance.symbol == STEEM_SYMBOL) {
+                    GOLOS_CHECK_VALUE(op.balance >= median_props.min_invite_balance,
+                        "Insufficient invite balance: ${f} required, ${p} provided.", ("f", op.balance)("p", median_props.min_invite_balance));
+                } else {
+                    auto balance = asset(op.balance.amount / op.balance.precision(), op.balance.symbol);
+                    auto min_invite_balance = asset(median_props.min_invite_balance.amount / 1000, op.balance.symbol);
+                    GOLOS_CHECK_VALUE(balance >= min_invite_balance,
+                        "Insufficient invite balance: ${f} required, ${p} provided.", ("f", balance)("p", min_invite_balance));
+                }
             });
 
             GOLOS_CHECK_OBJECT_MISSING(_db, invite, op.invite_key);
@@ -2847,11 +2859,12 @@ void delegate_vesting_shares(
 
         void invite_claim_evaluator::do_apply(const invite_claim_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_claim_operation");
-            const auto& initiator = _db.get_account(op.initiator);
+            bool has_hf24 = _db.has_hardfork(STEEMIT_HARDFORK_0_24__95);
+            const auto& receiver = has_hf24 ? _db.get_account(op.receiver) : _db.get_account(op.initiator);
 
             auto invite_secret = golos::utilities::wif_to_key(op.invite_secret);
             const auto& inv = _db.get_invite(invite_secret->get_public_key());
-            _db.adjust_balance(initiator, inv.balance);
+            _db.adjust_balance(receiver, inv.balance);
             _db.remove(inv);
         }
 
