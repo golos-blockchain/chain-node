@@ -21,7 +21,6 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
         include/golos/protocol/steem_virtual_operations.hpp
         include/golos/protocol/transaction.hpp
         include/golos/protocol/types.hpp
-        include/golos/protocol/uint128lh_t.hpp
         include/golos/protocol/version.hpp
         include/golos/protocol/reward_curve.hpp
         )
@@ -39,7 +38,6 @@ list(APPEND ${CURRENT_TARGET}_SOURCES
         worker_operations.cpp
         transaction.cpp
         types.cpp
-        uint128lh_t.cpp
         version.cpp
         )
 

@@ -5,7 +5,6 @@
 #include <golos/chain/database.hpp>
 #include <golos/chain/shared_authority.hpp>
 #include <golos/protocol/exceptions.hpp>
-#include <golos/protocol/uint128lh_t.hpp>
 #include <golos/plugins/debug_node/plugin.hpp>
 #include <golos/plugins/account_history/plugin.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
@@ -13,6 +12,7 @@
 #include <graphene/utilities/key_conversion.hpp>
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
+#include <fc/uint128lh_t.hpp>
 
 #include <iostream>
 

@@ -15,7 +15,7 @@
 #include <fc/safe.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/string.hpp>
-#include <golos/protocol/uint128lh_t.hpp>
+#include <fc/uint128lh_t.hpp>
 namespace golos { namespace protocol {
     struct asset;
 }}
