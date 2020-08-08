@@ -295,6 +295,10 @@ namespace golos {
             std::string symbol_name() const {
                 return supply.symbol_name();
             }
+
+            bool whitelists(asset_symbol_type symbol) const {
+                return !symbols_whitelist.size() || symbols_whitelist.count(symbol);
+            }
         };
 
         struct by_price;

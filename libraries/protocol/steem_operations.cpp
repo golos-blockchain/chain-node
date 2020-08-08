@@ -578,12 +578,11 @@ namespace golos { namespace protocol {
 
         void limit_order_create_operation::validate() const {
             GOLOS_CHECK_PARAM(owner, validate_account_name(owner));
-            GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
-                       is_asset_type(min_to_receive, SBD_SYMBOL))
-                      || (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
-                          is_asset_type(min_to_receive, STEEM_SYMBOL)),
-                    logic_exception::limit_order_must_be_for_golos_gbg_market,
-                    "Limit order must be for the GOLOS:GBG market");
+            GOLOS_CHECK_LOGIC(is_valid_symbol_name(amount_to_sell.symbol_name())
+                && is_valid_symbol_name(min_to_receive.symbol_name())
+                && amount_to_sell.symbol != min_to_receive.symbol,
+                    logic_exception::limit_order_must_have_correct_assets,
+                    "Limit order must have correct assets");
 
             auto price = (amount_to_sell / min_to_receive);
             GOLOS_CHECK_PARAM(price, price.validate());
@@ -593,12 +592,11 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(owner, validate_account_name(owner));
             GOLOS_CHECK_PARAM(exchange_rate, exchange_rate.validate());
 
-            GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
-                       is_asset_type(exchange_rate.quote, SBD_SYMBOL)) ||
-                      (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
-                       is_asset_type(exchange_rate.quote, STEEM_SYMBOL)),
-                    logic_exception::limit_order_must_be_for_golos_gbg_market,
-                    "Limit order must be for the GOLOS:GBG market");
+            GOLOS_CHECK_LOGIC(is_valid_symbol_name(amount_to_sell.symbol_name())
+                && is_valid_symbol_name(exchange_rate.quote.symbol_name())
+                && amount_to_sell.symbol != exchange_rate.quote.symbol,
+                    logic_exception::limit_order_must_have_correct_assets,
+                    "Limit order must have correct assets");
 
             GOLOS_CHECK_PARAM(amount_to_sell, {
                 GOLOS_CHECK_VALUE(amount_to_sell.symbol == exchange_rate.base.symbol,

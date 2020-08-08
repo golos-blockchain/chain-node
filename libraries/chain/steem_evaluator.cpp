@@ -2142,7 +2142,31 @@ namespace golos { namespace chain {
 
         }
 
+        bool inline is_asset_type(asset asset, asset_symbol_type symbol) {
+            return asset.symbol == symbol;
+        }
+
         void limit_order_create_evaluator::do_apply(const limit_order_create_operation& o) {
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto amount_to_sell = o.amount_to_sell;
+                auto min_to_receive = o.min_to_receive;
+                GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
+                           is_asset_type(min_to_receive, SBD_SYMBOL))
+                          || (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
+                              is_asset_type(min_to_receive, STEEM_SYMBOL)),
+                        logic_exception::limit_order_must_be_for_golos_gbg_market,
+                        "Limit order must be for the GOLOS:GBG market");
+            }
+
+            GOLOS_CHECK_VALUE(
+                o.amount_to_sell.symbol == STEEM_SYMBOL ||
+                o.amount_to_sell.symbol == SBD_SYMBOL ||
+                _db.get_asset(o.amount_to_sell.symbol).whitelists(o.min_to_receive.symbol), "Selling asset must whitelist receiving");
+            GOLOS_CHECK_VALUE(
+                o.min_to_receive.symbol == STEEM_SYMBOL ||
+                o.min_to_receive.symbol == SBD_SYMBOL ||
+                _db.get_asset(o.min_to_receive.symbol).whitelists(o.amount_to_sell.symbol), "Receiving asset must whitelist selling");
+
             GOLOS_CHECK_OP_PARAM(o, expiration, {
                 GOLOS_CHECK_VALUE(o.expiration > _db.head_block_time(),
                         "Limit order has to expire after head block time.");
@@ -2172,6 +2196,17 @@ namespace golos { namespace chain {
         }
 
         void limit_order_create2_evaluator::do_apply(const limit_order_create2_operation& o) {
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto amount_to_sell = o.amount_to_sell;
+                auto exchange_rate = o.exchange_rate;
+                GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
+                           is_asset_type(exchange_rate.quote, SBD_SYMBOL)) ||
+                          (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
+                           is_asset_type(exchange_rate.quote, STEEM_SYMBOL)),
+                        logic_exception::limit_order_must_be_for_golos_gbg_market,
+                        "Limit order must be for the GOLOS:GBG market");
+            }
+
             GOLOS_CHECK_OP_PARAM(o, expiration, {
                 GOLOS_CHECK_VALUE(o.expiration > _db.head_block_time(),
                         "Limit order has to expire after head block time.");

@@ -304,6 +304,7 @@ namespace golos {
 
             // limit order
             limit_order_must_be_for_golos_gbg_market,
+            limit_order_must_have_correct_assets,
             cancelling_not_filled_order,
 
             // feed_publish_operation
@@ -588,6 +589,7 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
 
         // limit order
         (limit_order_must_be_for_golos_gbg_market)
+        (limit_order_must_have_correct_assets)
         (cancelling_not_filled_order)
 
         // feed_publis_operation

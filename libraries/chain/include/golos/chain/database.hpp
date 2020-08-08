@@ -568,7 +568,7 @@ namespace golos { namespace chain {
 
             bool apply_order(const limit_order_object &new_order_object);
 
-            bool fill_order(const limit_order_object &order, const asset &pays, const asset &receives);
+            bool fill_order(const limit_order_object& order, const asset& pays, asset receives);
 
             void cancel_order(const limit_order_object &obj);
 

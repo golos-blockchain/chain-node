@@ -4853,13 +4853,23 @@ namespace golos { namespace chain {
         }
 
 
-        bool database::fill_order(const limit_order_object &order, const asset &pays, const asset &receives) {
+        bool database::fill_order(const limit_order_object& order, const asset& pays, asset receives) {
             try {
                 FC_ASSERT(order.amount_for_sale().symbol == pays.symbol);
                 FC_ASSERT(pays.symbol != receives.symbol);
 
                 const account_object &seller = get_account(order.seller);
 
+                if (has_hardfork(STEEMIT_HARDFORK_0_24__95) && receives.symbol != STEEM_SYMBOL && receives.symbol != SBD_SYMBOL) {
+                    const auto& ast = get_asset(receives.symbol);
+                    if (ast.fee_percent != 0) {
+                        auto fee = asset(
+                            (uint128_t(receives.amount.value) * ast.fee_percent / STEEMIT_100_PERCENT).to_uint64(),
+                            receives.symbol);
+                        adjust_balance(get_account(ast.creator), fee);
+                        receives -= fee;
+                    }
+                }
                 adjust_balance(seller, receives);
 
                 if (pays == order.amount_for_sale()) {
