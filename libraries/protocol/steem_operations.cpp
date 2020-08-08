@@ -870,4 +870,29 @@ namespace golos { namespace protocol {
                 GOLOS_CHECK_VALUE_GT(max_supply.amount, 0);
             });
         }
+
+        void asset_update_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(symbol, {
+                validate_symbol_name(symbol);
+            });
+            GOLOS_CHECK_PARAM(symbols_whitelist, {
+                GOLOS_CHECK_VALUE(!symbols_whitelist.count(symbol), "Cannot whitelist the symbol itself");
+                for (const auto& s : symbols_whitelist) {
+                    validate_symbol_name(s);
+                }
+            });
+            GOLOS_CHECK_PARAM(fee_percent, GOLOS_CHECK_VALUE_LEGE(fee_percent, 0, STEEMIT_100_PERCENT));
+        }
+
+        void asset_transfer_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(symbol, {
+                validate_symbol_name(symbol);
+            });
+            GOLOS_CHECK_PARAM_ACCOUNT(new_owner);
+            GOLOS_CHECK_PARAM(new_owner, {
+                GOLOS_CHECK_VALUE(new_owner != creator, "Cannot transfer asset to self");
+            });
+        }
 } } // golos::protocol

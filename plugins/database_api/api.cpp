@@ -909,11 +909,11 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
     results.reserve(limit);
 
     if (creator.size()) {
-        const auto& cre_idx = _db.get_index<asset_index, by_creator_symbol>();
+        const auto& cre_idx = _db.get_index<asset_index, by_creator_symbol_name>();
         auto itr = cre_idx.lower_bound(std::make_tuple(creator, from));
         for (; itr != cre_idx.end() && itr->creator == creator; ++itr) {
             if (results.size() == limit) break;
-            results.push_back(*itr);
+            results.push_back(asset_api_object(*itr, _db));
         }
     } else {
         const auto& sym_idx = _db.get_index<asset_index, by_symbol_name>();
@@ -921,14 +921,14 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
             for (auto symbol : symbols) {
                 auto itr = sym_idx.find(symbol);
                 if (itr != sym_idx.end()) {
-                    results.push_back(*itr);
+                    results.push_back(asset_api_object(*itr, _db));
                 }
             }
         } else {
             auto itr = sym_idx.lower_bound(from);
             for (; itr != sym_idx.end(); ++itr) {
                 if (results.size() == limit) break;
-                results.push_back(*itr);
+                results.push_back(asset_api_object(*itr, _db));
             }
         }
     }

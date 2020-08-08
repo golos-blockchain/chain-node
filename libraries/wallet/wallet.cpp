@@ -3357,6 +3357,39 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction(tx, broadcast);
         }
+
+        annotated_signed_transaction wallet_api::update_asset(account_name_type creator, const string& symbol, const flat_set<string>& symbols_whitelist, uint16_t fee_percent, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            asset_update_operation op;
+            op.creator = creator;
+            op.symbol = symbol;
+            op.symbols_whitelist = symbols_whitelist;
+            op.fee_percent = fee_percent;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::transfer_asset(account_name_type creator, const string& symbol, account_name_type new_owner, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            asset_transfer_operation op;
+            op.creator = creator;
+            op.symbol = symbol;
+            op.new_owner = new_owner;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
 } } // golos::wallet
 
 FC_REFLECT_ENUM(golos::wallet::logic_errors::types,

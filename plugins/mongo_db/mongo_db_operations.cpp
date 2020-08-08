@@ -852,4 +852,14 @@ namespace mongo_db {
         return body;
     }
 
+    auto operation_writer::operator()(const asset_update_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const asset_transfer_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
 }}}

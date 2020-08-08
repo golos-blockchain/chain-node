@@ -14,6 +14,7 @@
 #include <golos/plugins/database_api/api_objects/account_recovery_request_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/proposal_api_object.hpp>
+#include <golos/plugins/database_api/api_objects/asset_api_object.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 
 #include <golos/api/chain_api_properties.hpp>

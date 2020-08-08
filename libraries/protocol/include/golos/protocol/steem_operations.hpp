@@ -1620,6 +1620,33 @@ namespace golos { namespace protocol {
                 a.insert(creator);
             }
         };
+
+        struct asset_update_operation : public base_operation {
+            account_name_type creator;
+            string symbol;
+            flat_set<string> symbols_whitelist;
+            uint16_t fee_percent = 0;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
+        struct asset_transfer_operation : public base_operation {
+            account_name_type creator;
+            string symbol;
+            account_name_type new_owner;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
 } } // golos::protocol
 
 
@@ -1753,3 +1780,5 @@ FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(me
 FC_REFLECT((golos::protocol::invite_operation), (creator)(balance)(invite_key)(extensions))
 FC_REFLECT((golos::protocol::invite_claim_operation), (initiator)(receiver)(invite_secret)(extensions))
 FC_REFLECT((golos::protocol::asset_create_operation), (creator)(max_supply)(extensions))
+FC_REFLECT((golos::protocol::asset_update_operation), (creator)(symbol)(symbols_whitelist)(fee_percent)(extensions))
+FC_REFLECT((golos::protocol::asset_transfer_operation), (creator)(symbol)(new_owner)(extensions))

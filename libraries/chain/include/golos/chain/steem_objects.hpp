@@ -7,11 +7,13 @@
 
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/interprocess/containers/flat_set.hpp>
 
 
 namespace golos {
     namespace chain {
 
+        namespace bip = boost::interprocess;
         using golos::protocol::asset;
         using golos::protocol::price;
         using golos::protocol::asset_symbol_type;
@@ -270,7 +272,7 @@ namespace golos {
             asset_object() = delete;
 
             template<typename Constructor, typename Allocator>
-            asset_object(Constructor&& c, allocator<Allocator> a) {
+            asset_object(Constructor&& c, allocator<Allocator> a) : symbols_whitelist(a) {
                 c(*this);
             }
 
@@ -280,6 +282,11 @@ namespace golos {
             asset max_supply;
             asset supply;
             time_point_sec created;
+            time_point_sec modified;
+            using symbol_allocator_type = allocator<asset_symbol_type>;
+            using symbol_set_type = bip::flat_set<asset_symbol_type, std::less<asset_symbol_type>, symbol_allocator_type>;
+            symbol_set_type symbols_whitelist;
+            uint16_t fee_percent = 0;
 
             asset_symbol_type symbol() const {
                 return supply.symbol;
@@ -526,7 +533,7 @@ namespace golos {
                 >>>,
             allocator<donate_object>>;
 
-        struct by_creator_symbol;
+        struct by_creator_symbol_name;
         struct by_symbol;
         struct by_symbol_name;
 
@@ -536,9 +543,9 @@ namespace golos {
                 ordered_unique<tag<by_id>,
                     member<asset_object, asset_object_id_type, &asset_object::id>
                 >,
-                ordered_unique<tag<by_creator_symbol>, composite_key<asset_object,
+                ordered_unique<tag<by_creator_symbol_name>, composite_key<asset_object,
                     member<asset_object, account_name_type, &asset_object::creator>,
-                    const_mem_fun<asset_object, asset_symbol_type, &asset_object::symbol>
+                    const_mem_fun<asset_object, std::string, &asset_object::symbol_name>
                 >>,
                 ordered_unique<tag<by_symbol>,
                     const_mem_fun<asset_object, asset_symbol_type, &asset_object::symbol>
@@ -591,6 +598,4 @@ CHAINBASE_SET_INDEX_TYPE(golos::chain::decline_voting_rights_request_object, gol
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::donate_object, golos::chain::donate_index)
 
-FC_REFLECT((golos::chain::asset_object),
-        (id)(creator)(max_supply)(supply)(created))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::asset_object, golos::chain::asset_index)

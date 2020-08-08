@@ -795,12 +795,20 @@ namespace golos { namespace chain {
             } FC_CAPTURE_AND_RETHROW((symbol))
         }
 
-        const asset_object& database::get_asset(const std::string& symbol_name) const {
-            try {
-                return get<asset_object, by_symbol_name>(symbol_name);
-            } catch(const std::out_of_range& e) {
-                GOLOS_THROW_MISSING_OBJECT("asset", symbol_name);
-            } FC_CAPTURE_AND_RETHROW((symbol_name))
+        const asset_object& database::get_asset(const std::string& symbol_name, account_name_type creator) const {
+            if (creator != account_name_type()) {
+                try {
+                    return get<asset_object, by_creator_symbol_name>(std::make_tuple(creator, symbol_name));
+                } catch(const std::out_of_range& e) {
+                    GOLOS_THROW_MISSING_OBJECT("asset", fc::mutable_variant_object()("symbol_name", symbol_name)("creator", creator));
+                } FC_CAPTURE_AND_RETHROW((symbol_name)(creator))
+            } else {
+                try {
+                    return get<asset_object, by_symbol_name>(symbol_name);
+                } catch(const std::out_of_range& e) {
+                    GOLOS_THROW_MISSING_OBJECT("asset", symbol_name);
+                } FC_CAPTURE_AND_RETHROW((symbol_name))
+            }
         }
 
         account_balance_object database::get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const {
@@ -3575,6 +3583,8 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<invite_evaluator>();
             _my->_evaluator_registry.register_evaluator<invite_claim_evaluator>();
             _my->_evaluator_registry.register_evaluator<asset_create_evaluator>();
+            _my->_evaluator_registry.register_evaluator<asset_update_evaluator>();
+            _my->_evaluator_registry.register_evaluator<asset_transfer_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {

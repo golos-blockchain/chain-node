@@ -103,6 +103,8 @@ namespace mongo_db {
         result_type operator()(const invite_claim_operation& op);
         result_type operator()(const account_create_with_invite_operation& op);
         result_type operator()(const asset_create_operation& op);
+        result_type operator()(const asset_update_operation& op);
+        result_type operator()(const asset_transfer_operation& op);
     };
 
 }}} // golos::plugins::mongo_db

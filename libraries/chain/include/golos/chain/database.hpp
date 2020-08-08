@@ -223,7 +223,7 @@ namespace golos { namespace chain {
             const asset_object*  find_asset(const asset_symbol_type& symbol) const;
             void                 throw_if_exists_asset(const asset_symbol_type& symbol) const;
 
-            const asset_object&  get_asset(const std::string& symbol_name) const;
+            const asset_object&  get_asset(const std::string& symbol_name, account_name_type creator = account_name_type()) const;
             const asset_object*  find_asset(const std::string& symbol_name) const;
             void                 throw_if_exists_asset(const std::string& symbol_name) const;
 

@@ -2907,4 +2907,33 @@ void delegate_vesting_shares(
             _db.adjust_balance(_db.get_account(op.creator), op.max_supply);
         }
 
+        void asset_update_evaluator::do_apply(const asset_update_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_update_operation");
+
+            _db.modify(_db.get_asset(op.symbol, op.creator), [&](auto& a) {
+                a.symbols_whitelist.clear();
+                for (const auto& s : op.symbols_whitelist) {
+                    if (s == "GOLOS") {
+                        a.symbols_whitelist.insert(STEEM_SYMBOL);
+                    } else if (s == "GBG") {
+                        a.symbols_whitelist.insert(SBD_SYMBOL);
+                    } else {
+                        a.symbols_whitelist.insert(_db.get_asset(s).symbol());
+                    }
+                }
+                a.fee_percent = op.fee_percent;
+                a.modified = _db.head_block_time();
+            });
+        }
+
+        void asset_transfer_evaluator::do_apply(const asset_transfer_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_transfer_operation");
+
+            _db.get_account(op.new_owner);
+
+            _db.modify(_db.get_asset(op.symbol, op.creator), [&](auto& a) {
+                a.creator = op.new_owner;
+            });
+        }
+
 } } // golos::chain

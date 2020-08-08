@@ -1996,4 +1996,12 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const asset_update_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const asset_transfer_operation& op) -> result_type {
+
+    }
+
 }}}
