@@ -883,6 +883,19 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(fee_percent, GOLOS_CHECK_VALUE_LEGE(fee_percent, 0, STEEMIT_100_PERCENT));
         }
 
+        void asset_issue_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(amount, {
+                validate_symbol_name(amount.symbol_name());
+                GOLOS_CHECK_VALUE_GT(amount.amount, 0);
+            });
+            GOLOS_CHECK_PARAM(to, {
+                if (to != account_name_type()) {
+                    validate_account_name(to);
+                }
+            });
+        }
+
         void asset_transfer_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(creator);
             GOLOS_CHECK_PARAM(symbol, {
@@ -892,5 +905,19 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(new_owner, {
                 GOLOS_CHECK_VALUE(new_owner != creator, "Cannot transfer asset to self");
             });
+        }
+
+        void override_transfer_operation::validate() const {
+            GOLOS_CHECK_PARAM(from, {
+                validate_account_name(from);
+                GOLOS_CHECK_VALUE(from != to, "Cannot transfer to self");
+                GOLOS_CHECK_VALUE(from != creator, "To transfer from your own account use simple transfer");
+            });
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, UIA));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
+                GOLOS_CHECK_VALUE_UTF8(memo);
+            });
+            GOLOS_CHECK_PARAM_ACCOUNT(to);
         }
 } } // golos::protocol

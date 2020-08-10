@@ -281,6 +281,8 @@ namespace golos {
             account_name_type creator;
             asset max_supply;
             asset supply;
+            bool allow_fee = false;
+            bool allow_override_transfer = false;
             time_point_sec created;
             time_point_sec modified;
             using symbol_allocator_type = allocator<asset_symbol_type>;

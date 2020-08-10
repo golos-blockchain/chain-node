@@ -54,6 +54,10 @@
     GOLOS_CHECK_VALUE(X.symbol == STEEM_SYMBOL \
         || (X.symbol != SBD_SYMBOL && X.symbol != VESTS_SYMBOL && X.symbol != STMD_SYMBOL), MUST_BE(X, "GOLOS or UIA"))
 
+#define GOLOS_CHECK_ASSET_UIA(X) \
+    GOLOS_CHECK_VALUE(X.symbol != STEEM_SYMBOL \
+        || (X.symbol != SBD_SYMBOL && X.symbol != VESTS_SYMBOL && X.symbol != STMD_SYMBOL), MUST_BE(X, "UIA"))
+
 // check asset type and value
 #define GOLOS_CHECK_ASSET_GT0(X, NAME) GOLOS_CHECK_ASSET_VAL(X, >, 0, NAME)
 #define GOLOS_CHECK_ASSET_GE0(X, NAME) GOLOS_CHECK_ASSET_VAL(X, >=, 0, NAME)

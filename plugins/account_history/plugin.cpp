@@ -601,8 +601,18 @@ if (options.count(name)) { \
             insert_dual(op.creator);
         }
 
+        void operator()(const asset_issue_operation& op) {
+            insert_pair(op.creator, op.to);
+        }
+
         void operator()(const asset_transfer_operation& op) {
             insert_pair(op.creator, op.new_owner);
+        }
+
+        void operator()(const override_transfer_operation& op) {
+            insert_sender(op.creator);
+            insert_sender(op.from);
+            insert_receiver(op.to);
         }
     };
 

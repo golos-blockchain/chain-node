@@ -2000,7 +2000,15 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const asset_issue_operation& op) -> result_type {
+
+    }
+
     auto state_writer::operator()(const asset_transfer_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const override_transfer_operation& op) -> result_type {
 
     }
 

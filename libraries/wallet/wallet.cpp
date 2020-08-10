@@ -3343,13 +3343,15 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
-        annotated_signed_transaction wallet_api::create_asset(account_name_type creator, asset max_supply, bool broadcast)
+        annotated_signed_transaction wallet_api::create_asset(account_name_type creator, asset max_supply, bool allow_fee, bool allow_override_transfer, bool broadcast)
         {
             WALLET_CHECK_UNLOCKED();
 
             asset_create_operation op;
             op.creator = creator;
             op.max_supply = max_supply;
+            op.allow_fee = allow_fee;
+            op.allow_override_transfer = allow_override_transfer;
 
             signed_transaction tx;
             tx.operations.push_back(op);
@@ -3375,6 +3377,22 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction(tx, broadcast);
         }
 
+        annotated_signed_transaction wallet_api::issue_asset(account_name_type creator, asset amount, account_name_type to, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            asset_issue_operation op;
+            op.creator = creator;
+            op.amount = amount;
+            op.to = to;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
         annotated_signed_transaction wallet_api::transfer_asset(account_name_type creator, const string& symbol, account_name_type new_owner, bool broadcast)
         {
             WALLET_CHECK_UNLOCKED();
@@ -3383,6 +3401,24 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             op.creator = creator;
             op.symbol = symbol;
             op.new_owner = new_owner;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::override_transfer(const string& creator, const string& from, const string& to, asset amount, const string& memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            check_memo(memo, get_account(creator));
+            override_transfer_operation op;
+            op.creator = creator;
+            op.from = from;
+            op.to   = to;
+            op.amount = amount;
+            op.memo = get_encrypted_memo(creator, to, memo);
 
             signed_transaction tx;
             tx.operations.push_back(op);

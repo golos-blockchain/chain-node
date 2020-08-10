@@ -2932,20 +2932,21 @@ void delegate_vesting_shares(
             _db.create<asset_object>([&](auto& a) {
                 a.creator = op.creator;
                 a.max_supply = op.max_supply;
-                //a.supply = asset(0, op.max_supply.symbol);
-                // TODO: for test purposes until market implemented
-                a.supply = op.max_supply;
+                a.supply = asset(0, op.max_supply.symbol);
+                a.allow_fee = op.allow_fee;
+                a.allow_override_transfer = op.allow_override_transfer;
                 a.created = _db.head_block_time();
             });
-
-            // TODO: for test purposes until market implemented
-            _db.adjust_balance(_db.get_account(op.creator), op.max_supply);
         }
 
         void asset_update_evaluator::do_apply(const asset_update_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_update_operation");
 
-            _db.modify(_db.get_asset(op.symbol, op.creator), [&](auto& a) {
+            const auto& asset_obj = _db.get_asset(op.symbol, op.creator);
+
+            GOLOS_CHECK_VALUE(asset_obj.allow_fee || op.fee_percent == 0, "Asset does not support fee.");
+
+            _db.modify(asset_obj, [&](auto& a) {
                 a.symbols_whitelist.clear();
                 for (const auto& s : op.symbols_whitelist) {
                     if (s == "GOLOS") {
@@ -2961,6 +2962,23 @@ void delegate_vesting_shares(
             });
         }
 
+        void asset_issue_evaluator::do_apply(const asset_issue_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_issue_operation");
+
+            const auto& asset_obj = _db.get_asset(op.amount.symbol_name(), op.creator);
+
+            GOLOS_CHECK_VALUE(asset_obj.supply + op.amount <= asset_obj.max_supply, "Cannot issue more assets than max_supply allows.");
+
+            const auto& to_account = op.to.size() ? _db.get_account(op.to)
+                                                 : _db.get_account(op.creator);
+
+            _db.modify(asset_obj, [&](auto& a) {
+                a.supply += op.amount;
+            });
+
+            _db.adjust_balance(to_account, op.amount);
+        }
+
         void asset_transfer_evaluator::do_apply(const asset_transfer_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_transfer_operation");
 
@@ -2968,6 +2986,29 @@ void delegate_vesting_shares(
 
             _db.modify(_db.get_asset(op.symbol, op.creator), [&](auto& a) {
                 a.creator = op.new_owner;
+            });
+        }
+
+        void override_transfer_evaluator::do_apply(const override_transfer_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_transfer_operation");
+
+            GOLOS_CHECK_VALUE(_db.get_asset(op.amount.symbol_name(), op.creator).allow_override_transfer, "Asset does not support overriding.");
+
+            const auto& creator_account = _db.get_account(op.creator);
+            const auto& from_account = _db.get_account(op.from);
+            const auto& to_account = _db.get_account(op.to);
+
+            if (creator_account.active_challenged) {
+                _db.modify(creator_account, [&](auto& a) {
+                    a.active_challenged = false;
+                    a.last_active_proved = _db.head_block_time();
+                });
+            }
+
+            GOLOS_CHECK_OP_PARAM(op, amount, {
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, op.amount);
+                _db.adjust_balance(from_account, -op.amount);
+                _db.adjust_balance(to_account, op.amount);
             });
         }
 

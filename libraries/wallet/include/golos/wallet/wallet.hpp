@@ -1488,11 +1488,15 @@ namespace golos { namespace wallet {
 
             annotated_signed_transaction claim_invite(account_name_type initiator, account_name_type receiver, string invite_secret, bool broadcast = false);
 
-            annotated_signed_transaction create_asset(account_name_type creator, asset max_supply, bool broadcast = false);
+            annotated_signed_transaction create_asset(account_name_type creator, asset max_supply, bool allow_fee, bool allow_override_transfer, bool broadcast = false);
 
             annotated_signed_transaction update_asset(account_name_type creator, const string& symbol, const flat_set<string>& symbols_whitelist, uint16_t fee_percent, bool broadcast = false);
 
+            annotated_signed_transaction issue_asset(account_name_type creator, asset amount, account_name_type to, bool broadcast = false);
+
             annotated_signed_transaction transfer_asset(account_name_type creator, const string& symbol, account_name_type new_owner, bool broadcast = false);
+
+            annotated_signed_transaction override_transfer(const string& creator, const string& from, const string& to, asset amount, const string& memo, bool broadcast = false);
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1644,7 +1648,9 @@ FC_API( golos::wallet::wallet_api,
                 (claim_invite)
                 (create_asset)
                 (update_asset)
+                (issue_asset)
                 (transfer_asset)
+                (override_transfer)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))

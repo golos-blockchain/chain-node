@@ -83,7 +83,9 @@ namespace golos { namespace protocol {
                 account_create_with_invite_operation,
                 asset_create_operation,
                 asset_update_operation,
+                asset_issue_operation,
                 asset_transfer_operation,
+                override_transfer_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,
