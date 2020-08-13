@@ -2824,10 +2824,14 @@ void delegate_vesting_shares(
         void transfer_to_tip_evaluator::do_apply(const transfer_to_tip_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_to_tip_operation");
 
-            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
-                auto amount = op.amount;
-                GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_VALUE(amount.symbol == STEEM_SYMBOL, "amount must be GOLOS"));
-            }
+            auto amount = op.amount;
+            GOLOS_CHECK_PARAM(amount, {
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                    GOLOS_CHECK_VALUE(amount.symbol == STEEM_SYMBOL, "amount must be GOLOS");
+                } else if (op.amount.symbol != STEEM_SYMBOL) {
+                    GOLOS_CHECK_VALUE(!_db.get_asset(amount.symbol).allow_override_transfer, "asset is overridable and do not supports TIP balance");
+                }
+            });
 
             const auto& from = _db.get_account(op.from);
             const auto& to = op.to.size() ? _db.get_account(op.to)
@@ -2847,14 +2851,24 @@ void delegate_vesting_shares(
         void transfer_from_tip_evaluator::do_apply(const transfer_from_tip_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_from_tip_operation");
 
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto amount = op.amount;
+                GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_VALUE(amount.symbol == STEEM_SYMBOL, "amount must be GOLOS"));
+            }
+
             const auto& from = _db.get_account(op.from);
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
             GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, op.amount);
 
-            _db.modify(from, [&](account_object& acnt) {acnt.tip_balance -= op.amount;});
-            _db.create_vesting(to, op.amount);
+            if (op.amount.symbol == STEEM_SYMBOL) {
+                _db.modify(from, [&](auto& acnt) {acnt.tip_balance -= op.amount;});
+                _db.create_vesting(to, op.amount);
+            } else {
+                _db.adjust_account_balance(from.name, asset(0, op.amount.symbol), -op.amount);
+                _db.adjust_account_balance(to.name, op.amount, asset(0, op.amount.symbol));
+            }
         }
 
         void invite_evaluator::do_apply(const invite_operation& op) {
