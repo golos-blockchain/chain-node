@@ -2446,6 +2446,19 @@ namespace golos { namespace chain {
             if (total_sbd.amount > 0) {
                 adjust_supply(-total_sbd);
             }
+
+            if (has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                const auto& idx = get_index<account_balance_index, by_account_symbol>();
+                auto itr = idx.lower_bound(null_account.name);
+                for (; itr != idx.end() && itr->account == null_account.name; ++itr) {
+                    modify(get_asset(itr->balance.symbol), [&](auto& a) {
+                        a.supply -= itr->balance;
+                    });
+                    modify(*itr, [&](auto& a) {
+                        a.balance = asset(0, a.balance.symbol);
+                    });
+                }
+            }
         }
 
 /**
