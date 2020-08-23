@@ -919,7 +919,12 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
         const auto& sym_idx = _db.get_index<asset_index, by_symbol_name>();
         if (symbols.size()) {
             for (auto symbol : symbols) {
-                auto itr = sym_idx.find(symbol);
+                GOLOS_CHECK_PARAM(symbols, {
+                    GOLOS_CHECK_VALUE(symbol.size() >= 3 && symbol.size() <= 14, "symbol must be between 3 and 14");
+                });
+                auto symbol_name = symbol;
+                boost::to_upper(symbol_name);
+                auto itr = sym_idx.find(symbol_name);
                 if (itr != sym_idx.end()) {
                     results.push_back(asset_api_object(*itr, _db));
                 }

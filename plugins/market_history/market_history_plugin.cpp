@@ -8,6 +8,8 @@
 
 #include <golos/protocol/exceptions.hpp>
 
+#include <boost/algorithm/string.hpp>
+
 
 namespace golos {
     namespace plugins {
@@ -28,7 +30,7 @@ namespace golos {
                 }
 
                 market_pair get_market_pair(asset asset1, asset asset2) const;
-                market_pair get_market_pair(const market_str_pair& str_pair) const;
+                market_pair get_market_pair(const market_str_pair& pair) const;
 
                 market_ticker get_ticker(const market_pair& pair) const;
                 market_volume get_volume(const market_pair& pair) const;
@@ -187,8 +189,13 @@ namespace golos {
                 return market_pair(sym1, sym2);
             }
 
-            market_pair market_history_plugin::market_history_plugin_impl::get_market_pair(const market_str_pair& str_pair) const {
-                auto sym_from_str = [&](const std::string& str) {
+            market_pair market_history_plugin::market_history_plugin_impl::get_market_pair(const market_str_pair& pair) const {
+                GOLOS_CHECK_PARAM(pair, {
+                    GOLOS_CHECK_VALUE(pair.first.size() >= 3 && pair.first.size() <= 14, "pair.first must be between 3 and 14");
+                    GOLOS_CHECK_VALUE(pair.second.size() >= 3 && pair.second.size() <= 14, "pair.second must be between 3 and 14");
+                });
+                auto sym_from_str = [&](std::string str) {
+                    boost::to_upper(str);
                     asset_symbol_type sym = 0;
                     if (str == "GOLOS") {
                         sym = STEEM_SYMBOL;
@@ -200,8 +207,8 @@ namespace golos {
                     return sym;
                 };
                 return get_market_pair(
-                    asset(0, sym_from_str(str_pair.first)),
-                    asset(0, sym_from_str(str_pair.second))
+                    asset(0, sym_from_str(pair.first)),
+                    asset(0, sym_from_str(pair.second))
                 );
             }
 
@@ -305,6 +312,7 @@ namespace golos {
 
                 while (sell_itr != end &&
                        sell_itr->sell_price.base.symbol == pair.second &&
+                       sell_itr->sell_price.quote.symbol == pair.first &&
                        result.bids.size() < limit) {
                     auto itr = sell_itr;
                     order_extended cur;
@@ -318,6 +326,7 @@ namespace golos {
                 }
                 while (buy_itr != end &&
                        buy_itr->sell_price.base.symbol == pair.first &&
+                       buy_itr->sell_price.quote.symbol == pair.second &&
                        result.asks.size() < limit) {
                     auto itr = buy_itr;
                     order_extended cur;
@@ -345,6 +354,7 @@ namespace golos {
                        result.size() < limit) {
                     if (!(itr->op.open_pays.symbol == pair.first && itr->op.current_pays.symbol == pair.second)
                         && !(itr->op.open_pays.symbol == pair.second && itr->op.current_pays.symbol == pair.first)) {
+                        ++itr;
                         continue;
                     }
                     market_trade trade;
@@ -367,6 +377,7 @@ namespace golos {
                 while (itr != order_idx.rend() && result.size() < limit) {
                     if (!(itr->op.open_pays.symbol == pair.first && itr->op.current_pays.symbol == pair.second)
                         && !(itr->op.open_pays.symbol == pair.second && itr->op.current_pays.symbol == pair.first)) {
+                        ++itr;
                         continue;
                     }
                     market_trade trade;
