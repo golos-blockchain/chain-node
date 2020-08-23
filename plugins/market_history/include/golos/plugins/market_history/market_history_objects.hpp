@@ -45,11 +45,18 @@ namespace golos {
                 double percent_change = 0;
                 asset asset1_volume;
                 asset asset2_volume;
+                asset asset1_depth;
+                asset asset2_depth;
             };
 
             struct market_volume {
                 asset asset1_volume;
                 asset asset2_volume;
+            };
+
+            struct market_depth {
+                asset asset1_depth;
+                asset asset2_depth;
             };
 
             struct order {
@@ -191,9 +198,11 @@ namespace golos {
 } // golos::plugins::market_history
 
 FC_REFLECT((golos::plugins::market_history::market_ticker),
-           (latest)(lowest_ask)(highest_bid)(percent_change)(asset1_volume)(asset2_volume));
+           (latest)(lowest_ask)(highest_bid)(percent_change)(asset1_volume)(asset2_volume)(asset1_depth)(asset2_depth));
 FC_REFLECT((golos::plugins::market_history::market_volume),
            (asset1_volume)(asset2_volume));
+FC_REFLECT((golos::plugins::market_history::market_depth),
+           (asset1_depth)(asset2_depth));
 FC_REFLECT((golos::plugins::market_history::order),
            (price)(asset1)(asset2));
 FC_REFLECT((golos::plugins::market_history::order_book),

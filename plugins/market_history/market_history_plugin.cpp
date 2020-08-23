@@ -242,6 +242,21 @@ namespace golos {
                 result.asset1_volume = volume.asset1_volume;
                 result.asset2_volume = volume.asset2_volume;
 
+                result.asset1_depth = asset(0, pair.first);
+                result.asset2_depth = asset(0, pair.second);
+                const auto& loidx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_id>();
+                auto loitr = loidx.begin();
+                while (loitr != loidx.end()) {
+                    if (loitr->sell_price.base.symbol == pair.first && loitr->sell_price.quote.symbol == pair.second) {
+                        result.asset1_depth += loitr->amount_for_sale();
+                        result.asset2_depth += loitr->amount_to_receive();
+                    } else if (loitr->sell_price.base.symbol == pair.second && loitr->sell_price.quote.symbol == pair.first) {
+                        result.asset2_depth += loitr->amount_to_receive();
+                        result.asset1_depth += loitr->amount_for_sale();
+                    }
+                    ++loitr;
+                }
+
                 return result;
             }
 
