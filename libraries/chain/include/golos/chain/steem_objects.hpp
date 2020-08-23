@@ -272,7 +272,7 @@ namespace golos {
             asset_object() = delete;
 
             template<typename Constructor, typename Allocator>
-            asset_object(Constructor&& c, allocator<Allocator> a) : symbols_whitelist(a) {
+            asset_object(Constructor&& c, allocator<Allocator> a) : symbols_whitelist(a), json_metadata(a) {
                 c(*this);
             }
 
@@ -289,6 +289,7 @@ namespace golos {
             using symbol_set_type = bip::flat_set<asset_symbol_type, std::less<asset_symbol_type>, symbol_allocator_type>;
             symbol_set_type symbols_whitelist;
             uint16_t fee_percent = 0;
+            shared_string json_metadata;
 
             asset_symbol_type symbol() const {
                 return supply.symbol;

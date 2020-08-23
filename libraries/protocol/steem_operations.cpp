@@ -867,6 +867,12 @@ namespace golos { namespace protocol {
                 validate_symbol_name(max_supply.symbol_name());
                 GOLOS_CHECK_VALUE_GT(max_supply.amount, 0);
             });
+            if (json_metadata.size() > 0) {
+                GOLOS_CHECK_PARAM(json_metadata, {
+                    GOLOS_CHECK_VALUE_UTF8(json_metadata);
+                    GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
+                });
+            }
         }
 
         void asset_update_operation::validate() const {

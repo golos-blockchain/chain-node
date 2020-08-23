@@ -12,8 +12,9 @@ namespace golos { namespace plugins { namespace database_api {
 
         asset_api_object(const asset_object& p, const golos::chain::database& _db)
                 : id(p.id), creator(p.creator), max_supply(p.max_supply), supply(p.supply),
-                allow_fee(p.allow_fee), allow_override_transfer(p.allow_override_transfer), created(p.created),
-                modified(p.modified), fee_percent(p.fee_percent) {
+                allow_fee(p.allow_fee), allow_override_transfer(p.allow_override_transfer),
+                json_metadata(golos::chain::to_string(p.json_metadata)),
+                created(p.created), modified(p.modified), fee_percent(p.fee_percent) {
             for (const auto sym : p.symbols_whitelist) {
                 if (sym == STEEM_SYMBOL) {
                     symbols_whitelist.insert("GOLOS");
@@ -32,6 +33,7 @@ namespace golos { namespace plugins { namespace database_api {
         asset supply;
         bool allow_fee = false;
         bool allow_override_transfer = false;
+        std::string json_metadata;
         time_point_sec created;
         time_point_sec modified;
         std::set<std::string> symbols_whitelist;
@@ -42,6 +44,6 @@ namespace golos { namespace plugins { namespace database_api {
 
 FC_REFLECT(
     (golos::plugins::database_api::asset_api_object),
-    (id)(creator)(max_supply)(supply)(allow_fee)(allow_override_transfer)(created)
+    (id)(creator)(max_supply)(supply)(allow_fee)(allow_override_transfer)(json_metadata)(created)
     (modified)(symbols_whitelist)(fee_percent)
 )

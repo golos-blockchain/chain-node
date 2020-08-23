@@ -123,6 +123,9 @@ namespace golos { namespace chain {
             void set_accounts_to_store_metadata(const std::vector<std::string>& accounts_to_store_metadata);
             bool store_metadata_for_account(const std::string& name) const;
 
+            void set_store_asset_metadata(bool store_asset_metadata);
+            bool store_asset_metadata() const;
+
             void set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws);
             bool store_memo_in_savings_withdraws() const;
 
@@ -719,6 +722,8 @@ namespace golos { namespace chain {
 
             store_metadata_modes _store_account_metadata = store_metadata_for_all;
             std::vector<std::string> _accounts_to_store_metadata;
+
+            bool _store_asset_metadata = true;
 
             bool _store_memo_in_savings_withdraws = true;
 

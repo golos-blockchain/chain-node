@@ -362,6 +362,14 @@ namespace golos { namespace chain {
             return std::find(v.begin(), v.end(), name) != v.end();
         }
 
+        void database::set_store_asset_metadata(bool store_asset_metadata) {
+            _store_asset_metadata = store_asset_metadata;
+        }
+
+        bool database::store_asset_metadata() const {
+            return _store_asset_metadata;
+        }
+
         void database::set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws) {
             _store_memo_in_savings_withdraws = store_memo_in_savings_withdraws;
         }

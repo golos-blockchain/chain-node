@@ -62,6 +62,7 @@ namespace golos { namespace plugins { namespace chain {
 
         golos::chain::database::store_metadata_modes store_account_metadata;
         std::vector<std::string> accounts_to_store_metadata;
+        bool store_asset_metadata = true;
         bool store_memo_in_savings_withdraws = true;
 
         boost::asio::deadline_timer transit_timer;
@@ -315,6 +316,9 @@ namespace golos { namespace plugins { namespace chain {
                 "store-memo-in-savings-withdraws", bpo::value<bool>()->default_value(true),
                 "store memo for all savings withdraws"
             ) (
+                "store-asset-metadata", bpo::value<bool>()->default_value(true),
+                "store metadata for all assets"
+            ) (
                 "serialize-state", bpo::value<std::string>(),
                 "The location of the file to serialize state to (abs path or relative to application data dir). "
                 "If set then app will exit after serialization."
@@ -448,6 +452,8 @@ namespace golos { namespace plugins { namespace chain {
             }
         }
 
+        my->store_asset_metadata = options.at("store-asset-metadata").as<bool>();
+
         my->store_memo_in_savings_withdraws = options.at("store-memo-in-savings-withdraws").as<bool>();
 
         my->clear_old_worker_votes = options.at("clear-old-worker-votes").as<bool>();
@@ -481,6 +487,8 @@ namespace golos { namespace plugins { namespace chain {
         my->db.set_store_account_metadata(my->store_account_metadata);
 
         my->db.set_accounts_to_store_metadata(my->accounts_to_store_metadata);
+
+        my->db.set_store_asset_metadata(my->store_asset_metadata);
 
         my->db.set_store_memo_in_savings_withdraws(my->store_memo_in_savings_withdraws);
 

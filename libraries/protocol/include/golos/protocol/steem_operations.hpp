@@ -1614,6 +1614,7 @@ namespace golos { namespace protocol {
             asset max_supply; // also stores asset symbol
             bool allow_fee = false;
             bool allow_override_transfer = false;
+            string json_metadata;
 
             extensions_type extensions;
 
@@ -1628,6 +1629,7 @@ namespace golos { namespace protocol {
             string symbol;
             flat_set<string> symbols_whitelist;
             uint16_t fee_percent = 0;
+            string json_metadata;
 
             extensions_type extensions;
 
@@ -1813,8 +1815,8 @@ FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(me
 
 FC_REFLECT((golos::protocol::invite_operation), (creator)(balance)(invite_key)(extensions))
 FC_REFLECT((golos::protocol::invite_claim_operation), (initiator)(receiver)(invite_secret)(extensions))
-FC_REFLECT((golos::protocol::asset_create_operation), (creator)(max_supply)(allow_fee)(allow_override_transfer)(extensions))
+FC_REFLECT((golos::protocol::asset_create_operation), (creator)(max_supply)(allow_fee)(allow_override_transfer)(json_metadata)(extensions))
 FC_REFLECT((golos::protocol::asset_issue_operation), (creator)(amount)(to)(extensions))
-FC_REFLECT((golos::protocol::asset_update_operation), (creator)(symbol)(symbols_whitelist)(fee_percent)(extensions))
+FC_REFLECT((golos::protocol::asset_update_operation), (creator)(symbol)(symbols_whitelist)(fee_percent)(json_metadata)(extensions))
 FC_REFLECT((golos::protocol::asset_transfer_operation), (creator)(symbol)(new_owner)(extensions))
 FC_REFLECT((golos::protocol::override_transfer_operation), (creator)(from)(to)(amount)(memo)(extensions))

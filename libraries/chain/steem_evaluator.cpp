@@ -2949,6 +2949,9 @@ void delegate_vesting_shares(
                 a.supply = asset(0, op.max_supply.symbol);
                 a.allow_fee = op.allow_fee;
                 a.allow_override_transfer = op.allow_override_transfer;
+                if (_db.store_asset_metadata()) {
+                    from_string(a.json_metadata, op.json_metadata);
+                }
                 a.created = _db.head_block_time();
             });
         }
@@ -2972,6 +2975,11 @@ void delegate_vesting_shares(
                     }
                 }
                 a.fee_percent = op.fee_percent;
+                if (_db.store_asset_metadata()) {
+                    from_string(a.json_metadata, op.json_metadata);
+                } else {
+                    a.json_metadata.clear();
+                }
                 a.modified = _db.head_block_time();
             });
         }
