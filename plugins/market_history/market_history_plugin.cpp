@@ -34,6 +34,7 @@ namespace golos {
 
                 market_ticker get_ticker(const market_pair& pair) const;
                 market_volume get_volume(const market_pair& pair) const;
+                market_depth get_depth(const market_pair& pair) const;
                 order_book get_order_book(const market_pair& pair, uint32_t limit) const;
                 order_book_extended get_order_book_extended(const market_pair& pair, uint32_t limit) const;
                 vector<market_trade> get_trade_history(const market_pair& pair, time_point_sec start, time_point_sec end, uint32_t limit) const;
@@ -242,20 +243,9 @@ namespace golos {
                 result.asset1_volume = volume.asset1_volume;
                 result.asset2_volume = volume.asset2_volume;
 
-                result.asset1_depth = asset(0, pair.first);
-                result.asset2_depth = asset(0, pair.second);
-                const auto& loidx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_id>();
-                auto loitr = loidx.begin();
-                while (loitr != loidx.end()) {
-                    if (loitr->sell_price.base.symbol == pair.first && loitr->sell_price.quote.symbol == pair.second) {
-                        result.asset1_depth += loitr->amount_for_sale();
-                        result.asset2_depth += loitr->amount_to_receive();
-                    } else if (loitr->sell_price.base.symbol == pair.second && loitr->sell_price.quote.symbol == pair.first) {
-                        result.asset2_depth += loitr->amount_to_receive();
-                        result.asset1_depth += loitr->amount_for_sale();
-                    }
-                    ++loitr;
-                }
+                auto depth = get_depth(pair);
+                result.asset1_depth = depth.asset1_depth;
+                result.asset2_depth = depth.asset2_depth;
 
                 return result;
             }
@@ -277,6 +267,32 @@ namespace golos {
                     ++itr;
                 }
 
+                return result;
+            }
+
+            market_depth market_history_plugin::market_history_plugin_impl::get_depth(const market_pair& pair) const {
+                market_depth result;
+                result.asset1_depth = asset(0, pair.first);
+                result.asset2_depth = asset(0, pair.second);
+
+                const auto& order_idx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_price>();
+                auto itr = order_idx.lower_bound(price::max(pair.second, pair.first));
+
+                while (itr != order_idx.end() &&
+                       itr->sell_price.base.symbol == pair.second &&
+                       itr->sell_price.quote.symbol == pair.first) {
+                    result.asset2_depth += itr->amount_for_sale();
+                    ++itr;
+                }
+
+                itr = order_idx.lower_bound(price::max(pair.first, pair.second));
+
+                while (itr != order_idx.end() &&
+                       itr->sell_price.base.symbol == pair.first &&
+                       itr->sell_price.quote.symbol == pair.second) {
+                    result.asset1_depth += itr->amount_for_sale();
+                    ++itr;
+                }
                 return result;
             }
 
@@ -533,6 +549,16 @@ namespace golos {
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
                     return _my->get_volume(_my->get_market_pair(pair));
+                });
+            }
+
+            DEFINE_API(market_history_plugin, get_depth) {
+                PLUGIN_API_VALIDATE_ARGS(
+                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                );
+                auto &db = _my->database();
+                return db.with_weak_read_lock([&]() {
+                    return _my->get_depth(_my->get_market_pair(pair));
                 });
             }
 
