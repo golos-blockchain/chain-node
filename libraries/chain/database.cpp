@@ -5477,16 +5477,21 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_24:
 #ifdef STEEMIT_BUILD_LIVETEST
                     {
+                        //active and signing_key
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
                         //"wif_priv_key": "5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw",
                         //"pub_key": "GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"
+
+                        //posting:
+                        //private 5K1aJ8JayUA7c2Ptg9Y2DetKxSvXGXa5GCcvYeHtn1Xh3v4egPS
+                        //public GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A
 
                         for (const auto &account : get_index<account_index>().indices()) {
                             update_owner_authority(account, authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1));
 
                             modify(get_authority(account.name), [&](account_authority_object &auth) {
                                 auth.active = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
-                                auth.posting = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
+                                auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                             });
                         }
                         
@@ -5497,6 +5502,12 @@ namespace golos { namespace chain {
                             });
                         }                
                     }
+#endif
+#ifdef STEEMIT_BUILD_TESTNET
+                    adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
+                    modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
+                        auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
+                    });
 #endif
                     break;
                 default:

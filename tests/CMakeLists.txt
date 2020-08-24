@@ -32,7 +32,6 @@ add_test(NAME chain_test_run COMMAND chain_test)
 
 file(GLOB PLUGIN_TESTS
     "plugin_tests/main.cpp"
-    "plugin_tests/market_history.cpp"
     "plugin_tests/plugin_ops.cpp"
     "plugin_tests/json_rpc.cpp"
     "plugin_tests/chain.cpp"
