@@ -4828,12 +4828,20 @@ namespace golos { namespace chain {
                 }
             }
 
-            push_virtual_operation(fill_order_operation(new_order.seller, new_order.orderid, new_order_pays, old_order.seller, old_order.orderid, old_order_pays));
+            asset old_trade_fee(0, old_order_receives.symbol);
+            account_name_type old_trade_fee_receiver = "null";
+            asset new_trade_fee(0, new_order_receives.symbol);
+            account_name_type new_trade_fee_receiver = "null";
 
             int result = 0;
-            result |= fill_order(new_order, new_order_pays, new_order_receives);
-            result |= fill_order(old_order, old_order_pays, old_order_receives)
+            result |= fill_order(new_order, new_order_pays, new_order_receives, new_trade_fee, new_trade_fee_receiver);
+            result |= fill_order(old_order, old_order_pays, old_order_receives, old_trade_fee, old_trade_fee_receiver)
                     << 1;
+
+            push_virtual_operation(fill_order_operation(
+                new_order.seller, new_order.orderid, new_order_pays, new_trade_fee, new_trade_fee_receiver,
+                old_order.seller, old_order.orderid, old_order_pays, old_trade_fee, old_trade_fee_receiver));
+
             assert(result != 0);
             return result;
         }
@@ -4876,7 +4884,7 @@ namespace golos { namespace chain {
         }
 
 
-        bool database::fill_order(const limit_order_object& order, const asset& pays, asset receives) {
+        bool database::fill_order(const limit_order_object& order, const asset& pays, asset receives, asset& trade_fee, account_name_type& trade_fee_receiver) {
             try {
                 FC_ASSERT(order.amount_for_sale().symbol == pays.symbol);
                 FC_ASSERT(pays.symbol != receives.symbol);
@@ -4891,6 +4899,8 @@ namespace golos { namespace chain {
                             receives.symbol);
                         adjust_balance(get_account(ast.creator), fee);
                         receives -= fee;
+                        trade_fee += fee;
+                        trade_fee_receiver = ast.creator;
                     }
                 }
                 adjust_balance(seller, receives);
