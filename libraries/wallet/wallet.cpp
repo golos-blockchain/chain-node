@@ -3343,7 +3343,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
-        annotated_signed_transaction wallet_api::create_asset(account_name_type creator, asset max_supply, bool allow_fee, bool allow_override_transfer, bool broadcast)
+        annotated_signed_transaction wallet_api::create_asset(account_name_type creator, asset max_supply, bool allow_fee, bool allow_override_transfer, const string& meta, bool broadcast)
         {
             WALLET_CHECK_UNLOCKED();
 
@@ -3352,6 +3352,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             op.max_supply = max_supply;
             op.allow_fee = allow_fee;
             op.allow_override_transfer = allow_override_transfer;
+            op.json_metadata = meta;
 
             signed_transaction tx;
             tx.operations.push_back(op);
@@ -3360,7 +3361,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction(tx, broadcast);
         }
 
-        annotated_signed_transaction wallet_api::update_asset(account_name_type creator, const string& symbol, const flat_set<string>& symbols_whitelist, uint16_t fee_percent, bool broadcast)
+        annotated_signed_transaction wallet_api::update_asset(account_name_type creator, const string& symbol, const flat_set<string>& symbols_whitelist, uint16_t fee_percent, const string& meta, bool broadcast)
         {
             WALLET_CHECK_UNLOCKED();
 
@@ -3369,6 +3370,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             op.symbol = symbol;
             op.symbols_whitelist = symbols_whitelist;
             op.fee_percent = fee_percent;
+            op.json_metadata = meta;
 
             signed_transaction tx;
             tx.operations.push_back(op);

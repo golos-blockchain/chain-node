@@ -1488,9 +1488,9 @@ namespace golos { namespace wallet {
 
             annotated_signed_transaction claim_invite(account_name_type initiator, account_name_type receiver, string invite_secret, bool broadcast = false);
 
-            annotated_signed_transaction create_asset(account_name_type creator, asset max_supply, bool allow_fee, bool allow_override_transfer, bool broadcast = false);
+            annotated_signed_transaction create_asset(account_name_type creator, asset max_supply, bool allow_fee, bool allow_override_transfer, const string& meta, bool broadcast = false);
 
-            annotated_signed_transaction update_asset(account_name_type creator, const string& symbol, const flat_set<string>& symbols_whitelist, uint16_t fee_percent, bool broadcast = false);
+            annotated_signed_transaction update_asset(account_name_type creator, const string& symbol, const flat_set<string>& symbols_whitelist, uint16_t fee_percent, const string& meta, bool broadcast = false);
 
             annotated_signed_transaction issue_asset(account_name_type creator, asset amount, account_name_type to, bool broadcast = false);
 
