@@ -948,7 +948,7 @@ DEFINE_API(plugin, get_assets) {
         (std::string, from, std::string())
         (uint32_t, limit, 20)
     );
-    GOLOS_CHECK_LIMIT_PARAM(limit, 20);
+    GOLOS_CHECK_LIMIT_PARAM(limit, 5000);
 
     return my->database().with_weak_read_lock([&]() {
         return my->get_assets(creator, symbols, from, limit);
