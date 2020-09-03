@@ -4828,8 +4828,13 @@ namespace golos { namespace chain {
                 }
             }
 
+            auto old_seller = old_order.seller;
+            auto old_id = old_order.orderid;
             asset old_trade_fee(0, old_order_receives.symbol);
             account_name_type old_trade_fee_receiver = "null";
+
+            auto new_seller = new_order.seller;
+            auto new_id = new_order.orderid;
             asset new_trade_fee(0, new_order_receives.symbol);
             account_name_type new_trade_fee_receiver = "null";
 
@@ -4839,8 +4844,8 @@ namespace golos { namespace chain {
                     << 1;
 
             push_virtual_operation(fill_order_operation(
-                new_order.seller, new_order.orderid, new_order_pays, new_trade_fee, new_trade_fee_receiver,
-                old_order.seller, old_order.orderid, old_order_pays, old_trade_fee, old_trade_fee_receiver));
+                new_seller, new_id, new_order_pays, new_trade_fee, new_trade_fee_receiver,
+                old_seller, old_id, old_order_pays, old_trade_fee, old_trade_fee_receiver));
 
             assert(result != 0);
             return result;
