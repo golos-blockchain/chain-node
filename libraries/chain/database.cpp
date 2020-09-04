@@ -4828,24 +4828,28 @@ namespace golos { namespace chain {
                 }
             }
 
-            auto old_seller = old_order.seller;
-            auto old_id = old_order.orderid;
-            asset old_trade_fee(0, old_order_receives.symbol);
-            account_name_type old_trade_fee_receiver = "null";
-
-            auto new_seller = new_order.seller;
-            auto new_id = new_order.orderid;
-            asset new_trade_fee(0, new_order_receives.symbol);
-            account_name_type new_trade_fee_receiver = "null";
-
-            int result = 0;
-            result |= fill_order(new_order, new_order_pays, new_order_receives, new_trade_fee, new_trade_fee_receiver);
-            result |= fill_order(old_order, old_order_pays, old_order_receives, old_trade_fee, old_trade_fee_receiver)
-                    << 1;
+            asset trade_fee(0, new_order_receives.symbol);
+            account_name_type trade_fee_receiver;
+            if (has_hardfork(STEEMIT_HARDFORK_0_24__95) && new_order_receives.symbol != STEEM_SYMBOL && new_order_receives.symbol != SBD_SYMBOL) {
+                const auto& ast = get_asset(new_order_receives.symbol);
+                if (ast.fee_percent != 0) {
+                    trade_fee = asset(
+                        (uint128_t(new_order_receives.amount.value) * ast.fee_percent / STEEMIT_100_PERCENT).to_uint64(),
+                        new_order_receives.symbol);
+                    adjust_balance(get_account(ast.creator), trade_fee);
+                    new_order_receives -= trade_fee;
+                    trade_fee_receiver = ast.creator;
+                }
+            }
 
             push_virtual_operation(fill_order_operation(
-                new_seller, new_id, new_order_pays, new_trade_fee, new_trade_fee_receiver,
-                old_seller, old_id, old_order_pays, old_trade_fee, old_trade_fee_receiver));
+                new_order.seller, new_order.orderid, new_order_pays, trade_fee, trade_fee_receiver,
+                old_order.seller, old_order.orderid, old_order_pays));
+
+            int result = 0;
+            result |= fill_order(new_order, new_order_pays, new_order_receives);
+            result |= fill_order(old_order, old_order_pays, old_order_receives)
+                    << 1;
 
             assert(result != 0);
             return result;
@@ -4889,25 +4893,13 @@ namespace golos { namespace chain {
         }
 
 
-        bool database::fill_order(const limit_order_object& order, const asset& pays, asset receives, asset& trade_fee, account_name_type& trade_fee_receiver) {
+        bool database::fill_order(const limit_order_object& order, const asset& pays, asset receives) {
             try {
                 FC_ASSERT(order.amount_for_sale().symbol == pays.symbol);
                 FC_ASSERT(pays.symbol != receives.symbol);
 
                 const account_object &seller = get_account(order.seller);
 
-                if (has_hardfork(STEEMIT_HARDFORK_0_24__95) && receives.symbol != STEEM_SYMBOL && receives.symbol != SBD_SYMBOL) {
-                    const auto& ast = get_asset(receives.symbol);
-                    if (ast.fee_percent != 0) {
-                        auto fee = asset(
-                            (uint128_t(receives.amount.value) * ast.fee_percent / STEEMIT_100_PERCENT).to_uint64(),
-                            receives.symbol);
-                        adjust_balance(get_account(ast.creator), fee);
-                        receives -= fee;
-                        trade_fee += fee;
-                        trade_fee_receiver = ast.creator;
-                    }
-                }
                 adjust_balance(seller, receives);
 
                 if (pays == order.amount_for_sale()) {
