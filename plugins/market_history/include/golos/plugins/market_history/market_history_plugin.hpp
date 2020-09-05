@@ -42,6 +42,7 @@ namespace golos {
             DEFINE_API_ARGS(get_market_history,         json_rpc::msg_pack, vector<bucket_object>)
             DEFINE_API_ARGS(get_market_history_buckets, json_rpc::msg_pack, flat_set<uint32_t>)
             DEFINE_API_ARGS(get_open_orders,            json_rpc::msg_pack, std::vector<limit_order>)
+            DEFINE_API_ARGS(get_fillable_orders,        json_rpc::msg_pack, std::vector<limit_order>)
 
             class market_history_plugin : public appbase::plugin<market_history_plugin> {
             public:
@@ -75,7 +76,8 @@ namespace golos {
                                 (get_recent_trades)
                                 (get_market_history)
                                 (get_market_history_buckets)
-                                (get_open_orders))
+                                (get_open_orders)
+                                (get_fillable_orders))
 
                 constexpr const static char *plugin_name = "market_history";
 

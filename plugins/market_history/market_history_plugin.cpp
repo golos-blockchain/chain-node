@@ -42,6 +42,7 @@ namespace golos {
                 vector<bucket_object> get_market_history(const market_pair& pair, uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const;
                 flat_set<uint32_t> get_market_history_buckets() const;
                 std::vector<limit_order> get_open_orders(const market_pair& pair, const std::string& owner) const;
+                std::vector<limit_order> get_fillable_orders(price market_price) const;
 
 
                 void update_market_histories(const golos::chain::operation_notification &o);
@@ -463,6 +464,26 @@ namespace golos {
                 });
             }
 
+            std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_fillable_orders(price market_price) const {
+                return _db.with_weak_read_lock([&]() {
+                    std::vector<limit_order> result;
+
+                    const auto &limit_price_idx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_price>();
+
+                    auto max_price = ~market_price;
+                    auto limit_itr = limit_price_idx.lower_bound(max_price.max());
+                    auto limit_end = limit_price_idx.upper_bound(max_price);
+
+                    bool finished = false;
+                    while (!finished && limit_itr != limit_end) {
+                        result.push_back(*limit_itr);
+                        ++limit_itr;
+                    }
+
+                    return result;
+                });
+            }
+
             market_history_plugin::market_history_plugin() {
             }
 
@@ -646,6 +667,16 @@ namespace golos {
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
                     return _my->get_open_orders(_my->get_market_pair(pair), account);
+                });
+            }
+
+            DEFINE_API(market_history_plugin, get_fillable_orders) {
+                PLUGIN_API_VALIDATE_ARGS(
+                    (price, market_price)
+                );
+                auto &db = _my->database();
+                return db.with_weak_read_lock([&]() {
+                    return _my->get_fillable_orders(market_price);
                 });
             }
 
