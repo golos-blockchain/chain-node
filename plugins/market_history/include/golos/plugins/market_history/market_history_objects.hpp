@@ -39,10 +39,12 @@ namespace golos {
 
             // Api params
             struct market_ticker {
-                double latest = 0;
+                double latest1 = 0; // close_asset2 / close_asset1 (for golos.id's asset1-asset2 pair)
+                double latest2 = 0; // close_asset1 / close_asset2 (for golos.id's asset2-asset1 pair)
                 double lowest_ask = 0;
                 double highest_bid = 0;
-                double percent_change = 0;
+                double percent_change1 = 0; // (for golos.id's asset1-asset2 pair)
+                double percent_change2 = 0; // (for golos.id's asset2-asset1 pair)
                 asset asset1_volume;
                 asset asset2_volume;
                 asset asset1_depth;
@@ -198,7 +200,7 @@ namespace golos {
 } // golos::plugins::market_history
 
 FC_REFLECT((golos::plugins::market_history::market_ticker),
-           (latest)(lowest_ask)(highest_bid)(percent_change)(asset1_volume)(asset2_volume)(asset1_depth)(asset2_depth));
+           (latest1)(latest2)(lowest_ask)(highest_bid)(percent_change1)(percent_change2)(asset1_volume)(asset2_volume)(asset1_depth)(asset2_depth));
 FC_REFLECT((golos::plugins::market_history::market_volume),
            (asset1_volume)(asset2_volume));
 FC_REFLECT((golos::plugins::market_history::market_depth),

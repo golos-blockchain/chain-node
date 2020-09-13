@@ -221,15 +221,24 @@ namespace golos {
                 market_ticker result;
 
                 if (itr != bucket_idx.end()) {
-                    auto open = (asset(itr->open_asset2, pair.second) /
+                    auto open1 = (asset(itr->open_asset2, pair.second) /
                                  asset(itr->open_asset1, pair.first)).to_real();
-                    result.latest = (asset(itr->close_asset2, pair.second) /
+                    result.latest1 = (asset(itr->close_asset2, pair.second) /
                                      asset(itr->close_asset1, pair.first)).to_real();
-                    result.percent_change =
-                            ((result.latest - open) / open) * 100;
+                    result.percent_change1 =
+                            ((result.latest1 - open1) / open1) * 100;
+
+                    auto open2 = (asset(itr->open_asset1, pair.first) /
+                                 asset(itr->open_asset2, pair.second)).to_real();
+                    result.latest2 = (asset(itr->close_asset1, pair.first) /
+                                     asset(itr->close_asset2, pair.second)).to_real();
+                    result.percent_change2 =
+                            ((result.latest2 - open2) / open2) * 100;
                 } else {
-                    result.latest = 0;
-                    result.percent_change = 0;
+                    result.latest1 = 0;
+                    result.percent_change1 = 0;
+                    result.latest2 = 0;
+                    result.percent_change2 = 0;
                 }
 
                 auto orders = get_order_book(pair, 1);
