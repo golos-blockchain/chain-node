@@ -1581,13 +1581,23 @@ namespace golos { namespace protocol {
             }
         };
 
+        struct is_invite_referral {
+            bool is_referral;
+        };
+
+        using invite_extension = static_variant<
+            is_invite_referral
+        >;
+
+        using invite_extensions_type = flat_set<invite_extension>;
+
         class invite_operation : public base_operation {
         public:
             account_name_type creator;
             asset balance;
             public_key_type invite_key;
 
-            extensions_type extensions;
+            invite_extensions_type extensions;
 
             void validate() const;
             void get_required_active_authorities(flat_set<account_name_type>& a) const {
@@ -1849,6 +1859,8 @@ FC_REFLECT((golos::protocol::donate_operation), (from)(to)(amount)(memo)(extensi
 FC_REFLECT((golos::protocol::transfer_to_tip_operation), (from)(to)(amount)(memo)(extensions))
 FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(memo)(extensions))
 
+FC_REFLECT((golos::protocol::is_invite_referral), (is_referral))
+FC_REFLECT_TYPENAME((golos::protocol::invite_extension));
 FC_REFLECT((golos::protocol::invite_operation), (creator)(balance)(invite_key)(extensions))
 FC_REFLECT((golos::protocol::invite_claim_operation), (initiator)(receiver)(invite_secret)(extensions))
 

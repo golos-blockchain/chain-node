@@ -3311,7 +3311,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
-        annotated_signed_transaction wallet_api::invite(account_name_type creator, asset balance, public_key_type invite_key, bool broadcast)
+        annotated_signed_transaction wallet_api::invite(account_name_type creator, asset balance, public_key_type invite_key, const invite_extensions_type& extensions, bool broadcast)
         {
             WALLET_CHECK_UNLOCKED();
 
@@ -3319,6 +3319,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             op.creator = creator;
             op.balance = balance;
             op.invite_key = invite_key;
+            op.extensions = extensions;
 
             signed_transaction tx;
             tx.operations.push_back( op );

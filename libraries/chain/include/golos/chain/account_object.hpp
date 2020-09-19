@@ -298,6 +298,7 @@ public:
     account_name_type creator;
     public_key_type invite_key;
     asset balance;
+    bool is_referral = false;
     time_point_sec time;
 };
 
@@ -666,7 +667,7 @@ FC_REFLECT((golos::chain::change_recovery_account_request_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::change_recovery_account_request_object, golos::chain::change_recovery_account_request_index)
 
 FC_REFLECT((golos::chain::invite_object),
-        (id)(creator)(invite_key)(balance)(time)
+        (id)(creator)(invite_key)(balance)(is_referral)(time)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::invite_object, golos::chain::invite_index)
 

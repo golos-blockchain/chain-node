@@ -1484,7 +1484,7 @@ namespace golos { namespace wallet {
              */
             annotated_signed_transaction transfer_from_tip(string from, string to, asset amount, string memo, bool broadcast = false);
 
-            annotated_signed_transaction invite(account_name_type creator, asset balance, public_key_type invite_key, bool broadcast = false);
+            annotated_signed_transaction invite(account_name_type creator, asset balance, public_key_type invite_key, const invite_extensions_type& extensions, bool broadcast = false);
 
             annotated_signed_transaction claim_invite(account_name_type initiator, account_name_type receiver, string invite_secret, bool broadcast = false);
 

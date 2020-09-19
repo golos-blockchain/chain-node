@@ -305,6 +305,8 @@ namespace golos { namespace chain {
 
             GOLOS_CHECK_OBJECT_MISSING(_db, account, op.new_account_name);
 
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+
             const auto& new_account = _db.create<account_object>([&](account_object& acc) {
                 acc.name = op.new_account_name;
                 acc.memo_key = op.memo_key;
@@ -314,6 +316,12 @@ namespace golos { namespace chain {
                 acc.last_claim = now;
                 acc.mined = false;
                 acc.recovery_account = op.creator;
+                if (inv.is_referral && inv.creator != STEEMIT_NULL_ACCOUNT) {
+                    acc.referrer_account = inv.creator;
+                    acc.referrer_interest_rate = median_props.max_referral_interest_rate;
+                    acc.referral_end_date = now + median_props.max_referral_term_sec;
+                    acc.referral_break_fee = median_props.max_referral_break_fee;
+                }
             });
             store_account_json_metadata(_db, op.new_account_name, op.json_metadata);
 
@@ -2871,6 +2879,26 @@ void delegate_vesting_shares(
             }
         }
 
+        struct invite_extension_visitor {
+            invite_extension_visitor(const invite_object& inv, database& db)
+                    : _inv(inv), _db(db) {
+            }
+
+            using result_type = void;
+
+            const invite_object& _inv;
+            database& _db;
+
+            result_type operator()(const is_invite_referral& iir) const {
+                if (!iir.is_referral) return;
+                ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__120, "is_invite_referral");
+
+                _db.modify(_inv, [&](auto& inv) {
+                    inv.is_referral = true;
+                });
+            }
+        };
+
         void invite_evaluator::do_apply(const invite_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_operation");
 
@@ -2898,12 +2926,16 @@ void delegate_vesting_shares(
             GOLOS_CHECK_OBJECT_MISSING(_db, invite, op.invite_key);
 
             _db.adjust_balance(creator, -op.balance);
-            _db.create<invite_object>([&](auto& inv) {
+            const auto& new_invite = _db.create<invite_object>([&](auto& inv) {
                 inv.creator = op.creator;
                 inv.invite_key = op.invite_key;
                 inv.balance = op.balance;
                 inv.time = _db.head_block_time();
             });
+
+            for (auto& e : op.extensions) {
+                e.visit(invite_extension_visitor(new_invite, _db));
+            }
         }
 
         void invite_claim_evaluator::do_apply(const invite_claim_operation& op) {
