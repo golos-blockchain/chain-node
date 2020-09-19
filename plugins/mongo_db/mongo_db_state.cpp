@@ -2012,4 +2012,12 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const invite_donate_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const invite_transfer_operation& op) -> result_type {
+
+    }
+
 }}}

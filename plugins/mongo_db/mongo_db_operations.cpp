@@ -872,4 +872,14 @@ namespace mongo_db {
         return body;
     }
 
+    auto operation_writer::operator()(const invite_donate_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const invite_transfer_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
 }}}

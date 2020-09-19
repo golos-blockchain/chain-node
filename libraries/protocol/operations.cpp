@@ -40,6 +40,14 @@ namespace golos {
             bool operator()(const invite_claim_operation &) const {
                 return true;
             }
+
+            bool operator()(const invite_donate_operation &) const {
+                return true;
+            }
+
+            bool operator()(const invite_transfer_operation &) const {
+                return true;
+            }
         };
 
         bool is_market_operation(const operation &op) {

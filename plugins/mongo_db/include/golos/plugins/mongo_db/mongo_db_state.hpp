@@ -108,6 +108,8 @@ namespace mongo_db {
         result_type operator()(const asset_issue_operation& op);
         result_type operator()(const asset_transfer_operation& op);
         result_type operator()(const override_transfer_operation& op);
+        result_type operator()(const invite_donate_operation& op);
+        result_type operator()(const invite_transfer_operation& op);
 
         void write_global_property_object(const dynamic_global_property_object& dgpo, bool history);
 

@@ -2886,23 +2886,23 @@ void delegate_vesting_shares(
                 GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, op.balance);
                 if (op.balance.symbol == STEEM_SYMBOL) {
                     GOLOS_CHECK_VALUE(op.balance >= median_props.min_invite_balance,
-                        "Insufficient invite balance: ${f} required, ${p} provided.", ("f", op.balance)("p", median_props.min_invite_balance));
+                        "Insufficient invite balance: ${r} required, ${p} provided.", ("r", median_props.min_invite_balance)("p", op.balance));
                 } else {
                     auto balance = asset(op.balance.amount / op.balance.precision(), op.balance.symbol);
                     auto min_invite_balance = asset(median_props.min_invite_balance.amount / 1000, op.balance.symbol);
                     GOLOS_CHECK_VALUE(balance >= min_invite_balance,
-                        "Insufficient invite balance: ${f} required, ${p} provided.", ("f", balance)("p", min_invite_balance));
+                        "Insufficient invite balance: ${r} required, ${p} provided.", ("r", min_invite_balance)("p", balance));
                 }
             });
 
             GOLOS_CHECK_OBJECT_MISSING(_db, invite, op.invite_key);
 
             _db.adjust_balance(creator, -op.balance);
-            _db.create<invite_object>([&](auto& c) {
-                c.creator = op.creator;
-                c.invite_key = op.invite_key;
-                c.balance = op.balance;
-                c.time = _db.head_block_time();
+            _db.create<invite_object>([&](auto& inv) {
+                inv.creator = op.creator;
+                inv.invite_key = op.invite_key;
+                inv.balance = op.balance;
+                inv.time = _db.head_block_time();
             });
         }
 
@@ -3032,6 +3032,74 @@ void delegate_vesting_shares(
                 _db.adjust_balance(from_account, -op.amount);
                 _db.adjust_balance(to_account, op.amount);
             });
+        }
+
+        void invite_donate_evaluator::do_apply(const invite_donate_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__111, "invite_donate_operation");
+
+            const auto& from_account = _db.get_account(op.from);
+
+            if (from_account.active_challenged) {
+                _db.modify(from_account, [&](auto& a) {
+                    a.active_challenged = false;
+                    a.last_active_proved = _db.head_block_time();
+                });
+            }
+
+            const auto& inv = _db.get_invite(op.invite_key);
+            GOLOS_CHECK_OP_PARAM(op, amount, {
+                GOLOS_CHECK_VALUE(inv.balance.symbol == op.amount.symbol, "Invite can be donated only by amount with the same asset symbol.");
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, op.amount);
+                _db.adjust_balance(from_account, -op.amount);
+            });
+
+            _db.modify(inv, [&](auto& inv) {
+                inv.balance += op.amount;
+            });
+        }
+
+        void invite_transfer_evaluator::do_apply(const invite_transfer_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__111, "invite_transfer_operation");
+
+            const auto& from_invite = _db.get_invite(op.from);
+            GOLOS_CHECK_OP_PARAM(op, amount, {
+                GOLOS_CHECK_VALUE(from_invite.balance.symbol == op.amount.symbol, "Cannot transfer amount from invite which has balance in another asset symbol.");
+                GOLOS_CHECK_VALUE(from_invite.balance >= op.amount, "Invite has insufficient funds.");
+            });
+
+            auto* to_invite = _db.find_invite(op.to);
+            if (to_invite) {
+                GOLOS_CHECK_OP_PARAM(op, amount, {
+                    GOLOS_CHECK_VALUE(to_invite->balance.symbol == op.amount.symbol, "Cannot transfer amount to invite which has balance in another asset symbol.");
+                });
+                _db.modify(*to_invite, [&](auto& inv) {
+                    inv.balance += op.amount;
+                });
+            } else {
+                const auto& median_props = _db.get_witness_schedule_object().median_props;
+                if (op.amount.symbol == STEEM_SYMBOL) {
+                    GOLOS_CHECK_VALUE(op.amount >= median_props.min_invite_balance,
+                        "Insufficient invite balance: ${r} required, ${p} provided.", ("r", median_props.min_invite_balance)("p", op.amount));
+                } else {
+                    auto amount = asset(op.amount.amount / op.amount.precision(), op.amount.symbol);
+                    auto min_invite_balance = asset(median_props.min_invite_balance.amount / 1000, op.amount.symbol);
+                    GOLOS_CHECK_VALUE(amount >= min_invite_balance,
+                        "Insufficient invite balance: ${r} required, ${p} provided.", ("r", min_invite_balance)("p", amount));
+                }
+                _db.create<invite_object>([&](auto& inv) {
+                    inv.creator = STEEMIT_NULL_ACCOUNT;
+                    inv.invite_key = op.to;
+                    inv.balance = op.amount;
+                    inv.time = _db.head_block_time();
+                });
+            }
+
+            _db.modify(from_invite, [&](auto& inv) {
+                inv.balance -= op.amount;
+            });
+            if (from_invite.balance.amount == 0) {
+                _db.remove(from_invite);
+            }
         }
 
 } } // golos::chain

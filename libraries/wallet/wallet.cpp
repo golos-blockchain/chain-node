@@ -3428,6 +3428,39 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction(tx, broadcast);
         }
+
+        annotated_signed_transaction wallet_api::donate_to_invite(const string& from, public_key_type invite_key, asset amount, const string& memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            check_memo(memo, get_account(from));
+            invite_donate_operation op;
+            op.from       = from;
+            op.invite_key = invite_key;
+            op.amount = amount;
+            op.memo = get_encrypted_memo(from, from, memo);
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::transfer_invite(public_key_type from, public_key_type to, asset amount, const string& memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            invite_transfer_operation op;
+            op.from = from;
+            op.to   = to;
+            op.amount = amount;
+            op.memo = memo;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
 } } // golos::wallet
 
 FC_REFLECT_ENUM(golos::wallet::logic_errors::types,

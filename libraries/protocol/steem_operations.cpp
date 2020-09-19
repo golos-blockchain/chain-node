@@ -926,4 +926,31 @@ namespace golos { namespace protocol {
             });
             GOLOS_CHECK_PARAM_ACCOUNT(to);
         }
+
+        void invite_donate_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(from);
+            GOLOS_CHECK_PARAM(invite_key, {
+                GOLOS_CHECK_VALUE(invite_key != public_key_type(), "Invite key cannot be blank.");
+            });
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
+                GOLOS_CHECK_VALUE_UTF8(memo);
+            });
+        }
+
+        void invite_transfer_operation::validate() const {
+            GOLOS_CHECK_PARAM(from, {
+                GOLOS_CHECK_VALUE(from != public_key_type(), "Invite key cannot be blank.");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to != public_key_type(), "Invite key cannot be blank.");
+                GOLOS_CHECK_VALUE(to != from, "Cannot transfer to same invite.");
+            });
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
+                GOLOS_CHECK_VALUE_UTF8(memo);
+            });
+        }
 } } // golos::protocol

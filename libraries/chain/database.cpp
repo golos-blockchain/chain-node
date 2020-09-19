@@ -3608,6 +3608,8 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<asset_issue_evaluator>();
             _my->_evaluator_registry.register_evaluator<asset_transfer_evaluator>();
             _my->_evaluator_registry.register_evaluator<override_transfer_evaluator>();
+            _my->_evaluator_registry.register_evaluator<invite_donate_evaluator>();
+            _my->_evaluator_registry.register_evaluator<invite_transfer_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {

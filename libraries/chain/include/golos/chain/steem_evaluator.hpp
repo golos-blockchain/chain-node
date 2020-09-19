@@ -68,6 +68,8 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(asset_transfer)
         DEFINE_EVALUATOR(override_transfer)
         DEFINE_EVALUATOR(transit_to_cyberway)
+        DEFINE_EVALUATOR(invite_donate)
+        DEFINE_EVALUATOR(invite_transfer)
 
         class proposal_create_evaluator: public evaluator_impl<proposal_create_evaluator> {
         public:

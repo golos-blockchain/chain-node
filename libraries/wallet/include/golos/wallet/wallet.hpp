@@ -1497,6 +1497,10 @@ namespace golos { namespace wallet {
             annotated_signed_transaction transfer_asset(account_name_type creator, const string& symbol, account_name_type new_owner, bool broadcast = false);
 
             annotated_signed_transaction override_transfer(const string& creator, const string& from, const string& to, asset amount, const string& memo, bool broadcast = false);
+
+            annotated_signed_transaction donate_to_invite(const string& from, public_key_type invite_key, asset amount, const string& memo, bool broadcast = false);
+
+            annotated_signed_transaction transfer_invite(public_key_type from, public_key_type to, asset amount, const string& memo, bool broadcast = false);
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1644,13 +1648,18 @@ FC_API( golos::wallet::wallet_api,
                 (donate)
                 (transfer_to_tip)
                 (transfer_from_tip)
+
                 (invite)
                 (claim_invite)
+
                 (create_asset)
                 (update_asset)
                 (issue_asset)
                 (transfer_asset)
                 (override_transfer)
+
+                (donate_to_invite)
+                (transfer_invite)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))

@@ -614,6 +614,13 @@ if (options.count(name)) { \
             insert_sender(op.from);
             insert_receiver(op.to);
         }
+
+        void operator()(const invite_donate_operation& op) {
+            insert_dual(op.from);
+        }
+
+        void operator()(const invite_transfer_operation& op) {
+        }
     };
 
     void operation_get_impacted_accounts(const operation& op, impacted_accounts& result) {

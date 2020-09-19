@@ -1683,6 +1683,42 @@ namespace golos { namespace protocol {
             }
         };
 
+        class invite_donate_operation : public base_operation {
+        public:
+            account_name_type from;
+            public_key_type invite_key;
+            asset amount;
+
+            /// The memo is plain-text, any encryption on the memo is up to
+            /// a higher level protocol.
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
+
+        class invite_transfer_operation : public base_operation {
+        public:
+            public_key_type from;
+            public_key_type to;
+            asset amount;
+
+            /// The memo is plain-text, any encryption on the memo is up to
+            /// a higher level protocol.
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_authorities(vector<authority> &a) const {
+                a.push_back(authority(1, from, 1));
+            }
+        };
+
 } } // golos::protocol
 
 
@@ -1815,8 +1851,12 @@ FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(me
 
 FC_REFLECT((golos::protocol::invite_operation), (creator)(balance)(invite_key)(extensions))
 FC_REFLECT((golos::protocol::invite_claim_operation), (initiator)(receiver)(invite_secret)(extensions))
+
 FC_REFLECT((golos::protocol::asset_create_operation), (creator)(max_supply)(allow_fee)(allow_override_transfer)(json_metadata)(extensions))
 FC_REFLECT((golos::protocol::asset_issue_operation), (creator)(amount)(to)(extensions))
 FC_REFLECT((golos::protocol::asset_update_operation), (creator)(symbol)(symbols_whitelist)(fee_percent)(json_metadata)(extensions))
 FC_REFLECT((golos::protocol::asset_transfer_operation), (creator)(symbol)(new_owner)(extensions))
 FC_REFLECT((golos::protocol::override_transfer_operation), (creator)(from)(to)(amount)(memo)(extensions))
+
+FC_REFLECT((golos::protocol::invite_donate_operation), (from)(invite_key)(amount)(memo)(extensions))
+FC_REFLECT((golos::protocol::invite_transfer_operation), (from)(to)(amount)(memo)(extensions))
