@@ -29,19 +29,20 @@ namespace golos {
                 ~market_history_plugin_impl() {
                 }
 
-                market_pair get_market_pair(asset asset1, asset asset2) const;
-                market_pair get_market_pair(const market_str_pair& pair) const;
+                symbol_type_pair get_symbol_type_pair(asset asset1, asset asset2, bool* pair_reversed = nullptr) const;
+                symbol_type_pair get_symbol_type_pair(const symbol_name_pair& pair, bool* pair_reversed = nullptr) const;
+                void reverse_price(double& price);
 
-                market_ticker get_ticker(const market_pair& pair) const;
-                market_volume get_volume(const market_pair& pair) const;
-                market_depth get_depth(const market_pair& pair) const;
-                order_book get_order_book(const market_pair& pair, uint32_t limit) const;
-                order_book_extended get_order_book_extended(const market_pair& pair, uint32_t limit) const;
-                vector<market_trade> get_trade_history(const market_pair& pair, time_point_sec start, time_point_sec end, uint32_t limit) const;
-                vector<market_trade> get_recent_trades(const market_pair& pair, uint32_t limit) const;
-                vector<bucket_object> get_market_history(const market_pair& pair, uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const;
+                market_ticker get_ticker(const symbol_type_pair& pair) const;
+                market_volume get_volume(const symbol_type_pair& pair) const;
+                market_depth get_depth(const symbol_type_pair& pair) const;
+                order_book get_order_book(const symbol_type_pair& pair, uint32_t limit) const;
+                order_book_extended get_order_book_extended(const symbol_type_pair& pair, uint32_t limit) const;
+                vector<market_trade> get_trade_history(const symbol_type_pair& pair, time_point_sec start, time_point_sec end, uint32_t limit) const;
+                vector<market_trade> get_recent_trades(const symbol_type_pair& pair, uint32_t limit) const;
+                vector<bucket_object> get_market_history(const symbol_type_pair& pair, uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const;
                 flat_set<uint32_t> get_market_history_buckets() const;
-                std::vector<limit_order> get_open_orders(const market_pair& pair, const std::string& owner) const;
+                std::vector<limit_order> get_open_orders(const symbol_type_pair& pair, const std::string& owner) const;
                 std::vector<limit_order> get_fillable_orders(price market_price) const;
 
 
@@ -81,7 +82,7 @@ namespace golos {
 
                     asset_symbol_type sym1;
                     asset_symbol_type sym2;
-                    std::tie(sym1, sym2) = get_market_pair(op.open_pays, op.current_pays);
+                    std::tie(sym1, sym2) = get_symbol_type_pair(op.open_pays, op.current_pays);
 
                     for (auto bucket : _tracked_buckets) {
                         auto cutoff = db.head_block_time() - fc::seconds(
@@ -181,17 +182,19 @@ namespace golos {
                 }
             }
 
-            market_pair market_history_plugin::market_history_plugin_impl::get_market_pair(asset asset1, asset asset2) const {
+            symbol_type_pair market_history_plugin::market_history_plugin_impl::get_symbol_type_pair(asset asset1, asset asset2, bool* pair_reversed) const {
+                if (pair_reversed) *pair_reversed = false;
                 auto sym1 = asset1.symbol;
                 auto sym2 = asset2.symbol;
                 if (sym2 == STEEM_SYMBOL
                     || (asset2.symbol_name() < asset1.symbol_name() && sym1 != STEEM_SYMBOL)) {
                     std::swap(sym1, sym2);
+                    if (pair_reversed) *pair_reversed = true;
                 }
-                return market_pair(sym1, sym2);
+                return symbol_type_pair(sym1, sym2);
             }
 
-            market_pair market_history_plugin::market_history_plugin_impl::get_market_pair(const market_str_pair& pair) const {
+            symbol_type_pair market_history_plugin::market_history_plugin_impl::get_symbol_type_pair(const symbol_name_pair& pair, bool* pair_reversed) const {
                 GOLOS_CHECK_PARAM(pair, {
                     GOLOS_CHECK_VALUE(pair.first.size() >= 3 && pair.first.size() <= 14, "pair.first must be between 3 and 14");
                     GOLOS_CHECK_VALUE(pair.second.size() >= 3 && pair.second.size() <= 14, "pair.second must be between 3 and 14");
@@ -208,13 +211,18 @@ namespace golos {
                     }
                     return sym;
                 };
-                return get_market_pair(
+                return get_symbol_type_pair(
                     asset(0, sym_from_str(pair.first)),
-                    asset(0, sym_from_str(pair.second))
+                    asset(0, sym_from_str(pair.second)),
+                    pair_reversed
                 );
             }
 
-            market_ticker market_history_plugin::market_history_plugin_impl::get_ticker(const market_pair& pair) const {
+            void market_history_plugin::market_history_plugin_impl::reverse_price(double& price) {
+                if (price != 0) price = 1 / price;
+            }
+
+            market_ticker market_history_plugin::market_history_plugin_impl::get_ticker(const symbol_type_pair& pair) const {
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
                 auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, 86400, database().head_block_time() - 86400));
 
@@ -260,7 +268,7 @@ namespace golos {
                 return result;
             }
 
-            market_volume market_history_plugin::market_history_plugin_impl::get_volume(const market_pair& pair) const {
+            market_volume market_history_plugin::market_history_plugin_impl::get_volume(const symbol_type_pair& pair) const {
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
                 auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, 0, database().head_block_time() - 86400));
                 market_volume result;
@@ -280,7 +288,7 @@ namespace golos {
                 return result;
             }
 
-            market_depth market_history_plugin::market_history_plugin_impl::get_depth(const market_pair& pair) const {
+            market_depth market_history_plugin::market_history_plugin_impl::get_depth(const symbol_type_pair& pair) const {
                 market_depth result;
                 result.asset1_depth = asset(0, pair.first);
                 result.asset2_depth = asset(0, pair.second);
@@ -306,7 +314,7 @@ namespace golos {
                 return result;
             }
 
-            order_book market_history_plugin::market_history_plugin_impl::get_order_book(const market_pair& pair, uint32_t limit) const {
+            order_book market_history_plugin::market_history_plugin_impl::get_order_book(const symbol_type_pair& pair, uint32_t limit) const {
                 const auto& order_idx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_price>();
                 auto itr = order_idx.lower_bound(price::max(pair.second, pair.first));
 
@@ -341,7 +349,7 @@ namespace golos {
                 return result;
             }
 
-            order_book_extended market_history_plugin::market_history_plugin_impl::get_order_book_extended(const market_pair& pair, uint32_t limit) const {
+            order_book_extended market_history_plugin::market_history_plugin_impl::get_order_book_extended(const symbol_type_pair& pair, uint32_t limit) const {
                 order_book_extended result;
 
                 auto max_sell = price::max(pair.second, pair.first);
@@ -385,7 +393,7 @@ namespace golos {
 
 
             vector<market_trade> market_history_plugin::market_history_plugin_impl::get_trade_history(
-                    const market_pair& pair, time_point_sec start, time_point_sec end, uint32_t limit) const {
+                    const symbol_type_pair& pair, time_point_sec start, time_point_sec end, uint32_t limit) const {
                 const auto& bucket_idx = _db.get_index<order_history_index, by_time>();
                 auto itr = bucket_idx.lower_bound(start);
 
@@ -409,7 +417,7 @@ namespace golos {
                 return result;
             }
 
-            vector<market_trade> market_history_plugin::market_history_plugin_impl::get_recent_trades(const market_pair& pair, uint32_t limit) const {
+            vector<market_trade> market_history_plugin::market_history_plugin_impl::get_recent_trades(const symbol_type_pair& pair, uint32_t limit) const {
                 const auto& order_idx = _db.get_index<order_history_index, by_time>();
                 auto itr = order_idx.rbegin();
 
@@ -433,7 +441,7 @@ namespace golos {
             }
 
             vector<bucket_object> market_history_plugin::market_history_plugin_impl::get_market_history(
-                    const market_pair& pair, uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const {
+                    const symbol_type_pair& pair, uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const {
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
                 auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, bucket_seconds, start));
 
@@ -454,7 +462,7 @@ namespace golos {
                 return appbase::app().get_plugin<market_history_plugin>().get_tracked_buckets();
             }
 
-            std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_open_orders(const market_pair& pair, const string& owner) const {
+            std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_open_orders(const symbol_type_pair& pair, const string& owner) const {
                 return _db.with_weak_read_lock([&]() {
                     std::vector<limit_order> result;
                     const auto& idx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_account>();
@@ -564,57 +572,111 @@ namespace golos {
 
             DEFINE_API(market_history_plugin, get_ticker) {
                 PLUGIN_API_VALIDATE_ARGS(
-                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_ticker(_my->get_market_pair(pair));
+                    bool reversed;
+                    auto res = _my->get_ticker(_my->get_symbol_type_pair(pair, &reversed));
+                    if (reversed) {
+                        std::swap(res.latest1, res.latest2);
+                        _my->reverse_price(res.latest1);
+                        _my->reverse_price(res.latest2);
+
+                        std::swap(res.lowest_ask, res.highest_bid);
+                        _my->reverse_price(res.lowest_ask);
+                        _my->reverse_price(res.highest_bid);
+
+                        std::swap(res.percent_change1, res.percent_change2);
+
+                        std::swap(res.asset1_volume, res.asset2_volume);
+                        std::swap(res.asset1_depth, res.asset2_depth);
+                    }
+                    return res;
                 });
             }
 
             DEFINE_API(market_history_plugin, get_volume) {
                 PLUGIN_API_VALIDATE_ARGS(
-                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_volume(_my->get_market_pair(pair));
+                    bool reversed;
+                    auto res = _my->get_volume(_my->get_symbol_type_pair(pair, &reversed));
+                    if (reversed) {
+                        std::swap(res.asset1_volume, res.asset2_volume);
+                    }
+                    return res;
                 });
             }
 
             DEFINE_API(market_history_plugin, get_depth) {
                 PLUGIN_API_VALIDATE_ARGS(
-                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_depth(_my->get_market_pair(pair));
+                    bool reversed;
+                    auto res = _my->get_depth(_my->get_symbol_type_pair(pair, &reversed));
+                    if (reversed) {
+                        std::swap(res.asset1_depth, res.asset2_depth);
+                    }
+                    return res;
                 });
             }
 
             DEFINE_API(market_history_plugin, get_order_book) {
                 PLUGIN_API_VALIDATE_ARGS(
                     (uint32_t, limit)
-                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 GOLOS_CHECK_LIMIT_PARAM(limit, 500);
 
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_order_book(_my->get_market_pair(pair), limit);
+                    bool reversed;
+                    auto res = _my->get_order_book(_my->get_symbol_type_pair(pair, &reversed), limit);
+                    if (reversed) {
+                        std::swap(res.bids, res.asks);
+                        for (auto& order : res.bids) {
+                            std::swap(order.asset1, order.asset2);
+                            _my->reverse_price(order.price);
+                        }
+                        for (auto& order : res.asks) {
+                            std::swap(order.asset1, order.asset2);
+                            _my->reverse_price(order.price);
+                        }
+                    }
+                    return res;
                 });
             }
 
             DEFINE_API(market_history_plugin, get_order_book_extended) {
                 PLUGIN_API_VALIDATE_ARGS(
                     (uint32_t, limit)
-                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 GOLOS_CHECK_LIMIT_PARAM(limit, 1000);
 
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_order_book_extended(_my->get_market_pair(pair), limit);
+                    bool reversed;
+                    auto res = _my->get_order_book_extended(_my->get_symbol_type_pair(pair, &reversed), limit);
+                    if (reversed) {
+                        std::swap(res.bids, res.asks);
+                        for (auto& order : res.bids) {
+                            std::swap(order.asset1, order.asset2);
+                            _my->reverse_price(order.real_price);
+                            order.order_price = ~order.order_price;
+                        }
+                        for (auto& order : res.asks) {
+                            std::swap(order.asset1, order.asset2);
+                            _my->reverse_price(order.real_price);
+                            order.order_price = ~order.order_price;
+                        }
+                    }
+                    return res;
                 });
             }
 
@@ -624,26 +686,26 @@ namespace golos {
                     (time_point_sec, start)
                     (time_point_sec, end)
                     (uint32_t,       limit)
-                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 GOLOS_CHECK_LIMIT_PARAM(limit, 1000);
 
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_trade_history(_my->get_market_pair(pair), start, end, limit);
+                    return _my->get_trade_history(_my->get_symbol_type_pair(pair), start, end, limit);
                 });
             }
 
             DEFINE_API(market_history_plugin, get_recent_trades) {
                 PLUGIN_API_VALIDATE_ARGS(
                     (uint32_t, limit)
-                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 GOLOS_CHECK_LIMIT_PARAM(limit, 1000);
 
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_recent_trades(_my->get_market_pair(pair), limit);
+                    return _my->get_recent_trades(_my->get_symbol_type_pair(pair), limit);
                 });
             }
 
@@ -652,11 +714,11 @@ namespace golos {
                     (uint32_t,       bucket_seconds)
                     (time_point_sec, start)
                     (time_point_sec, end)
-                    (market_str_pair,    pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair,    pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_market_history(_my->get_market_pair(pair), bucket_seconds, start, end);
+                    return _my->get_market_history(_my->get_symbol_type_pair(pair), bucket_seconds, start, end);
                 });
             }
 
@@ -671,11 +733,11 @@ namespace golos {
             DEFINE_API(market_history_plugin, get_open_orders) {
                 PLUGIN_API_VALIDATE_ARGS(
                     (string, account)
-                    (market_str_pair, pair, market_str_pair("GOLOS", "GBG"))
+                    (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_open_orders(_my->get_market_pair(pair), account);
+                    return _my->get_open_orders(_my->get_symbol_type_pair(pair), account);
                 });
             }
 

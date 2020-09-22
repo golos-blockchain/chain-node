@@ -29,8 +29,8 @@ namespace golos {
             using namespace chainbase;
             using namespace golos::protocol;
 
-            using market_pair = std::pair<asset_symbol_type, asset_symbol_type>;
-            using market_str_pair = std::pair<std::string, std::string>;
+            using symbol_type_pair = std::pair<asset_symbol_type, asset_symbol_type>;
+            using symbol_name_pair = std::pair<std::string, std::string>;
 
             DEFINE_API_ARGS(get_ticker,                 json_rpc::msg_pack, market_ticker)
             DEFINE_API_ARGS(get_volume,                 json_rpc::msg_pack, market_volume)
