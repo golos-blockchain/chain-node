@@ -3098,6 +3098,11 @@ void delegate_vesting_shares(
                 GOLOS_CHECK_VALUE(from_invite.balance.symbol == op.amount.symbol, "Cannot transfer amount from invite which has balance in another asset symbol.");
                 GOLOS_CHECK_VALUE(from_invite.balance >= op.amount, "Invite has insufficient funds.");
             });
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+            auto now = _db.head_block_time();
+            GOLOS_CHECK_OP_PARAM(op, from, {
+                GOLOS_CHECK_VALUE(now >= (from_invite.last_transfer + median_props.invite_transfer_interval_sec), "Cannot transfer from invite while ${t} sec timeout is not exceed.", ("t", median_props.invite_transfer_interval_sec));
+            });
 
             auto* to_invite = _db.find_invite(op.to);
             if (to_invite) {
@@ -3106,28 +3111,30 @@ void delegate_vesting_shares(
                 });
                 _db.modify(*to_invite, [&](auto& inv) {
                     inv.balance += op.amount;
+                    inv.last_transfer = now;
                 });
             } else {
-                const auto& median_props = _db.get_witness_schedule_object().median_props;
                 if (op.amount.symbol == STEEM_SYMBOL) {
                     GOLOS_CHECK_VALUE(op.amount >= median_props.min_invite_balance,
-                        "Insufficient invite balance: ${r} required, ${p} provided.", ("r", median_props.min_invite_balance)("p", op.amount));
+                        "New invite will have insufficient balance: ${r} required, ${p} provided.", ("r", median_props.min_invite_balance)("p", op.amount));
                 } else {
                     auto amount = asset(op.amount.amount / op.amount.precision(), op.amount.symbol);
                     auto min_invite_balance = asset(median_props.min_invite_balance.amount / 1000, op.amount.symbol);
                     GOLOS_CHECK_VALUE(amount >= min_invite_balance,
-                        "Insufficient invite balance: ${r} required, ${p} provided.", ("r", min_invite_balance)("p", amount));
+                        "New invite will have insufficient balance: ${r} required, ${p} provided.", ("r", min_invite_balance)("p", amount));
                 }
                 _db.create<invite_object>([&](auto& inv) {
                     inv.creator = STEEMIT_NULL_ACCOUNT;
                     inv.invite_key = op.to;
                     inv.balance = op.amount;
-                    inv.time = _db.head_block_time();
+                    inv.time = now;
+                    inv.last_transfer = now;
                 });
             }
 
             _db.modify(from_invite, [&](auto& inv) {
                 inv.balance -= op.amount;
+                inv.last_transfer = now;
             });
             if (from_invite.balance.amount == 0) {
                 _db.remove(from_invite);

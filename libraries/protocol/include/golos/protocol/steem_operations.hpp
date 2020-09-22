@@ -800,6 +800,11 @@ namespace golos { namespace protocol {
              */
             asset asset_creation_fee = GOLOS_DEF_ASSET_CREATION_FEE;
 
+            /**
+             * Minimum interval between fund transfers from same invite
+             */
+            uint32_t invite_transfer_interval_sec = GOLOS_DEF_INVITE_TRANSFER_INTERVAL_SEC;
+
             void validate() const;
 
             chain_properties_24& operator=(const chain_properties_17& src) {
@@ -1772,7 +1777,7 @@ FC_REFLECT_DERIVED(
     (claim_idleness_time)(min_invite_balance))
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_24), ((golos::protocol::chain_properties_23)),
-    (asset_creation_fee))
+    (asset_creation_fee)(invite_transfer_interval_sec))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

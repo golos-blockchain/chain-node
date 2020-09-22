@@ -300,6 +300,7 @@ public:
     asset balance;
     bool is_referral = false;
     time_point_sec time;
+    time_point_sec last_transfer;
 };
 
 class account_balance_object
@@ -667,7 +668,7 @@ FC_REFLECT((golos::chain::change_recovery_account_request_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::change_recovery_account_request_object, golos::chain::change_recovery_account_request_index)
 
 FC_REFLECT((golos::chain::invite_object),
-        (id)(creator)(invite_key)(balance)(is_referral)(time)
+        (id)(creator)(invite_key)(balance)(is_referral)(time)(last_transfer)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::invite_object, golos::chain::invite_index)
 

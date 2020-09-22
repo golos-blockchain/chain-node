@@ -53,6 +53,7 @@ namespace golos { namespace api {
         }
         if (db.has_hardfork(STEEMIT_HARDFORK_0_24)) {
             asset_creation_fee = src.asset_creation_fee;
+            invite_transfer_interval_sec = src.invite_transfer_interval_sec;
         }
     }
 

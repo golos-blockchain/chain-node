@@ -369,6 +369,7 @@ namespace golos { namespace wallet {
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_24)) {
                         result["asset_creation_fee"]  = median_props.asset_creation_fee;
+                        result["invite_transfer_interval_sec"]  = median_props.invite_transfer_interval_sec;
                     }
 
                     return result;
@@ -2353,6 +2354,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 chain_properties_24 p24;
                 p24 = p;
                 SET_PROP(p24, asset_creation_fee);
+                SET_PROP(p24, invite_transfer_interval_sec);
                 op.props = p24;
             }
 #undef SET_PROP

@@ -2238,6 +2238,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_23::claim_idleness_time);
             calc_median(&chain_properties_23::min_invite_balance);
             calc_median(&chain_properties_24::asset_creation_fee);
+            calc_median(&chain_properties_24::invite_transfer_interval_sec);
 
             if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
                 #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \

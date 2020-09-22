@@ -90,6 +90,7 @@ namespace golos { namespace wallet {
             fc::optional<asset> min_invite_balance;
 
             fc::optional<asset> asset_creation_fee;
+            fc::optional<uint32_t> invite_transfer_interval_sec;
         };
 
         struct optional_private_box_query {
@@ -1691,7 +1692,8 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
     (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time)
     (claim_idleness_time)(min_invite_balance)
-    (asset_creation_fee))
+    (asset_creation_fee)
+    (invite_transfer_interval_sec))
 
 FC_REFLECT(
     (golos::wallet::message_body),

@@ -373,6 +373,7 @@ namespace golos { namespace protocol {
         void chain_properties_24::validate() const {
             chain_properties_23::validate();
             GOLOS_CHECK_ASSET_GE(asset_creation_fee, GBG, GOLOS_MIN_ASSET_CREATION_FEE);
+            GOLOS_CHECK_VALUE_GE(invite_transfer_interval_sec, GOLOS_MIN_INVITE_TRANSFER_INTERVAL_SEC);
         }
 
         void witness_update_operation::validate() const {
