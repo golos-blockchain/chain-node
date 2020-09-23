@@ -737,7 +737,15 @@ namespace golos {
                 );
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_open_orders(_my->get_symbol_type_pair(pair), account);
+                    bool reversed;
+                    auto res = _my->get_open_orders(_my->get_symbol_type_pair(pair, &reversed), account);
+                    if (reversed) {
+                        for (auto& order : res) {
+                            _my->reverse_price(order.real_price);
+                            order.sell_price = ~order.sell_price;
+                        }
+                    }
+                    return res;
                 });
             }
 
