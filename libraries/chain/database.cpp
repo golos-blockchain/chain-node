@@ -3611,6 +3611,7 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<override_transfer_evaluator>();
             _my->_evaluator_registry.register_evaluator<invite_donate_evaluator>();
             _my->_evaluator_registry.register_evaluator<invite_transfer_evaluator>();
+            _my->_evaluator_registry.register_evaluator<limit_order_cancel_ex_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -5485,8 +5486,8 @@ namespace golos { namespace chain {
                     }
                     break;
                 case STEEMIT_HARDFORK_0_24:
-#ifdef STEEMIT_BUILD_LIVETEST
                     {
+#ifdef STEEMIT_BUILD_LIVETEST
                         //active and signing_key
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
                         //"wif_priv_key": "5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw",
@@ -5510,15 +5511,25 @@ namespace golos { namespace chain {
                             modify(*itr, [&](witness_object &w) {
                                 w.signing_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
                             });
-                        }                
-                    }
+                        }
 #endif
 #ifdef STEEMIT_BUILD_TESTNET
-                    adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
-                    modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
-                        auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
-                    });
+                        adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
+                        modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
+                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
+                        });
 #endif
+                        auto* bittrex = find_account("bittrex");
+                        if (bittrex) {
+                            auto& null = get_account(STEEMIT_NULL_ACCOUNT);
+                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->balance, "Burning tokens out of circulation"));
+                            adjust_balance(null, bittrex->balance);
+                            adjust_balance(*bittrex, -bittrex->balance);
+                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->sbd_balance, "Burning tokens out of circulation"));
+                            adjust_balance(null, bittrex->sbd_balance);
+                            adjust_balance(*bittrex, -bittrex->sbd_balance);
+                        }
+                    }
                     break;
                 default:
                     break;

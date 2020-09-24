@@ -299,6 +299,23 @@ namespace golos { namespace protocol {
             asset savings_sbd_amount;
             asset savings_steem_amount;
         };
+
+        struct internal_transfer_operation : public virtual_operation {
+            internal_transfer_operation() {
+            }
+            internal_transfer_operation(const account_name_type& f, const account_name_type& t, const asset& a, const string& m)
+                    : from(f), to(t), amount(a), memo(m) {
+            }
+
+            account_name_type from;
+            /// Account to transfer asset to
+            account_name_type to;
+            /// The amount of asset to transfer from @ref from to @ref to
+            asset amount;
+
+            /// The memo is plain-text only.
+            string memo;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -322,3 +339,4 @@ FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)
 FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_author)(worker_request_permlink)(reward)(reward_in_vests_if_vest))
 FC_REFLECT((golos::protocol::worker_state_operation), (author)(permlink)(state))
 FC_REFLECT((golos::protocol::convert_sbd_debt_operation), (owner)(sbd_amount)(steem_amount)(savings_sbd_amount)(savings_steem_amount))
+FC_REFLECT((golos::protocol::internal_transfer_operation), (from)(to)(amount)(memo))

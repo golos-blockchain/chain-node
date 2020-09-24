@@ -3464,6 +3464,26 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction(tx, broadcast);
         }
+
+        annotated_signed_transaction wallet_api::cancel_orders(string owner, string base, string quote, bool reverse, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            limit_order_cancel_ex_operation op;
+            op.owner = owner;
+            op.orderid = 0;
+
+            pair_to_cancel ptc;
+            ptc.base = base;
+            ptc.quote = quote;
+            ptc.reverse = reverse;
+            op.extensions.insert(ptc);
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
 } } // golos::wallet
 
 FC_REFLECT_ENUM(golos::wallet::logic_errors::types,

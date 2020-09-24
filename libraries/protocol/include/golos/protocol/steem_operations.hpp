@@ -1116,6 +1116,35 @@ namespace golos { namespace protocol {
         };
 
 
+        struct pair_to_cancel {
+            std::string base;
+            std::string quote;
+            bool reverse;
+        };
+
+        using limit_order_cancel_extension = static_variant<
+            pair_to_cancel
+        >;
+
+        using limit_order_cancel_extensions_type = flat_set<limit_order_cancel_extension>;
+
+        /**
+         *  limit_order_cancel with extensions
+         */
+        struct limit_order_cancel_ex_operation : public base_operation {
+            account_name_type owner;
+            uint32_t orderid = 0;
+
+            limit_order_cancel_extensions_type extensions;
+
+            void validate() const;
+
+            void get_required_active_authorities(flat_set<account_name_type> &a) const {
+                a.insert(owner);
+            }
+        };
+
+
         struct pow {
             public_key_type worker;
             digest_type input;
@@ -1828,6 +1857,9 @@ FC_REFLECT((golos::protocol::custom_binary_operation), (required_owner_auths)(re
 FC_REFLECT((golos::protocol::limit_order_create_operation), (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration))
 FC_REFLECT((golos::protocol::limit_order_create2_operation), (owner)(orderid)(amount_to_sell)(exchange_rate)(fill_or_kill)(expiration))
 FC_REFLECT((golos::protocol::limit_order_cancel_operation), (owner)(orderid))
+FC_REFLECT((golos::protocol::pair_to_cancel), (base)(quote)(reverse));
+FC_REFLECT_TYPENAME((golos::protocol::limit_order_cancel_extension));
+FC_REFLECT((golos::protocol::limit_order_cancel_ex_operation), (owner)(orderid)(extensions))
 
 FC_REFLECT((golos::protocol::delete_comment_operation), (author)(permlink));
 

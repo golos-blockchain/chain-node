@@ -2215,6 +2215,15 @@ namespace golos { namespace chain {
                         "Limit order must be for the GOLOS:GBG market");
             }
 
+            GOLOS_CHECK_VALUE(
+                o.amount_to_sell.symbol == STEEM_SYMBOL ||
+                o.amount_to_sell.symbol == SBD_SYMBOL ||
+                _db.get_asset(o.amount_to_sell.symbol).whitelists(o.exchange_rate.quote.symbol), "Selling asset must whitelist receiving");
+            GOLOS_CHECK_VALUE(
+                o.exchange_rate.quote.symbol == STEEM_SYMBOL ||
+                o.exchange_rate.quote.symbol == SBD_SYMBOL ||
+                _db.get_asset(o.exchange_rate.quote.symbol).whitelists(o.amount_to_sell.symbol), "Receiving asset must whitelist selling");
+
             GOLOS_CHECK_OP_PARAM(o, expiration, {
                 GOLOS_CHECK_VALUE(o.expiration > _db.head_block_time(),
                         "Limit order has to expire after head block time.");
@@ -2245,6 +2254,53 @@ namespace golos { namespace chain {
 
         void limit_order_cancel_evaluator::do_apply(const limit_order_cancel_operation &o) {
             _db.cancel_order(_db.get_limit_order(o.owner, o.orderid));
+        }
+
+        struct limit_order_cancel_extension_visitor {
+            limit_order_cancel_extension_visitor(const account_name_type& o, database& db) : owner(o), _db(db) {
+            }
+
+            using result_type = void;
+
+            bool no_main_usage = false;
+            const account_name_type& owner;
+            database& _db;
+
+            result_type operator()(const pair_to_cancel& ptc) {
+                no_main_usage = true;
+                uint32_t canceled = 0;
+                const auto& idx = _db.get_index<limit_order_index, by_account>();
+                auto itr = idx.lower_bound(owner);
+                while (itr != idx.end() && itr->seller == owner && canceled <= 100) {
+                    if (ptc.base.size() || ptc.quote.size()) {
+                        const auto& base = itr->sell_price.base.symbol_name();
+                        const auto& quote = itr->sell_price.quote.symbol_name();
+                        if ((ptc.base.size() && base != ptc.base && (!ptc.reverse || quote != ptc.base))
+                            ||
+                            (ptc.quote.size() && quote != ptc.quote && (!ptc.reverse || base != ptc.quote))) {
+                            ++itr;
+                            continue;
+                        }
+                    }
+                    const auto& cur = *itr;
+                    ++itr;
+                    _db.cancel_order(cur);
+                    ++canceled;
+                }
+            }
+        };
+
+        void limit_order_cancel_ex_evaluator::do_apply(const limit_order_cancel_ex_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__121, "limit_order_cancel_ex_operation");
+
+            limit_order_cancel_extension_visitor visitor(op.owner, _db);
+            for (auto& e : op.extensions) {
+                e.visit(visitor);
+            }
+
+            if (!visitor.no_main_usage) {
+                _db.cancel_order(_db.get_limit_order(op.owner, op.orderid));
+            }
         }
 
         void report_over_production_evaluator::do_apply(const report_over_production_operation &o) {

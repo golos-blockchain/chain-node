@@ -379,6 +379,10 @@ if (options.count(name)) { \
             insert_pair(op.from, op.to);
         }
 
+        void operator()(const internal_transfer_operation& op) {
+            insert_pair(op.from, op.to);
+        }
+
         void operator()(const transfer_to_vesting_operation& op) {
             auto have_to = op.to != account_name_type();
             insert_pair(op.from, have_to ? op.to: op.from);
@@ -417,6 +421,10 @@ if (options.count(name)) { \
         }
 
         void operator()(const limit_order_cancel_operation& op) {
+            insert_dual(op.owner);
+        }
+
+        void operator()(const limit_order_cancel_ex_operation& op) {
             insert_dual(op.owner);
         }
 

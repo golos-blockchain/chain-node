@@ -882,4 +882,14 @@ namespace mongo_db {
         return body;
     }
 
+    auto operation_writer::operator()(const internal_transfer_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
+    auto operation_writer::operator()(const limit_order_cancel_ex_operation& op) -> result_type {
+        result_type body;
+        return body;
+    }
+
 }}}

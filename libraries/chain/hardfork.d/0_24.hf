@@ -4,6 +4,7 @@
 #define STEEMIT_HARDFORK_0_24__95 (STEEMIT_HARDFORK_0_24) // User-Issued Assets
 #define STEEMIT_HARDFORK_0_24__111 (STEEMIT_HARDFORK_0_24) // invite_transfer, invite_donate
 #define STEEMIT_HARDFORK_0_24__120 (STEEMIT_HARDFORK_0_24) // Creating invites which will add creator as referrer on registering account with them
+#define STEEMIT_HARDFORK_0_24__121 (STEEMIT_HARDFORK_0_24) // limit_order_cancel_ex_operation which cancels all order by specified pair
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_24_TIME  1596240000 // 1 aug 2020 03:00:00 MSK

@@ -1502,6 +1502,9 @@ namespace golos { namespace wallet {
             annotated_signed_transaction donate_to_invite(const string& from, public_key_type invite_key, asset amount, const string& memo, bool broadcast = false);
 
             annotated_signed_transaction transfer_invite(public_key_type from, public_key_type to, asset amount, const string& memo, bool broadcast = false);
+
+            annotated_signed_transaction cancel_orders(string owner, string base, string quote, bool reverse, bool broadcast);
+
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1661,6 +1664,8 @@ FC_API( golos::wallet::wallet_api,
 
                 (donate_to_invite)
                 (transfer_invite)
+
+                (cancel_orders)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))

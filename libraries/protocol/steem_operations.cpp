@@ -611,6 +611,44 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(owner, validate_account_name(owner));
         }
 
+        struct limit_order_cancel_extension_validate_visitor {
+            limit_order_cancel_extension_validate_visitor() {
+            }
+
+            using result_type = void;
+
+            bool no_main_usage = false;
+
+            result_type operator()(const pair_to_cancel& ptc) {
+                no_main_usage = true;
+                auto& base = ptc.base;
+                auto& quote = ptc.quote;
+                GOLOS_CHECK_PARAM(base, {
+                    if (base.size()) {
+                        validate_symbol_name(base);
+                    }
+                });
+                GOLOS_CHECK_PARAM(quote, {
+                    if (quote.size()) {
+                        validate_symbol_name(quote);
+                        GOLOS_CHECK_VALUE(base != quote, "base and quote must be different");
+                    }
+                });
+            }
+        };
+
+        void limit_order_cancel_ex_operation::validate() const {
+            GOLOS_CHECK_PARAM(owner, validate_account_name(owner));
+
+            limit_order_cancel_extension_validate_visitor visitor;
+            for (auto& e : extensions) {
+                e.visit(visitor);
+            }
+            if (visitor.no_main_usage) {
+                GOLOS_CHECK_PARAM(orderid, GOLOS_CHECK_VALUE_EQ(orderid, 0));
+            }
+        }
+
         void convert_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
             /// only allow conversion from GBG to GOLOS, allowing the opposite can enable traders to abuse

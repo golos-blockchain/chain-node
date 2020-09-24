@@ -88,6 +88,7 @@ namespace golos { namespace protocol {
                 override_transfer_operation,
                 invite_donate_operation,
                 invite_transfer_operation,
+                limit_order_cancel_ex_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,
@@ -110,7 +111,8 @@ namespace golos { namespace protocol {
                 total_comment_reward_operation,
                 worker_reward_operation,
                 worker_state_operation,
-                convert_sbd_debt_operation
+                convert_sbd_debt_operation,
+                internal_transfer_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,
