@@ -110,8 +110,6 @@ RUN mkdir /var/cache/golosd && \
 ENV HOME /var/lib/golosd
 RUN chown golosd:golosd -R /var/lib/golosd
 
-ADD share/golosd/testnet_snapshot.json /var/lib/golosd/snapshot5392323.json
-
 # rpc service:
 # http
 EXPOSE 8090
