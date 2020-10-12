@@ -107,7 +107,7 @@ namespace golos { namespace chain {
         void account_create_evaluator::do_apply(const account_create_operation &o) {
             const auto& creator = _db.get_account(o.creator);
 
-            GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, o.fee);
+            GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, o.fee);
 
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
                 const auto& median_props = _db.get_witness_schedule_object().median_props;
@@ -206,8 +206,8 @@ namespace golos { namespace chain {
 
         void account_create_with_delegation_evaluator::do_apply(const account_create_with_delegation_operation& o) {
             const auto& creator = _db.get_account(o.creator);
-            GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, o.fee);
-            GOLOS_CHECK_BALANCE(creator, AVAILABLE_VESTING, o.delegation);
+            GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, o.fee);
+            GOLOS_CHECK_BALANCE(_db, creator, AVAILABLE_VESTING, o.delegation);
 
             const auto& v_share_price = _db.get_dynamic_global_properties().get_vesting_share_price();
             const auto& median_props = _db.get_witness_schedule_object().median_props;
@@ -305,6 +305,8 @@ namespace golos { namespace chain {
 
             GOLOS_CHECK_OBJECT_MISSING(_db, account, op.new_account_name);
 
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+
             const auto& new_account = _db.create<account_object>([&](account_object& acc) {
                 acc.name = op.new_account_name;
                 acc.memo_key = op.memo_key;
@@ -314,6 +316,12 @@ namespace golos { namespace chain {
                 acc.last_claim = now;
                 acc.mined = false;
                 acc.recovery_account = op.creator;
+                if (inv.is_referral && inv.creator != STEEMIT_NULL_ACCOUNT) {
+                    acc.referrer_account = inv.creator;
+                    acc.referrer_interest_rate = median_props.max_referral_interest_rate;
+                    acc.referral_end_date = now + median_props.max_referral_term_sec;
+                    acc.referral_break_fee = median_props.max_referral_break_fee;
+                }
             });
             store_account_json_metadata(_db, op.new_account_name, op.json_metadata);
 
@@ -1003,8 +1011,8 @@ namespace golos { namespace chain {
                 } else {
                     sbd_spent += o.fee;
                 }
-                GOLOS_CHECK_BALANCE(from_account, MAIN_BALANCE, steem_spent);
-                GOLOS_CHECK_BALANCE(from_account, MAIN_BALANCE, sbd_spent);
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, steem_spent);
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, sbd_spent);
                 _db.adjust_balance(from_account, -steem_spent);
                 _db.adjust_balance(from_account, -sbd_spent);
 
@@ -1183,7 +1191,7 @@ namespace golos { namespace chain {
             }
 
             GOLOS_CHECK_OP_PARAM(o, amount, {
-                GOLOS_CHECK_BALANCE(from_account, MAIN_BALANCE, o.amount);
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, o.amount);
                 _db.adjust_balance(from_account, -o.amount);
                 _db.adjust_balance(to_account, o.amount);
             });
@@ -1195,7 +1203,7 @@ namespace golos { namespace chain {
                                                  : from_account;
 
             GOLOS_CHECK_OP_PARAM(o, amount, {
-                GOLOS_CHECK_BALANCE(from_account, MAIN_BALANCE, o.amount);
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, o.amount);
                 _db.adjust_balance(from_account, -o.amount);
                 _db.create_vesting(to_account, o.amount);
             });
@@ -1204,8 +1212,8 @@ namespace golos { namespace chain {
         void withdraw_vesting_evaluator::do_apply(const withdraw_vesting_operation &o) {
             const auto &account = _db.get_account(o.account);
 
-            GOLOS_CHECK_BALANCE(account, VESTING, asset(0, VESTS_SYMBOL));
-            GOLOS_CHECK_BALANCE(account, HAVING_VESTING, o.vesting_shares);
+            GOLOS_CHECK_BALANCE(_db, account, VESTING, asset(0, VESTS_SYMBOL));
+            GOLOS_CHECK_BALANCE(_db, account, HAVING_VESTING, o.vesting_shares);
 
             if (!account.mined && _db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
                 const auto &props = _db.get_dynamic_global_properties();
@@ -2116,7 +2124,7 @@ namespace golos { namespace chain {
 
         void convert_evaluator::do_apply(const convert_operation &o) {
             const auto &owner = _db.get_account(o.owner);
-            GOLOS_CHECK_BALANCE(owner, MAIN_BALANCE, o.amount);
+            GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount);
 
             _db.adjust_balance(owner, -o.amount);
 
@@ -2142,7 +2150,31 @@ namespace golos { namespace chain {
 
         }
 
+        bool inline is_asset_type(asset asset, asset_symbol_type symbol) {
+            return asset.symbol == symbol;
+        }
+
         void limit_order_create_evaluator::do_apply(const limit_order_create_operation& o) {
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto amount_to_sell = o.amount_to_sell;
+                auto min_to_receive = o.min_to_receive;
+                GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
+                           is_asset_type(min_to_receive, SBD_SYMBOL))
+                          || (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
+                              is_asset_type(min_to_receive, STEEM_SYMBOL)),
+                        logic_exception::limit_order_must_be_for_golos_gbg_market,
+                        "Limit order must be for the GOLOS:GBG market");
+            }
+
+            GOLOS_CHECK_VALUE(
+                o.amount_to_sell.symbol == STEEM_SYMBOL ||
+                o.amount_to_sell.symbol == SBD_SYMBOL ||
+                _db.get_asset(o.amount_to_sell.symbol).whitelists(o.min_to_receive.symbol), "Selling asset must whitelist receiving");
+            GOLOS_CHECK_VALUE(
+                o.min_to_receive.symbol == STEEM_SYMBOL ||
+                o.min_to_receive.symbol == SBD_SYMBOL ||
+                _db.get_asset(o.min_to_receive.symbol).whitelists(o.amount_to_sell.symbol), "Receiving asset must whitelist selling");
+
             GOLOS_CHECK_OP_PARAM(o, expiration, {
                 GOLOS_CHECK_VALUE(o.expiration > _db.head_block_time(),
                         "Limit order has to expire after head block time.");
@@ -2150,7 +2182,7 @@ namespace golos { namespace chain {
 
             const auto &owner = _db.get_account(o.owner);
 
-            GOLOS_CHECK_BALANCE(owner, MAIN_BALANCE, o.amount_to_sell);
+            GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount_to_sell);
             _db.adjust_balance(owner, -o.amount_to_sell);
 
             GOLOS_CHECK_OBJECT_MISSING(_db, limit_order, o.owner, o.orderid);
@@ -2172,6 +2204,26 @@ namespace golos { namespace chain {
         }
 
         void limit_order_create2_evaluator::do_apply(const limit_order_create2_operation& o) {
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto amount_to_sell = o.amount_to_sell;
+                auto exchange_rate = o.exchange_rate;
+                GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
+                           is_asset_type(exchange_rate.quote, SBD_SYMBOL)) ||
+                          (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
+                           is_asset_type(exchange_rate.quote, STEEM_SYMBOL)),
+                        logic_exception::limit_order_must_be_for_golos_gbg_market,
+                        "Limit order must be for the GOLOS:GBG market");
+            }
+
+            GOLOS_CHECK_VALUE(
+                o.amount_to_sell.symbol == STEEM_SYMBOL ||
+                o.amount_to_sell.symbol == SBD_SYMBOL ||
+                _db.get_asset(o.amount_to_sell.symbol).whitelists(o.exchange_rate.quote.symbol), "Selling asset must whitelist receiving");
+            GOLOS_CHECK_VALUE(
+                o.exchange_rate.quote.symbol == STEEM_SYMBOL ||
+                o.exchange_rate.quote.symbol == SBD_SYMBOL ||
+                _db.get_asset(o.exchange_rate.quote.symbol).whitelists(o.amount_to_sell.symbol), "Receiving asset must whitelist selling");
+
             GOLOS_CHECK_OP_PARAM(o, expiration, {
                 GOLOS_CHECK_VALUE(o.expiration > _db.head_block_time(),
                         "Limit order has to expire after head block time.");
@@ -2179,7 +2231,7 @@ namespace golos { namespace chain {
 
             const auto &owner = _db.get_account(o.owner);
 
-            GOLOS_CHECK_BALANCE(owner, MAIN_BALANCE, o.amount_to_sell);
+            GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount_to_sell);
             _db.adjust_balance(owner, -o.amount_to_sell);
 
             GOLOS_CHECK_OBJECT_MISSING(_db, limit_order, o.owner, o.orderid);
@@ -2202,6 +2254,53 @@ namespace golos { namespace chain {
 
         void limit_order_cancel_evaluator::do_apply(const limit_order_cancel_operation &o) {
             _db.cancel_order(_db.get_limit_order(o.owner, o.orderid));
+        }
+
+        struct limit_order_cancel_extension_visitor {
+            limit_order_cancel_extension_visitor(const account_name_type& o, database& db) : owner(o), _db(db) {
+            }
+
+            using result_type = void;
+
+            bool no_main_usage = false;
+            const account_name_type& owner;
+            database& _db;
+
+            result_type operator()(const pair_to_cancel& ptc) {
+                no_main_usage = true;
+                uint32_t canceled = 0;
+                const auto& idx = _db.get_index<limit_order_index, by_account>();
+                auto itr = idx.lower_bound(owner);
+                while (itr != idx.end() && itr->seller == owner && canceled <= 100) {
+                    if (ptc.base.size() || ptc.quote.size()) {
+                        const auto& base = itr->sell_price.base.symbol_name();
+                        const auto& quote = itr->sell_price.quote.symbol_name();
+                        if ((ptc.base.size() && base != ptc.base && (!ptc.reverse || quote != ptc.base))
+                            ||
+                            (ptc.quote.size() && quote != ptc.quote && (!ptc.reverse || base != ptc.quote))) {
+                            ++itr;
+                            continue;
+                        }
+                    }
+                    const auto& cur = *itr;
+                    ++itr;
+                    _db.cancel_order(cur);
+                    ++canceled;
+                }
+            }
+        };
+
+        void limit_order_cancel_ex_evaluator::do_apply(const limit_order_cancel_ex_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__121, "limit_order_cancel_ex_operation");
+
+            limit_order_cancel_extension_visitor visitor(op.owner, _db);
+            for (auto& e : op.extensions) {
+                e.visit(visitor);
+            }
+
+            if (!visitor.no_main_usage) {
+                _db.cancel_order(_db.get_limit_order(op.owner, op.orderid));
+            }
         }
 
         void report_over_production_evaluator::do_apply(const report_over_production_operation &o) {
@@ -2427,7 +2526,7 @@ namespace {
             const auto& from = _db.get_account(op.from);
             const auto& to = _db.get_account(op.to);
 
-            GOLOS_CHECK_BALANCE(from, MAIN_BALANCE, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, MAIN_BALANCE, op.amount);
 
             _db.adjust_balance(from, -op.amount);
             _db.adjust_savings_balance(to, op.amount);
@@ -2442,7 +2541,7 @@ namespace {
                 "Account has reached limit for pending withdraw requests.",
                 ("limit",STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT));
 
-            GOLOS_CHECK_BALANCE(from, SAVINGS, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, SAVINGS, op.amount);
             _db.adjust_savings_balance(from, -op.amount);
 
             GOLOS_CHECK_OBJECT_MISSING(_db, savings_withdraw, op.from, op.request_id);
@@ -2559,7 +2658,7 @@ void delegate_vesting_shares(
 
     if (increasing) {
         auto delegated = delegator.delegated_vesting_shares;
-        GOLOS_CHECK_BALANCE(delegator, AVAILABLE_VESTING, delta);
+        GOLOS_CHECK_BALANCE(_db, delegator, AVAILABLE_VESTING, delta);
         auto elapsed_seconds = (now - delegator.last_vote_time).to_seconds();
         auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) / STEEMIT_VOTE_REGENERATION_SECONDS;
         auto current_power = std::min<int64_t>(delegator.voting_power + regenerated_power, STEEMIT_100_PERCENT);
@@ -2631,7 +2730,7 @@ void delegate_vesting_shares(
                 logic_exception::no_right_to_break_referral,
                 "This referral account has no right to break referral");
 
-            GOLOS_CHECK_BALANCE(referral, MAIN_BALANCE, referral.referral_break_fee);
+            GOLOS_CHECK_BALANCE(_db, referral, MAIN_BALANCE, referral.referral_break_fee);
             _db.adjust_balance(referral, -referral.referral_break_fee);
             _db.adjust_balance(referrer, referral.referral_break_fee);
 
@@ -2712,11 +2811,16 @@ void delegate_vesting_shares(
         void donate_evaluator::do_apply(const donate_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "donate_operation");
 
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto amount = op.amount;
+                GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_VALUE(amount.symbol == STEEM_SYMBOL, "amount must be GOLOS"));
+            }
+
             const auto& from = _db.get_account(op.from);
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
-            GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, op.amount);
 
             const auto& idx = _db.get_index<donate_index, by_app_version>();
             auto itr = idx.find(std::make_tuple(op.memo.app, op.memo.version));
@@ -2750,82 +2854,347 @@ void delegate_vesting_shares(
                 from_string(don.target, target);
             });
 
-            _db.modify(from, [&](account_object& acnt) {
-                acnt.tip_balance -= op.amount;
-            });
+            if (op.amount.symbol == STEEM_SYMBOL) {
+                _db.modify(from, [&](auto& acnt) {
+                    acnt.tip_balance -= op.amount;
+                });
+            } else {
+                _db.adjust_account_balance(op.from, asset(0, op.amount.symbol), -op.amount);
+            }
 
             auto to_amount = op.amount;
             if (to.referrer_account != account_name_type()) {
                 auto ref_amount = asset(
                     (uint128_t(to_amount.amount.value) * to.referrer_interest_rate / STEEMIT_100_PERCENT).to_uint64(),
-                    STEEM_SYMBOL);
-                _db.modify(_db.get_account(to.referrer_account), [&](auto& acnt) {
-                    acnt.tip_balance += ref_amount;
-                });
+                    to_amount.symbol);
+                if (op.amount.symbol == STEEM_SYMBOL) {
+                    _db.modify(_db.get_account(to.referrer_account), [&](auto& acnt) {
+                        acnt.tip_balance += ref_amount;
+                    });
+                } else {
+                    _db.adjust_account_balance(to.referrer_account, asset(0, ref_amount.symbol), ref_amount);
+                }
                 to_amount -= ref_amount;
             }
-            _db.modify(to, [&](account_object& acnt) {
-                acnt.tip_balance += to_amount;
-            });
+            if (op.amount.symbol == STEEM_SYMBOL) {
+                _db.modify(to, [&](auto& acnt) {
+                    acnt.tip_balance += to_amount;
+                });
+            } else {
+                _db.adjust_account_balance(op.to, asset(0, to_amount.symbol), to_amount);
+            }
         }
 
         void transfer_to_tip_evaluator::do_apply(const transfer_to_tip_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_to_tip_operation");
 
+            auto amount = op.amount;
+            GOLOS_CHECK_PARAM(amount, {
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                    GOLOS_CHECK_VALUE(amount.symbol == STEEM_SYMBOL, "amount must be GOLOS");
+                } else if (op.amount.symbol != STEEM_SYMBOL) {
+                    GOLOS_CHECK_VALUE(!_db.get_asset(amount.symbol).allow_override_transfer, "asset is overridable and do not supports TIP balance");
+                }
+            });
+
             const auto& from = _db.get_account(op.from);
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
-            GOLOS_CHECK_BALANCE(from, MAIN_BALANCE, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, MAIN_BALANCE, op.amount);
 
-            _db.adjust_balance(from, -op.amount);
-            _db.modify(to, [&](account_object& acnt) {acnt.tip_balance += op.amount;});
+            if (op.amount.symbol == STEEM_SYMBOL) {
+                _db.adjust_balance(from, -op.amount);
+                _db.modify(to, [&](auto& acnt) {acnt.tip_balance += op.amount;});
+            } else {
+                _db.adjust_account_balance(from.name, -op.amount, asset(0, op.amount.symbol));
+                _db.adjust_account_balance(to.name, asset(0, op.amount.symbol), op.amount);
+            }
         }
 
         void transfer_from_tip_evaluator::do_apply(const transfer_from_tip_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_from_tip_operation");
 
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto amount = op.amount;
+                GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_VALUE(amount.symbol == STEEM_SYMBOL, "amount must be GOLOS"));
+            }
+
             const auto& from = _db.get_account(op.from);
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
-            GOLOS_CHECK_BALANCE(from, TIP_BALANCE, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, op.amount);
 
-            _db.modify(from, [&](account_object& acnt) {acnt.tip_balance -= op.amount;});
-            _db.create_vesting(to, op.amount);
+            if (op.amount.symbol == STEEM_SYMBOL) {
+                _db.modify(from, [&](auto& acnt) {acnt.tip_balance -= op.amount;});
+                _db.create_vesting(to, op.amount);
+            } else {
+                _db.adjust_account_balance(from.name, asset(0, op.amount.symbol), -op.amount);
+                _db.adjust_account_balance(to.name, op.amount, asset(0, op.amount.symbol));
+            }
         }
+
+        struct invite_extension_visitor {
+            invite_extension_visitor(const invite_object& inv, database& db)
+                    : _inv(inv), _db(db) {
+            }
+
+            using result_type = void;
+
+            const invite_object& _inv;
+            database& _db;
+
+            result_type operator()(const is_invite_referral& iir) const {
+                if (!iir.is_referral) return;
+                ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__120, "is_invite_referral");
+
+                _db.modify(_inv, [&](auto& inv) {
+                    inv.is_referral = true;
+                });
+            }
+        };
 
         void invite_evaluator::do_apply(const invite_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_operation");
+
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                auto balance = op.balance;
+                GOLOS_CHECK_PARAM(balance, GOLOS_CHECK_VALUE(balance.symbol == STEEM_SYMBOL, "amount must be GOLOS"));
+            }
 
             const auto& creator = _db.get_account(op.creator);
             const auto& median_props = _db.get_witness_schedule_object().median_props;
 
             GOLOS_CHECK_OP_PARAM(op, balance, {
-                GOLOS_CHECK_BALANCE(creator, MAIN_BALANCE, op.balance);
-                GOLOS_CHECK_VALUE(op.balance >= median_props.min_invite_balance,
-                    "Insufficient invite balance: ${f} required, ${p} provided.", ("f", op.balance)("p", median_props.min_invite_balance));
+                GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, op.balance);
+                if (op.balance.symbol == STEEM_SYMBOL) {
+                    GOLOS_CHECK_VALUE(op.balance >= median_props.min_invite_balance,
+                        "Insufficient invite balance: ${r} required, ${p} provided.", ("r", median_props.min_invite_balance)("p", op.balance));
+                } else {
+                    auto balance = asset(op.balance.amount / op.balance.precision(), op.balance.symbol);
+                    auto min_invite_balance = asset(median_props.min_invite_balance.amount / 1000, op.balance.symbol);
+                    GOLOS_CHECK_VALUE(balance >= min_invite_balance,
+                        "Insufficient invite balance: ${r} required, ${p} provided.", ("r", min_invite_balance)("p", balance));
+                }
             });
 
             GOLOS_CHECK_OBJECT_MISSING(_db, invite, op.invite_key);
 
             _db.adjust_balance(creator, -op.balance);
-            _db.create<invite_object>([&](auto& c) {
-                c.creator = op.creator;
-                c.invite_key = op.invite_key;
-                c.balance = op.balance;
-                c.time = _db.head_block_time();
+            const auto& new_invite = _db.create<invite_object>([&](auto& inv) {
+                inv.creator = op.creator;
+                inv.invite_key = op.invite_key;
+                inv.balance = op.balance;
+                inv.time = _db.head_block_time();
             });
+
+            for (auto& e : op.extensions) {
+                e.visit(invite_extension_visitor(new_invite, _db));
+            }
         }
 
         void invite_claim_evaluator::do_apply(const invite_claim_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__98, "invite_claim_operation");
-            const auto& initiator = _db.get_account(op.initiator);
+            bool has_hf24 = _db.has_hardfork(STEEMIT_HARDFORK_0_24__95);
+            const auto& receiver = has_hf24 ? _db.get_account(op.receiver) : _db.get_account(op.initiator);
 
             auto invite_secret = golos::utilities::wif_to_key(op.invite_secret);
             const auto& inv = _db.get_invite(invite_secret->get_public_key());
-            _db.adjust_balance(initiator, inv.balance);
+            _db.adjust_balance(receiver, inv.balance);
             _db.remove(inv);
+        }
+
+        void asset_create_evaluator::do_apply(const asset_create_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_create_operation");
+
+            const auto symbol_name = op.max_supply.symbol_name();
+            GOLOS_CHECK_OBJECT_MISSING(_db, asset, symbol_name); // Also forbids creating assets with same symbol name but with another precision
+
+            const auto dot = symbol_name.find('.');
+            if (dot != std::string::npos) {
+                const auto& idx = _db.get_index<asset_index, by_symbol_name>();
+                auto parent_itr = idx.find(symbol_name.substr(0, dot));
+                GOLOS_CHECK_VALUE(parent_itr != idx.end() && parent_itr->creator == op.creator, "You should be a creator of parent asset.");
+            }
+
+            auto fee = _db.get_witness_schedule_object().median_props.asset_creation_fee;
+            if (fee.amount != 0) {
+                if (symbol_name.size() == 3) {
+                    fee *= 50;
+                } else if (symbol_name.size() == 4) {
+                    fee *= 10;
+                }
+                const auto& creator = _db.get_account(op.creator);
+                GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, fee);
+                _db.adjust_balance(creator, -fee);
+                _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), fee);
+            }
+
+            _db.create<asset_object>([&](auto& a) {
+                a.creator = op.creator;
+                a.max_supply = op.max_supply;
+                a.supply = asset(0, op.max_supply.symbol);
+                a.allow_fee = op.allow_fee;
+                a.allow_override_transfer = op.allow_override_transfer;
+                if (_db.store_asset_metadata()) {
+                    from_string(a.json_metadata, op.json_metadata);
+                }
+                a.created = _db.head_block_time();
+            });
+        }
+
+        void asset_update_evaluator::do_apply(const asset_update_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_update_operation");
+
+            const auto& asset_obj = _db.get_asset(op.symbol, op.creator);
+
+            GOLOS_CHECK_VALUE(asset_obj.allow_fee || op.fee_percent == 0, "Asset does not support fee.");
+
+            _db.modify(asset_obj, [&](auto& a) {
+                a.symbols_whitelist.clear();
+                for (const auto& s : op.symbols_whitelist) {
+                    if (s == "GOLOS") {
+                        a.symbols_whitelist.insert(STEEM_SYMBOL);
+                    } else if (s == "GBG") {
+                        a.symbols_whitelist.insert(SBD_SYMBOL);
+                    } else {
+                        a.symbols_whitelist.insert(_db.get_asset(s).symbol());
+                    }
+                }
+                a.fee_percent = op.fee_percent;
+                if (_db.store_asset_metadata()) {
+                    from_string(a.json_metadata, op.json_metadata);
+                } else {
+                    a.json_metadata.clear();
+                }
+                a.modified = _db.head_block_time();
+            });
+        }
+
+        void asset_issue_evaluator::do_apply(const asset_issue_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_issue_operation");
+
+            const auto& asset_obj = _db.get_asset(op.amount.symbol_name(), op.creator);
+
+            GOLOS_CHECK_VALUE(asset_obj.supply + op.amount <= asset_obj.max_supply, "Cannot issue more assets than max_supply allows.");
+
+            const auto& to_account = op.to.size() ? _db.get_account(op.to)
+                                                 : _db.get_account(op.creator);
+
+            _db.modify(asset_obj, [&](auto& a) {
+                a.supply += op.amount;
+            });
+
+            _db.adjust_balance(to_account, op.amount);
+        }
+
+        void asset_transfer_evaluator::do_apply(const asset_transfer_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_transfer_operation");
+
+            _db.get_account(op.new_owner);
+
+            _db.modify(_db.get_asset(op.symbol, op.creator), [&](auto& a) {
+                a.creator = op.new_owner;
+            });
+        }
+
+        void override_transfer_evaluator::do_apply(const override_transfer_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_transfer_operation");
+
+            GOLOS_CHECK_VALUE(_db.get_asset(op.amount.symbol_name(), op.creator).allow_override_transfer, "Asset does not support overriding.");
+
+            const auto& creator_account = _db.get_account(op.creator);
+            const auto& from_account = _db.get_account(op.from);
+            const auto& to_account = _db.get_account(op.to);
+
+            if (creator_account.active_challenged) {
+                _db.modify(creator_account, [&](auto& a) {
+                    a.active_challenged = false;
+                    a.last_active_proved = _db.head_block_time();
+                });
+            }
+
+            GOLOS_CHECK_OP_PARAM(op, amount, {
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, op.amount);
+                _db.adjust_balance(from_account, -op.amount);
+                _db.adjust_balance(to_account, op.amount);
+            });
+        }
+
+        void invite_donate_evaluator::do_apply(const invite_donate_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__111, "invite_donate_operation");
+
+            const auto& from_account = _db.get_account(op.from);
+
+            if (from_account.active_challenged) {
+                _db.modify(from_account, [&](auto& a) {
+                    a.active_challenged = false;
+                    a.last_active_proved = _db.head_block_time();
+                });
+            }
+
+            const auto& inv = _db.get_invite(op.invite_key);
+            GOLOS_CHECK_OP_PARAM(op, amount, {
+                GOLOS_CHECK_VALUE(inv.balance.symbol == op.amount.symbol, "Invite can be donated only by amount with the same asset symbol.");
+                GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, op.amount);
+                _db.adjust_balance(from_account, -op.amount);
+            });
+
+            _db.modify(inv, [&](auto& inv) {
+                inv.balance += op.amount;
+            });
+        }
+
+        void invite_transfer_evaluator::do_apply(const invite_transfer_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__111, "invite_transfer_operation");
+
+            const auto& from_invite = _db.get_invite(op.from);
+            GOLOS_CHECK_OP_PARAM(op, amount, {
+                GOLOS_CHECK_VALUE(from_invite.balance.symbol == op.amount.symbol, "Cannot transfer amount from invite which has balance in another asset symbol.");
+                GOLOS_CHECK_VALUE(from_invite.balance >= op.amount, "Invite has insufficient funds.");
+            });
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+            auto now = _db.head_block_time();
+            GOLOS_CHECK_OP_PARAM(op, from, {
+                GOLOS_CHECK_VALUE(now >= (from_invite.last_transfer + median_props.invite_transfer_interval_sec), "Cannot transfer from invite while ${t} sec timeout is not exceed.", ("t", median_props.invite_transfer_interval_sec));
+            });
+
+            auto* to_invite = _db.find_invite(op.to);
+            if (to_invite) {
+                GOLOS_CHECK_OP_PARAM(op, amount, {
+                    GOLOS_CHECK_VALUE(to_invite->balance.symbol == op.amount.symbol, "Cannot transfer amount to invite which has balance in another asset symbol.");
+                });
+                _db.modify(*to_invite, [&](auto& inv) {
+                    inv.balance += op.amount;
+                    inv.last_transfer = now;
+                });
+            } else {
+                if (op.amount.symbol == STEEM_SYMBOL) {
+                    GOLOS_CHECK_VALUE(op.amount >= median_props.min_invite_balance,
+                        "New invite will have insufficient balance: ${r} required, ${p} provided.", ("r", median_props.min_invite_balance)("p", op.amount));
+                } else {
+                    auto amount = asset(op.amount.amount / op.amount.precision(), op.amount.symbol);
+                    auto min_invite_balance = asset(median_props.min_invite_balance.amount / 1000, op.amount.symbol);
+                    GOLOS_CHECK_VALUE(amount >= min_invite_balance,
+                        "New invite will have insufficient balance: ${r} required, ${p} provided.", ("r", min_invite_balance)("p", amount));
+                }
+                _db.create<invite_object>([&](auto& inv) {
+                    inv.creator = STEEMIT_NULL_ACCOUNT;
+                    inv.invite_key = op.to;
+                    inv.balance = op.amount;
+                    inv.time = now;
+                    inv.last_transfer = now;
+                });
+            }
+
+            _db.modify(from_invite, [&](auto& inv) {
+                inv.balance -= op.amount;
+                inv.last_transfer = now;
+            });
+            if (from_invite.balance.amount == 0) {
+                _db.remove(from_invite);
+            }
         }
 
 } } // golos::chain

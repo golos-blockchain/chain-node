@@ -138,18 +138,23 @@ namespace golos { namespace protocol {
             fill_order_operation() {
             }
 
-            fill_order_operation(const string &c_o, uint32_t c_id, const asset &c_p, const string &o_o, uint32_t o_id, const asset &o_p)
-                    : current_owner(c_o), current_orderid(c_id),
-                      current_pays(c_p), open_owner(o_o), open_orderid(o_id),
-                      open_pays(o_p) {
+            fill_order_operation(const string& c_o, uint32_t c_id, const asset& c_p, const asset& c_tf, const string& c_tfr,
+                const string& o_o, uint32_t o_id, const asset& o_p)
+                    : current_owner(c_o), current_orderid(c_id), current_pays(c_p), current_trade_fee(c_tf), current_trade_fee_receiver(c_tfr),
+                      open_owner(o_o), open_orderid(o_id), open_pays(o_p) {
             }
 
             account_name_type current_owner;
             uint32_t current_orderid = 0;
             asset current_pays;
+            asset current_trade_fee;
+            account_name_type current_trade_fee_receiver;
+
             account_name_type open_owner;
             uint32_t open_orderid = 0;
             asset open_pays;
+            asset open_trade_fee;
+            account_name_type open_trade_fee_receiver;
         };
 
 
@@ -294,6 +299,23 @@ namespace golos { namespace protocol {
             asset savings_sbd_amount;
             asset savings_steem_amount;
         };
+
+        struct internal_transfer_operation : public virtual_operation {
+            internal_transfer_operation() {
+            }
+            internal_transfer_operation(const account_name_type& f, const account_name_type& t, const asset& a, const string& m)
+                    : from(f), to(t), amount(a), memo(m) {
+            }
+
+            account_name_type from;
+            /// Account to transfer asset to
+            account_name_type to;
+            /// The amount of asset to transfer from @ref from to @ref to
+            asset amount;
+
+            /// The memo is plain-text only.
+            string memo;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -305,7 +327,7 @@ FC_REFLECT((golos::protocol::liquidity_reward_operation), (owner)(payout))
 FC_REFLECT((golos::protocol::interest_operation), (owner)(interest))
 FC_REFLECT((golos::protocol::fill_vesting_withdraw_operation), (from_account)(to_account)(withdrawn)(deposited))
 FC_REFLECT((golos::protocol::shutdown_witness_operation), (owner))
-FC_REFLECT((golos::protocol::fill_order_operation), (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays))
+FC_REFLECT((golos::protocol::fill_order_operation), (current_owner)(current_orderid)(current_pays)(current_trade_fee)(current_trade_fee_receiver)(open_owner)(open_orderid)(open_pays))
 FC_REFLECT((golos::protocol::fill_transfer_from_savings_operation), (from)(to)(amount)(request_id)(memo))
 FC_REFLECT((golos::protocol::hardfork_operation), (hardfork_id))
 FC_REFLECT((golos::protocol::comment_payout_update_operation), (author)(permlink))
@@ -317,3 +339,4 @@ FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)
 FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_author)(worker_request_permlink)(reward)(reward_in_vests_if_vest))
 FC_REFLECT((golos::protocol::worker_state_operation), (author)(permlink)(state))
 FC_REFLECT((golos::protocol::convert_sbd_debt_operation), (owner)(sbd_amount)(steem_amount)(savings_sbd_amount)(savings_steem_amount))
+FC_REFLECT((golos::protocol::internal_transfer_operation), (from)(to)(amount)(memo))

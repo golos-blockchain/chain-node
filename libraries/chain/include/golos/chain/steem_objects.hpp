@@ -7,11 +7,13 @@
 
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/interprocess/containers/flat_set.hpp>
 
 
 namespace golos {
     namespace chain {
 
+        namespace bip = boost::interprocess;
         using golos::protocol::asset;
         using golos::protocol::price;
         using golos::protocol::asset_symbol_type;
@@ -265,6 +267,43 @@ namespace golos {
             shared_string target;
         };
 
+        class asset_object: public object<asset_object_type, asset_object> {
+        public:
+            asset_object() = delete;
+
+            template<typename Constructor, typename Allocator>
+            asset_object(Constructor&& c, allocator<Allocator> a) : symbols_whitelist(a), json_metadata(a) {
+                c(*this);
+            }
+
+            id_type id;
+
+            account_name_type creator;
+            asset max_supply;
+            asset supply;
+            bool allow_fee = false;
+            bool allow_override_transfer = false;
+            time_point_sec created;
+            time_point_sec modified;
+            using symbol_allocator_type = allocator<asset_symbol_type>;
+            using symbol_set_type = bip::flat_set<asset_symbol_type, std::less<asset_symbol_type>, symbol_allocator_type>;
+            symbol_set_type symbols_whitelist;
+            uint16_t fee_percent = 0;
+            shared_string json_metadata;
+
+            asset_symbol_type symbol() const {
+                return supply.symbol;
+            }
+
+            std::string symbol_name() const {
+                return supply.symbol_name();
+            }
+
+            bool whitelists(asset_symbol_type symbol) const {
+                return !symbols_whitelist.size() || symbols_whitelist.count(symbol);
+            }
+        };
+
         struct by_price;
         struct by_expiration;
         struct by_account;
@@ -500,6 +539,28 @@ namespace golos {
                     member<donate_object, uint16_t, &donate_object::version>
                 >>>,
             allocator<donate_object>>;
+
+        struct by_creator_symbol_name;
+        struct by_symbol;
+        struct by_symbol_name;
+
+        using asset_index = multi_index_container<
+            asset_object,
+            indexed_by<
+                ordered_unique<tag<by_id>,
+                    member<asset_object, asset_object_id_type, &asset_object::id>
+                >,
+                ordered_unique<tag<by_creator_symbol_name>, composite_key<asset_object,
+                    member<asset_object, account_name_type, &asset_object::creator>,
+                    const_mem_fun<asset_object, std::string, &asset_object::symbol_name>
+                >>,
+                ordered_unique<tag<by_symbol>,
+                    const_mem_fun<asset_object, asset_symbol_type, &asset_object::symbol>
+                >,
+                ordered_unique<tag<by_symbol_name>,
+                    const_mem_fun<asset_object, std::string, &asset_object::symbol_name>
+                >
+            >, allocator<asset_object>>;
     }
 } // golos::chain
 
@@ -543,3 +604,5 @@ FC_REFLECT((golos::chain::decline_voting_rights_request_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::decline_voting_rights_request_object, golos::chain::decline_voting_rights_request_index)
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::donate_object, golos::chain::donate_index)
+
+CHAINBASE_SET_INDEX_TYPE(golos::chain::asset_object, golos::chain::asset_index)

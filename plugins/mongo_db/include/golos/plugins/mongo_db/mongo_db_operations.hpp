@@ -102,6 +102,15 @@ namespace mongo_db {
         result_type operator()(const invite_operation& op);
         result_type operator()(const invite_claim_operation& op);
         result_type operator()(const account_create_with_invite_operation& op);
+        result_type operator()(const asset_create_operation& op);
+        result_type operator()(const asset_update_operation& op);
+        result_type operator()(const asset_issue_operation& op);
+        result_type operator()(const asset_transfer_operation& op);
+        result_type operator()(const override_transfer_operation& op);
+        result_type operator()(const invite_donate_operation& op);
+        result_type operator()(const invite_transfer_operation& op);
+        result_type operator()(const internal_transfer_operation& op);
+        result_type operator()(const limit_order_cancel_ex_operation& op);
     };
 
 }}} // golos::plugins::mongo_db

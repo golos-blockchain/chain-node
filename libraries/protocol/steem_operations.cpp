@@ -3,6 +3,7 @@
 #include <golos/protocol/validate_helper.hpp>
 #include <fc/io/json.hpp>
 #include <graphene/utilities/key_conversion.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace golos { namespace protocol {
         void validate_account_name(const std::string &name) {
@@ -23,6 +24,27 @@ namespace golos { namespace protocol {
 
         bool inline is_asset_type(asset asset, asset_symbol_type symbol) {
             return asset.symbol == symbol;
+        }
+
+        inline bool is_valid_symbol_name(const std::string& name) {
+            if (name.size() > 14) return false;
+
+            std::vector<std::string> parts;
+            parts.reserve(2);
+            boost::split(parts, name, boost::is_any_of("."));
+            if (parts.size() == 0 || parts.size() > 2) return false;
+
+            for (const auto& part : parts) {
+                if (part.size() < 3) return false;
+                for (const auto& c : part) {
+                    if (!('A' <= c && c <= 'Z')) return false;
+                }
+            }
+            return true;
+        }
+
+        inline void validate_symbol_name(const std::string& name) {
+            GOLOS_CHECK_VALUE(is_valid_symbol_name(name), "Symbol name ${name} is invalid", ("name", name));
         }
 
         void account_create_operation::validate() const {
@@ -348,6 +370,12 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_ASSET_GE(min_invite_balance, GOLOS, GOLOS_MIN_INVITE_BALANCE);
         }
 
+        void chain_properties_24::validate() const {
+            chain_properties_23::validate();
+            GOLOS_CHECK_ASSET_GE(asset_creation_fee, GBG, GOLOS_MIN_ASSET_CREATION_FEE);
+            GOLOS_CHECK_VALUE_GE(invite_transfer_interval_sec, GOLOS_MIN_INVITE_TRANSFER_INTERVAL_SEC);
+        }
+
         void witness_update_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
             GOLOS_CHECK_PARAM(url, {
@@ -551,12 +579,11 @@ namespace golos { namespace protocol {
 
         void limit_order_create_operation::validate() const {
             GOLOS_CHECK_PARAM(owner, validate_account_name(owner));
-            GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
-                       is_asset_type(min_to_receive, SBD_SYMBOL))
-                      || (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
-                          is_asset_type(min_to_receive, STEEM_SYMBOL)),
-                    logic_exception::limit_order_must_be_for_golos_gbg_market,
-                    "Limit order must be for the GOLOS:GBG market");
+            GOLOS_CHECK_LOGIC(is_valid_symbol_name(amount_to_sell.symbol_name())
+                && is_valid_symbol_name(min_to_receive.symbol_name())
+                && amount_to_sell.symbol != min_to_receive.symbol,
+                    logic_exception::limit_order_must_have_correct_assets,
+                    "Limit order must have correct assets");
 
             auto price = (amount_to_sell / min_to_receive);
             GOLOS_CHECK_PARAM(price, price.validate());
@@ -566,12 +593,11 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(owner, validate_account_name(owner));
             GOLOS_CHECK_PARAM(exchange_rate, exchange_rate.validate());
 
-            GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
-                       is_asset_type(exchange_rate.quote, SBD_SYMBOL)) ||
-                      (is_asset_type(amount_to_sell, SBD_SYMBOL) &&
-                       is_asset_type(exchange_rate.quote, STEEM_SYMBOL)),
-                    logic_exception::limit_order_must_be_for_golos_gbg_market,
-                    "Limit order must be for the GOLOS:GBG market");
+            GOLOS_CHECK_LOGIC(is_valid_symbol_name(amount_to_sell.symbol_name())
+                && is_valid_symbol_name(exchange_rate.quote.symbol_name())
+                && amount_to_sell.symbol != exchange_rate.quote.symbol,
+                    logic_exception::limit_order_must_have_correct_assets,
+                    "Limit order must have correct assets");
 
             GOLOS_CHECK_PARAM(amount_to_sell, {
                 GOLOS_CHECK_VALUE(amount_to_sell.symbol == exchange_rate.base.symbol,
@@ -583,6 +609,44 @@ namespace golos { namespace protocol {
 
         void limit_order_cancel_operation::validate() const {
             GOLOS_CHECK_PARAM(owner, validate_account_name(owner));
+        }
+
+        struct limit_order_cancel_extension_validate_visitor {
+            limit_order_cancel_extension_validate_visitor() {
+            }
+
+            using result_type = void;
+
+            bool no_main_usage = false;
+
+            result_type operator()(const pair_to_cancel& ptc) {
+                no_main_usage = true;
+                auto& base = ptc.base;
+                auto& quote = ptc.quote;
+                GOLOS_CHECK_PARAM(base, {
+                    if (base.size()) {
+                        validate_symbol_name(base);
+                    }
+                });
+                GOLOS_CHECK_PARAM(quote, {
+                    if (quote.size()) {
+                        validate_symbol_name(quote);
+                        GOLOS_CHECK_VALUE(base != quote, "base and quote must be different");
+                    }
+                });
+            }
+        };
+
+        void limit_order_cancel_ex_operation::validate() const {
+            GOLOS_CHECK_PARAM(owner, validate_account_name(owner));
+
+            limit_order_cancel_extension_validate_visitor visitor;
+            for (auto& e : extensions) {
+                e.visit(visitor);
+            }
+            if (visitor.no_main_usage) {
+                GOLOS_CHECK_PARAM(orderid, GOLOS_CHECK_VALUE_EQ(orderid, 0));
+            }
         }
 
         void convert_operation::validate() const {
@@ -780,7 +844,7 @@ namespace golos { namespace protocol {
 
         void donate_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(from);
-            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
             GOLOS_CHECK_PARAM(memo, {
                 GOLOS_CHECK_PARAM_ACCOUNT(memo.app);
             });
@@ -793,7 +857,7 @@ namespace golos { namespace protocol {
 
         void transfer_to_tip_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(from);
-            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
             GOLOS_CHECK_PARAM(memo, {
                 GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
                 GOLOS_CHECK_VALUE_UTF8(memo);
@@ -807,7 +871,7 @@ namespace golos { namespace protocol {
 
         void transfer_from_tip_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(from);
-            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS));
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
             GOLOS_CHECK_PARAM(memo, {
                 GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
                 GOLOS_CHECK_VALUE_UTF8(memo);
@@ -821,7 +885,7 @@ namespace golos { namespace protocol {
 
         void invite_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(creator);
-            GOLOS_CHECK_PARAM(balance, GOLOS_CHECK_ASSET_GT0(balance, GOLOS));
+            GOLOS_CHECK_PARAM(balance, GOLOS_CHECK_ASSET_GT0(balance, GOLOS_OR_UIA));
             GOLOS_CHECK_PARAM(invite_key, {
                 GOLOS_CHECK_VALUE(invite_key != public_key_type(), "Invite key cannot be blank.");
             });
@@ -833,6 +897,99 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(invite_secret, {
                 GOLOS_CHECK_VALUE(invite_secret.size(), "Invite secret cannot be blank.");
                 GOLOS_CHECK_VALUE(golos::utilities::wif_to_key(invite_secret), "Invite secret must be WIF.");
+            });
+        }
+
+        void asset_create_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(max_supply, {
+                validate_symbol_name(max_supply.symbol_name());
+                GOLOS_CHECK_VALUE_GT(max_supply.amount, 0);
+            });
+            if (json_metadata.size() > 0) {
+                GOLOS_CHECK_PARAM(json_metadata, {
+                    GOLOS_CHECK_VALUE_UTF8(json_metadata);
+                    GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
+                });
+            }
+        }
+
+        void asset_update_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(symbol, {
+                validate_symbol_name(symbol);
+            });
+            GOLOS_CHECK_PARAM(symbols_whitelist, {
+                GOLOS_CHECK_VALUE(!symbols_whitelist.count(symbol), "Cannot whitelist the symbol itself");
+                for (const auto& s : symbols_whitelist) {
+                    validate_symbol_name(s);
+                }
+            });
+            GOLOS_CHECK_PARAM(fee_percent, GOLOS_CHECK_VALUE_LEGE(fee_percent, 0, STEEMIT_100_PERCENT));
+        }
+
+        void asset_issue_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(amount, {
+                validate_symbol_name(amount.symbol_name());
+                GOLOS_CHECK_VALUE_GT(amount.amount, 0);
+            });
+            GOLOS_CHECK_PARAM(to, {
+                if (to != account_name_type()) {
+                    validate_account_name(to);
+                }
+            });
+        }
+
+        void asset_transfer_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(creator);
+            GOLOS_CHECK_PARAM(symbol, {
+                validate_symbol_name(symbol);
+            });
+            GOLOS_CHECK_PARAM_ACCOUNT(new_owner);
+            GOLOS_CHECK_PARAM(new_owner, {
+                GOLOS_CHECK_VALUE(new_owner != creator, "Cannot transfer asset to self");
+            });
+        }
+
+        void override_transfer_operation::validate() const {
+            GOLOS_CHECK_PARAM(from, {
+                validate_account_name(from);
+                GOLOS_CHECK_VALUE(from != to, "Cannot transfer to self");
+                GOLOS_CHECK_VALUE(from != creator, "To transfer from your own account use simple transfer");
+            });
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, UIA));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
+                GOLOS_CHECK_VALUE_UTF8(memo);
+            });
+            GOLOS_CHECK_PARAM_ACCOUNT(to);
+        }
+
+        void invite_donate_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(from);
+            GOLOS_CHECK_PARAM(invite_key, {
+                GOLOS_CHECK_VALUE(invite_key != public_key_type(), "Invite key cannot be blank.");
+            });
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
+                GOLOS_CHECK_VALUE_UTF8(memo);
+            });
+        }
+
+        void invite_transfer_operation::validate() const {
+            GOLOS_CHECK_PARAM(from, {
+                GOLOS_CHECK_VALUE(from != public_key_type(), "Invite key cannot be blank.");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to != public_key_type(), "Invite key cannot be blank.");
+                GOLOS_CHECK_VALUE(to != from, "Cannot transfer to same invite.");
+            });
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_UIA));
+            GOLOS_CHECK_PARAM(memo, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
+                GOLOS_CHECK_VALUE_UTF8(memo);
             });
         }
 } } // golos::protocol

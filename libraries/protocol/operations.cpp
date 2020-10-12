@@ -21,6 +21,10 @@ namespace golos {
                 return true;
             }
 
+            bool operator()(const limit_order_cancel_ex_operation &) const {
+                return true;
+            }
+
             bool operator()(const transfer_operation &) const {
                 return true;
             }
@@ -38,6 +42,14 @@ namespace golos {
             }
 
             bool operator()(const invite_claim_operation &) const {
+                return true;
+            }
+
+            bool operator()(const invite_donate_operation &) const {
+                return true;
+            }
+
+            bool operator()(const invite_transfer_operation &) const {
                 return true;
             }
         };

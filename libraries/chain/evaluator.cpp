@@ -1,26 +1,28 @@
 #include <golos/chain/evaluator.hpp>
+#include <golos/chain/database.hpp>
+#include <golos/chain/account_object.hpp>
+#include <golos/chain/steem_objects.hpp>
 
 namespace golos { namespace chain {
 
-        asset get_balance(const account_object &account, balance_type type, asset_symbol_type symbol) {
+        asset get_balance(const database& _db, const account_object &account, balance_type type, asset_symbol_type symbol) {
             switch(type) {
                 case MAIN_BALANCE:
-                    switch (symbol) {
-                        case STEEM_SYMBOL:
-                            return account.balance;
-                        case SBD_SYMBOL:
-                            return account.sbd_balance;
-                        default:
-                            GOLOS_CHECK_VALUE(false, "invalid symbol");
+                    if (symbol == STEEM_SYMBOL) {
+                        return account.balance;
+                    } else if (symbol == SBD_SYMBOL) {
+                        return account.sbd_balance;
+                    } else {
+                        GOLOS_CHECK_VALUE(_db.has_hardfork(STEEMIT_HARDFORK_0_24__95), "invalid symbol");
+                        return _db.get_or_default_account_balance(account.name, symbol).balance;
                     }
                 case SAVINGS:
-                    switch (symbol) {
-                        case STEEM_SYMBOL:
-                            return account.savings_balance;
-                        case SBD_SYMBOL:
-                            return account.savings_sbd_balance;
-                        default:
-                            GOLOS_CHECK_VALUE(false, "invalid symbol");
+                    if (symbol == STEEM_SYMBOL) {
+                        return account.savings_balance;
+                    } else if (symbol == SBD_SYMBOL) {
+                        return account.savings_sbd_balance;
+                    } else {
+                        GOLOS_CHECK_VALUE(false, "invalid symbol");
                     }
                 case VESTING:
                     GOLOS_CHECK_VALUE(symbol == VESTS_SYMBOL, "invalid symbol");
@@ -35,8 +37,12 @@ namespace golos { namespace chain {
                     GOLOS_CHECK_VALUE(symbol == VESTS_SYMBOL, "invalid symbol");
                     return account.available_vesting_shares(true);
                 case TIP_BALANCE:
-                    GOLOS_CHECK_VALUE(symbol == STEEM_SYMBOL, "invalid symbol");
-                    return account.tip_balance;
+                    if (symbol == STEEM_SYMBOL) {
+                        return account.tip_balance;
+                    } else {
+                        GOLOS_CHECK_VALUE(_db.has_hardfork(STEEMIT_HARDFORK_0_24__95), "invalid symbol");
+                        return _db.get_or_default_account_balance(account.name, symbol).tip_balance;
+                    }
                 default: FC_ASSERT(false, "invalid balance type");
             }
         }

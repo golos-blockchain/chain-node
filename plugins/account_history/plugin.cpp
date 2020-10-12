@@ -92,7 +92,7 @@ if (options.count(name)) { \
                 meta.referrer = to.referrer_account;
                 meta.referrer_interest = asset(
                         (uint128_t(op.amount.amount.value) * to.referrer_interest_rate / STEEMIT_100_PERCENT).to_uint64(),
-                        STEEM_SYMBOL);
+                        op.amount.symbol);
             }
             write_operation(std::move(fc::json::to_string(meta)));
         }
@@ -379,6 +379,10 @@ if (options.count(name)) { \
             insert_pair(op.from, op.to);
         }
 
+        void operator()(const internal_transfer_operation& op) {
+            insert_pair(op.from, op.to);
+        }
+
         void operator()(const transfer_to_vesting_operation& op) {
             auto have_to = op.to != account_name_type();
             insert_pair(op.from, have_to ? op.to: op.from);
@@ -417,6 +421,10 @@ if (options.count(name)) { \
         }
 
         void operator()(const limit_order_cancel_operation& op) {
+            insert_dual(op.owner);
+        }
+
+        void operator()(const limit_order_cancel_ex_operation& op) {
             insert_dual(op.owner);
         }
 
@@ -591,6 +599,35 @@ if (options.count(name)) { \
 
         void operator()(const invite_claim_operation& op) {
             insert_pair(op.initiator, op.receiver);
+        }
+
+        void operator()(const asset_create_operation& op) {
+            insert_dual(op.creator);
+        }
+
+        void operator()(const asset_update_operation& op) {
+            insert_dual(op.creator);
+        }
+
+        void operator()(const asset_issue_operation& op) {
+            insert_pair(op.creator, op.to);
+        }
+
+        void operator()(const asset_transfer_operation& op) {
+            insert_pair(op.creator, op.new_owner);
+        }
+
+        void operator()(const override_transfer_operation& op) {
+            insert_sender(op.creator);
+            insert_sender(op.from);
+            insert_receiver(op.to);
+        }
+
+        void operator()(const invite_donate_operation& op) {
+            insert_dual(op.from);
+        }
+
+        void operator()(const invite_transfer_operation& op) {
         }
     };
 

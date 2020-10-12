@@ -1992,4 +1992,40 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const asset_create_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const asset_update_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const asset_issue_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const asset_transfer_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const override_transfer_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const invite_donate_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const invite_transfer_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const internal_transfer_operation& op) -> result_type {
+
+    }
+
+    auto state_writer::operator()(const limit_order_cancel_ex_operation& op) -> result_type {
+
+    }
+
 }}}

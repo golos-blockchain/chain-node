@@ -123,6 +123,9 @@ namespace golos { namespace chain {
             void set_accounts_to_store_metadata(const std::vector<std::string>& accounts_to_store_metadata);
             bool store_metadata_for_account(const std::string& name) const;
 
+            void set_store_asset_metadata(bool store_asset_metadata);
+            bool store_asset_metadata() const;
+
             void set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws);
             bool store_memo_in_savings_withdraws() const;
 
@@ -218,6 +221,17 @@ namespace golos { namespace chain {
             const invite_object& get_invite(const public_key_type& invite_key) const;
             const invite_object* find_invite(const public_key_type& invite_key) const;
             void                 throw_if_exists_invite(const public_key_type& invite_key) const;
+
+            const asset_object&  get_asset(const asset_symbol_type& symbol) const;
+            const asset_object*  find_asset(const asset_symbol_type& symbol) const;
+            void                 throw_if_exists_asset(const asset_symbol_type& symbol) const;
+
+            const asset_object&  get_asset(const std::string& symbol_name, account_name_type creator = account_name_type()) const;
+            const asset_object*  find_asset(const std::string& symbol_name) const;
+            void                 throw_if_exists_asset(const std::string& symbol_name) const;
+
+            account_balance_object get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const;
+            void                   adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip);
 
             const account_authority_object &get_authority(const account_name_type &name) const;
 
@@ -557,7 +571,7 @@ namespace golos { namespace chain {
 
             bool apply_order(const limit_order_object &new_order_object);
 
-            bool fill_order(const limit_order_object &order, const asset &pays, const asset &receives);
+            bool fill_order(const limit_order_object& order, const asset& pays, asset receives);
 
             void cancel_order(const limit_order_object &obj);
 
@@ -708,6 +722,8 @@ namespace golos { namespace chain {
 
             store_metadata_modes _store_account_metadata = store_metadata_for_all;
             std::vector<std::string> _accounts_to_store_metadata;
+
+            bool _store_asset_metadata = true;
 
             bool _store_memo_in_savings_withdraws = true;
 

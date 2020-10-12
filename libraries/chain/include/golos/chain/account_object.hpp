@@ -298,7 +298,31 @@ public:
     account_name_type creator;
     public_key_type invite_key;
     asset balance;
+    bool is_referral = false;
     time_point_sec time;
+    time_point_sec last_transfer;
+};
+
+class account_balance_object
+        : public object<account_balance_object_type, account_balance_object> {
+public:
+    template<typename Constructor, typename Allocator>
+    account_balance_object(Constructor &&c, allocator<Allocator> a) {
+        c(*this);
+    }
+
+    account_balance_object() {
+    }
+
+    id_type id;
+
+    account_name_type account;
+    asset balance;
+    asset tip_balance;
+
+    asset_symbol_type symbol() const {
+        return balance.symbol;
+    }
 };
 
 struct by_name;
@@ -563,6 +587,25 @@ using invite_index = multi_index_container<
         ordered_unique<tag<by_invite_key>, member<invite_object, public_key_type, &invite_object::invite_key>>>,
     allocator<invite_object>>;
 
+struct by_symbol_account; // best for internal purposes
+struct by_account_symbol; // for API
+
+using account_balance_index = multi_index_container<
+    account_balance_object,
+    indexed_by<
+        ordered_unique<tag<by_id>,
+            member<account_balance_object, account_balance_object::id_type, &account_balance_object::id>
+        >,
+        ordered_unique<tag<by_symbol_account>, composite_key<account_balance_object,
+            const_mem_fun<account_balance_object, asset_symbol_type, &account_balance_object::symbol>,
+            member<account_balance_object, account_name_type, &account_balance_object::account>
+        >>,
+        ordered_unique<tag<by_account_symbol>, composite_key<account_balance_object,
+            member<account_balance_object, account_name_type, &account_balance_object::account>,
+            const_mem_fun<account_balance_object, asset_symbol_type, &account_balance_object::symbol>
+        >>
+    >, allocator<account_balance_object>>;
+
 } } // golos::chain
 
 
@@ -625,6 +668,11 @@ FC_REFLECT((golos::chain::change_recovery_account_request_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::change_recovery_account_request_object, golos::chain::change_recovery_account_request_index)
 
 FC_REFLECT((golos::chain::invite_object),
-        (id)(creator)(invite_key)(balance)(time)
+        (id)(creator)(invite_key)(balance)(is_referral)(time)(last_transfer)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::invite_object, golos::chain::invite_index)
+
+FC_REFLECT((golos::chain::account_balance_object),
+        (id)(account)(balance)(tip_balance)
+)
+CHAINBASE_SET_INDEX_TYPE(golos::chain::account_balance_object, golos::chain::account_balance_index)

@@ -367,6 +367,10 @@ namespace golos { namespace wallet {
                         result["claim_idleness_time"]  = median_props.claim_idleness_time;
                         result["min_invite_balance"]  = median_props.min_invite_balance;
                     }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_24)) {
+                        result["asset_creation_fee"]  = median_props.asset_creation_fee;
+                        result["invite_transfer_interval_sec"]  = median_props.invite_transfer_interval_sec;
+                    }
 
                     return result;
                 }
@@ -2292,7 +2296,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             chain_properties_update_operation op;
             chain_api_properties ap;
-            chain_properties_22 p;
+            chain_properties_23 p;
 
             // copy defaults in case of missing witness object
             ap.account_creation_fee = p.account_creation_fee;
@@ -2342,14 +2346,16 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             SET_PROP(p, witness_skipping_reset_time);
             SET_PROP(p, witness_idleness_time);
             SET_PROP(p, account_idleness_time);
+            SET_PROP(p, claim_idleness_time);
+            SET_PROP(p, min_invite_balance);
             op.props = p;
             auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_23)) {
-                chain_properties_23 p23;
-                p23 = p;
-                SET_PROP(p23, claim_idleness_time);
-                SET_PROP(p23, min_invite_balance);
-                op.props = p23;
+            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_24)) {
+                chain_properties_24 p24;
+                p24 = p;
+                SET_PROP(p24, asset_creation_fee);
+                SET_PROP(p24, invite_transfer_interval_sec);
+                op.props = p24;
             }
 #undef SET_PROP
 
@@ -3307,7 +3313,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
-        annotated_signed_transaction wallet_api::invite(account_name_type creator, asset balance, public_key_type invite_key, bool broadcast)
+        annotated_signed_transaction wallet_api::invite(account_name_type creator, asset balance, public_key_type invite_key, const invite_extensions_type& extensions, bool broadcast)
         {
             WALLET_CHECK_UNLOCKED();
 
@@ -3315,6 +3321,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             op.creator = creator;
             op.balance = balance;
             op.invite_key = invite_key;
+            op.extensions = extensions;
 
             signed_transaction tx;
             tx.operations.push_back( op );
@@ -3337,6 +3344,145 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             tx.validate();
 
             return my->sign_transaction( tx, broadcast );
+        }
+
+        annotated_signed_transaction wallet_api::create_asset(account_name_type creator, asset max_supply, bool allow_fee, bool allow_override_transfer, const string& meta, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            asset_create_operation op;
+            op.creator = creator;
+            op.max_supply = max_supply;
+            op.allow_fee = allow_fee;
+            op.allow_override_transfer = allow_override_transfer;
+            op.json_metadata = meta;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::update_asset(account_name_type creator, const string& symbol, const flat_set<string>& symbols_whitelist, uint16_t fee_percent, const string& meta, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            asset_update_operation op;
+            op.creator = creator;
+            op.symbol = symbol;
+            op.symbols_whitelist = symbols_whitelist;
+            op.fee_percent = fee_percent;
+            op.json_metadata = meta;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::issue_asset(account_name_type creator, asset amount, account_name_type to, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            asset_issue_operation op;
+            op.creator = creator;
+            op.amount = amount;
+            op.to = to;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::transfer_asset(account_name_type creator, const string& symbol, account_name_type new_owner, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+
+            asset_transfer_operation op;
+            op.creator = creator;
+            op.symbol = symbol;
+            op.new_owner = new_owner;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::override_transfer(const string& creator, const string& from, const string& to, asset amount, const string& memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            check_memo(memo, get_account(creator));
+            override_transfer_operation op;
+            op.creator = creator;
+            op.from = from;
+            op.to   = to;
+            op.amount = amount;
+            op.memo = get_encrypted_memo(creator, to, memo);
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::donate_to_invite(const string& from, public_key_type invite_key, asset amount, const string& memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            check_memo(memo, get_account(from));
+            invite_donate_operation op;
+            op.from       = from;
+            op.invite_key = invite_key;
+            op.amount = amount;
+            op.memo = get_encrypted_memo(from, from, memo);
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::transfer_invite(public_key_type from, public_key_type to, asset amount, const string& memo, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            invite_transfer_operation op;
+            op.from = from;
+            op.to   = to;
+            op.amount = amount;
+            op.memo = memo;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::cancel_orders(string owner, string base, string quote, bool reverse, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            limit_order_cancel_ex_operation op;
+            op.owner = owner;
+            op.orderid = 0;
+
+            pair_to_cancel ptc;
+            ptc.base = base;
+            ptc.quote = quote;
+            ptc.reverse = reverse;
+            op.extensions.insert(ptc);
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
         }
 } } // golos::wallet
 

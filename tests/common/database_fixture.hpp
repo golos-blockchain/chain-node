@@ -12,6 +12,7 @@
 #include <graphene/utilities/key_conversion.hpp>
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
+#include <fc/uint128lh_t.hpp>
 
 #include <iostream>
 
@@ -279,6 +280,7 @@ namespace fc {
 std::ostream& operator<<(std::ostream& out, const fc::exception& e);
 std::ostream& operator<<(std::ostream& out, const fc::time_point& v);
 std::ostream& operator<<(std::ostream& out, const fc::uint128_t& v);
+std::ostream& operator<<(std::ostream& out, const fc::uint128lh_t& v);
 std::ostream& operator<<(std::ostream& out, const fc::fixed_string<fc::uint128_t>& v);
 std::ostream& operator<<(std::ostream& out, const fc::variant_object& v);
 

@@ -29,8 +29,12 @@ namespace golos {
             using namespace chainbase;
             using namespace golos::protocol;
 
+            using symbol_type_pair = std::pair<asset_symbol_type, asset_symbol_type>;
+            using symbol_name_pair = std::pair<std::string, std::string>;
+
             DEFINE_API_ARGS(get_ticker,                 json_rpc::msg_pack, market_ticker)
             DEFINE_API_ARGS(get_volume,                 json_rpc::msg_pack, market_volume)
+            DEFINE_API_ARGS(get_depth,                  json_rpc::msg_pack, market_depth)
             DEFINE_API_ARGS(get_order_book,             json_rpc::msg_pack, order_book)
             DEFINE_API_ARGS(get_order_book_extended,    json_rpc::msg_pack, order_book_extended)
             DEFINE_API_ARGS(get_trade_history,          json_rpc::msg_pack, vector<market_trade>)
@@ -38,6 +42,7 @@ namespace golos {
             DEFINE_API_ARGS(get_market_history,         json_rpc::msg_pack, vector<bucket_object>)
             DEFINE_API_ARGS(get_market_history_buckets, json_rpc::msg_pack, flat_set<uint32_t>)
             DEFINE_API_ARGS(get_open_orders,            json_rpc::msg_pack, std::vector<limit_order>)
+            DEFINE_API_ARGS(get_fillable_orders,        json_rpc::msg_pack, std::vector<limit_order>)
 
             class market_history_plugin : public appbase::plugin<market_history_plugin> {
             public:
@@ -64,13 +69,15 @@ namespace golos {
 
                 DECLARE_API((get_ticker)
                                 (get_volume)
+                                (get_depth)
                                 (get_order_book)
                                 (get_order_book_extended)
                                 (get_trade_history)
                                 (get_recent_trades)
                                 (get_market_history)
                                 (get_market_history_buckets)
-                                (get_open_orders))
+                                (get_open_orders)
+                                (get_fillable_orders))
 
                 constexpr const static char *plugin_name = "market_history";
 

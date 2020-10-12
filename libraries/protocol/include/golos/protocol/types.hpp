@@ -15,6 +15,17 @@
 #include <fc/safe.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/string.hpp>
+#include <fc/uint128lh_t.hpp>
+namespace golos { namespace protocol {
+    struct asset;
+}}
+
+namespace fc { namespace raw {
+
+template<typename S> void pack(S&, const golos::protocol::asset&);
+template<typename S> void unpack(S&, golos::protocol::asset&, uint32_t depth = 0);
+
+}} // fc::raw
 #include <fc/io/raw.hpp>
 #include <fc/uint128_t.hpp>
 #include <fc/static_variant.hpp>
@@ -30,6 +41,7 @@
 namespace golos {
 
     using fc::uint128_t;
+    using fc::uint128lh_t;
     typedef boost::multiprecision::uint256_t u256;
     typedef boost::multiprecision::uint512_t u512;
 

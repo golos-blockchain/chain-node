@@ -362,6 +362,14 @@ namespace golos { namespace chain {
             return std::find(v.begin(), v.end(), name) != v.end();
         }
 
+        void database::set_store_asset_metadata(bool store_asset_metadata) {
+            _store_asset_metadata = store_asset_metadata;
+        }
+
+        bool database::store_asset_metadata() const {
+            return _store_asset_metadata;
+        }
+
         void database::set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws) {
             _store_memo_in_savings_withdraws = store_memo_in_savings_withdraws;
         }
@@ -741,6 +749,36 @@ namespace golos { namespace chain {
             }
         }
 
+        const asset_object* database::find_asset(const asset_symbol_type& symbol) const {
+            return find<asset_object, by_symbol>(symbol);
+        }
+
+        void database::throw_if_exists_asset(const asset_symbol_type& symbol) const {
+            GOLOS_CHECK_VALUE(symbol != STEEM_SYMBOL
+                && symbol != SBD_SYMBOL
+                && symbol != VESTS_SYMBOL
+                && symbol != STMD_SYMBOL,
+                "Symbol already used for internal asset.");
+            if (nullptr != find_asset(symbol)) {
+                GOLOS_THROW_OBJECT_ALREADY_EXIST("asset", symbol);
+            }
+        }
+
+        const asset_object* database::find_asset(const std::string& symbol_name) const {
+            return find<asset_object, by_symbol_name>(symbol_name);
+        }
+
+        void database::throw_if_exists_asset(const std::string& symbol_name) const {
+            GOLOS_CHECK_VALUE(symbol_name != "GOLOS"
+                && symbol_name != "GBG"
+                && symbol_name != "GESTS"
+                && symbol_name != "STMD",
+                "Symbol already used for internal asset.");
+            if (nullptr != find_asset(symbol_name)) {
+                GOLOS_THROW_OBJECT_ALREADY_EXIST("asset", symbol_name);
+            }
+        }
+
         const donate_object& database::get_donate(const donate_object_id_type& donate_id) const {
             try {
                 return get<donate_object, by_id>(donate_id);
@@ -755,6 +793,69 @@ namespace golos { namespace chain {
             } catch(const std::out_of_range& e) {
                 GOLOS_THROW_MISSING_OBJECT("invite", invite_key);
             } FC_CAPTURE_AND_RETHROW((invite_key))
+        }
+
+        const asset_object& database::get_asset(const asset_symbol_type& symbol) const {
+            try {
+                return get<asset_object, by_symbol>(symbol);
+            } catch(const std::out_of_range& e) {
+                GOLOS_THROW_MISSING_OBJECT("asset", symbol);
+            } FC_CAPTURE_AND_RETHROW((symbol))
+        }
+
+        const asset_object& database::get_asset(const std::string& symbol_name, account_name_type creator) const {
+            if (creator != account_name_type()) {
+                try {
+                    return get<asset_object, by_creator_symbol_name>(std::make_tuple(creator, symbol_name));
+                } catch(const std::out_of_range& e) {
+                    GOLOS_THROW_MISSING_OBJECT("asset", fc::mutable_variant_object()("symbol_name", symbol_name)("creator", creator));
+                } FC_CAPTURE_AND_RETHROW((symbol_name)(creator))
+            } else {
+                try {
+                    return get<asset_object, by_symbol_name>(symbol_name);
+                } catch(const std::out_of_range& e) {
+                    GOLOS_THROW_MISSING_OBJECT("asset", symbol_name);
+                } FC_CAPTURE_AND_RETHROW((symbol_name))
+            }
+        }
+
+        account_balance_object database::get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const {
+            const auto& idx = get_index<account_balance_index, by_symbol_account>();
+            auto itr = idx.find(std::make_tuple(symbol, account));
+            if (itr != idx.end()) {
+                return *itr;
+            } else {
+                const auto& sym_idx = get_index<asset_index, by_symbol>();
+                auto sym_itr = sym_idx.find(symbol);
+                GOLOS_CHECK_VALUE(sym_itr != sym_idx.end(), "invalid symbol");
+
+                account_balance_object def;
+                def.account = account;
+                def.balance = asset(0, symbol);
+                def.tip_balance = asset(0, symbol);
+                return def;
+            }
+        }
+
+        void database::adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip) {
+            const auto& idx = get_index<account_balance_index, by_symbol_account>();
+            auto itr = idx.find(std::make_tuple(delta.symbol, account));
+            if (itr != idx.end()) {
+                modify(*itr, [&](auto& o) {
+                    o.balance += delta;
+                    o.tip_balance += delta_tip;
+                });
+            } else {
+                const auto& sym_idx = get_index<asset_index, by_symbol>();
+                auto sym_itr = sym_idx.find(delta.symbol);
+                GOLOS_CHECK_VALUE(sym_itr != sym_idx.end(), "invalid symbol");
+
+                create<account_balance_object>([&](auto& o) {
+                    o.account = account;
+                    o.balance = delta;
+                    o.tip_balance = delta_tip;
+                });
+            }
         }
 
         const dynamic_global_property_object& database::get_dynamic_global_properties() const {
@@ -2065,7 +2166,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_23 median_props;
+            chain_properties_24 median_props;
 
             auto median = active.size() / 2;
 
@@ -2136,6 +2237,8 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_22::account_idleness_time);
             calc_median(&chain_properties_23::claim_idleness_time);
             calc_median(&chain_properties_23::min_invite_balance);
+            calc_median(&chain_properties_24::asset_creation_fee);
+            calc_median(&chain_properties_24::invite_transfer_interval_sec);
 
             if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
                 #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
@@ -2351,6 +2454,19 @@ namespace golos { namespace chain {
 
             if (total_sbd.amount > 0) {
                 adjust_supply(-total_sbd);
+            }
+
+            if (has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                const auto& idx = get_index<account_balance_index, by_account_symbol>();
+                auto itr = idx.lower_bound(null_account.name);
+                for (; itr != idx.end() && itr->account == null_account.name; ++itr) {
+                    modify(get_asset(itr->balance.symbol), [&](auto& a) {
+                        a.supply -= itr->balance;
+                    });
+                    modify(*itr, [&](auto& a) {
+                        a.balance = asset(0, a.balance.symbol);
+                    });
+                }
             }
         }
 
@@ -3488,6 +3604,14 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<account_create_with_invite_evaluator>();
             _my->_evaluator_registry.register_evaluator<invite_evaluator>();
             _my->_evaluator_registry.register_evaluator<invite_claim_evaluator>();
+            _my->_evaluator_registry.register_evaluator<asset_create_evaluator>();
+            _my->_evaluator_registry.register_evaluator<asset_update_evaluator>();
+            _my->_evaluator_registry.register_evaluator<asset_issue_evaluator>();
+            _my->_evaluator_registry.register_evaluator<asset_transfer_evaluator>();
+            _my->_evaluator_registry.register_evaluator<override_transfer_evaluator>();
+            _my->_evaluator_registry.register_evaluator<invite_donate_evaluator>();
+            _my->_evaluator_registry.register_evaluator<invite_transfer_evaluator>();
+            _my->_evaluator_registry.register_evaluator<limit_order_cancel_ex_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -3537,6 +3661,8 @@ namespace golos { namespace chain {
             add_core_index<worker_request_vote_index>(*this);
             add_core_index<donate_index>(*this);
             add_core_index<invite_index>(*this);
+            add_core_index<asset_index>(*this);
+            add_core_index<account_balance_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3734,19 +3860,15 @@ namespace golos { namespace chain {
                         a.memo_key = account.keys.memo_key;
                         a.recovery_account = STEEMIT_INIT_MINER_NAME;
 #ifdef STEEMIT_BUILD_TESTNET
-                        for(asset &amount : account.balances.assets) {
-                            switch (amount.symbol) {
-                                case STEEM_SYMBOL:
-                                    a.balance.amount = amount.amount;
-                                    break;
-                                case SBD_SYMBOL:
-                                    a.sbd_balance.amount = amount.amount;
-                                    break;
-                                case VESTS_SYMBOL:
-                                    a.vesting_shares.amount = amount.amount;
-                                    break;
-                                default:
-                                    FC_ASSERT(false, "Unknown asset in snapshot");
+                        for (auto& amount : account.balances.assets) {
+                            if (amount.symbol == STEEM_SYMBOL) {
+                                a.balance.amount = amount.amount;
+                            } else if (amount.symbol == SBD_SYMBOL) {
+                                a.sbd_balance.amount = amount.amount;
+                            } else if (amount.symbol == VESTS_SYMBOL) {
+                                a.vesting_shares.amount = amount.amount;
+                            } else {
+                                FC_ASSERT(false, "Unknown asset in snapshot");
                             }
                         }
                         //assume price of GOLOS = GBG, just for testnet
@@ -4710,12 +4832,29 @@ namespace golos { namespace chain {
                 }
             }
 
-            push_virtual_operation(fill_order_operation(new_order.seller, new_order.orderid, new_order_pays, old_order.seller, old_order.orderid, old_order_pays));
+            asset trade_fee(0, new_order_receives.symbol);
+            account_name_type trade_fee_receiver;
+            if (has_hardfork(STEEMIT_HARDFORK_0_24__95) && new_order_receives.symbol != STEEM_SYMBOL && new_order_receives.symbol != SBD_SYMBOL) {
+                const auto& ast = get_asset(new_order_receives.symbol);
+                if (ast.fee_percent != 0) {
+                    trade_fee = asset(
+                        (uint128_t(new_order_receives.amount.value) * ast.fee_percent / STEEMIT_100_PERCENT).to_uint64(),
+                        new_order_receives.symbol);
+                    adjust_balance(get_account(ast.creator), trade_fee);
+                    new_order_receives -= trade_fee;
+                    trade_fee_receiver = ast.creator;
+                }
+            }
+
+            push_virtual_operation(fill_order_operation(
+                new_order.seller, new_order.orderid, new_order_pays, trade_fee, trade_fee_receiver,
+                old_order.seller, old_order.orderid, old_order_pays));
 
             int result = 0;
             result |= fill_order(new_order, new_order_pays, new_order_receives);
             result |= fill_order(old_order, old_order_pays, old_order_receives)
                     << 1;
+
             assert(result != 0);
             return result;
         }
@@ -4758,7 +4897,7 @@ namespace golos { namespace chain {
         }
 
 
-        bool database::fill_order(const limit_order_object &order, const asset &pays, const asset &receives) {
+        bool database::fill_order(const limit_order_object& order, const asset& pays, asset receives) {
             try {
                 FC_ASSERT(order.amount_for_sale().symbol == pays.symbol);
                 FC_ASSERT(pays.symbol != receives.symbol);
@@ -4832,15 +4971,13 @@ namespace golos { namespace chain {
         }
 
         void database::adjust_balance(const account_object &a, const asset &delta) {
-            switch (delta.symbol) {
-                case STEEM_SYMBOL:
-                    modify(a, [&](account_object &acnt) {acnt.balance += delta;});
-                    break;
-                case SBD_SYMBOL:
-                    adjust_sbd_balance(a, delta);
-                    break;
-                default:
-                    GOLOS_CHECK_VALUE(false, "invalid symbol");
+            if (delta.symbol == STEEM_SYMBOL) {
+                modify(a, [&](auto& acnt) {acnt.balance += delta;});
+            } else if (delta.symbol == SBD_SYMBOL) {
+                adjust_sbd_balance(a, delta);
+            } else {
+                GOLOS_CHECK_VALUE(has_hardfork(STEEMIT_HARDFORK_0_24__95), "invalid symbol");
+                adjust_account_balance(a.name, delta, asset(0, delta.symbol));
             }
         }
 
@@ -4884,45 +5021,42 @@ namespace golos { namespace chain {
 
         void database::adjust_savings_balance(const account_object &a, const asset &delta) {
             modify(a, [&](account_object &acnt) {
-                switch (delta.symbol) {
-                    case STEEM_SYMBOL:
-                        acnt.savings_balance += delta;
-                        break;
-                    case SBD_SYMBOL:
-                        if (a.savings_sbd_seconds_last_update !=
-                            head_block_time()) {
-                            acnt.savings_sbd_seconds +=
-                                    fc::uint128_t(a.savings_sbd_balance.amount.value) *
-                                    (head_block_time() -
-                                     a.savings_sbd_seconds_last_update).to_seconds();
-                            acnt.savings_sbd_seconds_last_update = head_block_time();
+                if (delta.symbol == STEEM_SYMBOL) {
+                    acnt.savings_balance += delta;
+                } else if (delta.symbol == SBD_SYMBOL) {
+                    if (a.savings_sbd_seconds_last_update !=
+                        head_block_time()) {
+                        acnt.savings_sbd_seconds +=
+                                fc::uint128_t(a.savings_sbd_balance.amount.value) *
+                                (head_block_time() -
+                                 a.savings_sbd_seconds_last_update).to_seconds();
+                        acnt.savings_sbd_seconds_last_update = head_block_time();
 
-                            if (acnt.savings_sbd_seconds > 0 &&
-                                (acnt.savings_sbd_seconds_last_update -
-                                 acnt.savings_sbd_last_interest_payment).to_seconds() >
-                                STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC) {
-                                auto interest = acnt.savings_sbd_seconds /
-                                                STEEMIT_SECONDS_PER_YEAR;
-                                interest *= get_dynamic_global_properties().sbd_interest_rate;
-                                interest /= STEEMIT_100_PERCENT;
-                                asset interest_paid(interest.to_uint64(), SBD_SYMBOL);
-                                acnt.savings_sbd_balance += interest_paid;
-                                acnt.savings_sbd_seconds = 0;
-                                acnt.savings_sbd_last_interest_payment = head_block_time();
+                        if (acnt.savings_sbd_seconds > 0 &&
+                            (acnt.savings_sbd_seconds_last_update -
+                             acnt.savings_sbd_last_interest_payment).to_seconds() >
+                            STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC) {
+                            auto interest = acnt.savings_sbd_seconds /
+                                            STEEMIT_SECONDS_PER_YEAR;
+                            interest *= get_dynamic_global_properties().sbd_interest_rate;
+                            interest /= STEEMIT_100_PERCENT;
+                            asset interest_paid(interest.to_uint64(), SBD_SYMBOL);
+                            acnt.savings_sbd_balance += interest_paid;
+                            acnt.savings_sbd_seconds = 0;
+                            acnt.savings_sbd_last_interest_payment = head_block_time();
 
-                                push_virtual_operation(interest_operation(a.name, interest_paid));
+                            push_virtual_operation(interest_operation(a.name, interest_paid));
 
-                                modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
-                                    props.current_sbd_supply += interest_paid;
-                                    props.virtual_supply += interest_paid *
-                                                            get_feed_history().current_median_history;
-                                });
-                            }
+                            modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
+                                props.current_sbd_supply += interest_paid;
+                                props.virtual_supply += interest_paid *
+                                                        get_feed_history().current_median_history;
+                            });
                         }
-                        acnt.savings_sbd_balance += delta;
-                        break;
-                    default:
-                        GOLOS_CHECK_VALUE(false, "invalid symbol");
+                    }
+                    acnt.savings_sbd_balance += delta;
+                } else {
+                    GOLOS_CHECK_VALUE(false, "invalid symbol");
                 }
             });
         }
@@ -4935,50 +5069,44 @@ namespace golos { namespace chain {
                 adjust_vesting = false;
             }
 
-            modify(props, [&](dynamic_global_property_object &props) {
-                switch (delta.symbol) {
-                    case STEEM_SYMBOL: {
-                        asset new_vesting((adjust_vesting && delta.amount > 0) ?
-                                          delta.amount * 9 : 0, STEEM_SYMBOL);
-                        props.current_supply += delta + new_vesting;
-                        props.virtual_supply += delta + new_vesting;
-                        props.total_vesting_fund_steem += new_vesting;
-                        assert(props.current_supply.amount.value >= 0);
-                        break;
-                    }
-                    case SBD_SYMBOL:
-                        props.current_sbd_supply += delta;
-                        props.virtual_supply = props.current_sbd_supply *
-                                               get_feed_history().current_median_history +
-                                               props.current_supply;
-                        assert(props.current_sbd_supply.amount.value >= 0);
-                        break;
-                    default:
-                        GOLOS_CHECK_VALUE(false, "invalid symbol");
+            modify(props, [&](dynamic_global_property_object& props) {
+                if (delta.symbol == STEEM_SYMBOL) {
+                    asset new_vesting((adjust_vesting && delta.amount > 0) ?
+                                      delta.amount * 9 : 0, STEEM_SYMBOL);
+                    props.current_supply += delta + new_vesting;
+                    props.virtual_supply += delta + new_vesting;
+                    props.total_vesting_fund_steem += new_vesting;
+                    assert(props.current_supply.amount.value >= 0);
+                } else if (delta.symbol == SBD_SYMBOL) {
+                    props.current_sbd_supply += delta;
+                    props.virtual_supply = props.current_sbd_supply *
+                                           get_feed_history().current_median_history +
+                                           props.current_supply;
+                    assert(props.current_sbd_supply.amount.value >= 0);
+                } else {
+                    GOLOS_CHECK_VALUE(false, "invalid symbol");
                 }
             });
         }
 
 
-        asset database::get_balance(const account_object &a, asset_symbol_type symbol) const {
-            switch (symbol) {
-                case STEEM_SYMBOL:
-                    return a.balance;
-                case SBD_SYMBOL:
-                    return a.sbd_balance;
-                default:
-                    GOLOS_CHECK_VALUE(false, "invalid symbol");
+        asset database::get_balance(const account_object& a, asset_symbol_type symbol) const {
+            if (symbol == STEEM_SYMBOL) {
+                return a.balance;
+            } else if (symbol == SBD_SYMBOL) {
+                return a.sbd_balance;
+            } else {
+                GOLOS_CHECK_VALUE(false, "invalid symbol");
             }
         }
 
         asset database::get_savings_balance(const account_object &a, asset_symbol_type symbol) const {
-            switch (symbol) {
-                case STEEM_SYMBOL:
-                    return a.savings_balance;
-                case SBD_SYMBOL:
-                    return a.savings_sbd_balance;
-                default:
-                    GOLOS_CHECK_VALUE(false, "invalid symbol");
+            if (symbol == STEEM_SYMBOL) {
+                return a.savings_balance;
+            } else if (symbol == SBD_SYMBOL) {
+                return a.savings_sbd_balance;
+            } else {
+                GOLOS_CHECK_VALUE(false, "invalid symbol");
             }
         }
 
@@ -5054,6 +5182,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_23 == 23, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_23] = fc::time_point_sec(STEEMIT_HARDFORK_0_23_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_23] = STEEMIT_HARDFORK_0_23_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_24 == 24, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_24] = fc::time_point_sec(STEEMIT_HARDFORK_0_24_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_24] = STEEMIT_HARDFORK_0_24_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -5347,18 +5478,31 @@ namespace golos { namespace chain {
                     modify(get_account(STEEMIT_WORKER_POOL_ACCOUNT), [&](auto& acnt) {
                         acnt.recovery_account = account_name_type();
                     });
-#ifdef STEEMIT_BUILD_LIVETEST
+                    for (const auto& acnt : get_index<account_index>().indices()) {
+                        const auto now = head_block_time();
+                        modify(acnt, [&](auto& acnt) {
+                            acnt.last_claim = now;
+                        });
+                    }
+                    break;
+                case STEEMIT_HARDFORK_0_24:
                     {
+#ifdef STEEMIT_BUILD_LIVETEST
+                        //active and signing_key
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
                         //"wif_priv_key": "5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw",
                         //"pub_key": "GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"
+
+                        //posting:
+                        //private 5K1aJ8JayUA7c2Ptg9Y2DetKxSvXGXa5GCcvYeHtn1Xh3v4egPS
+                        //public GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A
 
                         for (const auto &account : get_index<account_index>().indices()) {
                             update_owner_authority(account, authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1));
 
                             modify(get_authority(account.name), [&](account_authority_object &auth) {
                                 auth.active = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
-                                auth.posting = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
+                                auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                             });
                         }
                         
@@ -5367,14 +5511,24 @@ namespace golos { namespace chain {
                             modify(*itr, [&](witness_object &w) {
                                 w.signing_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
                             });
-                        }                
-                    }
+                        }
 #endif
-                    for (const auto& acnt : get_index<account_index>().indices()) {
-                        const auto now = head_block_time();
-                        modify(acnt, [&](auto& acnt) {
-                            acnt.last_claim = now;
+#ifdef STEEMIT_BUILD_TESTNET
+                        adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
+                        modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
+                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                         });
+#endif
+                        auto* bittrex = find_account("bittrex");
+                        if (bittrex) {
+                            auto& null = get_account(STEEMIT_NULL_ACCOUNT);
+                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->balance, "Burning tokens out of circulation"));
+                            adjust_balance(null, bittrex->balance);
+                            adjust_balance(*bittrex, -bittrex->balance);
+                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->sbd_balance, "Burning tokens out of circulation"));
+                            adjust_balance(null, bittrex->sbd_balance);
+                            adjust_balance(*bittrex, -bittrex->sbd_balance);
+                        }
                     }
                     break;
                 default:

@@ -91,7 +91,7 @@ public:
     dynamic_global_property_api_object get_dynamic_global_properties() const;
 
     // Accounts
-    std::vector<account_api_object> get_accounts(std::vector<std::string> names) const;
+    std::vector<account_api_object> get_accounts(const std::vector<std::string>& names) const;
     std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names) const;
     std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit) const;
     uint64_t get_account_count() const;
@@ -104,6 +104,9 @@ public:
 
     std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type) const;
     std::vector<proposal_api_object> get_proposed_transactions(const std::string&, uint32_t, uint32_t) const;
+
+    std::vector<asset_api_object> get_assets(const std::string& creator, const std::vector<std::string>& symbols, const std::string& from, uint32_t limit) const ;
+    std::vector<account_balances_map_api_object> get_accounts_balances(const std::vector<std::string>& account_names) const;
 
     golos::chain::database& database() const {
         return _db;
@@ -352,7 +355,7 @@ DEFINE_API(plugin, get_accounts) {
     });
 }
 
-std::vector<account_api_object> plugin::api_impl::get_accounts(std::vector<std::string> names) const {
+std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector<std::string>& names) const {
     const auto &idx = _db.get_index<account_index>().indices().get<by_name>();
     const auto &vidx = _db.get_index<witness_vote_index>().indices().get<by_account_witness>();
     std::vector<account_api_object> results;
@@ -895,6 +898,88 @@ DEFINE_API(plugin, get_invite) {
         }
 
         return result;
+    });
+}
+
+std::vector<asset_api_object> plugin::api_impl::get_assets(
+        const std::string& creator,
+        const std::vector<std::string>& symbols,
+        const std::string& from, uint32_t limit) const {
+    std::vector<asset_api_object> results;
+    results.reserve(limit);
+
+    if (creator.size()) {
+        const auto& cre_idx = _db.get_index<asset_index, by_creator_symbol_name>();
+        auto itr = cre_idx.lower_bound(std::make_tuple(creator, from));
+        for (; itr != cre_idx.end() && itr->creator == creator; ++itr) {
+            if (results.size() == limit) break;
+            results.push_back(asset_api_object(*itr, _db));
+        }
+    } else {
+        const auto& sym_idx = _db.get_index<asset_index, by_symbol_name>();
+        if (symbols.size()) {
+            for (auto symbol : symbols) {
+                GOLOS_CHECK_PARAM(symbols, {
+                    GOLOS_CHECK_VALUE(symbol.size() >= 3 && symbol.size() <= 14, "symbol must be between 3 and 14");
+                });
+                auto symbol_name = symbol;
+                boost::to_upper(symbol_name);
+                auto itr = sym_idx.find(symbol_name);
+                if (itr != sym_idx.end()) {
+                    results.push_back(asset_api_object(*itr, _db));
+                }
+            }
+        } else {
+            auto itr = sym_idx.lower_bound(from);
+            for (; itr != sym_idx.end(); ++itr) {
+                if (results.size() == limit) break;
+                results.push_back(asset_api_object(*itr, _db));
+            }
+        }
+    }
+
+    return results;
+}
+
+DEFINE_API(plugin, get_assets) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (std::string, creator, std::string())
+        (std::vector<std::string>, symbols, std::vector<std::string>())
+        (std::string, from, std::string())
+        (uint32_t, limit, 20)
+    );
+    GOLOS_CHECK_LIMIT_PARAM(limit, 5000);
+
+    return my->database().with_weak_read_lock([&]() {
+        return my->get_assets(creator, symbols, from, limit);
+    });
+}
+
+std::vector<account_balances_map_api_object> plugin::api_impl::get_accounts_balances(const std::vector<std::string>& account_names) const {
+    std::vector<account_balances_map_api_object> results;
+
+    const auto& idx = _db.get_index<account_balance_index, by_account_symbol>();
+
+    for (auto account_name : account_names) {
+        account_balances_map_api_object acc_balances;
+
+        auto itr = idx.lower_bound(account_name);
+        for (; itr != idx.end() && itr->account == account_name; ++itr) {
+            acc_balances[itr->balance.symbol_name()] = *itr;
+        }
+
+        results.push_back(acc_balances);
+    }
+
+    return results;
+}
+
+DEFINE_API(plugin, get_accounts_balances) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (vector<std::string>, account_names)
+    );
+    return my->database().with_weak_read_lock([&]() {
+        return my->get_accounts_balances(account_names);
     });
 }
 

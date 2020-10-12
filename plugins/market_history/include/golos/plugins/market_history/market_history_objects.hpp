@@ -39,31 +39,43 @@ namespace golos {
 
             // Api params
             struct market_ticker {
-                double latest = 0;
+                double latest1 = 0; // close_asset2 / close_asset1 (for golos.id's asset1-asset2 pair)
+                double latest2 = 0; // close_asset1 / close_asset2 (for golos.id's asset2-asset1 pair)
                 double lowest_ask = 0;
                 double highest_bid = 0;
-                double percent_change = 0;
-                asset steem_volume = asset(0, STEEM_SYMBOL);
-                asset sbd_volume = asset(0, SBD_SYMBOL);
+                double percent_change1 = 0; // (for golos.id's asset1-asset2 pair)
+                double percent_change2 = 0; // (for golos.id's asset2-asset1 pair)
+                asset asset1_volume;
+                asset asset2_volume;
+                asset asset1_depth;
+                asset asset2_depth;
             };
 
             struct market_volume {
-                asset steem_volume = asset(0, STEEM_SYMBOL);
-                asset sbd_volume = asset(0, SBD_SYMBOL);
+                asset asset1_volume;
+                asset asset2_volume;
+            };
+
+            struct market_depth {
+                asset asset1_depth;
+                asset asset2_depth;
             };
 
             struct order {
                 double price;
-                share_type steem;
-                share_type sbd;
+
+                share_type asset1;
+                share_type asset2;
             };
 
 
             struct order_extended {
                 price order_price;
                 double real_price; // dollars per steem
-                share_type steem;
-                share_type sbd;
+
+                share_type asset1;
+                share_type asset2;
+
                 fc::time_point_sec created;
             };
 
@@ -110,27 +122,29 @@ namespace golos {
 
                 id_type id;
 
+                asset_symbol_type sym1 = 0;
+                asset_symbol_type sym2 = 0;
                 fc::time_point_sec open;
                 uint32_t seconds = 0;
-                share_type high_steem;
-                share_type high_sbd;
-                share_type low_steem;
-                share_type low_sbd;
-                share_type open_steem;
-                share_type open_sbd;
-                share_type close_steem;
-                share_type close_sbd;
-                share_type steem_volume;
-                share_type sbd_volume;
+                share_type high_asset1;
+                share_type high_asset2;
+                share_type low_asset1;
+                share_type low_asset2;
+                share_type open_asset1;
+                share_type open_asset2;
+                share_type close_asset1;
+                share_type close_asset2;
+                share_type asset1_volume;
+                share_type asset2_volume;
 
                 golos::protocol::price high() const {
-                    return asset(high_sbd, SBD_SYMBOL) /
-                           asset(high_steem, STEEM_SYMBOL);
+                    return asset(high_asset2, sym2) /
+                           asset(high_asset1, sym1);
                 }
 
                 golos::protocol::price low() const {
-                    return asset(low_sbd, SBD_SYMBOL) /
-                           asset(low_steem, STEEM_SYMBOL);
+                    return asset(low_asset2, sym2) /
+                           asset(low_asset1, sym1);
                 }
             };
 
@@ -154,43 +168,45 @@ namespace golos {
 
             struct by_id;
             struct by_bucket;
-            typedef multi_index_container <
-            bucket_object,
-            indexed_by<
-                    ordered_unique < tag < by_id>, member<bucket_object, bucket_id_type, &bucket_object::id>>,
-            ordered_unique <tag<by_bucket>,
-            composite_key<bucket_object,
-                    member < bucket_object, uint32_t, &bucket_object::seconds>,
-            member<bucket_object, fc::time_point_sec, &bucket_object::open>
-            >,
-            composite_key_compare <std::less<uint32_t>, std::less<fc::time_point_sec>>
-            >
-            >,
-            allocator <bucket_object>
-            >
-            bucket_index;
+
+            using bucket_index = multi_index_container<
+                bucket_object,
+                indexed_by<
+                    ordered_unique<tag<by_id>,
+                        member<bucket_object, bucket_id_type, &bucket_object::id>
+                    >,
+                    ordered_unique<tag<by_bucket>, composite_key<bucket_object,
+                        member<bucket_object, asset_symbol_type, &bucket_object::sym1>,
+                        member<bucket_object, asset_symbol_type, &bucket_object::sym2>,
+                        member<bucket_object, uint32_t, &bucket_object::seconds>,
+                        member<bucket_object, fc::time_point_sec, &bucket_object::open>
+                    >>
+                >, allocator<bucket_object>>;
 
             struct by_time;
-            typedef multi_index_container <
-            order_history_object,
-            indexed_by<
-                    ordered_unique < tag <
-                    by_id>, member<order_history_object, order_history_id_type, &order_history_object::id>>,
-            ordered_non_unique <tag<by_time>, member<order_history_object, time_point_sec, &order_history_object::time>>
-            >,
-            allocator <order_history_object>
-            >
-            order_history_index;
+
+            using order_history_index = multi_index_container<
+                order_history_object,
+                indexed_by<
+                    ordered_unique<tag<by_id>,
+                        member<order_history_object, order_history_id_type, &order_history_object::id>
+                    >,
+                    ordered_non_unique<tag<by_time>,
+                        member<order_history_object, time_point_sec, &order_history_object::time>
+                    >
+                >, allocator<order_history_object>>;
         }
     }
 } // golos::plugins::market_history
 
 FC_REFLECT((golos::plugins::market_history::market_ticker),
-           (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume));
+           (latest1)(latest2)(lowest_ask)(highest_bid)(percent_change1)(percent_change2)(asset1_volume)(asset2_volume)(asset1_depth)(asset2_depth));
 FC_REFLECT((golos::plugins::market_history::market_volume),
-           (steem_volume)(sbd_volume));
+           (asset1_volume)(asset2_volume));
+FC_REFLECT((golos::plugins::market_history::market_depth),
+           (asset1_depth)(asset2_depth));
 FC_REFLECT((golos::plugins::market_history::order),
-           (price)(steem)(sbd));
+           (price)(asset1)(asset2));
 FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
@@ -198,18 +214,18 @@ FC_REFLECT((golos::plugins::market_history::market_trade),
 
 FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded));
 
-FC_REFLECT((golos::plugins::market_history::order_extended), (order_price)(real_price)(steem)(sbd)(created));
+FC_REFLECT((golos::plugins::market_history::order_extended), (order_price)(real_price)(asset1)(asset2)(created));
 FC_REFLECT((golos::plugins::market_history::order_book_extended), (asks)(bids));
 
 
 FC_REFLECT((golos::plugins::market_history::bucket_object),
            (id)
                    (open)(seconds)
-                   (high_steem)(high_sbd)
-                   (low_steem)(low_sbd)
-                   (open_steem)(open_sbd)
-                   (close_steem)(close_sbd)
-                   (steem_volume)(sbd_volume))
+                   (high_asset1)(high_asset2)
+                   (low_asset1)(low_asset2)
+                   (open_asset1)(open_asset2)
+                   (close_asset1)(close_asset2)
+                   (asset1_volume)(asset2_volume))
 CHAINBASE_SET_INDEX_TYPE(golos::plugins::market_history::bucket_object, golos::plugins::market_history::bucket_index)
 
 FC_REFLECT((golos::plugins::market_history::order_history_object),(id)(time)(op))

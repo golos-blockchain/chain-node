@@ -793,6 +793,48 @@ namespace golos { namespace protocol {
             chain_properties_23& operator=(const chain_properties_23&) = default;
         };
 
+        struct chain_properties_24 : public chain_properties_23 {
+
+            /**
+             * Amount of fee in GBG have to be claimed on creating asset
+             */
+            asset asset_creation_fee = GOLOS_DEF_ASSET_CREATION_FEE;
+
+            /**
+             * Minimum interval between fund transfers from same invite
+             */
+            uint32_t invite_transfer_interval_sec = GOLOS_DEF_INVITE_TRANSFER_INTERVAL_SEC;
+
+            void validate() const;
+
+            chain_properties_24& operator=(const chain_properties_17& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_18& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_19& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_22& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_23& src) {
+                chain_properties_23::operator=(src);
+                return *this;
+            }
+
+            chain_properties_24& operator=(const chain_properties_24&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -805,7 +847,8 @@ namespace golos { namespace protocol {
             chain_properties_18,
             chain_properties_19,
             chain_properties_22,
-            chain_properties_23
+            chain_properties_23,
+            chain_properties_24
         >;
 
         /**
@@ -1064,6 +1107,35 @@ namespace golos { namespace protocol {
         struct limit_order_cancel_operation : public base_operation {
             account_name_type owner;
             uint32_t orderid = 0;
+
+            void validate() const;
+
+            void get_required_active_authorities(flat_set<account_name_type> &a) const {
+                a.insert(owner);
+            }
+        };
+
+
+        struct pair_to_cancel {
+            std::string base;
+            std::string quote;
+            bool reverse;
+        };
+
+        using limit_order_cancel_extension = static_variant<
+            pair_to_cancel
+        >;
+
+        using limit_order_cancel_extensions_type = flat_set<limit_order_cancel_extension>;
+
+        /**
+         *  limit_order_cancel with extensions
+         */
+        struct limit_order_cancel_ex_operation : public base_operation {
+            account_name_type owner;
+            uint32_t orderid = 0;
+
+            limit_order_cancel_extensions_type extensions;
 
             void validate() const;
 
@@ -1543,13 +1615,23 @@ namespace golos { namespace protocol {
             }
         };
 
+        struct is_invite_referral {
+            bool is_referral;
+        };
+
+        using invite_extension = static_variant<
+            is_invite_referral
+        >;
+
+        using invite_extensions_type = flat_set<invite_extension>;
+
         class invite_operation : public base_operation {
         public:
             account_name_type creator;
             asset balance;
             public_key_type invite_key;
 
-            extensions_type extensions;
+            invite_extensions_type extensions;
 
             void validate() const;
             void get_required_active_authorities(flat_set<account_name_type>& a) const {
@@ -1570,6 +1652,117 @@ namespace golos { namespace protocol {
                 a.insert(initiator);
             }
         };
+
+        struct asset_create_operation : public base_operation {
+            account_name_type creator;
+            asset max_supply; // also stores asset symbol
+            bool allow_fee = false;
+            bool allow_override_transfer = false;
+            string json_metadata;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
+        struct asset_update_operation : public base_operation {
+            account_name_type creator;
+            string symbol;
+            flat_set<string> symbols_whitelist;
+            uint16_t fee_percent = 0;
+            string json_metadata;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
+        struct asset_issue_operation : public base_operation {
+            account_name_type creator;
+            asset amount;
+            account_name_type to;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
+        struct asset_transfer_operation : public base_operation {
+            account_name_type creator;
+            string symbol;
+            account_name_type new_owner;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
+        struct override_transfer_operation : public base_operation {
+            account_name_type creator;
+            account_name_type from;
+            account_name_type to;
+            asset amount;
+
+            /// The memo is plain-text, any encryption on the memo is up to
+            /// a higher level protocol.
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(creator);
+            }
+        };
+
+        class invite_donate_operation : public base_operation {
+        public:
+            account_name_type from;
+            public_key_type invite_key;
+            asset amount;
+
+            /// The memo is plain-text, any encryption on the memo is up to
+            /// a higher level protocol.
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_active_authorities(flat_set<account_name_type>& a) const {
+                a.insert(from);
+            }
+        };
+
+        class invite_transfer_operation : public base_operation {
+        public:
+            public_key_type from;
+            public_key_type to;
+            asset amount;
+
+            /// The memo is plain-text, any encryption on the memo is up to
+            /// a higher level protocol.
+            string memo;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_authorities(vector<authority> &a) const {
+                a.push_back(authority(1, from, 1));
+            }
+        };
+
 } } // golos::protocol
 
 
@@ -1611,6 +1804,9 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_23), ((golos::protocol::chain_properties_22)),
     (claim_idleness_time)(min_invite_balance))
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_24), ((golos::protocol::chain_properties_23)),
+    (asset_creation_fee)(invite_transfer_interval_sec))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 
@@ -1661,6 +1857,9 @@ FC_REFLECT((golos::protocol::custom_binary_operation), (required_owner_auths)(re
 FC_REFLECT((golos::protocol::limit_order_create_operation), (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration))
 FC_REFLECT((golos::protocol::limit_order_create2_operation), (owner)(orderid)(amount_to_sell)(exchange_rate)(fill_or_kill)(expiration))
 FC_REFLECT((golos::protocol::limit_order_cancel_operation), (owner)(orderid))
+FC_REFLECT((golos::protocol::pair_to_cancel), (base)(quote)(reverse));
+FC_REFLECT_TYPENAME((golos::protocol::limit_order_cancel_extension));
+FC_REFLECT((golos::protocol::limit_order_cancel_ex_operation), (owner)(orderid)(extensions))
 
 FC_REFLECT((golos::protocol::delete_comment_operation), (author)(permlink));
 
@@ -1697,5 +1896,16 @@ FC_REFLECT((golos::protocol::donate_operation), (from)(to)(amount)(memo)(extensi
 FC_REFLECT((golos::protocol::transfer_to_tip_operation), (from)(to)(amount)(memo)(extensions))
 FC_REFLECT((golos::protocol::transfer_from_tip_operation), (from)(to)(amount)(memo)(extensions))
 
+FC_REFLECT((golos::protocol::is_invite_referral), (is_referral))
+FC_REFLECT_TYPENAME((golos::protocol::invite_extension));
 FC_REFLECT((golos::protocol::invite_operation), (creator)(balance)(invite_key)(extensions))
 FC_REFLECT((golos::protocol::invite_claim_operation), (initiator)(receiver)(invite_secret)(extensions))
+
+FC_REFLECT((golos::protocol::asset_create_operation), (creator)(max_supply)(allow_fee)(allow_override_transfer)(json_metadata)(extensions))
+FC_REFLECT((golos::protocol::asset_issue_operation), (creator)(amount)(to)(extensions))
+FC_REFLECT((golos::protocol::asset_update_operation), (creator)(symbol)(symbols_whitelist)(fee_percent)(json_metadata)(extensions))
+FC_REFLECT((golos::protocol::asset_transfer_operation), (creator)(symbol)(new_owner)(extensions))
+FC_REFLECT((golos::protocol::override_transfer_operation), (creator)(from)(to)(amount)(memo)(extensions))
+
+FC_REFLECT((golos::protocol::invite_donate_operation), (from)(invite_key)(amount)(memo)(extensions))
+FC_REFLECT((golos::protocol::invite_transfer_operation), (from)(to)(amount)(memo)(extensions))

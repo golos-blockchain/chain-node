@@ -5,7 +5,7 @@
 
 namespace golos { namespace protocol {
 
-        typedef uint64_t asset_symbol_type;
+        typedef uint128lh_t asset_symbol_type;
 
         struct asset {
             asset(share_type a = 0, asset_symbol_type id = STEEM_SYMBOL)
@@ -170,7 +170,36 @@ namespace fc {
     inline void from_variant(const fc::variant &var, golos::protocol::asset &vo) {
         vo = golos::protocol::asset::from_string(var.as_string());
     }
+
+    namespace raw {
+        template<typename Stream>
+        void pack(Stream& s, const golos::protocol::asset& a) {
+            fc::raw::pack(s, a.amount);
+            auto precision = ((char*)&a.symbol)[0];
+            if (precision < 100) {
+                fc::raw::pack(s, a.symbol.to_uint64());
+            } else {
+                fc::raw::pack(s, a.symbol);
+            }
+        }
+
+        template<typename Stream>
+        void unpack(Stream& s, golos::protocol::asset& a, uint32_t depth) {
+            fc::raw::unpack(s, a.amount);
+            uint64_t low;
+            fc::raw::unpack(s, low);
+            auto low_a = (char*)&low;
+            auto precision = low_a[0];
+            if (precision < 100) {
+                a.symbol = low;
+            } else {
+                uint64_t high;
+                fc::raw::unpack(s, high);
+                a.symbol = uint128lh_t(high, low);
+            }
+        }
+    }
 }
 
-FC_REFLECT((golos::protocol::asset), (amount)(symbol))
+//FC_REFLECT((golos::protocol::asset), (amount)(symbol))
 FC_REFLECT((golos::protocol::price), (base)(quote))

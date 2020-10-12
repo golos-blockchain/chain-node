@@ -88,6 +88,9 @@ namespace golos { namespace wallet {
 
             fc::optional<uint32_t> claim_idleness_time;
             fc::optional<asset> min_invite_balance;
+
+            fc::optional<asset> asset_creation_fee;
+            fc::optional<uint32_t> invite_transfer_interval_sec;
         };
 
         struct optional_private_box_query {
@@ -1482,9 +1485,25 @@ namespace golos { namespace wallet {
              */
             annotated_signed_transaction transfer_from_tip(string from, string to, asset amount, string memo, bool broadcast = false);
 
-            annotated_signed_transaction invite(account_name_type creator, asset balance, public_key_type invite_key, bool broadcast = false);
+            annotated_signed_transaction invite(account_name_type creator, asset balance, public_key_type invite_key, const invite_extensions_type& extensions, bool broadcast = false);
 
             annotated_signed_transaction claim_invite(account_name_type initiator, account_name_type receiver, string invite_secret, bool broadcast = false);
+
+            annotated_signed_transaction create_asset(account_name_type creator, asset max_supply, bool allow_fee, bool allow_override_transfer, const string& meta, bool broadcast = false);
+
+            annotated_signed_transaction update_asset(account_name_type creator, const string& symbol, const flat_set<string>& symbols_whitelist, uint16_t fee_percent, const string& meta, bool broadcast = false);
+
+            annotated_signed_transaction issue_asset(account_name_type creator, asset amount, account_name_type to, bool broadcast = false);
+
+            annotated_signed_transaction transfer_asset(account_name_type creator, const string& symbol, account_name_type new_owner, bool broadcast = false);
+
+            annotated_signed_transaction override_transfer(const string& creator, const string& from, const string& to, asset amount, const string& memo, bool broadcast = false);
+
+            annotated_signed_transaction donate_to_invite(const string& from, public_key_type invite_key, asset amount, const string& memo, bool broadcast = false);
+
+            annotated_signed_transaction transfer_invite(public_key_type from, public_key_type to, asset amount, const string& memo, bool broadcast = false);
+
+            annotated_signed_transaction cancel_orders(string owner, string base, string quote, bool reverse, bool broadcast);
 
         private:
             void decrypt_history_memos(history_operations& result);
@@ -1633,8 +1652,20 @@ FC_API( golos::wallet::wallet_api,
                 (donate)
                 (transfer_to_tip)
                 (transfer_from_tip)
+
                 (invite)
                 (claim_invite)
+
+                (create_asset)
+                (update_asset)
+                (issue_asset)
+                (transfer_asset)
+                (override_transfer)
+
+                (donate_to_invite)
+                (transfer_invite)
+
+                (cancel_orders)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))
@@ -1665,7 +1696,9 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
     (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time)
-    (claim_idleness_time)(min_invite_balance))
+    (claim_idleness_time)(min_invite_balance)
+    (asset_creation_fee)
+    (invite_transfer_interval_sec))
 
 FC_REFLECT(
     (golos::wallet::message_body),

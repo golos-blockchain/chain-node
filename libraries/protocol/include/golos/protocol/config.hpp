@@ -4,7 +4,7 @@
 #pragma once
 
 
-#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 23, 0))
+#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 24, 0))
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     (hardfork_version(STEEMIT_BLOCKCHAIN_VERSION))
 
 
@@ -269,6 +269,11 @@
 
 #define GOLOS_MIN_INVITE_BALANCE                1000
 #define GOLOS_DEF_MIN_INVITE_BALANCE            asset(10000, STEEM_SYMBOL)
+
+#define GOLOS_MIN_ASSET_CREATION_FEE            0
+#define GOLOS_DEF_ASSET_CREATION_FEE            asset(0, SBD_SYMBOL)
+#define GOLOS_MIN_INVITE_TRANSFER_INTERVAL_SEC  0
+#define GOLOS_DEF_INVITE_TRANSFER_INTERVAL_SEC  60
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
@@ -537,16 +542,24 @@
 
 #define GOLOS_MIN_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
 #define GOLOS_DEF_CLAIM_IDLENESS_TIME           (60*60*24*1) ///< 1 day
-#ifdef STEEMIT_BUILD_LIVETEST
-#define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (60*(5+1)/STEEMIT_BLOCK_INTERVAL) ///< 5 + 1 minutes
-#else
 #define GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL     (STEEMIT_BLOCKS_PER_HOUR*(24+1)) ///< 1 day + 1 hour
-#endif
 #define GOLOS_ACCUM_DISTRIBUTION_INTERVAL       (60*60*1) ///< 1 hour
 #define GOLOS_ACCUM_DISTRIBUTION_STEP           100 ///< accounts receiving their VS share per block
 
 #define GOLOS_MIN_INVITE_BALANCE                1000
 #define GOLOS_DEF_MIN_INVITE_BALANCE            asset(10000, STEEM_SYMBOL)
+
+#ifdef STEEMIT_BUILD_LIVETEST
+#define GOLOS_MIN_ASSET_CREATION_FEE            100000
+#define GOLOS_DEF_ASSET_CREATION_FEE            asset(2000000, SBD_SYMBOL)
+#define GOLOS_MIN_INVITE_TRANSFER_INTERVAL_SEC  1
+#define GOLOS_DEF_INVITE_TRANSFER_INTERVAL_SEC  60
+#else
+#define GOLOS_MIN_ASSET_CREATION_FEE            100000
+#define GOLOS_DEF_ASSET_CREATION_FEE            asset(2000000, SBD_SYMBOL)
+#define GOLOS_MIN_INVITE_TRANSFER_INTERVAL_SEC  1
+#define GOLOS_DEF_INVITE_TRANSFER_INTERVAL_SEC  60
+#endif
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000

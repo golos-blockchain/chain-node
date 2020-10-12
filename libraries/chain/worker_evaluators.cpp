@@ -43,7 +43,7 @@ namespace golos { namespace chain {
         const auto& fee = _db.get_witness_schedule_object().median_props.worker_request_creation_fee;
         if (fee.amount != 0) {
             const auto& author = _db.get_account(post.author);
-            GOLOS_CHECK_BALANCE(author, MAIN_BALANCE, fee);
+            GOLOS_CHECK_BALANCE(_db, author, MAIN_BALANCE, fee);
             _db.adjust_balance(author, -fee);
             _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), fee);
         }
@@ -76,7 +76,7 @@ namespace golos { namespace chain {
     void worker_request_vote_evaluator::do_apply(const worker_request_vote_operation& op) {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_request_vote_operation");
 
-        GOLOS_CHECK_BALANCE(_db.get_account(op.voter), EFFECTIVE_VESTING, asset(1, VESTS_SYMBOL));
+        GOLOS_CHECK_BALANCE(_db, _db.get_account(op.voter), EFFECTIVE_VESTING, asset(1, VESTS_SYMBOL));
 
         const auto& post = _db.get_comment(op.author, op.permlink);
         const auto& wro = _db.get_worker_request(post.id);
