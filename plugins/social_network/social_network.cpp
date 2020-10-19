@@ -95,7 +95,7 @@ namespace golos { namespace plugins { namespace social_network {
         ) const ;
 
         std::vector<donate_api_object> select_donates (
-            const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
+            bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
         ) const ;
 
         std::vector<discussion> get_content_replies(
@@ -181,7 +181,7 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     std::vector<donate_api_object> social_network::impl::select_donates(
-        const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
+        bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
     ) const {
         if (limit == 0) {
             return {};
@@ -195,9 +195,14 @@ namespace golos { namespace plugins { namespace social_network {
             bool need_sort = false;
             for (; itr != idx.end() && verify(itr) && result.size() < limit; ++itr, ++i) {
                 if (i < offset) continue;
+                if (uia) {
+                    if (itr->amount.symbol == STEEM_SYMBOL) continue;
+                } else {
+                    if (itr->amount.symbol != STEEM_SYMBOL) continue;
+                }
                 if (join_froms) {
                     auto join_itr = std::find_if(result.begin(), result.end(), [&](auto& dao) {
-                        return dao.from == itr->from;
+                        return dao.from == itr->from && dao.amount.symbol == itr->amount.symbol;
                     });
                     if (join_itr != result.end()) {
                         join_itr->amount += itr->amount;
@@ -209,7 +214,7 @@ namespace golos { namespace plugins { namespace social_network {
             }
             if (need_sort) {
                 std::sort(result.begin(), result.end(), [&](auto& lhs, auto& rhs) {
-                    return lhs.amount > rhs.amount;
+                    return lhs.get_amount() > rhs.get_amount();
                 });
             }
         };
@@ -217,9 +222,9 @@ namespace golos { namespace plugins { namespace social_network {
         if (target.size()) {
             const auto target_id = fc::sha256::hash(fc::json::to_string(target));
             const auto& idx = db.get_index<donate_data_index, by_target_amount>();
-            auto itr = idx.lower_bound(target_id);
+            auto itr = idx.lower_bound(std::make_tuple(target_id, uia));
             fill_donates(idx, itr, [&](auto& itr) {
-                return itr->target_id == target_id;
+                return itr->target_id == target_id && itr->uia == uia;
             });
         } else if (from.size()) {
             const auto& idx = db.get_index<donate_data_index, by_from_to>();
@@ -529,9 +534,6 @@ namespace golos { namespace plugins { namespace social_network {
             if (!db.has_index<donate_data_index>()) {
                 return;
             }
-            if (op.amount.symbol != STEEM_SYMBOL) {
-                return;
-            }
 
             const auto& donate_idx = db.get_index<donate_index, by_id>();
             auto donate = --donate_idx.end();
@@ -541,6 +543,7 @@ namespace golos { namespace plugins { namespace social_network {
                 don.from = op.from;
                 don.to = op.to.size() ? op.to : op.from;
                 don.amount = op.amount;
+                don.uia = (op.amount.symbol != STEEM_SYMBOL);
                 don.target_id = fc::sha256::hash(to_string(donate->target));
                 if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
             	don.time = db.head_block_time();
@@ -555,7 +558,11 @@ namespace golos { namespace plugins { namespace social_network {
                         const auto content = impl.find_comment_content(comment->id);
                         if (content != nullptr) {
                             db.modify(*content, [&](auto& con) {
-                                con.donates += op.amount;
+                                if (op.amount.symbol == STEEM_SYMBOL) {
+                                    con.donates += op.amount;
+                                } else {
+                                    con.donates_uia += (op.amount.amount / op.amount.precision());
+                                }
                             });
                         }
                     }
@@ -895,6 +902,7 @@ namespace golos { namespace plugins { namespace social_network {
 
     DEFINE_API(social_network, get_donates) {
         PLUGIN_API_VALIDATE_ARGS(
+            (bool,               uia)
             (fc::variant_object, target)
             (string,             from)
             (string,             to)
@@ -903,7 +911,7 @@ namespace golos { namespace plugins { namespace social_network {
             (bool,               join_froms, false)
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->select_donates(target, from, to, limit, offset, join_froms);
+            return pimpl->select_donates(uia, target, from, to, limit, offset, join_froms);
         });
     }
 
@@ -987,6 +995,7 @@ namespace golos { namespace plugins { namespace social_network {
                 con.json_metadata = to_string(content->json_metadata);
                 con.net_rshares = content->net_rshares;
                 con.donates = content->donates;
+                con.donates_uia = content->donates_uia;
             }
 
             const auto root_content = db.find<comment_content_object, by_comment>(co.root_comment);
