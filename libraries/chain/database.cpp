@@ -3014,6 +3014,7 @@ namespace golos { namespace chain {
                 modify(props, [&](dynamic_global_property_object &p) {
                     if (has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
                         p.accumulative_balance += asset(vesting_reward, STEEM_SYMBOL);
+                        p.accumulative_emission_per_day = asset(vesting_reward, STEEM_SYMBOL) * STEEMIT_BLOCKS_PER_DAY;
                     } else {
                         p.total_vesting_fund_steem += asset(vesting_reward, STEEM_SYMBOL);
                     }

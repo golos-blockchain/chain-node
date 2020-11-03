@@ -45,6 +45,7 @@ namespace golos { namespace api {
         uint32_t transit_block_num = UINT32_MAX;
         fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
         flat_map<asset_symbol_type, uint32_t> worker_requests;
+        asset accumulative_emission_per_day = asset(0, STEEM_SYMBOL);
     };
 
 } } // golos::api
@@ -84,4 +85,5 @@ FC_REFLECT(
     (is_forced_min_price)
     (transit_block_num)
     (transit_witnesses)
-    (worker_requests))
+    (worker_requests)
+    (accumulative_emission_per_day))

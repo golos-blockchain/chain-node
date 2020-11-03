@@ -17,5 +17,6 @@ namespace golos { namespace api {
         current_reserve_ratio(dgp.current_reserve_ratio), custom_ops_bandwidth_multiplier(dgp.custom_ops_bandwidth_multiplier),
         transit_block_num(dgp.transit_block_num), transit_witnesses(dgp.transit_witnesses) {
             worker_requests.insert(dgp.worker_requests.begin(), dgp.worker_requests.end());
+            accumulative_emission_per_day = dgp.accumulative_emission_per_day;
     }
 } } // golos::api
