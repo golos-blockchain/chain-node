@@ -11,7 +11,7 @@ using golos::chain::database;
 using golos::chain::evaluator;
 using golos::chain::evaluator_impl;
 
-class set_value_evaluator : public golos::chain::evaluator_impl<set_value_evaluator, account_notes_plugin_operation> {
+class set_value_evaluator : public evaluator_impl<set_value_evaluator, account_notes_plugin_operation> {
 public:
     using operation_type = set_value_operation;
 
