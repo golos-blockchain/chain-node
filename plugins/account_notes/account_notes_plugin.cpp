@@ -83,11 +83,11 @@ void account_notes_plugin::set_program_options(
         "Defines a count of accounts to do not store notes"
     ) (
         "an-max-key-length",
-        bpo::value<uint16_t>()->default_value(20),
+        bpo::value<uint16_t>()->default_value(50),
         "Maximum length of note key"
     ) (
         "an-max-value-length",
-        bpo::value<uint16_t>()->default_value(512),
+        bpo::value<uint16_t>()->default_value(UINT16_MAX),
         "Maximum length of note value"
     ) (
         "an-max-note-count",
