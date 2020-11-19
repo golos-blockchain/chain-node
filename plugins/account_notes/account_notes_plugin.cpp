@@ -16,10 +16,10 @@ namespace bpo = boost::program_options;
 class account_notes_plugin::account_notes_plugin_impl final {
 public:
     account_notes_plugin_impl(account_notes_plugin& plugin)
-            : plugin_(plugin), db_(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
+            : plugin_(plugin), _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
         // Each plugin needs its own evaluator registry.
         custom_operation_interpreter_ = std::make_shared<
-            generic_custom_operation_interpreter<account_notes_plugin_operation>>(db_);
+            generic_custom_operation_interpreter<account_notes_plugin_operation>>(_db);
 
         auto coi = custom_operation_interpreter_.get();
 
@@ -27,7 +27,7 @@ public:
         coi->register_evaluator<set_value_evaluator>(&settings_);
 
         // Add the registry to the database so the database can delegate custom ops to the plugin
-        db_.set_custom_operation_interpreter(plugin.name(), custom_operation_interpreter_);
+        _db.set_custom_operation_interpreter(plugin.name(), custom_operation_interpreter_);
     }
 
     ~account_notes_plugin_impl() = default;
@@ -40,7 +40,7 @@ public:
 
     account_notes_settings_api_object settings_;
 
-    golos::chain::database& db_;
+    golos::chain::database& _db;
 
     std::shared_ptr<generic_custom_operation_interpreter<account_notes_plugin_operation>> custom_operation_interpreter_;
 };
@@ -51,8 +51,8 @@ string account_notes_plugin::account_notes_plugin_impl::get_value(
 ) const {
     string result;
 
-    const auto& notes_idx = db_.get_index<account_note_index, by_account_key>();
-    auto notes_itr = notes_idx.find(boost::make_tuple(account, key));
+    const auto& notes_idx = _db.get_index<account_note_index, by_account_key>();
+    auto notes_itr = notes_idx.find(std::make_tuple(account, key));
     if (notes_itr != notes_idx.end()) {
         result = to_string(notes_itr->value);
     }
@@ -101,9 +101,9 @@ void account_notes_plugin::plugin_initialize(const boost::program_options::varia
 
     my = std::make_unique<account_notes_plugin::account_notes_plugin_impl>(*this);
 
-    add_plugin_index<account_note_index>(my->db_);
+    add_plugin_index<account_note_index>(my->_db);
 
-    add_plugin_index<account_note_stats_index>(my->db_);
+    add_plugin_index<account_note_stats_index>(my->_db);
 
     auto& settings = my->settings_;
 
@@ -141,7 +141,7 @@ DEFINE_API(account_notes_plugin, get_value) {
         (account_name_type, account)
         (string,          key)
     )
-    return my->db_.with_weak_read_lock([&]() {
+    return my->_db.with_weak_read_lock([&]() {
         return my->get_value(account, key);
     });
 }

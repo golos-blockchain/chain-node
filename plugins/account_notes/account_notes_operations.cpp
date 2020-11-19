@@ -13,40 +13,41 @@ void set_value_operation::validate() const {
 
      // TODO: optimize
     auto is_global = boost::algorithm::starts_with(key, "g.");
-    auto is_acs = boost::algorithm::ends_with(key, ".acs");
+    auto is_accs = boost::algorithm::ends_with(key, ".accs");
     auto is_lst = boost::algorithm::ends_with(key, ".lst");
 
-    GOLOS_CHECK_PARAM(key, GOLOS_CHECK_VALUE(!is_acs || is_global, ".acs requires g."));
+    GOLOS_CHECK_PARAM(key, GOLOS_CHECK_VALUE(!is_accs || is_global, ".accs requires g."));
 
     auto key_length = key.length();
     if (is_global) key_length -= 2;
-    if (is_acs || is_lst) key_length -= 4;
+    if (is_accs) key_length -= 4;
+    if (is_lst) key_length -= 3;
     GOLOS_CHECK_PARAM(key, GOLOS_CHECK_VALUE(key_length, "Key should not be empty"));
 
     fc::variant v;
-    if (is_lst || is_acs) {
+    if (is_lst || is_accs) {
         try {
             v = fc::json::from_string(value);
         } catch (...) {
-            GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be valid JSON for .lst, .acs"));
+            GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be valid JSON for .lst, .accs"));
         }
     }
 
     if (is_lst) { // should be JSON object
         GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(v.is_object(), "Value should be JSON object for .lst"));
-    } else if (is_acs) { // should be array of JSON values which are valid account names
-        GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(v.is_array(), "Value should be JSON array for .acs"));
+    } else if (is_accs) { // should be array of JSON values which are valid account names
+        GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(v.is_array(), "Value should be JSON array for .accs"));
 
         if (v.size()) {
-            std::vector<std::string> value_acs;
+            std::vector<std::string> value_accs;
             try {
-                fc::from_variant(v, value_acs);
+                fc::from_variant(v, value_accs);
             } catch (...) {
-                GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be JSON array of strings for .acs"));
+                GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be JSON array of strings for .accs"));
             }
 
-            for (size_t i = 0; i < value_acs.size(); i++) {
-                GOLOS_CHECK_PARAM_ACCOUNT(value_acs[i]);
+            for (size_t i = 0; i < value_accs.size(); i++) {
+                GOLOS_CHECK_PARAM_ACCOUNT(value_accs[i]);
             }
         }
     }

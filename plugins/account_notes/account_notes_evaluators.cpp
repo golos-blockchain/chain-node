@@ -32,11 +32,11 @@ void merge_objects(fc::mutable_variant_object& res, const fc::variant_object& ad
     }
 }
 
-std::pair<account_name_type, std::set<account_name_type>> get_global_value_acs(const database& _db, std::string key) {
+std::pair<account_name_type, std::set<account_name_type>> get_global_value_accs(const database& _db, std::string key) {
     std::pair<account_name_type, std::set<account_name_type>> res;
 
     const auto& notes_idx = _db.get_index<account_note_index, by_global_key>();
-    auto notes_itr = notes_idx.find(key + ".acs");
+    auto notes_itr = notes_idx.find(key + ".accs");
     if (notes_itr != notes_idx.end()) {
         res.first = notes_itr->account;
         try {
@@ -58,16 +58,16 @@ void set_value_evaluator::do_apply(const set_value_operation& op) {
 
         // TODO: optimize
         auto is_global = boost::algorithm::starts_with(op.key, "g.");
-        auto is_acs = boost::algorithm::ends_with(op.key, ".acs");
+        auto is_accs = boost::algorithm::ends_with(op.key, ".accs");
         auto is_lst = boost::algorithm::ends_with(op.key, ".lst");
 
         auto acc = op.account;
         if (is_global) {
-            auto gv_acs = get_global_value_acs(_db, op.key);
-            if (gv_acs.first != account_name_type() && gv_acs.first != acc && !gv_acs.second.count(acc)) {
-                return;
+            auto gv_accs = get_global_value_accs(_db, op.key);
+            if (gv_accs.first != account_name_type()) {
+                if (gv_accs.first != acc && !gv_accs.second.count(acc)) return;
+                acc = gv_accs.first;
             }
-            acc = gv_acs.first;
         }
 
         if (!is_tracked_account(acc)) {
@@ -91,17 +91,19 @@ void set_value_evaluator::do_apply(const set_value_operation& op) {
             return;
         }
 
-        if (is_acs) {
-            auto v = fc::json::from_string(op.value);
-            std::set<account_name_type> value_acs;
-            fc::from_variant(v, value_acs);
-            for (auto& ac : value_acs) {
-                _db.get_account(ac);
-            }
-        }
-
         auto res_str = op.value;
-        if (is_lst) {
+        if (is_accs) {
+            auto v = fc::json::from_string(op.value);
+            std::set<account_name_type> value_accs;
+            fc::from_variant(v, value_accs);
+            std::set<account_name_type> res_accs;
+            for (auto& ac : value_accs) {
+                if (_db.find_account(ac)) {
+                    res_accs.insert(ac);
+                }
+            }
+            res_str = fc::json::to_string(res_accs);
+        } else if (is_lst) {
             fc::mutable_variant_object res;
             auto add = fc::json::from_string(op.value).get_object();
             if (add.size()) {
@@ -117,10 +119,10 @@ void set_value_evaluator::do_apply(const set_value_operation& op) {
             } else {
                 res_str = "{}";
             }
+        }
 
-            if (res_str.size() > settings_->max_value_length) {
-                return;
-            }
+        if (res_str.size() > settings_->max_value_length) {
+            return;
         }
 
         if (notes_itr != notes_idx.end()) { // Edit case
