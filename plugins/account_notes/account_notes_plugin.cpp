@@ -146,7 +146,7 @@ DEFINE_API(account_notes_plugin, get_value) {
     });
 }
 
-DEFINE_API(account_notes_plugin, get_settings) {
+DEFINE_API(account_notes_plugin, get_values_settings) {
     return my->settings_;
 }
 

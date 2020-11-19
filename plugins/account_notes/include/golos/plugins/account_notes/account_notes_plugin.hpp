@@ -11,7 +11,7 @@ namespace golos { namespace plugins { namespace account_notes {
     using namespace golos::chain;
 
     DEFINE_API_ARGS(get_value, json_rpc::msg_pack, std::string)
-    DEFINE_API_ARGS(get_settings, json_rpc::msg_pack, account_notes_settings_api_object)
+    DEFINE_API_ARGS(get_values_settings, json_rpc::msg_pack, account_notes_settings_api_object)
 
     /**
      *   This plugin provides the support of key-value storage for additional data for the accounts.
@@ -39,7 +39,7 @@ namespace golos { namespace plugins { namespace account_notes {
 
         DECLARE_API(
             (get_value)
-            (get_settings)
+            (get_values_settings)
         )
 
     private:
