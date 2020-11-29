@@ -5186,6 +5186,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_24 == 24, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_24] = fc::time_point_sec(STEEMIT_HARDFORK_0_24_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_24] = STEEMIT_HARDFORK_0_24_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_25 == 25, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_25] = fc::time_point_sec(STEEMIT_HARDFORK_0_25_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_25] = STEEMIT_HARDFORK_0_25_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -5488,6 +5491,20 @@ namespace golos { namespace chain {
                     break;
                 case STEEMIT_HARDFORK_0_24:
                     {
+                        auto* bittrex = find_account("bittrex");
+                        if (bittrex) {
+                            auto& null = get_account(STEEMIT_NULL_ACCOUNT);
+                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->balance, "Burning tokens out of circulation"));
+                            adjust_balance(null, bittrex->balance);
+                            adjust_balance(*bittrex, -bittrex->balance);
+                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->sbd_balance, "Burning tokens out of circulation"));
+                            adjust_balance(null, bittrex->sbd_balance);
+                            adjust_balance(*bittrex, -bittrex->sbd_balance);
+                        }
+                    }
+                    break;
+                case STEEMIT_HARDFORK_0_25:
+                    {
 #ifdef STEEMIT_BUILD_LIVETEST
                         //active and signing_key
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -5520,16 +5537,6 @@ namespace golos { namespace chain {
                             auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                         });
 #endif
-                        auto* bittrex = find_account("bittrex");
-                        if (bittrex) {
-                            auto& null = get_account(STEEMIT_NULL_ACCOUNT);
-                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->balance, "Burning tokens out of circulation"));
-                            adjust_balance(null, bittrex->balance);
-                            adjust_balance(*bittrex, -bittrex->balance);
-                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->sbd_balance, "Burning tokens out of circulation"));
-                            adjust_balance(null, bittrex->sbd_balance);
-                            adjust_balance(*bittrex, -bittrex->sbd_balance);
-                        }
                     }
                     break;
                 default:
