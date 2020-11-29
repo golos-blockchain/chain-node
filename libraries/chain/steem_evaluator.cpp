@@ -3047,6 +3047,14 @@ void delegate_vesting_shares(
         void asset_update_evaluator::do_apply(const asset_update_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24__95, "asset_update_operation");
 
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_25) && op.json_metadata.size() > 0) {
+                GOLOS_CHECK_OP_PARAM(op, json_metadata, {
+                    const auto& json_metadata = op.json_metadata;
+                    GOLOS_CHECK_VALUE(fc::is_utf8(json_metadata), "json_metadata must be valid UTF8 string");
+                    GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
+                });
+            }
+
             const auto& asset_obj = _db.get_asset(op.symbol, op.creator);
 
             GOLOS_CHECK_VALUE(asset_obj.allow_fee || op.fee_percent == 0, "Asset does not support fee.");
