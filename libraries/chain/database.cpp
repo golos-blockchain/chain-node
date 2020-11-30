@@ -1700,13 +1700,18 @@ namespace golos { namespace chain {
 
             const auto& vdo_idx = get_index<vesting_delegation_index, by_delegation>();
 
-            bool has_hf_23 = has_hardfork(STEEMIT_HARDFORK_0_23);
+            auto has_hf23 = has_hardfork(STEEMIT_HARDFORK_0_23__104);
+            auto has_hf25 = has_hardfork(STEEMIT_HARDFORK_0_25__122);
+
+            auto min_vs = 30000000000;
 
             const auto& idx = get_index<account_index, by_last_active_operation>();
             auto itr = idx.lower_bound(old_time);
             for (; itr != idx.end(); ++itr) {
                 if (!itr->vesting_shares.amount.value || itr->to_withdraw.value) continue;
-                if (has_hf_23 && itr->effective_vesting_shares().amount.value < 30000000) continue;
+
+                auto acc_vs = itr->effective_vesting_shares().amount.value;
+                if (has_hf23 && acc_vs < 30000000) continue;
 
                 auto vdo_itr = vdo_idx.lower_bound(itr->name);
                 while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == itr->name) {
@@ -1723,17 +1728,22 @@ namespace golos { namespace chain {
                     remove(current);
                 }
 
-                bool has_hf_23 = has_hardfork(STEEMIT_HARDFORK_0_23__104);
+                auto to_withdraw = itr->vesting_shares.amount.value;
+                if (has_hf25) {
+                    to_withdraw = acc_vs - min_vs;
+                    if (to_withdraw <= 0) continue;
+                    to_withdraw = std::min(to_withdraw, itr->vesting_shares.amount.value);
+                }
                 modify(*itr, [&](auto& a) {
-                    if (has_hf_23) {
-                        a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
+                    if (has_hf23) {
+                        a.vesting_withdraw_rate = asset(to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
                     } else {
-                        a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23, VESTS_SYMBOL);
+                        a.vesting_withdraw_rate = asset(to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23, VESTS_SYMBOL);
                     }
                     if (a.vesting_withdraw_rate.amount == 0)
                         a.vesting_withdraw_rate.amount = 1;
                     a.next_vesting_withdrawal = now + fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);
-                    a.to_withdraw = a.vesting_shares.amount;
+                    a.to_withdraw = to_withdraw;
                     a.withdrawn = 0;
                 });
             }
@@ -4833,7 +4843,7 @@ namespace golos { namespace chain {
                 }
             }
 
-            const auto has_hf25 = has_hardfork(STEEMIT_HARDFORK_0_25);
+            auto has_hf25 = has_hardfork(STEEMIT_HARDFORK_0_25);
 
             auto subtract_fee = [&](asset& order_receives, asset& fee, account_name_type& fee_receiver) {
                 if (order_receives.symbol == STEEM_SYMBOL || order_receives.symbol == SBD_SYMBOL) {

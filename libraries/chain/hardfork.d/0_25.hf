@@ -1,6 +1,8 @@
 #ifndef STEEMIT_HARDFORK_0_25
 #define STEEMIT_HARDFORK_0_25 25
 
+#define STEEMIT_HARDFORK_0_25__122 (STEEMIT_HARDFORK_0_25) // Account idleness - minimum of non-withdrawing vesting shares
+
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_25_TIME  1605891600 // 20 nov 2020 20:00:00 MSK
 #else
