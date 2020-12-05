@@ -111,6 +111,11 @@ namespace golos { namespace plugins { namespace social_network {
             uint32_t limit, uint32_t vote_limit, uint32_t vote_offset
         ) const;
 
+        std::vector<discussion> get_all_discussions_by_active(
+            account_name_type start_author, std::string start_permlink,
+            uint32_t limit, std::string category, uint32_t vote_limit, uint32_t vote_offset
+        ) const;
+
         discussion get_content(const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset) const;
 
         discussion get_discussion(const comment_object& c, uint32_t vote_limit, uint32_t vote_offset) const;
@@ -965,6 +970,59 @@ namespace golos { namespace plugins { namespace social_network {
         return result;
     }
 
+    std::vector<discussion> social_network::impl::get_all_discussions_by_active(
+        account_name_type start_author,
+        std::string start_permlink,
+        uint32_t limit,
+        std::string category,
+        uint32_t vote_limit,
+        uint32_t vote_offset
+    ) const {
+        std::vector<discussion> result;
+
+        if (!db.has_index<comment_last_update_index>()) {
+            return result;
+        }
+
+        // Method returns only comments which are created when config flag was true
+
+        result.reserve(limit);
+
+        std::vector<discussion> all_discussions;
+        const auto& idx = db.get_index<comment_index, by_parent>();
+        auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category));
+        while (
+            itr != idx.end() &&
+            itr->parent_author == STEEMIT_ROOT_POST_PARENT
+        ) {
+            if (category.size() && to_string(itr->parent_permlink) != category) break;
+            all_discussions.emplace_back(get_discussion(*itr, vote_limit, vote_offset));
+            ++itr;
+        }
+
+        std::sort(all_discussions.begin(), all_discussions.end(), [&](auto& lhs, auto& rhs) {
+            if (!!lhs.active && !!rhs.active) return *lhs.active > *rhs.active;
+            return true;
+        });
+
+        int i = 0;
+        if (start_author.size() && start_permlink.size()) {
+            for (; i < all_discussions.size(); ++i) {
+                auto& dis = all_discussions[i];
+                if (dis.author == start_author && dis.permlink == start_permlink) {
+                    break;
+                }
+            }
+        }
+
+        auto i_end = i + limit;
+        for (; i < all_discussions.size() && i < i_end; ++i) {
+            result.push_back(all_discussions[i]);
+        }
+
+        return result;
+    }
+
     /**
      *  This method can be used to fetch replies to an account.
      *
@@ -983,6 +1041,29 @@ namespace golos { namespace plugins { namespace social_network {
         GOLOS_CHECK_LIMIT_PARAM(limit, 100);
         return pimpl->db.with_weak_read_lock([&]() {
             return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit, vote_limit, vote_offset);
+        });
+    }
+
+    /**
+     *  Gets all discussions by active (last update by comment under post.
+     * 
+     * Unlike the tags_plugin::get_discussions_by_*** methods,
+     * this method gets really ALL discussions, created from forum funding date to now.
+     *
+     * Supports filtering by category.
+     */
+    DEFINE_API(social_network, get_all_discussions_by_active) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (string,   start_author)
+            (string,   start_permlink)
+            (uint32_t, limit)
+            (string,   category, "")
+            (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
+            (uint32_t, vote_offset, 0)
+
+        );
+        return pimpl->db.with_weak_read_lock([&]() {
+            return pimpl->get_all_discussions_by_active(start_author, start_permlink, limit, category, vote_limit, vote_offset);
         });
     }
 
