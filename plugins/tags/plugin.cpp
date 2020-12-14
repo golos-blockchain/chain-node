@@ -80,6 +80,8 @@ namespace golos { namespace plugins { namespace tags {
 
         std::vector<tag_api_object> get_trending_tags(const std::string& after, uint32_t limit) const;
 
+        tag_map get_tags(std::set<std::string> tags) const;
+
         std::vector<std::pair<std::string, uint32_t>> get_tags_used_by_author(const std::string& author) const;
 
         std::vector<discussion> get_replies_by_last_update(
@@ -852,6 +854,30 @@ namespace golos { namespace plugins { namespace tags {
 
         return pimpl->database().with_weak_read_lock([&]() {
             return pimpl->get_trending_tags(after, limit);
+        });
+    }
+
+    tag_map tags_plugin::impl::get_tags(std::set<std::string> tags) const {
+        tag_map result;
+
+        const auto& idx = database().get_index<tags::tag_stats_index, tags::by_tag>();
+        for (auto& tag : tags) {
+            auto itr = idx.find(std::make_tuple(tags::tag_type::tag, tag));
+            if (itr != idx.end()) {
+                result[tag] = *itr;
+            }
+        }
+
+        return result;
+    }
+
+    DEFINE_API(tags_plugin, get_tags) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (std::set<std::string>, tags)
+        );
+
+        return pimpl->database().with_weak_read_lock([&]() {
+            return pimpl->get_tags(tags);
         });
     }
 
