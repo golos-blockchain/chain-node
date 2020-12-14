@@ -15,8 +15,24 @@ struct set_value_operation : base_operation {
 
     void validate() const;
 
+    bool is_posting() const {
+        std::string pst = "pst.";
+        std::string g_pst = "g.pst.";
+        if (key.size() >= pst.size()) {
+            if (key.substr(0, pst.size()) == pst) return true;
+        } else {
+            return false;
+        }
+        if (key.substr(0, g_pst.size()) == g_pst) return true;
+        return false;
+    }
+
     void get_required_active_authorities(flat_set<account_name_type>& a) const {
-        a.insert(account);
+        if (!is_posting()) a.insert(account);
+    }
+
+    void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+        if (is_posting()) a.insert(account);
     }
 };
 

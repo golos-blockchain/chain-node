@@ -32,8 +32,8 @@ public:
 
     ~account_notes_plugin_impl() = default;
 
-    string get_value(
-        account_name_type account, string key
+    key_values get_values(
+        account_name_type account, std::set<std::string> keys
     ) const;
 
     account_notes_plugin& plugin_;
@@ -45,16 +45,36 @@ public:
     std::shared_ptr<generic_custom_operation_interpreter<account_notes_plugin_operation>> custom_operation_interpreter_;
 };
 
-string account_notes_plugin::account_notes_plugin_impl::get_value(
+key_values account_notes_plugin::account_notes_plugin_impl::get_values(
     account_name_type account,
-    string key
+    std::set<std::string> keys
 ) const {
-    string result;
+    key_values result;
 
-    const auto& notes_idx = _db.get_index<account_note_index, by_account_key>();
-    auto notes_itr = notes_idx.find(std::make_tuple(account, key));
-    if (notes_itr != notes_idx.end()) {
-        result = to_string(notes_itr->value);
+    auto has_keys = !!keys.size();
+    auto key_itr = keys.begin();
+
+    const auto& idx = _db.get_index<account_note_index, by_account_key>();
+    auto itr = idx.lower_bound(account);
+    for (; itr != idx.end() && itr->account == account; ) {
+        if (has_keys) {
+            if (key_itr == keys.end() || result.size() == keys.size()) break;
+        }
+
+        const auto key = to_string(itr->key);
+
+        if (has_keys && key != *key_itr) {
+            if (key < *key_itr) {
+                ++itr;
+            } else {
+                key_itr = keys.erase(key_itr);
+            }
+            continue;
+        }
+
+        result[key] = to_string(itr->value);
+        if (has_keys) ++key_itr;
+        ++itr;
     }
 
     return result;
@@ -136,13 +156,13 @@ void account_notes_plugin::plugin_shutdown() {
 
 // Api Defines
 
-DEFINE_API(account_notes_plugin, get_value) {
+DEFINE_API(account_notes_plugin, get_values) {
     PLUGIN_API_VALIDATE_ARGS(
         (account_name_type, account)
-        (string,          key)
+        (std::set<std::string>,       keys, std::set<std::string>())
     )
     return my->_db.with_weak_read_lock([&]() {
-        return my->get_value(account, key);
+        return my->get_values(account, keys);
     });
 }
 
