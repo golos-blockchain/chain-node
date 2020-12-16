@@ -16,10 +16,10 @@ namespace bpo = boost::program_options;
 class account_notes_plugin::account_notes_plugin_impl final {
 public:
     account_notes_plugin_impl(account_notes_plugin& plugin)
-            : plugin_(plugin), db_(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
+            : plugin_(plugin), _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
         // Each plugin needs its own evaluator registry.
         custom_operation_interpreter_ = std::make_shared<
-            generic_custom_operation_interpreter<account_notes_plugin_operation>>(db_);
+            generic_custom_operation_interpreter<account_notes_plugin_operation>>(_db);
 
         auto coi = custom_operation_interpreter_.get();
 
@@ -27,34 +27,54 @@ public:
         coi->register_evaluator<set_value_evaluator>(&settings_);
 
         // Add the registry to the database so the database can delegate custom ops to the plugin
-        db_.set_custom_operation_interpreter(plugin.name(), custom_operation_interpreter_);
+        _db.set_custom_operation_interpreter(plugin.name(), custom_operation_interpreter_);
     }
 
     ~account_notes_plugin_impl() = default;
 
-    string get_value(
-        account_name_type account, string key
+    key_values get_values(
+        account_name_type account, std::set<std::string> keys
     ) const;
 
     account_notes_plugin& plugin_;
 
     account_notes_settings_api_object settings_;
 
-    golos::chain::database& db_;
+    golos::chain::database& _db;
 
     std::shared_ptr<generic_custom_operation_interpreter<account_notes_plugin_operation>> custom_operation_interpreter_;
 };
 
-string account_notes_plugin::account_notes_plugin_impl::get_value(
+key_values account_notes_plugin::account_notes_plugin_impl::get_values(
     account_name_type account,
-    string key
+    std::set<std::string> keys
 ) const {
-    string result;
+    key_values result;
 
-    const auto& notes_idx = db_.get_index<account_note_index, by_account_key>();
-    auto notes_itr = notes_idx.find(boost::make_tuple(account, key));
-    if (notes_itr != notes_idx.end()) {
-        result = to_string(notes_itr->value);
+    auto has_keys = !!keys.size();
+    auto key_itr = keys.begin();
+
+    const auto& idx = _db.get_index<account_note_index, by_account_key>();
+    auto itr = idx.lower_bound(account);
+    for (; itr != idx.end() && itr->account == account; ) {
+        if (has_keys) {
+            if (key_itr == keys.end() || result.size() == keys.size()) break;
+        }
+
+        const auto key = to_string(itr->key);
+
+        if (has_keys && key != *key_itr) {
+            if (key < *key_itr) {
+                ++itr;
+            } else {
+                key_itr = keys.erase(key_itr);
+            }
+            continue;
+        }
+
+        result[key] = to_string(itr->value);
+        if (has_keys) ++key_itr;
+        ++itr;
     }
 
     return result;
@@ -83,11 +103,11 @@ void account_notes_plugin::set_program_options(
         "Defines a count of accounts to do not store notes"
     ) (
         "an-max-key-length",
-        bpo::value<uint16_t>()->default_value(20),
+        bpo::value<uint16_t>()->default_value(50),
         "Maximum length of note key"
     ) (
         "an-max-value-length",
-        bpo::value<uint16_t>()->default_value(512),
+        bpo::value<uint16_t>()->default_value(UINT16_MAX),
         "Maximum length of note value"
     ) (
         "an-max-note-count",
@@ -101,9 +121,9 @@ void account_notes_plugin::plugin_initialize(const boost::program_options::varia
 
     my = std::make_unique<account_notes_plugin::account_notes_plugin_impl>(*this);
 
-    add_plugin_index<account_note_index>(my->db_);
+    add_plugin_index<account_note_index>(my->_db);
 
-    add_plugin_index<account_note_stats_index>(my->db_);
+    add_plugin_index<account_note_stats_index>(my->_db);
 
     auto& settings = my->settings_;
 
@@ -136,17 +156,17 @@ void account_notes_plugin::plugin_shutdown() {
 
 // Api Defines
 
-DEFINE_API(account_notes_plugin, get_value) {
+DEFINE_API(account_notes_plugin, get_values) {
     PLUGIN_API_VALIDATE_ARGS(
         (account_name_type, account)
-        (string,          key)
+        (std::set<std::string>,       keys, std::set<std::string>())
     )
-    return my->db_.with_weak_read_lock([&]() {
-        return my->get_value(account, key);
+    return my->_db.with_weak_read_lock([&]() {
+        return my->get_values(account, keys);
     });
 }
 
-DEFINE_API(account_notes_plugin, get_settings) {
+DEFINE_API(account_notes_plugin, get_values_settings) {
     return my->settings_;
 }
 

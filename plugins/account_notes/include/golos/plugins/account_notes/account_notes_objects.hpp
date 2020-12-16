@@ -50,20 +50,24 @@ public:
 using account_note_id_type = object_id<account_note_object>;
 
 struct by_account_key;
+struct by_global_key;
 
 using account_note_index = multi_index_container<
     account_note_object,
     indexed_by<
-        ordered_unique<
-            tag<by_id>,
-            member<account_note_object, account_note_id_type, &account_note_object::id>>,
-        ordered_unique<
-            tag<by_account_key>,
-            composite_key<account_note_object,
-                member<account_note_object, account_name_type, &account_note_object::account>,
-                member<account_note_object, shared_string, &account_note_object::key>>,
-            composite_key_compare<std::less<account_name_type>, chainbase::strcmp_less>>>,
-    allocator<account_note_object>>;
+        ordered_unique<tag<by_id>,
+            member<account_note_object, account_note_id_type, &account_note_object::id>
+        >,
+        ordered_unique<tag<by_account_key>, composite_key<account_note_object,
+            member<account_note_object, account_name_type, &account_note_object::account>,
+            member<account_note_object, shared_string, &account_note_object::key>
+            >, composite_key_compare<std::less<account_name_type>, chainbase::strcmp_less>
+        >,
+        ordered_non_unique<tag<by_global_key>, 
+            member<account_note_object, shared_string, &account_note_object::key>,
+            chainbase::strcmp_less
+        >
+    >, allocator<account_note_object>>;
 
 class account_note_stats_object final : public object<account_note_stats_object_type, account_note_stats_object> {
 public:

@@ -11,6 +11,8 @@ namespace golos { namespace plugins { namespace tags {
     using plugins::json_rpc::msg_pack;
     using namespace golos::api;
 
+    using tag_map = std::map<std::string, tag_api_object>;
+
     using tags_used_by_author_r = std::vector<std::pair<std::string, uint32_t>>;
 
     struct get_languages_result {
@@ -18,6 +20,7 @@ namespace golos { namespace plugins { namespace tags {
     };
 
     DEFINE_API_ARGS(get_trending_tags,                     msg_pack, std::vector<tag_api_object>)
+    DEFINE_API_ARGS(get_tags,                              msg_pack, tag_map)
     DEFINE_API_ARGS(get_tags_used_by_author,               msg_pack, tags_used_by_author_r)
     DEFINE_API_ARGS(get_discussions_by_payout,             msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_discussions_by_trending,           msg_pack, std::vector<discussion>)
@@ -48,6 +51,11 @@ namespace golos { namespace plugins { namespace tags {
             *  total pending payout means the pending payout of all children as well.
             */
             (get_trending_tags)
+
+            /**
+             *  Return the tag statistics.
+             */
+            (get_tags)
 
             /**
              * Used to retrieve the list of first payout discussions sorted by rshares^2 amount

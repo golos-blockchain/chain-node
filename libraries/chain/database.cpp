@@ -1700,13 +1700,18 @@ namespace golos { namespace chain {
 
             const auto& vdo_idx = get_index<vesting_delegation_index, by_delegation>();
 
-            bool has_hf_23 = has_hardfork(STEEMIT_HARDFORK_0_23);
+            auto has_hf23 = has_hardfork(STEEMIT_HARDFORK_0_23__104);
+            auto has_hf25 = has_hardfork(STEEMIT_HARDFORK_0_25__122);
+
+            auto min_vs = 30000000000;
 
             const auto& idx = get_index<account_index, by_last_active_operation>();
             auto itr = idx.lower_bound(old_time);
             for (; itr != idx.end(); ++itr) {
                 if (!itr->vesting_shares.amount.value || itr->to_withdraw.value) continue;
-                if (has_hf_23 && itr->effective_vesting_shares().amount.value < 30000000) continue;
+
+                auto acc_vs = itr->effective_vesting_shares().amount.value;
+                if (has_hf23 && acc_vs < 30000000) continue;
 
                 auto vdo_itr = vdo_idx.lower_bound(itr->name);
                 while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == itr->name) {
@@ -1723,17 +1728,22 @@ namespace golos { namespace chain {
                     remove(current);
                 }
 
-                bool has_hf_23 = has_hardfork(STEEMIT_HARDFORK_0_23__104);
+                auto to_withdraw = itr->vesting_shares.amount.value;
+                if (has_hf25) {
+                    to_withdraw = acc_vs - min_vs;
+                    if (to_withdraw <= 0) continue;
+                    to_withdraw = std::min(to_withdraw, itr->vesting_shares.amount.value);
+                }
                 modify(*itr, [&](auto& a) {
-                    if (has_hf_23) {
-                        a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
+                    if (has_hf23) {
+                        a.vesting_withdraw_rate = asset(to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
                     } else {
-                        a.vesting_withdraw_rate = asset(a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23, VESTS_SYMBOL);
+                        a.vesting_withdraw_rate = asset(to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23, VESTS_SYMBOL);
                     }
                     if (a.vesting_withdraw_rate.amount == 0)
                         a.vesting_withdraw_rate.amount = 1;
                     a.next_vesting_withdrawal = now + fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);
-                    a.to_withdraw = a.vesting_shares.amount;
+                    a.to_withdraw = to_withdraw;
                     a.withdrawn = 0;
                 });
             }
@@ -3014,6 +3024,7 @@ namespace golos { namespace chain {
                 modify(props, [&](dynamic_global_property_object &p) {
                     if (has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
                         p.accumulative_balance += asset(vesting_reward, STEEM_SYMBOL);
+                        p.accumulative_emission_per_day = asset(vesting_reward, STEEM_SYMBOL) * STEEMIT_BLOCKS_PER_DAY;
                     } else {
                         p.total_vesting_fund_steem += asset(vesting_reward, STEEM_SYMBOL);
                     }
@@ -4832,23 +4843,40 @@ namespace golos { namespace chain {
                 }
             }
 
-            asset trade_fee(0, new_order_receives.symbol);
-            account_name_type trade_fee_receiver;
-            if (has_hardfork(STEEMIT_HARDFORK_0_24__95) && new_order_receives.symbol != STEEM_SYMBOL && new_order_receives.symbol != SBD_SYMBOL) {
-                const auto& ast = get_asset(new_order_receives.symbol);
-                if (ast.fee_percent != 0) {
-                    trade_fee = asset(
-                        (uint128_t(new_order_receives.amount.value) * ast.fee_percent / STEEMIT_100_PERCENT).to_uint64(),
-                        new_order_receives.symbol);
-                    adjust_balance(get_account(ast.creator), trade_fee);
-                    new_order_receives -= trade_fee;
-                    trade_fee_receiver = ast.creator;
+            auto has_hf25 = has_hardfork(STEEMIT_HARDFORK_0_25);
+
+            auto subtract_fee = [&](asset& order_receives, asset& fee, account_name_type& fee_receiver) {
+                if (order_receives.symbol == STEEM_SYMBOL || order_receives.symbol == SBD_SYMBOL) {
+                    return;
+                }
+                const auto& ast = get_asset(order_receives.symbol);
+                if (ast.fee_percent != 0 && order_receives.amount != 0) {
+                    fee = asset(
+                        (uint128_t(order_receives.amount.value) * ast.fee_percent / STEEMIT_100_PERCENT).to_uint64(),
+                        order_receives.symbol);
+                    if (has_hf25) fee.amount = std::max(fee.amount, share_type(1));
+                    adjust_balance(get_account(ast.creator), fee);
+                    order_receives -= fee;
+                    fee_receiver = ast.creator;
+                }
+            };
+
+            asset new_trade_fee(0, new_order_receives.symbol);
+            account_name_type new_trade_fee_receiver;
+
+            asset old_trade_fee(0, old_order_receives.symbol);
+            account_name_type old_trade_fee_receiver;
+
+            if (has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+                subtract_fee(new_order_receives, new_trade_fee, new_trade_fee_receiver);
+                if (has_hf25) {
+                    subtract_fee(old_order_receives, old_trade_fee, old_trade_fee_receiver);
                 }
             }
 
             push_virtual_operation(fill_order_operation(
-                new_order.seller, new_order.orderid, new_order_pays, trade_fee, trade_fee_receiver,
-                old_order.seller, old_order.orderid, old_order_pays));
+                new_order.seller, new_order.orderid, new_order_pays, new_trade_fee, new_trade_fee_receiver,
+                old_order.seller, old_order.orderid, old_order_pays, old_trade_fee, old_trade_fee_receiver));
 
             int result = 0;
             result |= fill_order(new_order, new_order_pays, new_order_receives);
@@ -5185,6 +5213,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_24 == 24, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_24] = fc::time_point_sec(STEEMIT_HARDFORK_0_24_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_24] = STEEMIT_HARDFORK_0_24_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_25 == 25, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_25] = fc::time_point_sec(STEEMIT_HARDFORK_0_25_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_25] = STEEMIT_HARDFORK_0_25_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -5487,6 +5518,20 @@ namespace golos { namespace chain {
                     break;
                 case STEEMIT_HARDFORK_0_24:
                     {
+                        auto* bittrex = find_account("bittrex");
+                        if (bittrex) {
+                            auto& null = get_account(STEEMIT_NULL_ACCOUNT);
+                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->balance, "Burning tokens out of circulation"));
+                            adjust_balance(null, bittrex->balance);
+                            adjust_balance(*bittrex, -bittrex->balance);
+                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->sbd_balance, "Burning tokens out of circulation"));
+                            adjust_balance(null, bittrex->sbd_balance);
+                            adjust_balance(*bittrex, -bittrex->sbd_balance);
+                        }
+                    }
+                    break;
+                case STEEMIT_HARDFORK_0_25:
+                    {
 #ifdef STEEMIT_BUILD_LIVETEST
                         //active and signing_key
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -5519,16 +5564,6 @@ namespace golos { namespace chain {
                             auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                         });
 #endif
-                        auto* bittrex = find_account("bittrex");
-                        if (bittrex) {
-                            auto& null = get_account(STEEMIT_NULL_ACCOUNT);
-                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->balance, "Burning tokens out of circulation"));
-                            adjust_balance(null, bittrex->balance);
-                            adjust_balance(*bittrex, -bittrex->balance);
-                            push_virtual_operation(internal_transfer_operation("bittrex", STEEMIT_NULL_ACCOUNT, bittrex->sbd_balance, "Burning tokens out of circulation"));
-                            adjust_balance(null, bittrex->sbd_balance);
-                            adjust_balance(*bittrex, -bittrex->sbd_balance);
-                        }
                     }
                     break;
                 default:

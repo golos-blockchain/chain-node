@@ -37,6 +37,7 @@ namespace golos { namespace plugins { namespace social_network {
         shared_string json_metadata;
         share_type net_rshares;
         asset donates = asset(0, STEEM_SYMBOL);
+        share_type donates_uia = 0;
 
         uint32_t block_number;
     };
@@ -155,9 +156,14 @@ namespace golos { namespace plugins { namespace social_network {
         account_name_type from;
         account_name_type to;
         asset amount;
+        bool uia;
         fc::sha256 target_id;
         shared_string comment;
         time_point_sec time;
+
+        share_type get_amount() const {
+            return (amount.amount / amount.precision());
+        }
     };
 
     class donate_api_object {
@@ -165,6 +171,7 @@ namespace golos { namespace plugins { namespace social_network {
         account_name_type from;
         account_name_type to;
         asset amount;
+        bool uia;
         account_name_type app;
         uint16_t version;
         string target;
@@ -173,7 +180,7 @@ namespace golos { namespace plugins { namespace social_network {
         time_point_sec time;
 
         donate_api_object(const donate_data_object& don, const database& db) {
-            from = don.from; to = don.to; amount = don.amount;
+            from = don.from; to = don.to; amount = don.amount; uia = don.uia;
             auto donate = db.get_donate(don.donate);
             app = donate.app;
             version = donate.version;
@@ -181,6 +188,10 @@ namespace golos { namespace plugins { namespace social_network {
             target_id = don.target_id;
             comment = to_string(don.comment);
             time = don.time;
+        }
+
+        share_type get_amount() const {
+            return (amount.amount / amount.precision());
         }
     };
 
@@ -212,8 +223,9 @@ namespace golos { namespace plugins { namespace social_network {
             >>,
             ordered_non_unique<tag<by_target_amount>, composite_key<donate_data_object,
                 member<donate_data_object, fc::sha256, &donate_data_object::target_id>,
-                member<donate_data_object, asset, &donate_data_object::amount>
-            >, composite_key_compare<std::less<fc::sha256>, std::greater<asset>>>>,
+                member<donate_data_object, bool, &donate_data_object::uia>,
+                const_mem_fun<donate_data_object, share_type, &donate_data_object::get_amount>
+            >, composite_key_compare<std::less<fc::sha256>, std::less<bool>, std::greater<share_type>>>>,
         allocator<donate_data_object>
     >;
 } } }
@@ -236,4 +248,4 @@ CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::social_network::donate_data_object,
     golos::plugins::social_network::donate_data_index)
 FC_REFLECT((golos::plugins::social_network::donate_api_object),
-    (from)(to)(amount)(app)(version)(target)(target_id)(comment)(time))
+    (from)(to)(amount)(uia)(app)(version)(target)(target_id)(comment)(time))

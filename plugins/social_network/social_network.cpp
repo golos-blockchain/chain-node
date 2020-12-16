@@ -95,7 +95,7 @@ namespace golos { namespace plugins { namespace social_network {
         ) const ;
 
         std::vector<donate_api_object> select_donates (
-            const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
+            bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
         ) const ;
 
         std::vector<discussion> get_content_replies(
@@ -109,6 +109,11 @@ namespace golos { namespace plugins { namespace social_network {
         std::vector<discussion> get_replies_by_last_update(
             account_name_type start_parent_author, std::string start_permlink,
             uint32_t limit, uint32_t vote_limit, uint32_t vote_offset
+        ) const;
+
+        std::vector<discussion> get_all_discussions_by_active(
+            account_name_type start_author, std::string start_permlink,
+            uint32_t limit, std::string category, uint32_t vote_limit, uint32_t vote_offset
         ) const;
 
         discussion get_content(const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset) const;
@@ -181,7 +186,7 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     std::vector<donate_api_object> social_network::impl::select_donates(
-        const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
+        bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
     ) const {
         if (limit == 0) {
             return {};
@@ -195,9 +200,14 @@ namespace golos { namespace plugins { namespace social_network {
             bool need_sort = false;
             for (; itr != idx.end() && verify(itr) && result.size() < limit; ++itr, ++i) {
                 if (i < offset) continue;
+                if (uia) {
+                    if (itr->amount.symbol == STEEM_SYMBOL) continue;
+                } else {
+                    if (itr->amount.symbol != STEEM_SYMBOL) continue;
+                }
                 if (join_froms) {
                     auto join_itr = std::find_if(result.begin(), result.end(), [&](auto& dao) {
-                        return dao.from == itr->from;
+                        return dao.from == itr->from && dao.amount.symbol == itr->amount.symbol;
                     });
                     if (join_itr != result.end()) {
                         join_itr->amount += itr->amount;
@@ -209,7 +219,7 @@ namespace golos { namespace plugins { namespace social_network {
             }
             if (need_sort) {
                 std::sort(result.begin(), result.end(), [&](auto& lhs, auto& rhs) {
-                    return lhs.amount > rhs.amount;
+                    return lhs.get_amount() > rhs.get_amount();
                 });
             }
         };
@@ -217,9 +227,9 @@ namespace golos { namespace plugins { namespace social_network {
         if (target.size()) {
             const auto target_id = fc::sha256::hash(fc::json::to_string(target));
             const auto& idx = db.get_index<donate_data_index, by_target_amount>();
-            auto itr = idx.lower_bound(target_id);
+            auto itr = idx.lower_bound(std::make_tuple(target_id, uia));
             fill_donates(idx, itr, [&](auto& itr) {
-                return itr->target_id == target_id;
+                return itr->target_id == target_id && itr->uia == uia;
             });
         } else if (from.size()) {
             const auto& idx = db.get_index<donate_data_index, by_from_to>();
@@ -529,9 +539,6 @@ namespace golos { namespace plugins { namespace social_network {
             if (!db.has_index<donate_data_index>()) {
                 return;
             }
-            if (op.amount.symbol != STEEM_SYMBOL) {
-                return;
-            }
 
             const auto& donate_idx = db.get_index<donate_index, by_id>();
             auto donate = --donate_idx.end();
@@ -541,6 +548,7 @@ namespace golos { namespace plugins { namespace social_network {
                 don.from = op.from;
                 don.to = op.to.size() ? op.to : op.from;
                 don.amount = op.amount;
+                don.uia = (op.amount.symbol != STEEM_SYMBOL);
                 don.target_id = fc::sha256::hash(to_string(donate->target));
                 if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
             	don.time = db.head_block_time();
@@ -555,7 +563,11 @@ namespace golos { namespace plugins { namespace social_network {
                         const auto content = impl.find_comment_content(comment->id);
                         if (content != nullptr) {
                             db.modify(*content, [&](auto& con) {
-                                con.donates += op.amount;
+                                if (op.amount.symbol == STEEM_SYMBOL) {
+                                    con.donates += op.amount;
+                                } else {
+                                    con.donates_uia += (op.amount.amount / op.amount.precision());
+                                }
                             });
                         }
                     }
@@ -895,6 +907,7 @@ namespace golos { namespace plugins { namespace social_network {
 
     DEFINE_API(social_network, get_donates) {
         PLUGIN_API_VALIDATE_ARGS(
+            (bool,               uia)
             (fc::variant_object, target)
             (string,             from)
             (string,             to)
@@ -903,7 +916,7 @@ namespace golos { namespace plugins { namespace social_network {
             (bool,               join_froms, false)
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->select_donates(target, from, to, limit, offset, join_froms);
+            return pimpl->select_donates(uia, target, from, to, limit, offset, join_froms);
         });
     }
 
@@ -957,6 +970,59 @@ namespace golos { namespace plugins { namespace social_network {
         return result;
     }
 
+    std::vector<discussion> social_network::impl::get_all_discussions_by_active(
+        account_name_type start_author,
+        std::string start_permlink,
+        uint32_t limit,
+        std::string category,
+        uint32_t vote_limit,
+        uint32_t vote_offset
+    ) const {
+        std::vector<discussion> result;
+
+        if (!db.has_index<comment_last_update_index>()) {
+            return result;
+        }
+
+        // Method returns only comments which are created when config flag was true
+
+        result.reserve(limit);
+
+        std::vector<discussion> all_discussions;
+        const auto& idx = db.get_index<comment_index, by_parent>();
+        auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category));
+        while (
+            itr != idx.end() &&
+            itr->parent_author == STEEMIT_ROOT_POST_PARENT
+        ) {
+            if (category.size() && to_string(itr->parent_permlink) != category) break;
+            all_discussions.emplace_back(get_discussion(*itr, vote_limit, vote_offset));
+            ++itr;
+        }
+
+        std::sort(all_discussions.begin(), all_discussions.end(), [&](auto& lhs, auto& rhs) {
+            if (!!lhs.active && !!rhs.active) return *lhs.active > *rhs.active;
+            return true;
+        });
+
+        int i = 0;
+        if (start_author.size() && start_permlink.size()) {
+            for (; i < all_discussions.size(); ++i) {
+                auto& dis = all_discussions[i];
+                if (dis.author == start_author && dis.permlink == start_permlink) {
+                    break;
+                }
+            }
+        }
+
+        auto i_end = i + limit;
+        for (; i < all_discussions.size() && i < i_end; ++i) {
+            result.push_back(all_discussions[i]);
+        }
+
+        return result;
+    }
+
     /**
      *  This method can be used to fetch replies to an account.
      *
@@ -978,6 +1044,29 @@ namespace golos { namespace plugins { namespace social_network {
         });
     }
 
+    /**
+     *  Gets all discussions by active (last update by comment under post.
+     * 
+     * Unlike the tags_plugin::get_discussions_by_*** methods,
+     * this method gets really ALL discussions, created from forum funding date to now.
+     *
+     * Supports filtering by category.
+     */
+    DEFINE_API(social_network, get_all_discussions_by_active) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (string,   start_author)
+            (string,   start_permlink)
+            (uint32_t, limit)
+            (string,   category, "")
+            (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
+            (uint32_t, vote_offset, 0)
+
+        );
+        return pimpl->db.with_weak_read_lock([&]() {
+            return pimpl->get_all_discussions_by_active(start_author, start_permlink, limit, category, vote_limit, vote_offset);
+        });
+    }
+
     void fill_comment_info(const golos::chain::database& db, const comment_object& co, comment_api_object& con) {
         if (db.has_index<comment_content_index>()) {
             const auto content = db.find<comment_content_object, by_comment>(co.id);
@@ -987,6 +1076,7 @@ namespace golos { namespace plugins { namespace social_network {
                 con.json_metadata = to_string(content->json_metadata);
                 con.net_rshares = content->net_rshares;
                 con.donates = content->donates;
+                con.donates_uia = content->donates_uia;
             }
 
             const auto root_content = db.find<comment_content_object, by_comment>(co.root_comment);
