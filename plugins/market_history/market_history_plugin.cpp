@@ -269,16 +269,21 @@ namespace golos {
             }
 
             market_volume market_history_plugin::market_history_plugin_impl::get_volume(const symbol_type_pair& pair) const {
-                const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
-                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, 0, database().head_block_time() - 86400));
                 market_volume result;
+
+                auto smallest_bucket = _tracked_buckets.begin();
+                if (smallest_bucket == _tracked_buckets.end()) {
+                    return result;
+                }
+
+                const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
+                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, *smallest_bucket, database().head_block_time() - 86400));
                 result.asset1_volume = asset(0, pair.first);
                 result.asset2_volume = asset(0, pair.second);
 
-                uint32_t bucket_size = itr->seconds;
                 while (itr != bucket_idx.end() &&
                         itr->sym1 == pair.first && itr->sym2 == pair.second &&
-                        itr->seconds == bucket_size) {
+                        itr->seconds == *smallest_bucket) {
                     result.asset1_volume.amount += itr->asset1_volume;
                     result.asset2_volume.amount += itr->asset2_volume;
 
