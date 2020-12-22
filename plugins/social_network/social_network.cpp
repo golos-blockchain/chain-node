@@ -554,25 +554,23 @@ namespace golos { namespace plugins { namespace social_network {
             	don.time = db.head_block_time();
             });
 
-            if (op.memo.app == "golos-id") {
-                try {
-                    auto author = account_name_type(op.memo.target["author"].as_string());
-                    auto permlink = op.memo.target["permlink"].as_string();
-                    const auto* comment = db.find_comment(author, permlink);
-                    if (comment != nullptr) {
-                        const auto content = impl.find_comment_content(comment->id);
-                        if (content != nullptr) {
-                            db.modify(*content, [&](auto& con) {
-                                if (op.amount.symbol == STEEM_SYMBOL) {
-                                    con.donates += op.amount;
-                                } else {
-                                    con.donates_uia += (op.amount.amount / op.amount.precision());
-                                }
-                            });
-                        }
+            try {
+                auto author = account_name_type(op.memo.target["author"].as_string());
+                auto permlink = op.memo.target["permlink"].as_string();
+                const auto* comment = db.find_comment(author, permlink);
+                if (comment != nullptr) {
+                    const auto content = impl.find_comment_content(comment->id);
+                    if (content != nullptr) {
+                        db.modify(*content, [&](auto& con) {
+                            if (op.amount.symbol == STEEM_SYMBOL) {
+                                con.donates += op.amount;
+                            } else {
+                                con.donates_uia += (op.amount.amount / op.amount.precision());
+                            }
+                        });
                     }
-                } catch (...) {}
-            }
+                }
+            } catch (...) {}
         }
     };
 
