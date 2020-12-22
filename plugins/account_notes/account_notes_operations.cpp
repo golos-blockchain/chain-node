@@ -46,8 +46,10 @@ void set_value_operation::validate() const {
                 GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be JSON array of strings for .accs"));
             }
 
-            for (size_t i = 0; i < value_accs.size(); i++) {
-                GOLOS_CHECK_PARAM_ACCOUNT(value_accs[i]);
+            if (value_accs.size() != 1 || value_accs[0] != ".all") {
+                for (size_t i = 0; i < value_accs.size(); i++) {
+                    GOLOS_CHECK_PARAM_ACCOUNT(value_accs[i]);
+                }
             }
         }
     }

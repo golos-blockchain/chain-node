@@ -65,7 +65,9 @@ void set_value_evaluator::do_apply(const set_value_operation& op) {
         if (is_global) {
             auto gv_accs = get_global_value_accs(_db, op.key);
             if (gv_accs.first != account_name_type()) {
-                if (gv_accs.first != acc && !gv_accs.second.count(acc)) return;
+                if (gv_accs.first != acc && !gv_accs.second.count(acc)) {
+                    if (gv_accs.second.size() != 1 || *(gv_accs.second.begin()) != ".all") return;
+                }
                 acc = gv_accs.first;
             }
         }
@@ -94,15 +96,19 @@ void set_value_evaluator::do_apply(const set_value_operation& op) {
         auto res_str = op.value;
         if (is_accs) {
             auto v = fc::json::from_string(op.value);
-            std::set<account_name_type> value_accs;
+            std::set<std::string> value_accs;
             fc::from_variant(v, value_accs);
-            std::set<account_name_type> res_accs;
-            for (auto& ac : value_accs) {
-                if (_db.find_account(ac)) {
-                    res_accs.insert(ac);
+            if (value_accs.size() == 1 && *(value_accs.begin()) == ".all") {
+                res_str = fc::json::to_string(value_accs);
+            } else {
+                std::set<account_name_type> res_accs;
+                for (auto& ac : value_accs) {
+                    if (_db.find_account(ac)) {
+                        res_accs.insert(ac);
+                    }
                 }
+                res_str = fc::json::to_string(res_accs);
             }
-            res_str = fc::json::to_string(res_accs);
         } else if (is_lst) {
             fc::mutable_variant_object res;
             auto add = fc::json::from_string(op.value).get_object();
