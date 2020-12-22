@@ -99,11 +99,15 @@ namespace golos { namespace plugins { namespace social_network {
         ) const ;
 
         std::vector<discussion> get_content_replies(
-            const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset
+            const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
+            const std::set<comment_object::id_type>& filter_ids,
+            const std::set<account_name_type>& filter_authors
         ) const;
 
         std::vector<discussion> get_all_content_replies(
-            const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset
+            const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
+            const std::set<comment_object::id_type>& filter_ids,
+            const std::set<account_name_type>& filter_authors
         ) const;
 
         std::vector<discussion> get_replies_by_last_update(
@@ -113,7 +117,9 @@ namespace golos { namespace plugins { namespace social_network {
 
         std::vector<discussion> get_all_discussions_by_active(
             account_name_type start_author, std::string start_permlink,
-            uint32_t limit, std::string category, uint32_t vote_limit, uint32_t vote_offset
+            uint32_t limit, std::string category, uint32_t vote_limit, uint32_t vote_offset,
+            const std::set<comment_object::id_type>& filter_ids,
+            const std::set<account_name_type>& filter_authors
         ) const;
 
         discussion get_content(const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset) const;
@@ -140,7 +146,9 @@ namespace golos { namespace plugins { namespace social_network {
         void activate_parent_comments(const comment_object& comment) const;
 
     private:
-        void select_content_replies(std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset) const;
+        void select_content_replies(std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
+            const std::set<comment_object::id_type>& filter_ids,
+            const std::set<account_name_type>& filter_authors) const;
 
     public:
         golos::chain::database& db;
@@ -551,7 +559,7 @@ namespace golos { namespace plugins { namespace social_network {
                 don.uia = (op.amount.symbol != STEEM_SYMBOL);
                 don.target_id = fc::sha256::hash(to_string(donate->target));
                 if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
-            	don.time = db.head_block_time();
+                don.time = db.head_block_time();
             });
 
             try {
@@ -768,17 +776,21 @@ namespace golos { namespace plugins { namespace social_network {
             (string,   permlink)
             (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
             (uint32_t, vote_offset, 0)
+            (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
+            (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_content_replies(author, permlink, vote_limit, vote_offset);
+            return pimpl->get_content_replies(author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
         });
     }
 
     std::vector<discussion> social_network::impl::get_content_replies(
-        const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset
+        const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
+        const std::set<comment_object::id_type>& filter_ids,
+        const std::set<account_name_type>& filter_authors
     ) const {
         std::vector<discussion> result;
-        select_content_replies(result, author, permlink, vote_limit, vote_offset);
+        select_content_replies(result, author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
         return result;
     }
 
@@ -788,25 +800,29 @@ namespace golos { namespace plugins { namespace social_network {
             (string,   permlink)
             (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
             (uint32_t, vote_offset, 0)
+            (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
+            (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_all_content_replies(author, permlink, vote_limit, vote_offset);
+            return pimpl->get_all_content_replies(author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
         });
     }
 
     std::vector<discussion> social_network::impl::get_all_content_replies(
-        const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset
+        const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
+        const std::set<comment_object::id_type>& filter_ids,
+        const std::set<account_name_type>& filter_authors
     ) const {
         std::vector<discussion> result;
 
         result.reserve(vote_limit * 16);
 
-        select_content_replies(result, author, permlink, vote_limit, vote_offset);
+        select_content_replies(result, author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
 
         for (std::size_t i = 0; i < result.size(); ++i) {
             if (result[i].children > 0) {
                 auto j = result.size();
-                select_content_replies(result, result[i].author, result[i].permlink, vote_limit, vote_offset);
+                select_content_replies(result, result[i].author, result[i].permlink, vote_limit, vote_offset, filter_ids, filter_authors);
                 for (; j < result.size(); ++j) {
                     result[i].replies.push_back(result[j].author + "/" + result[j].permlink);
                 }
@@ -816,18 +832,22 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     void social_network::impl::select_content_replies(
-        std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset
+        std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
+        const std::set<comment_object::id_type>& filter_ids,
+        const std::set<account_name_type>& filter_authors
     ) const {
         account_name_type acc_name = account_name_type(author);
         const auto& by_permlink_idx = db.get_index<comment_index>().indices().get<by_parent>();
         auto itr = by_permlink_idx.find(std::make_tuple(acc_name, permlink));
-        while (
-            itr != by_permlink_idx.end() &&
+        for (; itr != by_permlink_idx.end() &&
             itr->parent_author == author &&
-            to_string(itr->parent_permlink) == permlink
+            to_string(itr->parent_permlink) == permlink;
+            ++itr
         ) {
-            result.emplace_back(get_discussion(*itr, limit, offset));
-            ++itr;
+            if (filter_ids.count(itr->id) || filter_authors.count(itr->author)) {
+                continue;
+            }
+            result.emplace_back(get_discussion(*itr, vote_limit, vote_offset));
         }
     }
 
@@ -974,7 +994,9 @@ namespace golos { namespace plugins { namespace social_network {
         uint32_t limit,
         std::string category,
         uint32_t vote_limit,
-        uint32_t vote_offset
+        uint32_t vote_offset,
+        const std::set<comment_object::id_type>& filter_ids,
+        const std::set<account_name_type>& filter_authors
     ) const {
         std::vector<discussion> result;
 
@@ -1013,8 +1035,10 @@ namespace golos { namespace plugins { namespace social_network {
             }
         }
 
-        auto i_end = i + limit;
-        for (; i < all_discussions.size() && i < i_end; ++i) {
+        for (; i < all_discussions.size() && result.size() < limit; ++i) {
+            if (filter_ids.count(all_discussions[i].id) || filter_authors.count(all_discussions[i].author)) {
+                continue;
+            }
             result.push_back(all_discussions[i]);
         }
 
@@ -1058,10 +1082,11 @@ namespace golos { namespace plugins { namespace social_network {
             (string,   category, "")
             (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
             (uint32_t, vote_offset, 0)
-
+            (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
+            (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_all_discussions_by_active(start_author, start_permlink, limit, category, vote_limit, vote_offset);
+            return pimpl->get_all_discussions_by_active(start_author, start_permlink, limit, category, vote_limit, vote_offset, filter_ids, filter_authors);
         });
     }
 
