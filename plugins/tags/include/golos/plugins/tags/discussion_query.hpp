@@ -39,6 +39,7 @@ namespace golos { namespace plugins { namespace tags {
         uint32_t                          limit = 20; ///< the discussions return amount top limit
         std::set<std::string>             select_tags; ///< list of tags to include, posts without these tags are filtered
         std::set<std::string>             filter_tags; ///< list of tags to exclude, posts with these tags are filtered;
+        std::set<std::string>             filter_tag_masks; ///< list of tag masks to exclude, posts which have at least one tag matching at least one of masks;
         std::set<std::string>             select_categories; ///< list of categories to select
         std::set<std::string>             select_languages; ///< list of language to select
         std::set<std::string>             filter_languages; ///< list of language to filter
@@ -113,7 +114,7 @@ namespace golos { namespace plugins { namespace tags {
 } } } // golos::plugins::tags
 
 FC_REFLECT((golos::plugins::tags::discussion_query),
-        (select_tags)(filter_tags)(select_categories)(select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
+        (select_tags)(filter_tags)(filter_tag_masks)(select_categories)(select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
         (start_author)(start_permlink)(parent_author)
         (parent_permlink)(limit)(select_languages)(filter_languages)
 );

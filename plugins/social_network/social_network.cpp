@@ -14,6 +14,7 @@
 #include <golos/protocol/exceptions.hpp>
 
 #include <diff_match_patch.h>
+#include <boost/algorithm/string.hpp>
 #include <boost/locale/encoding_utf.hpp>
 
 
@@ -112,7 +113,8 @@ namespace golos { namespace plugins { namespace social_network {
 
         std::vector<discussion> get_replies_by_last_update(
             account_name_type start_parent_author, std::string start_permlink,
-            uint32_t limit, uint32_t vote_limit, uint32_t vote_offset
+            uint32_t limit, uint32_t vote_limit, uint32_t vote_offset,
+            const std::set<std::string>* filter_tag_masks
         ) const;
 
         std::vector<discussion> get_all_discussions_by_active(
@@ -943,7 +945,8 @@ namespace golos { namespace plugins { namespace social_network {
         std::string start_permlink,
         uint32_t limit,
         uint32_t vote_limit,
-        uint32_t vote_offset
+        uint32_t vote_offset,
+        const std::set<std::string>* filter_tag_masks
     ) const {
         std::vector<discussion> result;
 
@@ -953,16 +956,15 @@ namespace golos { namespace plugins { namespace social_network {
 
         // Method returns only comments which are created when config flag was true
 
-        const auto& clu_index = db.get_index<comment_last_update_index>();
-        const auto& clu_cmt_idx = clu_index.indices().get<golos::plugins::social_network::by_comment>();
-        const auto& clu_idx = clu_index.indices().get<golos::plugins::social_network::by_last_update>();
+        const auto& clu_cmt_idx = db.get_index<comment_last_update_index, by_comment>();
+        const auto& clu_idx = db.get_index<comment_last_update_index, by_last_update>();
 
         auto itr = clu_idx.begin();
-        const account_name_type* parent_author = &start_parent_author;
+        const auto* parent_author = &start_parent_author;
 
         if (start_permlink.size()) {
             const auto& comment = db.find_comment(start_parent_author, start_permlink);
-            if (nullptr == comment) {
+            if (!comment) {
                 return result;
             }
             auto clu_itr = clu_cmt_idx.find(comment->id);
@@ -977,12 +979,28 @@ namespace golos { namespace plugins { namespace social_network {
 
         result.reserve(limit);
 
-        while (itr != clu_idx.end() && result.size() < limit && itr->parent_author == *parent_author) {
+        for (; itr != clu_idx.end() && result.size() < limit && itr->parent_author == *parent_author; ++itr) {
             auto* comment = db.find<comment_object, by_id>(itr->comment);
-            if (nullptr != comment) {
-                result.emplace_back(get_discussion(*comment, vote_limit, vote_offset));
+            if (comment) {
+                auto dis = get_discussion(*comment, vote_limit, vote_offset);
+                if (filter_tag_masks) {
+                    bool found = false;
+                    for (const auto& mask : *filter_tag_masks) {
+                        if (!mask.size()) continue;
+                        if (mask.front() == '-') {
+                            if (boost::algorithm::ends_with(dis.category, mask)) {
+                                found = true; break;
+                            }
+                        } else {
+                            if (boost::algorithm::starts_with(dis.category, mask)) {
+                                found = true; break;
+                            }
+                        }
+                    }
+                    if (found) continue;
+                }
+                result.push_back(std::move(dis));
             }
-            ++itr;
         }
 
         return result;
@@ -1058,11 +1076,11 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t, limit)
             (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
             (uint32_t, vote_offset, 0)
-
+            (std::set<std::string>, filter_tag_masks) 
         );
         GOLOS_CHECK_LIMIT_PARAM(limit, 100);
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit, vote_limit, vote_offset);
+            return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit, vote_limit, vote_offset, &filter_tag_masks);
         });
     }
 

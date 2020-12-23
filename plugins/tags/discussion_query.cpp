@@ -47,7 +47,7 @@ namespace golos { namespace plugins { namespace tags {
     bool discussion_query::is_good_tags(
         const discussion& d, std::size_t tags_number, std::size_t tag_max_length
     ) const {
-        if (!has_tags_selector() && !has_tags_filter() && !has_language_selector() && !has_language_filter()) {
+        if (!has_tags_selector() && !has_tags_filter() && !has_language_selector() && !has_language_filter() && !filter_tag_masks.size()) {
             return true;
         }
 
@@ -59,11 +59,23 @@ namespace golos { namespace plugins { namespace tags {
         }
 
         bool result = select_tags.empty();
-        for (auto& name: meta.tags) {
+        for (auto& name : meta.tags) {
             if (has_tags_filter() && filter_tags.count(name)) {
                 return false;
             } else if (!result && select_tags.count(name)) {
                 result = true;
+            }
+            for (const auto& mask : filter_tag_masks) {
+                if (!mask.size()) continue;
+                if (mask.front() == '-') {
+                    if (boost::algorithm::ends_with(name, mask)) {
+                        result = false; break;
+                    }
+                } else {
+                    if (boost::algorithm::starts_with(name, mask)) {
+                        result = false; break;
+                    }
+                }
             }
         }
 

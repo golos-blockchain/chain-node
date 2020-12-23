@@ -13,6 +13,7 @@
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/chain/index.hpp>
 #include <golos/api/discussion_helper.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 namespace golos {
 
@@ -344,25 +345,37 @@ namespace golos {
                         follow_type type,
                         uint32_t limit = 1000);
 
+                /**
+                * Checks if post category matches at least one of masks.
+                * If you have only comment_object, pass parent_permlink as category (so it is not for non-root comments).
+                */
+                bool category_matches_masks(
+                        const std::string& category,
+                        const std::set<std::string>* masks);
+
                 std::vector<feed_entry> get_feed_entries(
                         account_name_type account,
                         uint32_t start_entry_id = 0,
-                        uint32_t limit = 500);
-
-                std::vector<blog_entry> get_blog_entries(
-                        account_name_type account,
-                        uint32_t start_entry_id = 0,
-                        uint32_t limit = 500);
+                        uint32_t limit = 500,
+                        const std::set<std::string>* filter_tag_masks = nullptr);
 
                 std::vector<comment_feed_entry> get_feed(
                         account_name_type account,
                         uint32_t start_entry_id = 0,
-                        uint32_t limit = 500);
+                        uint32_t limit = 500,
+                        const std::set<std::string>* filter_tag_masks = nullptr);
+
+                std::vector<blog_entry> get_blog_entries(
+                        account_name_type account,
+                        uint32_t start_entry_id = 0,
+                        uint32_t limit = 500,
+                        const std::set<std::string>* filter_tag_masks = nullptr);
 
                 std::vector<comment_blog_entry> get_blog(
                         account_name_type account,
                         uint32_t start_entry_id = 0,
-                        uint32_t limit = 500);
+                        uint32_t limit = 500,
+                        const std::set<std::string>* filter_tag_masks = nullptr);
 
                 std::vector<account_reputation> get_account_reputations(
                         std::vector < account_name_type > accounts);
@@ -502,10 +515,29 @@ namespace golos {
                 return result;
             }
 
+            bool plugin::impl::category_matches_masks(const std::string& category, const std::set<std::string>* masks) {
+                if (!masks) return false;
+                bool found = false;
+                for (const auto& mask : *masks) {
+                    if (!mask.size()) continue;
+                    if (mask.front() == '-') {
+                        if (boost::algorithm::ends_with(category, mask)) {
+                            found = true; break;
+                        }
+                    } else {
+                        if (boost::algorithm::starts_with(category, mask)) {
+                            found = true; break;
+                        }
+                    }
+                }
+                return found;
+            }
+
             std::vector<feed_entry> plugin::impl::get_feed_entries(
                     account_name_type account,
                     uint32_t entry_id,
-                    uint32_t limit) {
+                    uint32_t limit,
+                    const std::set<std::string>* filter_tag_masks) {
                 GOLOS_CHECK_LIMIT_PARAM(limit, 500);
 
                 if (entry_id == 0) {
@@ -516,11 +548,12 @@ namespace golos {
                 result.reserve(limit);
 
                 const auto& db = database();
-                const auto& feed_idx = db.get_index<feed_index>().indices().get<by_feed>();
-                auto itr = feed_idx.lower_bound(boost::make_tuple(account, entry_id));
+                const auto& feed_idx = db.get_index<feed_index, by_feed>();
+                auto itr = feed_idx.lower_bound(std::make_tuple(account, entry_id));
 
-                while (itr != feed_idx.end() && itr->account == account && result.size() < limit) {
+                for (; itr != feed_idx.end() && itr->account == account && result.size() < limit; ++itr) {
                     const auto& comment = db.get(itr->comment);
+                    if (category_matches_masks(to_string(comment.parent_permlink), filter_tag_masks)) continue;
                     feed_entry entry;
                     entry.author = comment.author;
                     entry.permlink = to_string(comment.permlink);
@@ -530,7 +563,7 @@ namespace golos {
                         entry.reblog_entries.reserve(itr->reblogged_by.size());
                         for (const auto& a : itr->reblogged_by) {
                             entry.reblog_by.push_back(a);
-                            const auto& blog_idx = db.get_index<blog_index>().indices().get<by_comment>();
+                            const auto& blog_idx = db.get_index<blog_index, by_comment>();
                             auto blog_itr = blog_idx.find(std::make_tuple(itr->comment, a));
                             entry.reblog_entries.emplace_back(
                                 a,
@@ -542,8 +575,6 @@ namespace golos {
                         entry.reblog_on = itr->first_reblogged_on;
                     }
                     result.push_back(entry);
-
-                    ++itr;
                 }
 
                 return result;
@@ -552,7 +583,8 @@ namespace golos {
             std::vector<comment_feed_entry> plugin::impl::get_feed(
                     account_name_type account,
                     uint32_t entry_id,
-                    uint32_t limit) {
+                    uint32_t limit,
+                    const std::set<std::string>* filter_tag_masks) {
                 GOLOS_CHECK_LIMIT_PARAM(limit, 500);
 
                 if (entry_id == 0) {
@@ -563,20 +595,21 @@ namespace golos {
                 result.reserve(limit);
 
                 const auto& db = database();
-                const auto& feed_idx = db.get_index<feed_index>().indices().get<by_feed>();
-                auto itr = feed_idx.lower_bound(boost::make_tuple(account, entry_id));
+                const auto& feed_idx = db.get_index<feed_index, by_feed>();
+                auto itr = feed_idx.lower_bound(std::make_tuple(account, entry_id));
 
-                while (itr != feed_idx.end() && itr->account == account && result.size() < limit) {
+                for (; itr != feed_idx.end() && itr->account == account && result.size() < limit; ++itr) {
                     const auto& comment = db.get(itr->comment);
                     comment_feed_entry entry;
                     entry.comment = helper->create_comment_api_object(comment);
+                    if (category_matches_masks(entry.comment.category, filter_tag_masks)) continue;
                     entry.entry_id = itr->account_feed_id;
                     if (itr->first_reblogged_by != account_name_type()) {
                         entry.reblog_by.reserve(itr->reblogged_by.size());
                         entry.reblog_entries.reserve(itr->reblogged_by.size());
                         for (const auto& a : itr->reblogged_by) {
                             entry.reblog_by.push_back(a);
-                            const auto& blog_idx = db.get_index<blog_index>().indices().get<by_comment>();
+                            const auto& blog_idx = db.get_index<blog_index, by_comment>();
                             auto blog_itr = blog_idx.find(std::make_tuple(itr->comment, a));
                             entry.reblog_entries.emplace_back(
                                 a,
@@ -588,8 +621,6 @@ namespace golos {
                         entry.reblog_on = itr->first_reblogged_on;
                     }
                     result.push_back(entry);
-
-                    ++itr;
                 }
 
                 return result;
@@ -598,7 +629,8 @@ namespace golos {
             std::vector<blog_entry> plugin::impl::get_blog_entries(
                     account_name_type account,
                     uint32_t entry_id,
-                    uint32_t limit) {
+                    uint32_t limit,
+                    const std::set<std::string>* filter_tag_masks) {
                 GOLOS_CHECK_LIMIT_PARAM(limit, 500);
 
                 if (entry_id == 0) {
@@ -609,11 +641,12 @@ namespace golos {
                 result.reserve(limit);
 
                 const auto& db = database();
-                const auto& blog_idx = db.get_index<blog_index>().indices().get<by_blog>();
-                auto itr = blog_idx.lower_bound(boost::make_tuple(account, entry_id));
+                const auto& blog_idx = db.get_index<blog_index, by_blog>();
+                auto itr = blog_idx.lower_bound(std::make_tuple(account, entry_id));
 
-                while (itr != blog_idx.end() && itr->account == account && result.size() < limit) {
+                for (; itr != blog_idx.end() && itr->account == account && result.size() < limit; ++itr) {
                     const auto& comment = db.get(itr->comment);
+                    if (category_matches_masks(to_string(comment.parent_permlink), filter_tag_masks)) continue;
                     blog_entry entry;
                     entry.author = comment.author;
                     entry.permlink = to_string(comment.permlink);
@@ -625,8 +658,6 @@ namespace golos {
                     entry.reblog_json_metadata = to_string(itr->reblog_json_metadata);
 
                     result.push_back(entry);
-
-                    ++itr;
                 }
 
                 return result;
@@ -635,7 +666,8 @@ namespace golos {
             std::vector<comment_blog_entry> plugin::impl::get_blog(
                     account_name_type account,
                     uint32_t entry_id,
-                    uint32_t limit) {
+                    uint32_t limit,
+                    const std::set<std::string>* filter_tag_masks) {
                 GOLOS_CHECK_LIMIT_PARAM(limit, 500);
 
                 if (entry_id == 0) {
@@ -646,13 +678,14 @@ namespace golos {
                 result.reserve(limit);
 
                 const auto& db = database();
-                const auto& blog_idx = db.get_index<blog_index>().indices().get<by_blog>();
-                auto itr = blog_idx.lower_bound(boost::make_tuple(account, entry_id));
+                const auto& blog_idx = db.get_index<blog_index, by_blog>();
+                auto itr = blog_idx.lower_bound(std::make_tuple(account, entry_id));
 
-                while (itr != blog_idx.end() && itr->account == account && result.size() < limit) {
+                for (; itr != blog_idx.end() && itr->account == account && result.size() < limit; ++itr) {
                     const auto& comment = db.get(itr->comment);
                     comment_blog_entry entry;
                     entry.comment = helper->create_comment_api_object(comment);
+                    if (category_matches_masks(entry.comment.category, filter_tag_masks)) continue;
                     entry.blog = account;
                     entry.reblog_on = itr->reblogged_on;
                     entry.entry_id = itr->blog_feed_id;
@@ -661,8 +694,6 @@ namespace golos {
                     entry.reblog_json_metadata = to_string(itr->reblog_json_metadata);
 
                     result.push_back(entry);
-
-                    ++itr;
                 }
 
                 return result;
@@ -764,45 +795,49 @@ namespace golos {
 
             DEFINE_API(plugin, get_feed_entries){
                 PLUGIN_API_VALIDATE_ARGS(
-                    (account_name_type, account)
-                    (uint32_t,          entry_id)
-                    (uint32_t,          limit)
+                    (account_name_type,     account)
+                    (uint32_t,              entry_id, 0)
+                    (uint32_t,              limit, 500)
+                    (std::set<std::string>, filter_tag_masks, std::set<std::string>())
                 )
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_feed_entries(account, entry_id, limit);
+                    return pimpl->get_feed_entries(account, entry_id, limit, &filter_tag_masks);
                 });
             }
 
             DEFINE_API(plugin, get_feed) {
                 PLUGIN_API_VALIDATE_ARGS(
-                    (account_name_type, account)
-                    (uint32_t,          entry_id)
-                    (uint32_t,          limit)
+                    (account_name_type,     account)
+                    (uint32_t,              entry_id, 0)
+                    (uint32_t,              limit, 500)
+                    (std::set<std::string>, filter_tag_masks, std::set<std::string>())
                 )
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_feed(account, entry_id, limit);
+                    return pimpl->get_feed(account, entry_id, limit, &filter_tag_masks);
                 });
             }
 
             DEFINE_API(plugin, get_blog_entries) {
                 PLUGIN_API_VALIDATE_ARGS(
-                    (account_name_type, account)
-                    (uint32_t,          entry_id)
-                    (uint32_t,          limit)
+                    (account_name_type,     account)
+                    (uint32_t,              entry_id, 0)
+                    (uint32_t,              limit, 500)
+                    (std::set<std::string>, filter_tag_masks, std::set<std::string>())
                 )
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_blog_entries(account, entry_id, limit);
+                    return pimpl->get_blog_entries(account, entry_id, limit, &filter_tag_masks);
                 });
             }
 
             DEFINE_API(plugin, get_blog) {
                 PLUGIN_API_VALIDATE_ARGS(
-                    (account_name_type, account)
-                    (uint32_t,          entry_id)
-                    (uint32_t,          limit)
+                    (account_name_type,     account)
+                    (uint32_t,              entry_id, 0)
+                    (uint32_t,              limit, 500)
+                    (std::set<std::string>, filter_tag_masks, std::set<std::string>())
                 )
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_blog(account, entry_id, limit);
+                    return pimpl->get_blog(account, entry_id, limit, &filter_tag_masks);
                 });
             }
 
