@@ -565,12 +565,16 @@ namespace golos { namespace plugins { namespace social_network {
             });
 
             try {
-                auto author = account_name_type(op.memo.target["author"].as_string());
+                auto author_str = op.memo.target["author"].as_string();
                 auto permlink = op.memo.target["permlink"].as_string();
+
+                if (!is_valid_account_name(author_str)) return;
+                auto author = account_name_type(author_str);
+
                 const auto* comment = db.find_comment(author, permlink);
-                if (comment != nullptr) {
+                if (comment) {
                     const auto content = impl.find_comment_content(comment->id);
-                    if (content != nullptr) {
+                    if (content) {
                         db.modify(*content, [&](auto& con) {
                             if (op.amount.symbol == STEEM_SYMBOL) {
                                 con.donates += op.amount;
@@ -1043,7 +1047,7 @@ namespace golos { namespace plugins { namespace social_network {
             return true;
         });
 
-        int i = 0;
+        size_t i = 0;
         if (start_author.size() && start_permlink.size()) {
             for (; i < all_discussions.size(); ++i) {
                 auto& dis = all_discussions[i];
