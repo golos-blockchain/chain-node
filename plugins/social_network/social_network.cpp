@@ -119,7 +119,7 @@ namespace golos { namespace plugins { namespace social_network {
 
         std::vector<discussion> get_all_discussions_by_active(
             account_name_type start_author, std::string start_permlink,
-            uint32_t limit, std::string category, uint32_t vote_limit, uint32_t vote_offset,
+            uint32_t from, uint32_t limit, std::string category, uint32_t vote_limit, uint32_t vote_offset,
             const std::set<comment_object::id_type>& filter_ids,
             const std::set<account_name_type>& filter_authors
         ) const;
@@ -1013,6 +1013,7 @@ namespace golos { namespace plugins { namespace social_network {
     std::vector<discussion> social_network::impl::get_all_discussions_by_active(
         account_name_type start_author,
         std::string start_permlink,
+        uint32_t from,
         uint32_t limit,
         std::string category,
         uint32_t vote_limit,
@@ -1048,10 +1049,10 @@ namespace golos { namespace plugins { namespace social_network {
         });
 
         size_t i = 0;
-        if (start_author.size() && start_permlink.size()) {
+        if (from != 0 || (start_author.size() && start_permlink.size())) {
             for (; i < all_discussions.size(); ++i) {
                 auto& dis = all_discussions[i];
-                if (dis.author == start_author && dis.permlink == start_permlink) {
+                if (i == from || (dis.author == start_author && dis.permlink == start_permlink)) {
                     break;
                 }
             }
@@ -1100,7 +1101,8 @@ namespace golos { namespace plugins { namespace social_network {
         PLUGIN_API_VALIDATE_ARGS(
             (string,   start_author)
             (string,   start_permlink)
-            (uint32_t, limit)
+            (uint32_t, from, 0)
+            (uint32_t, limit, 20)
             (string,   category, "")
             (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
             (uint32_t, vote_offset, 0)
@@ -1108,7 +1110,7 @@ namespace golos { namespace plugins { namespace social_network {
             (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_all_discussions_by_active(start_author, start_permlink, limit, category, vote_limit, vote_offset, filter_ids, filter_authors);
+            return pimpl->get_all_discussions_by_active(start_author, start_permlink, from, limit, category, vote_limit, vote_offset, filter_ids, filter_authors);
         });
     }
 
