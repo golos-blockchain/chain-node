@@ -24,31 +24,31 @@ void set_value_operation::validate() const {
     if (is_lst) key_length -= 3;
     GOLOS_CHECK_PARAM(key, GOLOS_CHECK_VALUE(key_length, "Key should not be empty"));
 
-    fc::variant v;
-    if (is_lst || is_accs) {
+    if (value.size() && (is_lst || is_accs)) {
+        fc::variant v;
         try {
             v = fc::json::from_string(value);
         } catch (...) {
-            GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be valid JSON for .lst, .accs"));
+            GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be valid JSON or empty string for .lst, .accs"));
         }
-    }
 
-    if (is_lst) { // should be JSON object
-        GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(v.is_object(), "Value should be JSON object for .lst"));
-    } else if (is_accs) { // should be array of JSON values which are valid account names
-        GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(v.is_array(), "Value should be JSON array for .accs"));
+        if (is_lst) { // should be JSON object
+            GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(v.is_object(), "Value should be JSON object or empty string for .lst"));
+        } else if (is_accs) { // should be array of JSON values which are valid account names
+            GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(v.is_array(), "Value should be JSON array or empty string for .accs"));
 
-        if (v.size()) {
-            std::vector<std::string> value_accs;
-            try {
-                fc::from_variant(v, value_accs);
-            } catch (...) {
-                GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be JSON array of strings for .accs"));
-            }
+            if (v.size()) {
+                std::vector<std::string> value_accs;
+                try {
+                    fc::from_variant(v, value_accs);
+                } catch (...) {
+                    GOLOS_CHECK_PARAM(value, GOLOS_CHECK_VALUE(false, "Value should be JSON array of strings or empty string for .accs"));
+                }
 
-            if (value_accs.size() != 1 || value_accs[0] != ".all") {
-                for (size_t i = 0; i < value_accs.size(); i++) {
-                    GOLOS_CHECK_PARAM_ACCOUNT(value_accs[i]);
+                if (value_accs.size() != 1 || value_accs[0] != ".all") {
+                    for (size_t i = 0; i < value_accs.size(); i++) {
+                        GOLOS_CHECK_PARAM_ACCOUNT(value_accs[i]);
+                    }
                 }
             }
         }
