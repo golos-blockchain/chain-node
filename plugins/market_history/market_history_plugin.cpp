@@ -228,7 +228,7 @@ namespace golos {
 
                 market_ticker result;
 
-                if (itr != bucket_idx.end()) {
+                if (itr != bucket_idx.end() && itr->seconds == 86400) {
                     auto open1 = (asset(itr->open_asset2, pair.second) /
                                  asset(itr->open_asset1, pair.first)).to_real();
                     result.latest1 = (asset(itr->close_asset2, pair.second) /
@@ -271,19 +271,14 @@ namespace golos {
             market_volume market_history_plugin::market_history_plugin_impl::get_volume(const symbol_type_pair& pair) const {
                 market_volume result;
 
-                auto smallest_bucket = _tracked_buckets.begin();
-                if (smallest_bucket == _tracked_buckets.end()) {
-                    return result;
-                }
-
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
-                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, *smallest_bucket, database().head_block_time() - 86400));
+                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, 86400, database().head_block_time() - 86400));
                 result.asset1_volume = asset(0, pair.first);
                 result.asset2_volume = asset(0, pair.second);
 
                 while (itr != bucket_idx.end() &&
                         itr->sym1 == pair.first && itr->sym2 == pair.second &&
-                        itr->seconds == *smallest_bucket) {
+                        itr->seconds == 86400) {
                     result.asset1_volume.amount += itr->asset1_volume;
                     result.asset2_volume.amount += itr->asset2_volume;
 
