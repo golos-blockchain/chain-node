@@ -90,12 +90,6 @@ namespace golos {
                 vector <order> asks;
             };
 
-            struct market_trade {
-                time_point_sec date;
-                asset current_pays;
-                asset open_pays;
-            };
-
             typedef golos::chain::limit_order_object limit_order_api_object;
 
             struct limit_order : public limit_order_api_object {
@@ -166,6 +160,13 @@ namespace golos {
 
             typedef object_id <order_history_object> order_history_id_type;
 
+            struct market_trade {
+                order_history_object::id_type id;
+                time_point_sec date;
+                asset current_pays;
+                asset open_pays;
+            };
+
             struct by_id;
             struct by_bucket;
 
@@ -210,7 +211,7 @@ FC_REFLECT((golos::plugins::market_history::order),
 FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
-           (date)(current_pays)(open_pays));
+           (id)(date)(current_pays)(open_pays));
 
 FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded));
 

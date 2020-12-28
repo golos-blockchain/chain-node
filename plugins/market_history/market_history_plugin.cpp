@@ -407,6 +407,7 @@ namespace golos {
                         continue;
                     }
                     market_trade trade;
+                    trade.id = itr->id;
                     trade.date = itr->time;
                     trade.current_pays = itr->op.current_pays;
                     trade.open_pays = itr->op.open_pays;
@@ -430,6 +431,7 @@ namespace golos {
                         continue;
                     }
                     market_trade trade;
+                    trade.id = itr->id;
                     trade.date = itr->time;
                     trade.current_pays = itr->op.current_pays;
                     trade.open_pays = itr->op.open_pays;
