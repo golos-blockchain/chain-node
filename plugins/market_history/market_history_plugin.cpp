@@ -593,8 +593,6 @@ namespace golos {
                     auto res = _my->get_ticker(_my->get_symbol_type_pair(pair, &reversed));
                     if (reversed) {
                         std::swap(res.latest1, res.latest2);
-                        _my->reverse_price(res.latest1);
-                        _my->reverse_price(res.latest2);
 
                         std::swap(res.lowest_ask, res.highest_bid);
                         _my->reverse_price(res.lowest_ask);
