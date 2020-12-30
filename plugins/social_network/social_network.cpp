@@ -1109,6 +1109,9 @@ namespace golos { namespace plugins { namespace social_network {
             if (filter_ids.count(all_discussions[i].id) || filter_authors.count(all_discussions[i].author)) {
                 continue;
             }
+            discussion last_reply;
+            get_last_reply(last_reply, all_discussions[i].author, all_discussions[i].permlink, 0, 0, filter_ids, filter_authors);
+            all_discussions[i].last_reply = last_reply;
             result.push_back(all_discussions[i]);
         }
 
