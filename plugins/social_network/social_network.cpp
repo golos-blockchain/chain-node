@@ -153,6 +153,12 @@ namespace golos { namespace plugins { namespace social_network {
             const std::set<account_name_type>& filter_authors) const;
 
     public:
+        void get_last_reply(
+            discussion& result, const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
+            const std::set<comment_object::id_type>& filter_ids,
+            const std::set<account_name_type>& filter_authors
+        ) const;
+
         golos::chain::database& db;
         std::unique_ptr<discussion_helper> helper;
         comment_depth_params depth_parameters;
@@ -855,6 +861,47 @@ namespace golos { namespace plugins { namespace social_network {
             }
             result.emplace_back(get_discussion(*itr, vote_limit, vote_offset));
         }
+    }
+
+    void social_network::impl::get_last_reply(
+        discussion& result, const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
+        const std::set<comment_object::id_type>& filter_ids,
+        const std::set<account_name_type>& filter_authors
+    ) const {
+        account_name_type acc_name = account_name_type(author);
+        const auto& by_permlink_idx = db.get_index<comment_index, by_parent>();
+        auto itr = by_permlink_idx.upper_bound(std::make_tuple(acc_name, permlink, INT64_MAX));
+        auto ritr = by_permlink_idx.rbegin();
+        if (itr != by_permlink_idx.end()) {
+            ritr = boost::make_reverse_iterator(itr);
+        }
+        for (; ritr != by_permlink_idx.rend() &&
+            ritr->parent_author == author &&
+            to_string(ritr->parent_permlink) == permlink;
+            ++ritr
+        ) {
+            if (filter_ids.count(ritr->id) || filter_authors.count(ritr->author)) {
+                continue;
+            }
+            result = get_discussion(*ritr, vote_limit, vote_offset);
+            break;
+        }
+    }
+
+    DEFINE_API(social_network, get_last_reply) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (string,   author)
+            (string,   permlink)
+            (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
+            (uint32_t, vote_offset, 0)
+            (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
+            (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
+        );
+        return pimpl->db.with_weak_read_lock([&]() {
+            discussion reply;
+            pimpl->get_last_reply(reply, author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
+            return reply;
+        });
     }
 
     DEFINE_API(social_network, get_account_votes) {
