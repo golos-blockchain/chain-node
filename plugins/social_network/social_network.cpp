@@ -117,9 +117,10 @@ namespace golos { namespace plugins { namespace social_network {
             const std::set<std::string>* filter_tag_masks
         ) const;
 
-        std::vector<discussion> get_all_discussions_by_active(
+        categorized_discussions get_all_discussions_by_active(
             account_name_type start_author, std::string start_permlink,
-            uint32_t from, uint32_t limit, std::string category, uint32_t vote_limit, uint32_t vote_offset,
+            uint32_t from, uint32_t limit, const std::set<std::string>& categories,
+            uint32_t vote_limit, uint32_t vote_offset,
             const std::set<comment_object::id_type>& filter_ids,
             const std::set<account_name_type>& filter_authors
         ) const;
@@ -1057,18 +1058,18 @@ namespace golos { namespace plugins { namespace social_network {
         return result;
     }
 
-    std::vector<discussion> social_network::impl::get_all_discussions_by_active(
+    categorized_discussions social_network::impl::get_all_discussions_by_active(
         account_name_type start_author,
         std::string start_permlink,
         uint32_t from,
         uint32_t limit,
-        std::string category,
+        const std::set<std::string>& categories,
         uint32_t vote_limit,
         uint32_t vote_offset,
         const std::set<comment_object::id_type>& filter_ids,
         const std::set<account_name_type>& filter_authors
     ) const {
-        std::vector<discussion> result;
+        categorized_discussions result;
 
         if (!db.has_index<comment_last_update_index>()) {
             return result;
@@ -1076,43 +1077,46 @@ namespace golos { namespace plugins { namespace social_network {
 
         // Method returns only comments which are created when config flag was true
 
-        result.reserve(limit);
+        for (const auto& category : categories) {
+            std::vector<discussion> all_discussions;
+            const auto& idx = db.get_index<comment_index, by_parent>();
+            auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category));
+            while (
+                itr != idx.end() &&
+                itr->parent_author == STEEMIT_ROOT_POST_PARENT
+            ) {
+                if (category.size() && to_string(itr->parent_permlink) != category) break;
+                all_discussions.emplace_back(get_discussion(*itr, vote_limit, vote_offset));
+                ++itr;
+            }
 
-        std::vector<discussion> all_discussions;
-        const auto& idx = db.get_index<comment_index, by_parent>();
-        auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category));
-        while (
-            itr != idx.end() &&
-            itr->parent_author == STEEMIT_ROOT_POST_PARENT
-        ) {
-            if (category.size() && to_string(itr->parent_permlink) != category) break;
-            all_discussions.emplace_back(get_discussion(*itr, vote_limit, vote_offset));
-            ++itr;
-        }
+            std::sort(all_discussions.begin(), all_discussions.end(), [&](auto& lhs, auto& rhs) {
+                if (!!lhs.active && !!rhs.active) return *lhs.active > *rhs.active;
+                return true;
+            });
 
-        std::sort(all_discussions.begin(), all_discussions.end(), [&](auto& lhs, auto& rhs) {
-            if (!!lhs.active && !!rhs.active) return *lhs.active > *rhs.active;
-            return true;
-        });
-
-        size_t i = 0;
-        if (from != 0 || (start_author.size() && start_permlink.size())) {
-            for (; i < all_discussions.size(); ++i) {
-                auto& dis = all_discussions[i];
-                if (i == from || (dis.author == start_author && dis.permlink == start_permlink)) {
-                    break;
+            size_t i = 0;
+            if (from != 0 || (start_author.size() && start_permlink.size())) {
+                for (; i < all_discussions.size(); ++i) {
+                    auto& dis = all_discussions[i];
+                    if (i == from || (dis.author == start_author && dis.permlink == start_permlink)) {
+                        break;
+                    }
                 }
             }
-        }
 
-        for (; i < all_discussions.size() && result.size() < limit; ++i) {
-            if (filter_ids.count(all_discussions[i].id) || filter_authors.count(all_discussions[i].author)) {
-                continue;
+            size_t posts = 0;
+            result[category].reserve(limit);
+            for (; i < all_discussions.size() && posts < limit; ++i) {
+                if (filter_ids.count(all_discussions[i].id) || filter_authors.count(all_discussions[i].author)) {
+                    continue;
+                }
+                discussion last_reply;
+                get_last_reply(last_reply, all_discussions[i].author, all_discussions[i].permlink, 0, 0, filter_ids, filter_authors);
+                all_discussions[i].last_reply = last_reply;
+                result[category].push_back(all_discussions[i]);
+                posts++;
             }
-            discussion last_reply;
-            get_last_reply(last_reply, all_discussions[i].author, all_discussions[i].permlink, 0, 0, filter_ids, filter_authors);
-            all_discussions[i].last_reply = last_reply;
-            result.push_back(all_discussions[i]);
         }
 
         return result;
@@ -1153,14 +1157,14 @@ namespace golos { namespace plugins { namespace social_network {
             (string,   start_permlink)
             (uint32_t, from, 0)
             (uint32_t, limit, 20)
-            (string,   category, "")
+            (std::set<std::string>, categories, std::set<string>{""})
             (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
             (uint32_t, vote_offset, 0)
             (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
             (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_all_discussions_by_active(start_author, start_permlink, from, limit, category, vote_limit, vote_offset, filter_ids, filter_authors);
+            return pimpl->get_all_discussions_by_active(start_author, start_permlink, from, limit, categories, vote_limit, vote_offset, filter_ids, filter_authors);
         });
     }
 
