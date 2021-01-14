@@ -131,6 +131,8 @@ namespace golos { namespace plugins { namespace social_network {
 
         void set_depth_parameters(const comment_depth_params& params);
 
+        fc::sha256 get_donate_target_id(const fc::variant_object& target) const;
+
         // Looks for a comment_operation, fills the comment_content state objects.
         void pre_operation(const operation_notification& o);
 
@@ -196,6 +198,29 @@ namespace golos { namespace plugins { namespace social_network {
         return helper->get_discussion(c, vote_limit, vote_offset);
     }
 
+    fc::sha256 social_network::impl::get_donate_target_id(const fc::variant_object& target) const {
+        fc::mutable_variant_object clean_target;
+        std::function<void(const fc::variant_object&, fc::mutable_variant_object&)> sanitize_target = [&](auto& target, auto& result) {
+            for (auto& entry : target) {
+                auto key = entry.key();
+                if (key.size() && key[0] == '_') {
+                    continue;
+                }
+                auto val = entry.value();
+                if (val.is_object()) {
+                    fc::mutable_variant_object mvo;
+                    sanitize_target(val.get_object(), mvo);
+                    result[key] = std::move(mvo);
+                }
+                else {
+                    result[key] = std::move(val);
+                }
+            }
+        };
+        sanitize_target(target, clean_target);
+        return fc::sha256::hash(fc::json::to_string(clean_target));
+    }
+
     std::vector<vote_state> social_network::impl::select_active_votes(
         const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset
     ) const {
@@ -242,7 +267,7 @@ namespace golos { namespace plugins { namespace social_network {
         };
 
         if (target.size()) {
-            const auto target_id = fc::sha256::hash(fc::json::to_string(target));
+            const auto target_id = get_donate_target_id(target);
             const auto& idx = db.get_index<donate_data_index, by_target_amount>();
             auto itr = idx.lower_bound(std::make_tuple(target_id, uia));
             fill_donates(idx, itr, [&](auto& itr) {
@@ -566,7 +591,7 @@ namespace golos { namespace plugins { namespace social_network {
                 don.to = op.to.size() ? op.to : op.from;
                 don.amount = op.amount;
                 don.uia = (op.amount.symbol != STEEM_SYMBOL);
-                don.target_id = fc::sha256::hash(to_string(donate->target));
+                don.target_id = impl.get_donate_target_id(op.memo.target);
                 if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
                 don.time = db.head_block_time();
             });
