@@ -108,7 +108,8 @@ namespace golos { namespace plugins { namespace social_network {
         std::vector<discussion> get_all_content_replies(
             const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
             const std::set<comment_object::id_type>& filter_ids,
-            const std::set<account_name_type>& filter_authors
+            const std::set<account_name_type>& filter_authors,
+            const fc::optional<bool>& sort_by_created_desc
         ) const;
 
         std::vector<discussion> get_replies_by_last_update(
@@ -840,16 +841,18 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t, vote_offset, 0)
             (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
             (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
+            (fc::optional<bool>, sort_by_created_desc, fc::optional<bool>())
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_all_content_replies(author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
+            return pimpl->get_all_content_replies(author, permlink, vote_limit, vote_offset, filter_ids, filter_authors, sort_by_created_desc);
         });
     }
 
     std::vector<discussion> social_network::impl::get_all_content_replies(
         const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
         const std::set<comment_object::id_type>& filter_ids,
-        const std::set<account_name_type>& filter_authors
+        const std::set<account_name_type>& filter_authors,
+        const fc::optional<bool>& sort_by_created_desc
     ) const {
         std::vector<discussion> result;
 
@@ -866,6 +869,13 @@ namespace golos { namespace plugins { namespace social_network {
                 }
             }
         }
+
+        if (!!sort_by_created_desc) {
+            std::sort(result.begin(), result.end(), [&](auto& lhs, auto& rhs) {
+                return *sort_by_created_desc ? lhs.created > rhs.created : lhs.created < rhs.created;
+            });
+        }
+
         return result;
     }
 
