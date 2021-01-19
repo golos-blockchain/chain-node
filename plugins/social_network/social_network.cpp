@@ -102,13 +102,15 @@ namespace golos { namespace plugins { namespace social_network {
         std::vector<discussion> get_content_replies(
             const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
             const std::set<comment_object::id_type>& filter_ids,
-            const std::set<account_name_type>& filter_authors
+            const std::set<account_name_type>& filter_authors,
+            bool filter_negative_rep_authors
         ) const;
 
         std::vector<discussion> get_all_content_replies(
             const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
             const std::set<comment_object::id_type>& filter_ids,
             const std::set<account_name_type>& filter_authors,
+            bool filter_negative_rep_authors,
             const fc::optional<bool>& sort_by_created_desc
         ) const;
 
@@ -154,7 +156,8 @@ namespace golos { namespace plugins { namespace social_network {
     private:
         void select_content_replies(std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
             const std::set<comment_object::id_type>& filter_ids,
-            const std::set<account_name_type>& filter_authors) const;
+            const std::set<account_name_type>& filter_authors,
+            bool filter_negative_rep_authors) const;
 
     public:
         void get_last_reply(
@@ -817,19 +820,21 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t, vote_offset, 0)
             (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
             (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
+            (bool, filter_negative_rep_authors, true)
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_content_replies(author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
+            return pimpl->get_content_replies(author, permlink, vote_limit, vote_offset, filter_ids, filter_authors, filter_negative_rep_authors);
         });
     }
 
     std::vector<discussion> social_network::impl::get_content_replies(
         const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
         const std::set<comment_object::id_type>& filter_ids,
-        const std::set<account_name_type>& filter_authors
+        const std::set<account_name_type>& filter_authors,
+        bool filter_negative_rep_authors
     ) const {
         std::vector<discussion> result;
-        select_content_replies(result, author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
+        select_content_replies(result, author, permlink, vote_limit, vote_offset, filter_ids, filter_authors, filter_negative_rep_authors);
         return result;
     }
 
@@ -841,10 +846,11 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t, vote_offset, 0)
             (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
             (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
+            (bool, filter_negative_rep_authors, true)
             (fc::optional<bool>, sort_by_created_desc, fc::optional<bool>())
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_all_content_replies(author, permlink, vote_limit, vote_offset, filter_ids, filter_authors, sort_by_created_desc);
+            return pimpl->get_all_content_replies(author, permlink, vote_limit, vote_offset, filter_ids, filter_authors, filter_negative_rep_authors, sort_by_created_desc);
         });
     }
 
@@ -852,18 +858,19 @@ namespace golos { namespace plugins { namespace social_network {
         const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
         const std::set<comment_object::id_type>& filter_ids,
         const std::set<account_name_type>& filter_authors,
+        bool filter_negative_rep_authors,
         const fc::optional<bool>& sort_by_created_desc
     ) const {
         std::vector<discussion> result;
 
         result.reserve(vote_limit * 16);
 
-        select_content_replies(result, author, permlink, vote_limit, vote_offset, filter_ids, filter_authors);
+        select_content_replies(result, author, permlink, vote_limit, vote_offset, filter_ids, filter_authors, filter_negative_rep_authors);
 
         for (std::size_t i = 0; i < result.size(); ++i) {
             if (result[i].children > 0) {
                 auto j = result.size();
-                select_content_replies(result, result[i].author, result[i].permlink, vote_limit, vote_offset, filter_ids, filter_authors);
+                select_content_replies(result, result[i].author, result[i].permlink, vote_limit, vote_offset, filter_ids, filter_authors, filter_negative_rep_authors);
                 for (; j < result.size(); ++j) {
                     result[i].replies.push_back(result[j].author + "/" + result[j].permlink);
                 }
@@ -882,8 +889,11 @@ namespace golos { namespace plugins { namespace social_network {
     void social_network::impl::select_content_replies(
         std::vector<discussion>& result, const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
         const std::set<comment_object::id_type>& filter_ids,
-        const std::set<account_name_type>& filter_authors
+        const std::set<account_name_type>& filter_authors,
+        bool filter_negative_rep_authors
     ) const {
+        discussion_helper helper_no_rep(db, follow::fill_account_reputation, fill_promoted, fill_comment_info, false);
+
         account_name_type acc_name = account_name_type(author);
         const auto& by_permlink_idx = db.get_index<comment_index>().indices().get<by_parent>();
         auto itr = by_permlink_idx.find(std::make_tuple(acc_name, permlink));
@@ -895,7 +905,14 @@ namespace golos { namespace plugins { namespace social_network {
             if (filter_ids.count(itr->id) || filter_authors.count(itr->author)) {
                 continue;
             }
-            result.emplace_back(get_discussion(*itr, vote_limit, vote_offset));
+            fc::optional<share_type> author_reputation;
+            follow::fill_account_reputation(db, itr->author, author_reputation);
+            if (filter_negative_rep_authors && !!author_reputation && *author_reputation < 0) {
+                continue;
+            }
+            auto d = helper_no_rep.get_discussion(*itr, vote_limit, vote_offset);
+            d.author_reputation = author_reputation;
+            result.emplace_back(d);
         }
     }
 
