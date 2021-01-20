@@ -1044,6 +1044,23 @@ namespace golos { namespace plugins { namespace social_network {
         });
     }
 
+    DEFINE_API(social_network, get_donates_for_targets) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (std::vector<fc::variant_object>, targets)
+            (uint32_t,           limit, DEFAULT_VOTE_LIMIT)
+            (uint32_t,           offset, 0)
+            (bool,               join_froms, false)
+        );
+        return pimpl->db.with_weak_read_lock([&]() {
+            std::vector<std::vector<donate_api_object>> result;
+            for (const auto& target : targets) {
+                result.push_back(pimpl->select_donates(false, target, "", "", limit, offset, join_froms));
+                result.push_back(pimpl->select_donates(true, target, "", "", limit, offset, join_froms));
+            }
+            return result;
+        });
+    }
+
     std::vector<discussion> social_network::impl::get_replies_by_last_update(
         account_name_type start_parent_author,
         std::string start_permlink,
