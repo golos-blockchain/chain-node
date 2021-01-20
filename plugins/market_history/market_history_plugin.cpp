@@ -365,11 +365,13 @@ namespace golos {
                        result.bids.size() < limit) {
                     auto itr = sell_itr;
                     order_extended cur;
+                    cur.orderid = itr->orderid;
                     cur.order_price = itr->sell_price;
                     cur.real_price = (cur.order_price).to_real();
                     cur.asset2 = itr->for_sale;
                     cur.asset1 = (asset(itr->for_sale, pair.second) * cur.order_price).amount;
                     cur.created = itr->created;
+                    cur.seller = itr->seller;
                     result.bids.push_back(cur);
                     ++sell_itr;
                 }
@@ -379,11 +381,13 @@ namespace golos {
                        result.asks.size() < limit) {
                     auto itr = buy_itr;
                     order_extended cur;
+                    cur.orderid = itr->orderid;
                     cur.order_price = itr->sell_price;
                     cur.real_price = (~cur.order_price).to_real();
                     cur.asset1 = itr->for_sale;
                     cur.asset2 = (asset(itr->for_sale, pair.first) * cur.order_price).amount;
                     cur.created = itr->created;
+                    cur.seller = itr->seller;
                     result.asks.push_back(cur);
                     ++buy_itr;
                 }

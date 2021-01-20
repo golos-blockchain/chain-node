@@ -70,6 +70,8 @@ namespace golos {
 
 
             struct order_extended {
+                uint32_t orderid;
+
                 price order_price;
                 double real_price; // dollars per steem
 
@@ -77,6 +79,7 @@ namespace golos {
                 share_type asset2;
 
                 fc::time_point_sec created;
+                account_name_type seller;
             };
 
             struct order_book_extended {
@@ -215,7 +218,7 @@ FC_REFLECT((golos::plugins::market_history::market_trade),
 
 FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded));
 
-FC_REFLECT((golos::plugins::market_history::order_extended), (order_price)(real_price)(asset1)(asset2)(created));
+FC_REFLECT((golos::plugins::market_history::order_extended), (orderid)(order_price)(real_price)(asset1)(asset2)(created)(seller));
 FC_REFLECT((golos::plugins::market_history::order_book_extended), (asks)(bids));
 
 
