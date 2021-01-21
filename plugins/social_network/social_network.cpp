@@ -846,7 +846,7 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t, vote_offset, 0)
             (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
             (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
-            (bool, filter_negative_rep_authors, true)
+            (bool, filter_negative_rep_authors, false)
             (fc::optional<bool>, sort_by_created_desc, fc::optional<bool>())
         );
         return pimpl->db.with_weak_read_lock([&]() {
