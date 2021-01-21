@@ -105,6 +105,9 @@ namespace golos {
 
                 double real_price = 0;
                 bool rewarded = false;
+                // When sell_price contains initial data, there fields contain current
+                asset asset1;
+                asset asset2;
             };
           
             struct bucket_object
@@ -216,7 +219,7 @@ FC_REFLECT((golos::plugins::market_history::order_book),
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (id)(date)(current_pays)(open_pays));
 
-FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded));
+FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded)(asset1)(asset2));
 
 FC_REFLECT((golos::plugins::market_history::order_extended), (orderid)(order_price)(real_price)(asset1)(asset2)(created)(seller));
 FC_REFLECT((golos::plugins::market_history::order_book_extended), (asks)(bids));
