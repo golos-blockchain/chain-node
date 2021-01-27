@@ -1,7 +1,7 @@
 name: Build livetest docker image
 
 on:
-  pull_request:
+  push:
     branches:
       - golos-v0.25.1
 
