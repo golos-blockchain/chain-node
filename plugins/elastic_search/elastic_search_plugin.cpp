@@ -11,7 +11,8 @@ using golos::protocol::signed_block;
 class elastic_search_plugin::elastic_search_plugin_impl final {
 public:
     elastic_search_plugin_impl()
-            : _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
+            : _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()),
+            writer(_db) {
     }
 
     ~elastic_search_plugin_impl() {
@@ -19,11 +20,12 @@ public:
 
     void on_operation(const operation_notification& note) {
         if (!_db.is_generating() && !_db.is_producing()) {
-            note.op.visit(elastic_search_state_writer(_db));
+            note.op.visit(writer);
         }
     }
 
     database& _db;
+    elastic_search_state_writer writer;
 };
 
 elastic_search_plugin::elastic_search_plugin() = default;
