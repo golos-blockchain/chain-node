@@ -149,7 +149,7 @@ namespace golos { namespace plugins { namespace social_network {
 
         const comment_content_object* find_comment_content(const comment_id_type& comment) const;
 
-        bool set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update) const;
+        bool set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update, comment_id_type last_reply = comment_id_type()) const;
 
         void activate_parent_comments(const comment_object& comment) const;
 
@@ -293,7 +293,7 @@ namespace golos { namespace plugins { namespace social_network {
         return result;
     }
 
-    bool social_network::impl::set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update) const {
+    bool social_network::impl::set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update, comment_id_type last_reply) const {
         const auto& clu_idx = db.get_index<comment_last_update_index>().indices().get<golos::plugins::social_network::by_comment>();
         auto clu_itr = clu_idx.find(comment.id);
         if (clu_itr != clu_idx.end()) {
@@ -301,6 +301,9 @@ namespace golos { namespace plugins { namespace social_network {
                 clu.active = active;
                 if (set_last_update) {
                     clu.last_update = clu.active;
+                }
+                if (last_reply != comment_id_type()) {
+                    clu.last_reply = last_reply;
                 }
             });
             return true;
@@ -313,6 +316,7 @@ namespace golos { namespace plugins { namespace social_network {
                 if (set_last_update) {
                     clu.last_update = clu.active;
                 }
+                clu.last_reply = last_reply;
             });
             return false;
         }
@@ -323,7 +327,7 @@ namespace golos { namespace plugins { namespace social_network {
             auto parent = &db.get_comment(comment.parent_author, comment.parent_permlink);
             auto now = db.head_block_time();
             while (parent) {
-                set_comment_update(*parent, now, false);
+                set_comment_update(*parent, now, false, comment.id);
                 if (parent->parent_author != STEEMIT_ROOT_POST_PARENT) {
                     parent = &db.get_comment(parent->parent_author, parent->parent_permlink);
                 } else {
@@ -1180,9 +1184,9 @@ namespace golos { namespace plugins { namespace social_network {
                 if (filter_ids.count(all_discussions[i].id) || filter_authors.count(all_discussions[i].author)) {
                     continue;
                 }
-                discussion last_reply;
-                get_last_reply(last_reply, all_discussions[i].author, all_discussions[i].permlink, 0, 0, filter_ids, filter_authors);
-                all_discussions[i].last_reply = last_reply;
+                if (all_discussions[i].last_reply_id != comment_id_type()) {
+                    all_discussions[i].last_reply = get_discussion(db.get_comment(all_discussions[i].last_reply_id), 0, 0);
+                }
                 result[category].push_back(all_discussions[i]);
                 posts++;
             }
@@ -1260,6 +1264,7 @@ namespace golos { namespace plugins { namespace social_network {
             if (last_update != nullptr) {
                 con.active = last_update->active;
                 con.last_update = last_update->last_update;
+                con.last_reply_id = last_update->last_reply;
             } else {
                 con.active = time_point_sec::min();
                 con.last_update = time_point_sec::min();
