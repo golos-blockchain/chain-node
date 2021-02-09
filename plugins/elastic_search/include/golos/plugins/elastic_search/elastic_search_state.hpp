@@ -15,6 +15,8 @@ public:
 
     database& _db;
     fc::http::connection conn;
+    std::map<std::string, std::string> buffer;
+    int op_num = 0;
 
     elastic_search_state_writer(database& db)
             : _db(db) {
@@ -36,12 +38,34 @@ public:
         doc["title"] = op.title;
         doc["body"] = op.body;
         std::string str_doc = fc::json::to_string(doc);
+        buffer[id] = std::move(str_doc);
+        ++op_num;
 
-        std::string url = "http://127.0.0.1:9200/blog/post/" + id;
+        if (op_num % 10 != 0) {
+            return;
+        }
+
+        op_num = 0;
+
+        std::string bulk;
+        for (auto& obj : buffer) {
+            fc::mutable_variant_object idx;
+            idx["_index"] = "blog";
+            idx["_type"] = "post";
+            idx["_id"] = obj.first;
+            fc::mutable_variant_object idx2;
+            idx2["index"] = idx;
+            bulk += fc::json::to_string(idx2) + "\r\n";
+            bulk += obj.second + "\r\n";
+        }
+        buffer.clear();
+        wlog(bulk);
+
+        std::string url = "http://127.0.0.1:9200/blog/_bulk";
 
         fc::http::headers headers;
         //headers.emplace_back("Content-Type", "application/json"); // already set - hardcoded
-        auto reply = conn.request("PUT", url, str_doc, headers);
+        auto reply = conn.request("POST", url, bulk, headers);
         auto body = std::string(reply.body.data(), reply.body.size());
         if (reply.status != fc::http::reply::status_code::OK && reply.status != fc::http::reply::status_code::RecordCreated) {
             wlog(id + ", status: " + std::to_string(reply.status) + ", " + body);
