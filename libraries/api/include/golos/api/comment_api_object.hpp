@@ -29,6 +29,7 @@ namespace golos { namespace api {
         time_point_sec created;
         fc::optional<time_point_sec> active;
         time_point_sec last_payout;
+        comment_object::id_type last_reply_id; // not reflected
 
         uint8_t depth = 0;
         uint32_t children = 0;
