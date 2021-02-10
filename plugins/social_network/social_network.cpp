@@ -312,6 +312,7 @@ namespace golos { namespace plugins { namespace social_network {
                 clu.comment = comment.id;
                 clu.author = comment.author;
                 clu.parent_author = comment.parent_author;
+                clu.parent_permlink = comment.parent_permlink;
                 clu.active = active;
                 if (set_last_update) {
                     clu.last_update = clu.active;
