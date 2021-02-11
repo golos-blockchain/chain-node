@@ -1149,47 +1149,52 @@ namespace golos { namespace plugins { namespace social_network {
             return result;
         }
 
+        const auto& idx = db.get_index<comment_last_update_index, by_parent_active>();
+
+        bool has_start = start_author.size() && start_permlink.size();
+
         // Method returns only comments which are created when config flag was true
 
         for (const auto& category : categories) {
-            std::vector<discussion> all_discussions;
-            const auto& idx = db.get_index<comment_index, by_parent>();
+            size_t i = 0;
+            bool reached_start = false;
+            if (from == 0 && !has_start) reached_start = true;
+
             auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category));
             while (
                 itr != idx.end() &&
                 itr->parent_author == STEEMIT_ROOT_POST_PARENT
             ) {
                 if (category.size() && to_string(itr->parent_permlink) != category) break;
-                all_discussions.emplace_back(get_discussion(*itr, vote_limit, vote_offset));
-                ++itr;
-            }
 
-            std::sort(all_discussions.begin(), all_discussions.end(), [&](auto& lhs, auto& rhs) {
-                if (!!lhs.active && !!rhs.active) return *lhs.active > *rhs.active;
-                return true;
-            });
-
-            size_t i = 0;
-            if (from != 0 || (start_author.size() && start_permlink.size())) {
-                for (; i < all_discussions.size(); ++i) {
-                    auto& dis = all_discussions[i];
-                    if (i == from || (dis.author == start_author && dis.permlink == start_permlink)) {
-                        break;
-                    }
+                if (from != 0 && i == from) {
+                    reached_start = true;
                 }
-            }
-
-            size_t posts = 0;
-            result[category].reserve(limit);
-            for (; i < all_discussions.size() && posts < limit; ++i) {
-                if (filter_ids.count(all_discussions[i].id) || filter_authors.count(all_discussions[i].author)) {
+                const auto& cmt = db.get_comment(itr->comment);
+                if (has_start && cmt.author == start_author && to_string(cmt.permlink) == start_permlink) {
+                    reached_start = true;
+                }
+                if (!reached_start) {
+                    ++i;
                     continue;
                 }
-                if (all_discussions[i].last_reply_id != comment_id_type()) {
-                    all_discussions[i].last_reply = get_discussion(db.get_comment(all_discussions[i].last_reply_id), 0, 0);
+
+                if (filter_ids.count(cmt.id) || filter_authors.count(cmt.author)) {
+                    ++itr;
+                    continue;
                 }
-                result[category].push_back(all_discussions[i]);
-                posts++;
+
+                auto dis = get_discussion(cmt, vote_limit, vote_offset);
+
+                if (dis.last_reply_id != comment_id_type()) {
+                    dis.last_reply = get_discussion(db.get_comment(dis.last_reply_id), 0, 0);
+                }
+
+                auto& vec = result[category];
+                vec.emplace_back(dis);
+                if (vec.size() == limit) break;
+
+                ++itr;
             }
         }
 
