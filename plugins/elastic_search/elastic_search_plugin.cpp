@@ -10,9 +10,9 @@ using golos::protocol::signed_block;
 
 class elastic_search_plugin::elastic_search_plugin_impl final {
 public:
-    elastic_search_plugin_impl()
+    elastic_search_plugin_impl(const std::string& url)
             : _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()),
-            writer(_db) {
+            writer(url, _db) {
     }
 
     ~elastic_search_plugin_impl() {
@@ -38,16 +38,27 @@ const std::string& elastic_search_plugin::name() {
 }
 
 void elastic_search_plugin::set_program_options(bpo::options_description& cli, bpo::options_description& cfg) {
+    cfg.add_options() (
+        "elastic-search-uri", bpo::value<string>()->default_value("http://127.0.0.1:9200"),
+        "Elastic Search URI"
+    );
 }
 
 void elastic_search_plugin::plugin_initialize(const bpo::variables_map &options) {
     ilog("Initializing elastic search plugin");
 
-    my = std::make_unique<elastic_search_plugin::elastic_search_plugin_impl>();
+    if (options.count("elastic-search-uri")) {
+        auto uri_str = options.at("elastic-search-uri").as<std::string>();
+        ilog("Connecting Elastic Search to ${u}", ("u", uri_str));
 
-    my->_db.post_apply_operation.connect([&](const operation_notification& note) {
-        my->on_operation(note);
-    });
+        my = std::make_unique<elastic_search_plugin::elastic_search_plugin_impl>(uri_str);
+
+        my->_db.post_apply_operation.connect([&](const operation_notification& note) {
+            my->on_operation(note);
+        });
+    } else {
+        ilog("Elastic search plugin configured, but no elastic-search-uri specified. Plugin disabled.");
+    }
 } 
 
 void elastic_search_plugin::plugin_startup() {

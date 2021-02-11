@@ -6,6 +6,7 @@
 #include <golos/plugins/social_network/social_network.hpp>
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
+#include <fc/network/url.hpp>
 
 namespace golos { namespace plugins { namespace elastic_search {
 
@@ -13,14 +14,17 @@ class elastic_search_state_writer {
 public:
     using result_type = void;
 
+    std::string url;
     database& _db;
     fc::http::connection conn;
     std::map<std::string, std::string> buffer;
     int op_num = 0;
 
-    elastic_search_state_writer(database& db)
-            : _db(db) {
-        auto ep = fc::ip::endpoint::from_string("127.0.0.1:9200");
+    elastic_search_state_writer(const std::string& url, database& db)
+            : url(url), _db(db) {
+        auto fc_url = fc::url(url);
+        auto host_port = *fc_url.host() + (fc_url.port() ? ":" + std::to_string(*fc_url.port()) : "");
+        auto ep = fc::ip::endpoint::from_string(host_port);
         conn.connect_to(ep);
     }
 
@@ -59,13 +63,12 @@ public:
             bulk += obj.second + "\r\n";
         }
         buffer.clear();
-        wlog(bulk);
 
-        std::string url = "http://127.0.0.1:9200/blog/_bulk";
+        auto bulk_url = url + "/blog/_bulk";
 
         fc::http::headers headers;
         //headers.emplace_back("Content-Type", "application/json"); // already set - hardcoded
-        auto reply = conn.request("POST", url, bulk, headers);
+        auto reply = conn.request("POST", bulk_url, bulk, headers);
         auto body = std::string(reply.body.data(), reply.body.size());
         if (reply.status != fc::http::reply::status_code::OK && reply.status != fc::http::reply::status_code::RecordCreated) {
             wlog(id + ", status: " + std::to_string(reply.status) + ", " + body);
