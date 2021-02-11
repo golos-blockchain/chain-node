@@ -28,6 +28,7 @@ target_link_libraries(
     golos_${CURRENT_TARGET}
     golos::chain_plugin
     golos::social_network
+    golos::tags
     appbase
 )
 

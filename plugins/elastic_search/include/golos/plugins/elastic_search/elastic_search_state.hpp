@@ -4,11 +4,15 @@
 #include <golos/chain/database.hpp>
 #include <golos/chain/comment_object.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
+#include <golos/plugins/tags/tag_visitor.hpp>
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/network/url.hpp>
 
 namespace golos { namespace plugins { namespace elastic_search {
+
+#define TAGS_NUMBER 15
+#define TAG_MAX_LENGTH 512
 
 class elastic_search_state_writer {
 public:
@@ -41,6 +45,7 @@ public:
         doc["author"] = op.author;
         doc["title"] = op.title;
         doc["body"] = op.body;
+        doc["tags"] = golos::plugins::tags::get_metadata(op.json_metadata, TAGS_NUMBER, TAG_MAX_LENGTH).tags;
         std::string str_doc = fc::json::to_string(doc);
         buffer[id] = std::move(str_doc);
         ++op_num;
