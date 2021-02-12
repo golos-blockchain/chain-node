@@ -81,12 +81,26 @@ public:
         } catch ( ... ) {
         }
 
+        const auto& cmt = _db.get_comment(op.author, op.permlink);
         fc::mutable_variant_object doc;
-        doc["published_at"] = _db.head_block_time();
+
+        doc["created"] = _db.head_block_time();
         doc["author"] = op.author;
+        doc["permlink"] = op.permlink;
+        doc["parent_author"] = op.parent_author;
+        doc["parent_permlink"] = op.parent_permlink;
+
+        if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
+            doc["category"] = op.parent_permlink;
+        } else {
+            doc["category"] = _db.get<comment_object, by_id>(cmt.root_comment).parent_permlink;
+        }
+        doc["depth"] = cmt.depth;
+
         doc["title"] = op.title;
         doc["body"] = body;
         doc["tags"] = golos::plugins::tags::get_metadata(op.json_metadata, TAGS_NUMBER, TAG_MAX_LENGTH).tags;
+
         buffer[id] = std::move(doc);
         ++op_num;
 
