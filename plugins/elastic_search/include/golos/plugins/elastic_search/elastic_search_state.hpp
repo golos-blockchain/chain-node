@@ -49,6 +49,20 @@ public:
         return utf_to_utf<char>(str.c_str(), str.c_str() + str.size());
     }
 
+    bool find_in_es(const std::string& id, optional<variant_object>& res) {
+        auto reply0 = conn.request("GET", url + "/blog/post/" + id + "?pretty");
+        auto reply_body = std::string(reply0.body.data(), reply0.body.size());
+        if (reply0.status == fc::http::reply::status_code::OK) {
+            auto reply = fc::json::from_string(reply_body);
+            if (reply["found"].as_bool()) {
+                res = reply["_source"].get_object();
+                return true;
+            }
+        }
+        res = optional<variant_object>();
+        return false;
+    }
+
     result_type operator()(const comment_operation& op) {
         auto id = std::string(op.author) + "." + op.permlink;
 
@@ -63,10 +77,11 @@ public:
             if (patch.size()) {
                 std::string base_body;
                 auto found = buffer.find(id);
+                optional<variant_object> found2;
                 if (found != buffer.end()) {
                     base_body = found->second["body"].as_string();
-                } else {
-                    base_body = find_in_es(id, base_body);
+                } else if (find_in_es(id, found2)) {
+                    base_body = (*found2)["body"].as_string();
                 }
                 if (base_body.size()) {
                     auto result = dmp.patch_apply(patch, utf8_to_wstring(base_body));
@@ -101,26 +116,95 @@ public:
         doc["body"] = body;
         doc["tags"] = golos::plugins::tags::get_metadata(op.json_metadata, TAGS_NUMBER, TAG_MAX_LENGTH).tags;
 
+        doc["total_votes"] = uint32_t(0);
+        doc["donates"] = asset(0, STEEM_SYMBOL);
+        doc["donates_uia"] = share_type();
+
         buffer[id] = std::move(doc);
         ++op_num;
 
-        if (op_num % 10 != 0) {
+        if (op_num % 1 != 0) {
             return;
         }
 
         write_buffer();
     }
 
-    std::string find_in_es(const std::string& id, std::string def_body) {
-        auto reply0 = conn.request("GET", url + "/blog/post/" + id + "?pretty");
-        auto reply_body = std::string(reply0.body.data(), reply0.body.size());
-        if (reply0.status == fc::http::reply::status_code::OK) {
-            auto reply = fc::json::from_string(reply_body);
-            if (reply["found"].as_bool()) {
-                return reply["_source"].get_object()["body"].as_string();
-            }
+    result_type operator()(const vote_operation& op) {
+        auto id = std::string(op.author) + "." + op.permlink;
+        auto found = buffer.find(id);
+        optional<variant_object> found_es;
+
+        fc::mutable_variant_object doc_es;
+        fc::mutable_variant_object* doc = &doc_es;
+        if (found != buffer.end()) {
+            doc = &found->second;
+        } else if (find_in_es(id, found_es)) {
+            doc_es = fc::mutable_variant_object(*found_es);
         }
-        return def_body;
+        auto& o = *doc;
+
+        const auto& cmt = _db.get_comment(op.author, op.permlink);
+
+        o["total_votes"] = cmt.total_votes;
+
+        if (!!found_es) {
+            buffer[id] = std::move(o);
+        }
+
+        ++op_num;
+        if (op_num % 1 != 0) {
+            return;
+        }
+
+        write_buffer();
+    }
+
+    result_type operator()(const donate_operation& op) {
+        try {
+            auto author_str = op.memo.target["author"].as_string();
+            auto permlink = op.memo.target["permlink"].as_string();
+
+            if (!is_valid_account_name(author_str)) return;
+            auto author = account_name_type(author_str);
+
+            const auto* comment = _db.find_comment(author, permlink);
+            if (comment) {
+                auto id = author_str + "." + permlink;
+                auto found = buffer.find(id);
+                optional<variant_object> found_es;
+
+                fc::mutable_variant_object doc_es;
+                fc::mutable_variant_object* doc = &doc_es;
+                if (found != buffer.end()) {
+                    doc = &found->second;
+                } else if (find_in_es(id, found_es)) {
+                    doc_es = fc::mutable_variant_object(*found_es);
+                }
+                auto& o = *doc;
+
+                if (op.amount.symbol == STEEM_SYMBOL) {
+                    auto donates = o["donates"].as<asset>();
+                    donates += op.amount;
+                    o["donates"] = donates;
+                } else {
+                    auto donates_uia = o["donates_uia"].as<share_type>();
+                    donates_uia += (op.amount.amount / op.amount.precision());
+                    o["donates_uia"] = donates_uia;
+                }
+
+                if (!!found_es) {
+                    buffer[id] = std::move(o);
+                }
+            }
+        } catch (...) {}
+
+        ++op_num;
+        if (op_num % 1 != 0) {
+            return;
+        }
+
+        write_buffer();
     }
 
     void write_buffer() {
