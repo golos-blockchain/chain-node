@@ -107,14 +107,23 @@ public:
 
         if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
             doc["category"] = op.parent_permlink;
+            doc["root_author"] = op.author;
+            doc["root_permlink"] = op.permlink;
+            doc["root_title"] = op.title;
         } else {
-            doc["category"] = _db.get<comment_object, by_id>(cmt.root_comment).parent_permlink;
+            const auto& root_cmt = _db.get<comment_object, by_id>(cmt.root_comment);
+            doc["category"] = root_cmt.parent_permlink;
+            doc["root_author"] = root_cmt.author;
+            doc["root_permlink"] = to_string(root_cmt.permlink);
+            const auto* root_cnt = appbase::app().get_plugin<golos::plugins::social_network::social_network>().find_comment_content(root_cmt.id);
+            doc["root_title"] = root_cnt ? to_string(root_cnt->title) : "";
         }
         doc["depth"] = cmt.depth;
 
         doc["title"] = op.title;
         doc["body"] = body;
         doc["tags"] = golos::plugins::tags::get_metadata(op.json_metadata, TAGS_NUMBER, TAG_MAX_LENGTH).tags;
+        doc["json_metadata"] = op.json_metadata;
 
         doc["total_votes"] = uint32_t(0);
         doc["donates"] = asset(0, STEEM_SYMBOL);
