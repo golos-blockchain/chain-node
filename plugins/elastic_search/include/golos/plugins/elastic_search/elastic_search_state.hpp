@@ -18,6 +18,12 @@ namespace golos { namespace plugins { namespace elastic_search {
 
 using boost::locale::conv::utf_to_utf;
 
+#ifdef STEEMIT_BUILD_TESTNET
+    #define ELASTIC_WRITE_EACH_N_OP 1
+#else
+    #define ELASTIC_WRITE_EACH_N_OP 100
+#endif
+
 class elastic_search_state_writer {
 public:
     using result_type = void;
@@ -134,7 +140,7 @@ public:
         buffer[id] = std::move(doc);
         ++op_num;
 
-        if (op_num % 1 != 0) {
+        if (op_num % ELASTIC_WRITE_EACH_N_OP != 0) {
             return;
         }
 
@@ -142,6 +148,10 @@ public:
     }
 
     result_type operator()(const vote_operation& op) {
+        if (_db.head_block_num() < 35000000) { // Speed up replay
+            return;
+        }
+
         auto id = std::string(op.author) + "." + op.permlink;
         auto found = buffer.find(id);
         optional<variant_object> found_es;
@@ -165,7 +175,7 @@ public:
         }
 
         ++op_num;
-        if (op_num % 1 != 0) {
+        if (op_num % ELASTIC_WRITE_EACH_N_OP != 0) {
             return;
         }
 
@@ -212,7 +222,7 @@ public:
         } catch (...) {}
 
         ++op_num;
-        if (op_num % 1 != 0) {
+        if (op_num % ELASTIC_WRITE_EACH_N_OP != 0) {
             return;
         }
 
