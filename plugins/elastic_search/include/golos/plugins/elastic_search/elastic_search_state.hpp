@@ -99,6 +99,7 @@ public:
         const auto& cmt = _db.get_comment(op.author, op.permlink);
         fc::mutable_variant_object doc;
 
+        doc["id"] = cmt.id;
         doc["created"] = _db.head_block_time();
         doc["author"] = op.author;
         doc["permlink"] = op.permlink;
@@ -126,6 +127,7 @@ public:
         doc["json_metadata"] = op.json_metadata;
 
         doc["total_votes"] = uint32_t(0);
+        doc["net_rshares"] = share_type(0);
         doc["donates"] = asset(0, STEEM_SYMBOL);
         doc["donates_uia"] = share_type();
 
@@ -156,6 +158,7 @@ public:
         const auto& cmt = _db.get_comment(op.author, op.permlink);
 
         o["total_votes"] = cmt.total_votes;
+        o["net_rshares"] = cmt.net_rshares;
 
         if (!!found_es) {
             buffer[id] = std::move(o);
