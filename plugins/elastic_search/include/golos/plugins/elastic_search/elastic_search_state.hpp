@@ -29,13 +29,15 @@ public:
     using result_type = void;
 
     std::string url;
+    std::string login;
+    std::string password;
     database& _db;
     fc::http::connection conn;
     std::map<std::string, fc::mutable_variant_object> buffer;
     int op_num = 0;
 
-    elastic_search_state_writer(const std::string& url, database& db)
-            : url(url), _db(db) {
+    elastic_search_state_writer(const std::string& url, const std::string& login, const std::string& password, database& db)
+            : url(url), login(login), password(password), _db(db) {
         auto fc_url = fc::url(url);
         auto host_port = *fc_url.host() + (fc_url.port() ? ":" + std::to_string(*fc_url.port()) : "");
         auto ep = fc::ip::endpoint::from_string(host_port);
@@ -55,8 +57,24 @@ public:
         return utf_to_utf<char>(str.c_str(), str.c_str() + str.size());
     }
 
+    fc::http::headers get_es_headers() {
+        fc::http::headers headers;
+        std::string authorization;
+        if (login.size()) {
+            authorization += login + ":";
+        }
+        if (password.size()) {
+            authorization += password;
+        }
+        if (authorization.size()) {
+            headers.emplace_back("Authorization", "Basic " + fc::base64_encode(authorization));
+        }
+        return headers;
+    }
+
     bool find_in_es(const std::string& id, optional<variant_object>& res) {
-        auto reply0 = conn.request("GET", url + "/blog/post/" + id + "?pretty");
+        auto headers = get_es_headers();
+        auto reply0 = conn.request("GET", url + "/blog/post/" + id + "?pretty", "", headers);
         auto reply_body = std::string(reply0.body.data(), reply0.body.size());
         if (reply0.status == fc::http::reply::status_code::OK) {
             auto reply = fc::json::from_string(reply_body);
@@ -247,7 +265,7 @@ public:
 
         auto bulk_url = url + "/blog/_bulk";
 
-        fc::http::headers headers;
+        auto headers = get_es_headers();
         //headers.emplace_back("Content-Type", "application/json"); // already set - hardcoded
         auto reply = conn.request("POST", bulk_url, bulk, headers);
         auto reply_body = std::string(reply.body.data(), reply.body.size());

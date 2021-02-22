@@ -10,9 +10,9 @@ using golos::protocol::signed_block;
 
 class elastic_search_plugin::elastic_search_plugin_impl final {
 public:
-    elastic_search_plugin_impl(const std::string& url)
+    elastic_search_plugin_impl(const std::string& url, const std::string& login, const std::string& password)
             : _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()),
-            writer(url, _db) {
+            writer(url, login, password, _db) {
     }
 
     ~elastic_search_plugin_impl() {
@@ -41,6 +41,12 @@ void elastic_search_plugin::set_program_options(bpo::options_description& cli, b
     cfg.add_options() (
         "elastic-search-uri", bpo::value<string>()->default_value("http://127.0.0.1:9200"),
         "Elastic Search URI"
+    ) (
+        "elastic-search-login", bpo::value<string>(),
+        "Elastic Search Login"
+    ) (
+        "elastic-search-password", bpo::value<string>(),
+        "Elastic Search Password"
     );
 }
 
@@ -51,7 +57,10 @@ void elastic_search_plugin::plugin_initialize(const bpo::variables_map &options)
         auto uri_str = options.at("elastic-search-uri").as<std::string>();
         ilog("Connecting Elastic Search to ${u}", ("u", uri_str));
 
-        my = std::make_unique<elastic_search_plugin::elastic_search_plugin_impl>(uri_str);
+        auto login = options.at("elastic-search-login").as<std::string>();
+        auto password = options.at("elastic-search-password").as<std::string>();
+
+        my = std::make_unique<elastic_search_plugin::elastic_search_plugin_impl>(uri_str, login, password);
 
         my->_db.post_apply_operation.connect([&](const operation_notification& note) {
             my->on_operation(note);
