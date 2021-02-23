@@ -61,7 +61,8 @@ namespace golos { namespace plugins { namespace social_network {
         comment_last_update_object() = delete;
 
         template<typename Constructor, typename Allocator>
-        comment_last_update_object(Constructor&& c, allocator<Allocator> a) {
+        comment_last_update_object(Constructor&& c, allocator<Allocator> a)
+                : parent_permlink(a) {
             c(*this);
         }
 
@@ -69,9 +70,11 @@ namespace golos { namespace plugins { namespace social_network {
 
         comment_id_type comment;
         account_name_type parent_author;
+        shared_string parent_permlink;
         account_name_type author;
         time_point_sec last_update;
         time_point_sec active; ///< the last time this post was "touched" by voting or reply
+        comment_id_type last_reply;
 
         uint32_t block_number;
     };
@@ -80,6 +83,7 @@ namespace golos { namespace plugins { namespace social_network {
 
     struct by_last_update; /// parent_auth, last_update
     struct by_author_last_update;
+    struct by_parent_active;
 
     using comment_last_update_index = multi_index_container<
         comment_last_update_object,
@@ -102,7 +106,14 @@ namespace golos { namespace plugins { namespace social_network {
                 composite_key_compare<std::less<account_name_type>, std::greater<time_point_sec>, std::less<comment_last_update_id_type>>>,
             ordered_non_unique<
                 tag<by_block_number>,
-                member<comment_last_update_object, uint32_t, &comment_last_update_object::block_number>>
+                member<comment_last_update_object, uint32_t, &comment_last_update_object::block_number>>,
+            ordered_non_unique <
+                tag<by_parent_active>,
+                    composite_key<comment_last_update_object,
+                    member <comment_last_update_object, account_name_type, &comment_last_update_object::parent_author>,
+                    member<comment_last_update_object, shared_string, &comment_last_update_object::parent_permlink>,
+                    member<comment_last_update_object, time_point_sec, &comment_last_update_object::active>>,
+                composite_key_compare <std::less<account_name_type>, strcmp_less, std::greater<time_point_sec>> >
         >,
         allocator<comment_last_update_object>
     >;

@@ -42,7 +42,7 @@ namespace golos {
                 vector<market_trade> get_recent_trades(const symbol_type_pair& pair, uint32_t limit) const;
                 vector<bucket_object> get_market_history(const symbol_type_pair& pair, uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const;
                 flat_set<uint32_t> get_market_history_buckets() const;
-                std::vector<limit_order> get_open_orders(const symbol_type_pair& pair, const std::string& owner, bool sort_by_price, bool sort_lesser) const;
+                std::vector<limit_order> get_open_orders(const symbol_type_pair& pair, bool pair_reversed, const std::string& owner, bool sort_by_price, bool sort_lesser) const;
                 std::vector<limit_order> get_fillable_orders(price market_price) const;
 
 
@@ -228,7 +228,7 @@ namespace golos {
 
                 market_ticker result;
 
-                if (itr != bucket_idx.end()) {
+                if (itr != bucket_idx.end() && itr->seconds == 86400) {
                     auto open1 = (asset(itr->open_asset2, pair.second) /
                                  asset(itr->open_asset1, pair.first)).to_real();
                     result.latest1 = (asset(itr->close_asset2, pair.second) /
@@ -271,19 +271,14 @@ namespace golos {
             market_volume market_history_plugin::market_history_plugin_impl::get_volume(const symbol_type_pair& pair) const {
                 market_volume result;
 
-                auto smallest_bucket = _tracked_buckets.begin();
-                if (smallest_bucket == _tracked_buckets.end()) {
-                    return result;
-                }
-
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
-                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, *smallest_bucket, database().head_block_time() - 86400));
+                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, 86400, database().head_block_time() - 86400));
                 result.asset1_volume = asset(0, pair.first);
                 result.asset2_volume = asset(0, pair.second);
 
                 while (itr != bucket_idx.end() &&
                         itr->sym1 == pair.first && itr->sym2 == pair.second &&
-                        itr->seconds == *smallest_bucket) {
+                        itr->seconds == 86400) {
                     result.asset1_volume.amount += itr->asset1_volume;
                     result.asset2_volume.amount += itr->asset2_volume;
 
@@ -370,11 +365,13 @@ namespace golos {
                        result.bids.size() < limit) {
                     auto itr = sell_itr;
                     order_extended cur;
+                    cur.orderid = itr->orderid;
                     cur.order_price = itr->sell_price;
                     cur.real_price = (cur.order_price).to_real();
                     cur.asset2 = itr->for_sale;
                     cur.asset1 = (asset(itr->for_sale, pair.second) * cur.order_price).amount;
                     cur.created = itr->created;
+                    cur.seller = itr->seller;
                     result.bids.push_back(cur);
                     ++sell_itr;
                 }
@@ -384,11 +381,13 @@ namespace golos {
                        result.asks.size() < limit) {
                     auto itr = buy_itr;
                     order_extended cur;
+                    cur.orderid = itr->orderid;
                     cur.order_price = itr->sell_price;
                     cur.real_price = (~cur.order_price).to_real();
                     cur.asset1 = itr->for_sale;
                     cur.asset2 = (asset(itr->for_sale, pair.first) * cur.order_price).amount;
                     cur.created = itr->created;
+                    cur.seller = itr->seller;
                     result.asks.push_back(cur);
                     ++buy_itr;
                 }
@@ -412,6 +411,7 @@ namespace golos {
                         continue;
                     }
                     market_trade trade;
+                    trade.id = itr->id;
                     trade.date = itr->time;
                     trade.current_pays = itr->op.current_pays;
                     trade.open_pays = itr->op.open_pays;
@@ -435,6 +435,7 @@ namespace golos {
                         continue;
                     }
                     market_trade trade;
+                    trade.id = itr->id;
                     trade.date = itr->time;
                     trade.current_pays = itr->op.current_pays;
                     trade.open_pays = itr->op.open_pays;
@@ -467,18 +468,28 @@ namespace golos {
                 return appbase::app().get_plugin<market_history_plugin>().get_tracked_buckets();
             }
 
-            std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_open_orders(const symbol_type_pair& pair, const string& owner, bool sort_by_price, bool sort_lesser) const {
+            std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_open_orders(const symbol_type_pair& pair, bool pair_reversed, const string& owner, bool sort_by_price, bool sort_lesser) const {
                 return _db.with_weak_read_lock([&]() {
                     std::vector<limit_order> result;
                     const auto& idx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_account>();
                     auto itr = idx.lower_bound(owner);
                     while (itr != idx.end() && itr->seller == owner) {
-                        if (itr->sell_price.base.symbol == pair.first && itr->sell_price.quote.symbol == pair.second) {
+                        auto ask = itr->sell_price.base.symbol == pair.first && itr->sell_price.quote.symbol == pair.second;
+                        auto bid = itr->sell_price.base.symbol == pair.second && itr->sell_price.quote.symbol == pair.first;
+                        if (ask || bid) {
                             result.push_back(*itr);
-                            result.back().real_price = (~result.back().sell_price).to_real();
-                        } else if (itr->sell_price.base.symbol == pair.second && itr->sell_price.quote.symbol == pair.first) {
-                            result.push_back(*itr);
-                            result.back().real_price = (result.back().sell_price).to_real();
+                            auto& last = result.back();
+                            last.asset1 = asset(last.for_sale, last.sell_price.base.symbol);
+                            if (ask) {
+                                last.real_price = (~last.sell_price).to_real();
+                                last.asset2 = ~last.sell_price * last.asset1;
+                            } else if (bid) {
+                                last.real_price = (last.sell_price).to_real();
+                                last.asset2 = last.sell_price * last.asset1;
+                            }
+                            if (pair_reversed) {
+                                std::swap(last.asset1, last.asset2);
+                            }
                         }
                         ++itr;
                     }
@@ -596,8 +607,6 @@ namespace golos {
                     auto res = _my->get_ticker(_my->get_symbol_type_pair(pair, &reversed));
                     if (reversed) {
                         std::swap(res.latest1, res.latest2);
-                        _my->reverse_price(res.latest1);
-                        _my->reverse_price(res.latest2);
 
                         std::swap(res.lowest_ask, res.highest_bid);
                         _my->reverse_price(res.lowest_ask);
@@ -756,7 +765,8 @@ namespace golos {
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
                     bool reversed;
-                    auto res = _my->get_open_orders(_my->get_symbol_type_pair(pair, &reversed), account, sort_by_price, sort_lesser);
+                    auto type_pair = _my->get_symbol_type_pair(pair, &reversed);
+                    auto res = _my->get_open_orders(type_pair, reversed, account, sort_by_price, sort_lesser);
                     if (reversed) {
                         for (auto& order : res) {
                             _my->reverse_price(order.real_price);

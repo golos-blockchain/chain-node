@@ -70,6 +70,8 @@ namespace golos {
 
 
             struct order_extended {
+                uint32_t orderid;
+
                 price order_price;
                 double real_price; // dollars per steem
 
@@ -77,6 +79,7 @@ namespace golos {
                 share_type asset2;
 
                 fc::time_point_sec created;
+                account_name_type seller;
             };
 
             struct order_book_extended {
@@ -88,12 +91,6 @@ namespace golos {
             struct order_book {
                 vector <order> bids;
                 vector <order> asks;
-            };
-
-            struct market_trade {
-                time_point_sec date;
-                asset current_pays;
-                asset open_pays;
             };
 
             typedef golos::chain::limit_order_object limit_order_api_object;
@@ -108,6 +105,9 @@ namespace golos {
 
                 double real_price = 0;
                 bool rewarded = false;
+                // When sell_price contains initial data, there fields contain current
+                asset asset1;
+                asset asset2;
             };
           
             struct bucket_object
@@ -166,6 +166,13 @@ namespace golos {
 
             typedef object_id <order_history_object> order_history_id_type;
 
+            struct market_trade {
+                order_history_object::id_type id;
+                time_point_sec date;
+                asset current_pays;
+                asset open_pays;
+            };
+
             struct by_id;
             struct by_bucket;
 
@@ -210,11 +217,11 @@ FC_REFLECT((golos::plugins::market_history::order),
 FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
-           (date)(current_pays)(open_pays));
+           (id)(date)(current_pays)(open_pays));
 
-FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded));
+FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded)(asset1)(asset2));
 
-FC_REFLECT((golos::plugins::market_history::order_extended), (order_price)(real_price)(asset1)(asset2)(created));
+FC_REFLECT((golos::plugins::market_history::order_extended), (orderid)(order_price)(real_price)(asset1)(asset2)(created)(seller));
 FC_REFLECT((golos::plugins::market_history::order_book_extended), (asks)(bids));
 
 

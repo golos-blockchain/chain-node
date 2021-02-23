@@ -17,14 +17,18 @@ namespace golos { namespace plugins { namespace social_network {
     using namespace golos::chain;
     using golos::api::comment_api_object;
 
+    using categorized_discussions = std::map<std::string,std::vector<discussion>>;
+
     DEFINE_API_ARGS(get_content,                  msg_pack, discussion)
     DEFINE_API_ARGS(get_content_replies,          msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_all_content_replies,      msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_account_votes,            msg_pack, std::vector<account_vote>)
     DEFINE_API_ARGS(get_active_votes,             msg_pack, std::vector<vote_state>)
     DEFINE_API_ARGS(get_donates,                  msg_pack, std::vector<donate_api_object>)
+    DEFINE_API_ARGS(get_donates_for_targets,      msg_pack, std::vector<std::vector<donate_api_object>>)
     DEFINE_API_ARGS(get_replies_by_last_update,   msg_pack, std::vector<discussion>)
-    DEFINE_API_ARGS(get_all_discussions_by_active, msg_pack, std::vector<discussion>)
+    DEFINE_API_ARGS(get_all_discussions_by_active, msg_pack, categorized_discussions)
+    DEFINE_API_ARGS(get_last_reply,               msg_pack, discussion)
 
     class social_network final: public appbase::plugin<social_network> {
     public:
@@ -40,8 +44,10 @@ namespace golos { namespace plugins { namespace social_network {
             (get_account_votes)
             (get_active_votes)
             (get_donates)
+            (get_donates_for_targets)
             (get_replies_by_last_update)
             (get_all_discussions_by_active)
+            (get_last_reply)
         )
 
         social_network();
