@@ -20,15 +20,6 @@ namespace golos { namespace plugins { namespace private_message {
         return false;
     }
 
-
-    void private_settings_operation::validate() const {
-        GOLOS_CHECK_PARAM_ACCOUNT(owner);
-    }
-    void private_settings_operation::get_required_posting_authorities(flat_set<account_name_type>& a) const {
-        a.insert(owner);
-    }
-
-
     void private_message_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(to);
         GOLOS_CHECK_PARAM_ACCOUNT(from);
@@ -58,11 +49,6 @@ namespace golos { namespace plugins { namespace private_message {
             GOLOS_CHECK_VALUE(encrypted_message.size() >= 16, "Encrypted message is too small");
         });
     }
-
-    void private_message_operation::get_required_posting_authorities(flat_set<account_name_type>& a) const {
-        a.insert(from);
-    }
-
 
     void private_delete_message_operation::validate() const {
         GOLOS_CHECK_PARAM(from, {
@@ -99,11 +85,6 @@ namespace golos { namespace plugins { namespace private_message {
         });
     }
 
-    void private_delete_message_operation::get_required_posting_authorities(flat_set<account_name_type>& a) const {
-        a.insert(requester);
-    }
-
-
     void private_mark_message_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(to);
 
@@ -127,10 +108,9 @@ namespace golos { namespace plugins { namespace private_message {
         });
     }
 
-    void private_mark_message_operation::get_required_posting_authorities(flat_set<account_name_type>& a) const {
-        a.insert(to);
+    void private_settings_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(owner);
     }
-
 
     void private_contact_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(contact);
@@ -151,11 +131,6 @@ namespace golos { namespace plugins { namespace private_message {
             });
         }
     }
-
-    void private_contact_operation::get_required_posting_authorities(flat_set<account_name_type>& a) const {
-        a.insert(owner);
-    }
-
 } } } // golos::plugins::private_message
 
 DEFINE_OPERATION_TYPE(golos::plugins::private_message::private_message_plugin_operation);

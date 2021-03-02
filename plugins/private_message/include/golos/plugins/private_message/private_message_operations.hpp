@@ -17,7 +17,9 @@ namespace golos { namespace plugins { namespace private_message {
         std::vector<char> encrypted_message;
 
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(from);
+        }
     };
 
     struct private_delete_message_operation: public base_operation {
@@ -29,7 +31,9 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec stop_date;
 
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(requester);
+        }
     };
 
     struct private_mark_message_operation: public base_operation {
@@ -40,7 +44,9 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec stop_date;
 
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(to);
+        }
     };
 
     struct private_settings_operation: public base_operation {
@@ -48,7 +54,9 @@ namespace golos { namespace plugins { namespace private_message {
         bool ignore_messages_from_unknown_contact = false;
 
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(owner);
+        }
     };
 
     /**
@@ -69,7 +77,9 @@ namespace golos { namespace plugins { namespace private_message {
         std::string json_metadata;
 
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(owner);
+        }
     };
 
     using private_message_plugin_operation = fc::static_variant<
