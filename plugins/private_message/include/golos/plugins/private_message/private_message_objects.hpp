@@ -65,69 +65,79 @@ namespace golos { namespace plugins { namespace private_message {
     using message_index = multi_index_container<
         message_object,
         indexed_by<
-            ordered_unique<
-                tag<by_id>,
-                member<message_object, message_id_type, &message_object::id>>,
-            ordered_unique<
-                tag<by_inbox>,
+            ordered_unique<tag<by_id>,
+                member<message_object, message_id_type, &message_object::id>
+            >,
+            ordered_unique<tag<by_inbox>,
                 composite_key<
                     message_object,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, time_point_sec, &message_object::inbox_create_date>,
-                    member<message_object, message_id_type, &message_object::id>>,
+                    member<message_object, message_id_type, &message_object::id>
+                >,
                 composite_key_compare<
                     string_less,
                     std::greater<time_point_sec>,
-                    std::greater<message_id_type>>>,
-            ordered_unique<
-                tag<by_inbox_account>,
+                    std::greater<message_id_type>
+                >
+            >,
+            ordered_unique<tag<by_inbox_account>,
                 composite_key<
                     message_object,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, time_point_sec, &message_object::inbox_create_date>,
-                    member<message_object, message_id_type, &message_object::id>>,
+                    member<message_object, message_id_type, &message_object::id>
+                >,
                 composite_key_compare<
                     string_less,
                     string_less,
                     std::greater<time_point_sec>,
-                    std::greater<message_id_type>>>,
-            ordered_unique<
-                tag<by_outbox>,
+                    std::greater<message_id_type>
+                >
+            >,
+            ordered_unique<tag<by_outbox>,
                 composite_key<
                     message_object,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, time_point_sec, &message_object::outbox_create_date>,
-                    member<message_object, message_id_type, &message_object::id>>,
+                    member<message_object, message_id_type, &message_object::id>
+                >,
                 composite_key_compare<
                     string_less,
                     std::greater<time_point_sec>,
-                    std::greater<message_id_type>>>,
-            ordered_unique<
-                tag<by_outbox_account>,
+                    std::greater<message_id_type>
+                >
+            >,
+            ordered_unique<tag<by_outbox_account>,
                 composite_key<
                     message_object,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, time_point_sec, &message_object::outbox_create_date>,
-                    member<message_object, message_id_type, &message_object::id>>,
+                    member<message_object, message_id_type, &message_object::id>
+                >,
                 composite_key_compare<
                     string_less,
                     string_less,
                     std::greater<time_point_sec>,
-                    std::greater<message_id_type>>>,
-            ordered_unique<
-                tag<by_nonce>,
+                    std::greater<message_id_type>
+                >
+            >,
+            ordered_unique<tag<by_nonce>,
                 composite_key<
                     message_object,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, account_name_type, &message_object::to>,
-                    member<message_object, uint64_t, &message_object::nonce>>,
+                    member<message_object, uint64_t, &message_object::nonce>
+                >,
                 composite_key_compare<
                     string_less,
                     string_less,
-                    std::less<uint64_t>>>>,
-        allocator<message_object>>;
+                    std::less<uint64_t>
+                >
+            >
+        >, allocator<message_object>>;
 
     /**
      * Settings
@@ -150,13 +160,13 @@ namespace golos { namespace plugins { namespace private_message {
     using settings_index = multi_index_container<
         settings_object,
         indexed_by<
-            ordered_unique<
-                tag<by_id>,
-                member<settings_object, settings_id_type, &settings_object::id>>,
-            ordered_unique<
-                tag<by_owner>,
-                member<settings_object, account_name_type, &settings_object::owner>>>,
-        allocator<settings_object>>;
+            ordered_unique<tag<by_id>,
+                member<settings_object, settings_id_type, &settings_object::id>
+            >,
+            ordered_unique<tag<by_owner>,
+                member<settings_object, account_name_type, &settings_object::owner>
+            >
+        >, allocator<settings_object>>;
 
     struct contact_size_info {
         uint32_t total_outbox_messages = 0;
@@ -225,30 +235,34 @@ namespace golos { namespace plugins { namespace private_message {
     using contact_index = multi_index_container<
         contact_object,
         indexed_by<
-            ordered_unique<
-                tag<by_id>,
-                member<contact_object, contact_id_type, &contact_object::id>>,
-            ordered_unique<
-                tag<by_owner>,
+            ordered_unique<tag<by_id>,
+                member<contact_object, contact_id_type, &contact_object::id>
+            >,
+            ordered_unique<tag<by_owner>,
                 composite_key<
                     contact_object,
                     member<contact_object, account_name_type, &contact_object::owner>,
                     member<contact_object, private_contact_type, &contact_object::type>,
-                    member<contact_object, account_name_type, &contact_object::contact>>,
+                    member<contact_object, account_name_type, &contact_object::contact>
+                >,
                 composite_key_compare<
                     string_less,
                     std::greater<private_contact_type>,
-                    string_less>>,
-            ordered_unique<
-                tag<by_contact>,
+                    string_less
+                >
+            >,
+            ordered_unique<tag<by_contact>,
                 composite_key<
                     contact_object,
                     member<contact_object, account_name_type, &contact_object::owner>,
-                    member<contact_object, account_name_type, &contact_object::contact>>,
+                    member<contact_object, account_name_type, &contact_object::contact>
+                >,
                 composite_key_compare<
                     string_less,
-                    string_less>>>,
-        allocator<contact_object>>;
+                    string_less
+                >
+            >
+        >, allocator<contact_object>>;
 
     /**
      * Counters for account contact lists
@@ -271,30 +285,36 @@ namespace golos { namespace plugins { namespace private_message {
     using contact_size_index = multi_index_container<
         contact_size_object,
         indexed_by<
-            ordered_unique<
-                tag<by_id>,
-                member<contact_size_object, contact_size_id_type, &contact_size_object::id>>,
-            ordered_unique<
-                tag<by_owner>,
+            ordered_unique<tag<by_id>,
+                member<contact_size_object, contact_size_id_type, &contact_size_object::id>
+            >,
+            ordered_unique<tag<by_owner>,
                 composite_key<
                     contact_size_object,
                     member<contact_size_object, account_name_type, &contact_size_object::owner>,
-                    member<contact_size_object, private_contact_type, &contact_size_object::type>>,
+                    member<contact_size_object, private_contact_type, &contact_size_object::type>
+                >,
                 composite_key_compare<
                     string_less,
-                    std::less<private_contact_type>>>>,
-        allocator<contact_size_object>>;
+                    std::less<private_contact_type>
+                >
+            >
+        >, allocator<contact_size_object>>;
 
 } } } // golos::plugins::private_message
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::private_message::message_object, golos::plugins::private_message::message_index)
+    golos::plugins::private_message::message_object,
+    golos::plugins::private_message::message_index)
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::private_message::settings_object, golos::plugins::private_message::settings_index)
+    golos::plugins::private_message::settings_object,
+    golos::plugins::private_message::settings_index)
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::private_message::contact_object, golos::plugins::private_message::contact_index)
+    golos::plugins::private_message::contact_object,
+    golos::plugins::private_message::contact_index)
 
 CHAINBASE_SET_INDEX_TYPE(
-    golos::plugins::private_message::contact_size_object, golos::plugins::private_message::contact_size_index)
+    golos::plugins::private_message::contact_size_object,
+    golos::plugins::private_message::contact_size_index)
