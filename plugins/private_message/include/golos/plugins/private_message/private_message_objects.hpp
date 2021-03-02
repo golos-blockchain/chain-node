@@ -5,8 +5,6 @@
 #include <golos/chain/steem_object_types.hpp>
 #include <chainbase/chainbase.hpp>
 
-#include <golos/plugins/private_message/private_message_api_objects.hpp>
-
 namespace golos { namespace plugins { namespace private_message {
 
     using namespace golos::protocol;
@@ -159,6 +157,49 @@ namespace golos { namespace plugins { namespace private_message {
                 tag<by_owner>,
                 member<settings_object, account_name_type, &settings_object::owner>>>,
         allocator<settings_object>>;
+
+    struct contact_size_info {
+        uint32_t total_outbox_messages = 0;
+        uint32_t unread_outbox_messages = 0;
+        uint32_t total_inbox_messages = 0;
+        uint32_t unread_inbox_messages = 0;
+
+        bool empty() const {
+            return !total_outbox_messages && !total_inbox_messages;
+        }
+
+        contact_size_info& operator-=(const contact_size_info& s) {
+            total_outbox_messages -= s.total_outbox_messages;
+            unread_outbox_messages -= s.unread_outbox_messages;
+            total_inbox_messages -= s.total_inbox_messages;
+            unread_inbox_messages -= s.unread_inbox_messages;
+            return *this;
+        }
+
+        contact_size_info& operator+=(const contact_size_info& s) {
+            total_outbox_messages += s.total_outbox_messages;
+            unread_outbox_messages += s.unread_outbox_messages;
+            total_inbox_messages += s.total_inbox_messages;
+            unread_inbox_messages += s.unread_inbox_messages;
+            return *this;
+        }
+
+        bool operator==(const contact_size_info& s) const {
+            return
+                total_outbox_messages == s.total_outbox_messages &&
+                unread_outbox_messages == s.unread_outbox_messages &&
+                total_inbox_messages == s.total_inbox_messages &&
+                unread_inbox_messages == s.unread_inbox_messages;
+        }
+
+        bool operator!=(const contact_size_info& s) const {
+            return !(this->operator==(s));
+        }
+    };
+
+    struct contacts_size_info final: public contact_size_info {
+        uint32_t total_contacts = 0;
+    };
 
     /**
      * Contact item

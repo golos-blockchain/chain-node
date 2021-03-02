@@ -11,7 +11,6 @@ list(APPEND CURRENT_TARGET_HEADERS
 
 list(APPEND CURRENT_TARGET_SOURCES
         private_message_plugin.cpp
-        private_message_api_objects.cpp
         private_message_operations.cpp
         private_message_evaluators.cpp
         )
