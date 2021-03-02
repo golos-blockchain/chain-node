@@ -1,4 +1,5 @@
 #pragma once
+
 #include <golos/plugins/private_message/private_message_operations.hpp>
 #include <golos/plugins/private_message/private_message_api_objects.hpp>
 
@@ -14,6 +15,7 @@
 #include <fc/api.hpp>
 
 namespace golos { namespace plugins { namespace private_message {
+
     using namespace golos::chain;
 
     DEFINE_API_ARGS(get_inbox,         json_rpc::msg_pack, std::vector<message_api_object>)

@@ -95,4 +95,4 @@ namespace golos { namespace plugins { namespace private_message {
         private_message_plugin* _plugin;
     };
 
-} } }
+} } } // golos::plugins::private_message

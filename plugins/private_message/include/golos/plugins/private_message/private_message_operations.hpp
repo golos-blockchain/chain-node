@@ -4,6 +4,7 @@
 #include <golos/protocol/operation_util.hpp>
 
 namespace golos { namespace plugins { namespace private_message {
+
     using namespace golos::protocol;
 
     struct private_message_operation: public base_operation {
