@@ -26,7 +26,7 @@ namespace golos { namespace plugins { namespace private_message {
             _plugin(plugin) {
         }
 
-        void do_apply(const private_message_operation& o);
+        void do_apply(const private_message_operation& op);
 
         private_message_plugin* _plugin;
     };
@@ -42,7 +42,7 @@ namespace golos { namespace plugins { namespace private_message {
             _plugin(plugin) {
         }
 
-        void do_apply(const private_delete_message_operation& o);
+        void do_apply(const private_delete_message_operation& op);
 
         private_message_plugin* _plugin;
     };
@@ -58,7 +58,7 @@ namespace golos { namespace plugins { namespace private_message {
             _plugin(plugin) {
         }
 
-        void do_apply(const private_mark_message_operation& o);
+        void do_apply(const private_mark_message_operation& op);
 
         private_message_plugin* _plugin;
     };
@@ -74,7 +74,7 @@ namespace golos { namespace plugins { namespace private_message {
             _plugin(plugin) {
         }
 
-        void do_apply(const private_settings_operation& o);
+        void do_apply(const private_settings_operation& op);
 
         private_message_plugin* _plugin;
     };
@@ -90,7 +90,7 @@ namespace golos { namespace plugins { namespace private_message {
             _plugin(plugin) {
         }
 
-        void do_apply(const private_contact_operation& o);
+        void do_apply(const private_contact_operation& op);
 
         private_message_plugin* _plugin;
     };
