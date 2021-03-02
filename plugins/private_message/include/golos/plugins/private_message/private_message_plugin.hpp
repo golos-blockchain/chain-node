@@ -50,6 +50,13 @@ namespace golos { namespace plugins { namespace private_message {
 
         static const std::string& name();
 
+        bool is_tracked_account(const account_name_type& name);
+
+        bool can_call_callbacks();
+
+        void call_callbacks(
+            callback_event_type event, const account_name_type& from, const account_name_type& to, fc::variant r);
+
         DECLARE_API(
             (get_inbox)
             (get_outbox)
