@@ -68,6 +68,7 @@ namespace golos { namespace plugins { namespace private_message {
         private_contact_type local_type = unknown;
         private_contact_type remote_type = unknown;
         contact_size_info size;
+        message_api_object last_message;
     };
 
     /**
@@ -157,7 +158,7 @@ FC_REFLECT_DERIVED(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_api_object),
-    (contact)(json_metadata)(local_type)(remote_type)(size))
+    (contact)(json_metadata)(local_type)(remote_type)(size)(last_message))
 
 FC_REFLECT(
     (golos::plugins::private_message::contacts_size_api_object),

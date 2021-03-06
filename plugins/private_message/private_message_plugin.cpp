@@ -221,6 +221,14 @@ namespace golos { namespace plugins { namespace private_message {
             result.remote_type = itr->type;
         }
 
+        message_thread_query query;
+        query.limit = 1;
+        query.newest_date = _db.head_block_time();
+        auto messages = get_thread(o.owner, o.contact, query);
+        if (messages.size()) {
+            result.last_message = std::move(messages[0]);
+        }
+
         return result;
     }
 
@@ -275,6 +283,11 @@ namespace golos { namespace plugins { namespace private_message {
         for (; itr != etr; ++itr) {
             result.push_back(get_contact_item(*itr));
         }
+
+        std::sort(result.begin(), result.end(), [&](auto& lhs, auto& rhs) {
+            return lhs.last_message.receive_date > rhs.last_message.receive_date;
+        });
+
         return result;
     }
 
@@ -446,7 +459,7 @@ namespace golos { namespace plugins { namespace private_message {
             (message_thread_query, query)
         );
 
-        GOLOS_CHECK_LIMIT_PARAM(query.limit, PRIVATE_DEFAULT_LIMIT);
+        GOLOS_CHECK_LIMIT_PARAM(query.limit, PRIVATE_DEFAULT_LIMIT * 10);
 
         if (!query.limit) {
             query.limit = PRIVATE_DEFAULT_LIMIT;
