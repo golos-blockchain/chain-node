@@ -139,7 +139,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         modify_size(owner, type, is_new_contact, is_send);
     };
 
-    modify_contact(op.from, op.to, pinned, true);
+    modify_contact(op.from, op.to, unknown, true);
     modify_contact(op.to, op.from, unknown, false);
 }
 
