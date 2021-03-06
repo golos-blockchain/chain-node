@@ -43,10 +43,10 @@ namespace golos { namespace plugins { namespace private_message {
     class private_message_plugin::private_message_plugin_impl final {
     public:
         private_message_plugin_impl(private_message_plugin& plugin)
-            : db_(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
+            : _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
 
             custom_operation_interpreter_ = std::make_shared
-                    <generic_custom_operation_interpreter<private_message::private_message_plugin_operation>>(db_);
+                    <generic_custom_operation_interpreter<private_message::private_message_plugin_operation>>(_db);
 
             auto coi = custom_operation_interpreter_.get();
 
@@ -56,7 +56,7 @@ namespace golos { namespace plugins { namespace private_message {
             coi->register_evaluator<private_settings_evaluator>(&plugin);
             coi->register_evaluator<private_contact_evaluator>(&plugin);
 
-            db_.set_custom_operation_interpreter(plugin.name(), custom_operation_interpreter_);
+            _db.set_custom_operation_interpreter(plugin.name(), custom_operation_interpreter_);
         }
 
         template <typename Direction, typename Filter>
@@ -90,7 +90,7 @@ namespace golos { namespace plugins { namespace private_message {
         flat_map<std::string, std::string> tracked_account_ranges_;
         flat_set<std::string> tracked_account_list_;
 
-        golos::chain::database& db_;
+        golos::chain::database& _db;
 
         std::mutex callbacks_mutex_;
         std::list<callback_info> callbacks_;
@@ -101,11 +101,11 @@ namespace golos { namespace plugins { namespace private_message {
         const std::string& to, const message_box_query& query, GetAccount&& get_account
     ) const {
         std::vector<message_api_object> result;
-        const auto& idx = db_.get_index<message_index>().indices().get<Direction>();
+        const auto& idx = _db.get_index<message_index, Direction>();
         auto newest_date = query.newest_date;
 
         if (newest_date == time_point_sec::min()) {
-            newest_date = db_.head_block_time();
+            newest_date = _db.head_block_time();
         }
 
         auto itr = idx.lower_bound(std::make_tuple(to, newest_date));
@@ -147,8 +147,8 @@ namespace golos { namespace plugins { namespace private_message {
     ) const {
 
         std::vector<message_api_object> result;
-        const auto& outbox_idx = db_.get_index<message_index>().indices().get<by_outbox_account>();
-        const auto& inbox_idx = db_.get_index<message_index>().indices().get<by_inbox_account>();
+        const auto& outbox_idx = _db.get_index<message_index, by_outbox_account>();
+        const auto& inbox_idx = _db.get_index<message_index, by_inbox_account>();
 
         auto outbox_itr = outbox_idx.lower_bound(std::make_tuple(from, to, query.newest_date));
         auto outbox_etr = outbox_idx.upper_bound(std::make_tuple(from, to, min_create_date()));
@@ -200,7 +200,7 @@ namespace golos { namespace plugins { namespace private_message {
     settings_api_object private_message_plugin::private_message_plugin_impl::get_settings(
         const std::string& owner
     ) const {
-        const auto& idx = db_.get_index<settings_index>().indices().get<by_owner>();
+        const auto& idx = _db.get_index<settings_index, by_owner>();
         auto itr = idx.find(owner);
         if (itr != idx.end()) {
             return settings_api_object(*itr);
@@ -214,7 +214,7 @@ namespace golos { namespace plugins { namespace private_message {
     ) const {
         contact_api_object result(o);
 
-        const auto& idx = db_.get_index<contact_index>().indices().get<by_contact>();
+        const auto& idx = _db.get_index<contact_index, by_contact>();
         auto itr = idx.find(std::make_tuple(o.contact, o.owner));
 
         if (idx.end() != itr) {
@@ -227,7 +227,7 @@ namespace golos { namespace plugins { namespace private_message {
     contact_api_object private_message_plugin::private_message_plugin_impl::get_contact_info(
         const std::string& owner, const std::string& contact
     ) const {
-        const auto& idx = db_.get_index<contact_index>().indices().get<by_contact>();
+        const auto& idx = _db.get_index<contact_index, by_contact>();
         auto itr = idx.find(std::make_tuple(owner, contact));
 
         if (itr != idx.end()) {
@@ -241,7 +241,7 @@ namespace golos { namespace plugins { namespace private_message {
     ) const {
         contacts_size_api_object result;
 
-        const auto& idx = db_.get_index<contact_size_index>().indices().get<by_owner>();
+        const auto& idx = _db.get_index<contact_size_index, by_owner>();
         auto itr = idx.lower_bound(std::make_tuple(owner, unknown));
         auto etr = idx.upper_bound(std::make_tuple(owner, private_contact_type_size));
 
@@ -266,7 +266,7 @@ namespace golos { namespace plugins { namespace private_message {
 
         result.reserve(limit);
 
-        const auto& idx = db_.get_index<contact_index>().indices().get<by_owner>();
+        const auto& idx = _db.get_index<contact_index, by_owner>();
         auto itr = idx.lower_bound(std::make_tuple(owner, type));
         auto etr = idx.upper_bound(std::make_tuple(owner, type));
 
@@ -279,7 +279,7 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     bool private_message_plugin::private_message_plugin_impl::can_call_callbacks() const {
-        return !db_.is_producing() && !db_.is_generating() && !callbacks_.empty();
+        return !_db.is_producing() && !_db.is_generating() && !callbacks_.empty();
     }
 
     void private_message_plugin::private_message_plugin_impl::call_callbacks(
@@ -335,25 +335,25 @@ namespace golos { namespace plugins { namespace private_message {
 
     void private_message_plugin::set_program_options(
         boost::program_options::options_description& cli,
-        boost::program_options::options_description& cfg
-    ) {
-        cfg.add_options()
-            ("pm-account-range",
-             boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(),
-             "Defines a range of accounts to private messages to/from as a json pair [\"from\",\"to\"] [from,to]")
-            ("pm-account-list",
-             boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(),
-             "Defines a list of accounts to private messages to/from");
+        boost::program_options::options_description& cfg) {
+        cfg.add_options() ("pm-account-range",
+            boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(),
+            "Defines a range of accounts to private messages to/from as a json pair [\"from\",\"to\"] [from,to]"
+        ) (
+            "pm-account-list",
+            boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(),
+            "Defines a list of accounts to private messages to/from"
+        );
     }
 
     void private_message_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
         ilog("Intializing private message plugin");
         my = std::make_unique<private_message_plugin::private_message_plugin_impl>(*this);
 
-        add_plugin_index<message_index>(my->db_);
-        add_plugin_index<settings_index>(my->db_);
-        add_plugin_index<contact_index>(my->db_);
-        add_plugin_index<contact_size_index>(my->db_);
+        add_plugin_index<message_index>(my->_db);
+        add_plugin_index<settings_index>(my->_db);
+        add_plugin_index<contact_index>(my->_db);
+        add_plugin_index<contact_size_index>(my->_db);
 
         using pairstring = std::pair<std::string, std::string>;
         LOAD_VALUE_SET(options, "pm-account-range", my->tracked_account_ranges_, pairstring);
@@ -404,7 +404,7 @@ namespace golos { namespace plugins { namespace private_message {
             }
         });
 
-        return my->db_.with_weak_read_lock([&]() {
+        return my->_db.with_weak_read_lock([&]() {
             return my->get_message_box<by_inbox>(
                 to, query,
                 [&](const message_object& o) -> const account_name_type& {
@@ -430,7 +430,7 @@ namespace golos { namespace plugins { namespace private_message {
             }
         });
 
-        return my->db_.with_weak_read_lock([&]() {
+        return my->_db.with_weak_read_lock([&]() {
             return my->get_message_box<by_outbox>(
                 from, query,
                 [&](const message_object& o) -> const account_name_type& {
@@ -453,10 +453,10 @@ namespace golos { namespace plugins { namespace private_message {
         }
 
         if (query.newest_date == time_point_sec::min()) {
-            query.newest_date = my->db_.head_block_time();
+            query.newest_date = my->_db.head_block_time();
         }
 
-        return my->db_.with_weak_read_lock([&]() {
+        return my->_db.with_weak_read_lock([&]() {
             return my->get_thread(from, to, query);
         });
     }
@@ -466,7 +466,7 @@ namespace golos { namespace plugins { namespace private_message {
             (std::string, owner)
         );
 
-        return my->db_.with_weak_read_lock([&](){
+        return my->_db.with_weak_read_lock([&](){
             return my->get_settings(owner);
         });
     }
@@ -476,7 +476,7 @@ namespace golos { namespace plugins { namespace private_message {
             (std::string, owner)
         );
 
-        return my->db_.with_weak_read_lock([&](){
+        return my->_db.with_weak_read_lock([&](){
             return my->get_contacts_size(owner);
         });
     }
@@ -487,7 +487,7 @@ namespace golos { namespace plugins { namespace private_message {
             (std::string, contact)
         );
 
-        return my->db_.with_weak_read_lock([&](){
+        return my->_db.with_weak_read_lock([&](){
             return my->get_contact_info(owner, contact);
         });
     }
@@ -502,7 +502,7 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_LIMIT_PARAM(limit, 100);
 
-        return my->db_.with_weak_read_lock([&](){
+        return my->_db.with_weak_read_lock([&](){
             return my->get_contacts(owner, type, limit, offset);
         });
     }
