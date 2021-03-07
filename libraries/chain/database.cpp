@@ -5538,7 +5538,7 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_26:
                     {
 #ifdef STEEMIT_BUILD_LIVETEST
-                        //active and signing_key
+                        //active and signing_key, also memo_key
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
                         //"wif_priv_key": "5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw",
                         //"pub_key": "GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"
@@ -5553,6 +5553,10 @@ namespace golos { namespace chain {
                             modify(get_authority(account.name), [&](account_authority_object &auth) {
                                 auth.active = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
                                 auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
+                            });
+
+                            modify(account, [&](account_object &acc) {
+                                acc.memo_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
                             });
                         }
                         
