@@ -26,6 +26,7 @@
 #include <golos/plugins/follow/plugin.hpp>
 #include <golos/plugins/operation_dump/operation_dump_plugin.hpp>
 #include <golos/plugins/worker_api/worker_api_plugin.hpp>
+#include <golos/plugins/elastic_search/elastic_search_plugin.hpp>
 #ifdef MONGODB_PLUGIN_BUILT
     #include <golos/plugins/mongo_db/mongo_db_plugin.hpp>
 #endif
@@ -85,6 +86,7 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::follow::plugin>();
             appbase::app().register_plugin<golos::plugins::operation_dump::operation_dump_plugin>();
             appbase::app().register_plugin<golos::plugins::worker_api::worker_api_plugin>();
+            appbase::app().register_plugin<golos::plugins::elastic_search::elastic_search_plugin>();
             #ifdef MONGODB_PLUGIN_BUILT
                 appbase::app().register_plugin<golos::plugins::mongo_db::mongo_db_plugin>();
             #endif
