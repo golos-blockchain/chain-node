@@ -108,8 +108,29 @@ namespace golos { namespace plugins { namespace private_message {
         });
     }
 
+    void ignore_messages_from_unknown_contact::validate() const {
+    }
+
+    struct private_setting_validate_visitor {
+        private_setting_validate_visitor() {
+        }
+
+        using result_type = void;
+
+        template <typename Setting>
+        void operator()(const Setting& p) const {
+            p.validate();
+        }
+    };
+
     void private_settings_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(owner);
+        GOLOS_CHECK_VALUE_NOT_EMPTY(settings);
+
+        private_setting_validate_visitor visitor;
+        for (const auto& s : settings) {
+            s.visit(visitor);
+        }
     }
 
     void private_contact_operation::validate() const {

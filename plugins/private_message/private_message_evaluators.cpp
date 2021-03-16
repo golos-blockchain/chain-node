@@ -376,6 +376,20 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
         "No unread messages in requested range");
 }
 
+
+struct private_setting_visitor {
+    using result_type = void;
+
+    settings_object& _pso;
+
+    private_setting_visitor(settings_object& pso) : _pso(pso) {
+    }
+
+    result_type operator()(const ignore_messages_from_unknown_contact& s) {
+        _pso.ignore_messages_from_unknown_contact = s.ignore_messages_from_unknown_contact;
+    }
+};
+
 void private_settings_evaluator::do_apply(const private_settings_operation& op) {
     if (!_plugin->is_tracked_account(op.owner)) {
         return;
@@ -386,7 +400,11 @@ void private_settings_evaluator::do_apply(const private_settings_operation& op) 
 
     auto set_settings = [&](auto& pso) {
         pso.owner = op.owner;
-        pso.ignore_messages_from_unknown_contact = op.ignore_messages_from_unknown_contact;
+
+        private_setting_visitor visitor(pso);
+        for (const auto& s : op.settings) {
+            s.visit(visitor);
+        }
     };
 
     if (idx.end() != itr) {
