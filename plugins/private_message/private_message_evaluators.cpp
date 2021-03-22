@@ -206,7 +206,7 @@ void process_group_message_operation(
                 ("start_date", po.start_date)("stop_date", po.stop_date));
         }
     } else {
-        if (!process_private_messages<by_inbox>(_db, po, process_action, requester) &&
+        if (!process_private_messages<by_inbox>(_db, po, process_action, requester) &
             !process_private_messages<by_outbox>(_db, po, process_action, requester)
         ) {
             GOLOS_THROW_MISSING_OBJECT("private_message",
@@ -261,23 +261,14 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
             if (m.read_date == time_point_sec::min()) {
                 unread_messages = 1;
             }
-            if (op.requester == op.to) {
-                // remove from inbox
-                if (m.inbox_create_date == time_point_sec::min()) {
-                    return false;
-                }
-                auto& inbox_stat = stat_map[std::make_tuple(m.to, m.from)];
-                inbox_stat.unread_inbox_messages += unread_messages;
-                inbox_stat.total_inbox_messages++;
-            } else {
-                // remove from outbox
-                if (m.outbox_create_date == time_point_sec::min()) {
-                    return false;
-                }
-                auto& outbox_stat = stat_map[std::make_tuple(m.from, m.to)];
-                outbox_stat.unread_outbox_messages += unread_messages;
-                outbox_stat.total_outbox_messages++;
-            }
+            // remove from inbox
+            auto& inbox_stat = stat_map[std::make_tuple(m.to, m.from)];
+            inbox_stat.unread_inbox_messages += unread_messages;
+            inbox_stat.total_inbox_messages++;
+            // remove from outbox
+            auto& outbox_stat = stat_map[std::make_tuple(m.from, m.to)];
+            outbox_stat.unread_outbox_messages += unread_messages;
+            outbox_stat.total_outbox_messages++;
 
             if (_plugin->can_call_callbacks()) {
                 message_api_object ma(m);
@@ -296,18 +287,7 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
                 }
             }
 
-            if (m.remove_date == time_point_sec::min()) {
-                _db.modify(m, [&](auto& m) {
-                    m.remove_date = now;
-                    if (op.requester == op.to) {
-                        m.inbox_create_date = time_point_sec::min(); // remove message from find requests
-                    } else {
-                        m.outbox_create_date = time_point_sec::min(); // remove message from find requests
-                    }
-                });
-            } else {
-                _db.remove(m);
-            }
+            _db.remove(m);
             return true;
         },
         /* contact_action */
@@ -347,10 +327,7 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
             }
             // only recipient can mark messages
             stat_map[std::make_tuple(m.to, m.from)].unread_inbox_messages++;
-            // if sender hasn't yet removed the message
-            if (m.remove_date == time_point_sec::min()) {
-                stat_map[std::make_tuple(m.from, m.to)].unread_outbox_messages++;
-            }
+            stat_map[std::make_tuple(m.from, m.to)].unread_outbox_messages++;
             total_marked_messages++;
 
             _db.modify(m, [&](auto& m){
