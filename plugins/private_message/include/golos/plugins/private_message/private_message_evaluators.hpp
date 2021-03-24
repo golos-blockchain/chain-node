@@ -1,11 +1,8 @@
 #pragma once
 
 #include <golos/plugins/private_message/private_message_operations.hpp>
+#include <golos/chain/database.hpp>
 #include <golos/chain/evaluator.hpp>
-
-namespace golos { namespace chain {
-    class database;
-} } // golos::chain
 
 namespace golos { namespace plugins { namespace private_message {
 
@@ -14,89 +11,88 @@ namespace golos { namespace plugins { namespace private_message {
     using golos::chain::evaluator_impl;
     using golos::chain::database;
 
-    template <typename Impl>
+    static inline time_point_sec min_create_date() {
+        return time_point_sec(1);
+    }
+
     class private_message_evaluator final:
-        public evaluator_impl<private_message_evaluator<Impl>, private_message_plugin_operation>
+        public evaluator_impl<private_message_evaluator, private_message_plugin_operation>
     {
     public:
         using operation_type = private_message_operation;
 
-        private_message_evaluator(database& db, Impl* impl)
-            : evaluator_impl<private_message_evaluator<Impl>, private_message_plugin_operation>(db),
-              impl_(impl) {
+        private_message_evaluator(database& db, private_message_plugin* plugin)
+            : evaluator_impl<private_message_evaluator, private_message_plugin_operation>(db),
+            _plugin(plugin) {
         }
 
-        void do_apply(const private_message_operation& o);
+        void do_apply(const private_message_operation& op);
 
-        Impl* impl_;
+        private_message_plugin* _plugin;
     };
 
-    template <typename Impl>
     class private_delete_message_evaluator final:
-        public evaluator_impl<private_delete_message_evaluator<Impl>, private_message_plugin_operation>
+        public evaluator_impl<private_delete_message_evaluator, private_message_plugin_operation>
     {
     public:
         using operation_type = private_delete_message_operation;
 
-        private_delete_message_evaluator(database& db, Impl* impl)
-            : evaluator_impl<private_delete_message_evaluator<Impl>, private_message_plugin_operation>(db),
-              impl_(impl) {
+        private_delete_message_evaluator(database& db, private_message_plugin* plugin)
+            : evaluator_impl<private_delete_message_evaluator, private_message_plugin_operation>(db),
+            _plugin(plugin) {
         }
 
-        void do_apply(const private_delete_message_operation& o);
+        void do_apply(const private_delete_message_operation& op);
 
-        Impl* impl_;
+        private_message_plugin* _plugin;
     };
 
-    template <typename Impl>
     class private_mark_message_evaluator final:
-        public evaluator_impl<private_mark_message_evaluator<Impl>, private_message_plugin_operation>
+        public evaluator_impl<private_mark_message_evaluator, private_message_plugin_operation>
     {
     public:
         using operation_type = private_mark_message_operation;
 
-        private_mark_message_evaluator(database& db, Impl* impl)
-            : evaluator_impl<private_mark_message_evaluator<Impl>, private_message_plugin_operation>(db),
-              impl_(impl) {
+        private_mark_message_evaluator(database& db, private_message_plugin* plugin)
+            : evaluator_impl<private_mark_message_evaluator, private_message_plugin_operation>(db),
+            _plugin(plugin) {
         }
 
-        void do_apply(const private_mark_message_operation& o);
+        void do_apply(const private_mark_message_operation& op);
 
-        Impl* impl_;
+        private_message_plugin* _plugin;
     };
 
-    template <typename Impl>
     class private_settings_evaluator final:
-        public evaluator_impl<private_settings_evaluator<Impl>, private_message_plugin_operation>
+        public evaluator_impl<private_settings_evaluator, private_message_plugin_operation>
     {
     public:
         using operation_type = private_settings_operation;
 
-        private_settings_evaluator(database& db, Impl* impl)
-            : evaluator_impl<private_settings_evaluator<Impl>, private_message_plugin_operation>(db),
-              impl_(impl) {
+        private_settings_evaluator(database& db, private_message_plugin* plugin)
+            : evaluator_impl<private_settings_evaluator, private_message_plugin_operation>(db),
+            _plugin(plugin) {
         }
 
-        void do_apply(const private_settings_operation& o);
+        void do_apply(const private_settings_operation& op);
 
-        Impl* impl_;
+        private_message_plugin* _plugin;
     };
 
-    template <typename Impl>
     class private_contact_evaluator final:
-        public evaluator_impl<private_contact_evaluator<Impl>, private_message_plugin_operation>
+        public evaluator_impl<private_contact_evaluator, private_message_plugin_operation>
     {
     public:
         using operation_type = private_contact_operation;
 
-        private_contact_evaluator(database& db, Impl* impl)
-            : evaluator_impl<private_contact_evaluator<Impl>, private_message_plugin_operation>(db),
-              impl_(impl) {
+        private_contact_evaluator(database& db, private_message_plugin* plugin)
+            : evaluator_impl<private_contact_evaluator, private_message_plugin_operation>(db),
+            _plugin(plugin) {
         }
 
-        void do_apply(const private_contact_operation& o);
+        void do_apply(const private_contact_operation& op);
 
-        Impl* impl_;
+        private_message_plugin* _plugin;
     };
 
-} } }
+} } } // golos::plugins::private_message

@@ -369,7 +369,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
 
         private_settings_operation sop;
         sop.owner = "alice";
-        sop.ignore_messages_from_unknown_contact = true;
+        sop.settings.insert(ignore_messages_from_unknown_contact{true});
         pop = sop;
         jop.json = fc::json::to_string(pop);
         jop.required_posting_auths = {"alice"};
