@@ -292,7 +292,7 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
         },
         /* contact_action */
         [&](const contact_object& co, const contact_size_object& so, const contact_size_info& size) -> bool {
-            if (co.size != size || co.type != unknown) {
+            if (co.size != size || co.type != unknown) { // not all messages removed or contact is not 'unknown'
                 return false;
             }
             _db.remove(co);
