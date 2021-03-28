@@ -45,7 +45,6 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         pmo.from_memo_key = op.from_memo_key;
         pmo.to_memo_key = op.to_memo_key;
         pmo.checksum = op.checksum;
-        pmo.read_date = time_point_sec::min();
         pmo.receive_date = now;
         pmo.encrypted_message.resize(op.encrypted_message.size());
         std::copy(
@@ -60,6 +59,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
             pmo.nonce = op.nonce;
             pmo.inbox_create_date = now;
             pmo.outbox_create_date = now;
+            pmo.read_date = time_point_sec::min();
             pmo.remove_date = time_point_sec::min();
             set_message(pmo);
         });
@@ -139,8 +139,10 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         modify_size(owner, type, is_new_contact, is_send);
     };
 
-    modify_contact(op.from, op.to, unknown, true);
-    modify_contact(op.to, op.from, unknown, false);
+    if (!op.update) {
+        modify_contact(op.from, op.to, unknown, true);
+        modify_contact(op.to, op.from, unknown, false);
+    }
 }
 
 template <typename Direction, typename Operation, typename Action, typename... Args>
