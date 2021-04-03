@@ -85,7 +85,21 @@ namespace golos { namespace plugins { namespace tags {
     bool discussion_query::is_good_category(
         const discussion& d
     ) const {
-        return !select_categories.size() || select_categories.count(d.category);
+        bool result = !select_categories.size() || select_categories.count(d.category);
+        if (!result)
+            return false;
+
+        if (select_category_masks.size())
+            result = false;
+        for (const auto& cat : select_category_masks) {
+            if (!cat.size()) continue;
+            if (boost::algorithm::starts_with(d.category, cat)) {
+                result = true;
+                break;
+            }
+        }
+
+        return result;
     }
 
 } } } // golos::plugins::tags
