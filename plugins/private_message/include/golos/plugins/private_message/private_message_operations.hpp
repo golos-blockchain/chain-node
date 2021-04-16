@@ -17,6 +17,8 @@ namespace golos { namespace plugins { namespace private_message {
         bool update = false;
         std::vector<char> encrypted_message;
 
+        extensions_type extensions;
+
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
             a.insert(from);
@@ -114,7 +116,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::private_message_operation),
-    (from)(to)(nonce)(from_memo_key)(to_memo_key)(checksum)(update)(encrypted_message))
+    (from)(to)(nonce)(from_memo_key)(to_memo_key)(checksum)(update)(encrypted_message)(extensions))
 
 FC_REFLECT(
     (golos::plugins::private_message::private_delete_message_operation),
