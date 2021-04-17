@@ -4,6 +4,7 @@
 #include <golos/protocol/operation_util.hpp>
 
 namespace golos { namespace plugins { namespace private_message {
+
     using namespace golos::protocol;
 
     struct private_message_operation: public base_operation {
@@ -16,8 +17,12 @@ namespace golos { namespace plugins { namespace private_message {
         bool update = false;
         std::vector<char> encrypted_message;
 
+        extensions_type extensions;
+
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(from);
+        }
     };
 
     struct private_delete_message_operation: public base_operation {
@@ -28,8 +33,12 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec start_date;
         time_point_sec stop_date;
 
+        extensions_type extensions;
+
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(requester);
+        }
     };
 
     struct private_mark_message_operation: public base_operation {
@@ -39,16 +48,36 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec start_date;
         time_point_sec stop_date;
 
+        extensions_type extensions;
+
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(to);
+        }
     };
 
-    struct private_settings_operation: public base_operation {
-        account_name_type owner;
+    struct ignore_messages_from_unknown_contact {
         bool ignore_messages_from_unknown_contact = false;
 
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+    };
+
+    using private_setting = static_variant<
+        ignore_messages_from_unknown_contact
+    >;
+
+    using private_settings = flat_set<private_setting>;
+
+    struct private_settings_operation: public base_operation {
+        account_name_type owner;
+        private_settings settings;
+
+        extensions_type extensions;
+
+        void validate() const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(owner);
+        }
     };
 
     /**
@@ -68,8 +97,12 @@ namespace golos { namespace plugins { namespace private_message {
         private_contact_type type = pinned;
         std::string json_metadata;
 
+        extensions_type extensions;
+
         void validate() const;
-        void get_required_posting_authorities(flat_set<account_name_type>& a) const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(owner);
+        }
     };
 
     using private_message_plugin_operation = fc::static_variant<
@@ -83,27 +116,28 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::private_message_operation),
-    (from)(to)(nonce)(from_memo_key)(to_memo_key)(checksum)(update)(encrypted_message))
+    (from)(to)(nonce)(from_memo_key)(to_memo_key)(checksum)(update)(encrypted_message)(extensions))
 
 FC_REFLECT(
     (golos::plugins::private_message::private_delete_message_operation),
-    (requester)(from)(to)(nonce)(start_date)(stop_date))
+    (requester)(from)(to)(nonce)(start_date)(stop_date)(extensions))
 
 FC_REFLECT(
     (golos::plugins::private_message::private_mark_message_operation),
-    (from)(to)(nonce)(start_date)(stop_date))
+    (from)(to)(nonce)(start_date)(stop_date)(extensions))
 
+FC_REFLECT((golos::plugins::private_message::ignore_messages_from_unknown_contact), (ignore_messages_from_unknown_contact))
+FC_REFLECT_TYPENAME((golos::plugins::private_message::private_setting))
 FC_REFLECT(
     (golos::plugins::private_message::private_settings_operation),
-    (owner)(ignore_messages_from_unknown_contact))
+    (owner)(settings)(extensions))
 
 FC_REFLECT_ENUM(
     golos::plugins::private_message::private_contact_type,
     (unknown)(pinned)(ignored))
-
 FC_REFLECT(
     (golos::plugins::private_message::private_contact_operation),
-    (owner)(contact)(type)(json_metadata))
+    (owner)(contact)(type)(json_metadata)(extensions))
 
 FC_REFLECT_TYPENAME((golos::plugins::private_message::private_message_plugin_operation))
 

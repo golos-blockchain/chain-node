@@ -3,6 +3,7 @@
 #include <golos/protocol/base.hpp>
 
 #include <golos/plugins/private_message/private_message_operations.hpp>
+#include <golos/plugins/private_message/private_message_objects.hpp>
 
 #define PRIVATE_DEFAULT_LIMIT 100
 
@@ -10,11 +11,19 @@ namespace golos { namespace plugins { namespace private_message {
 
     using namespace golos::protocol;
 
-    class message_object;
-
     struct message_api_object {
-        message_api_object(const message_object& o);
-        message_api_object();
+        message_api_object(const message_object& o) 
+            : from(o.from), to(o.to),
+            nonce(o.nonce),
+            from_memo_key(o.from_memo_key), to_memo_key(o.to_memo_key),
+            checksum(o.checksum),
+            encrypted_message(o.encrypted_message.begin(), o.encrypted_message.end()),
+            create_date(std::max(o.inbox_create_date, o.outbox_create_date)),
+            receive_date(o.receive_date),
+            read_date(o.read_date), remove_date(o.remove_date) {
+        }
+
+        message_api_object() = default;
 
         account_name_type from;
         account_name_type to;
@@ -30,66 +39,28 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec remove_date;
     };
 
-    class settings_object;
-
     struct settings_api_object final {
-        settings_api_object(const settings_object& o);
-        settings_api_object();
+        settings_api_object(const settings_object& o)
+            : ignore_messages_from_unknown_contact(o.ignore_messages_from_unknown_contact) {
+        }
+
+        settings_api_object() = default;
 
         bool ignore_messages_from_unknown_contact = false;
-    };
-
-    struct contact_size_info {
-        uint32_t total_outbox_messages = 0;
-        uint32_t unread_outbox_messages = 0;
-        uint32_t total_inbox_messages = 0;
-        uint32_t unread_inbox_messages = 0;
-
-        bool empty() const {
-            return !total_outbox_messages && !total_inbox_messages;
-        }
-
-        contact_size_info& operator-=(const contact_size_info& s) {
-            total_outbox_messages -= s.total_outbox_messages;
-            unread_outbox_messages -= s.unread_outbox_messages;
-            total_inbox_messages -= s.total_inbox_messages;
-            unread_inbox_messages -= s.unread_inbox_messages;
-            return *this;
-        }
-
-        contact_size_info& operator+=(const contact_size_info& s) {
-            total_outbox_messages += s.total_outbox_messages;
-            unread_outbox_messages += s.unread_outbox_messages;
-            total_inbox_messages += s.total_inbox_messages;
-            unread_inbox_messages += s.unread_inbox_messages;
-            return *this;
-        }
-
-        bool operator==(const contact_size_info& s) const {
-            return
-                total_outbox_messages == s.total_outbox_messages &&
-                unread_outbox_messages == s.unread_outbox_messages &&
-                total_inbox_messages == s.total_inbox_messages &&
-                unread_inbox_messages == s.unread_inbox_messages;
-        }
-
-        bool operator!=(const contact_size_info& s) const {
-            return !(this->operator==(s));
-        }
-    };
-
-    struct contacts_size_info final: public contact_size_info {
-        uint32_t total_contacts = 0;
     };
 
     /**
      * Contact item
      */
-    class contact_object;
-
     struct contact_api_object final {
-        contact_api_object(const contact_object& o);
-        contact_api_object();
+        contact_api_object(const contact_object& o)
+            : owner(o.owner), contact(o.contact),
+            json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
+            local_type(o.type),
+            size(o.size) {
+        }
+
+        contact_api_object() = default;
 
         account_name_type owner;
         account_name_type contact;
@@ -97,13 +68,12 @@ namespace golos { namespace plugins { namespace private_message {
         private_contact_type local_type = unknown;
         private_contact_type remote_type = unknown;
         contact_size_info size;
+        message_api_object last_message;
     };
 
     /**
      * Counters for account contact lists
      */
-    struct contact_size_object;
-
     struct contacts_size_api_object {
         fc::flat_map<private_contact_type, contacts_size_info> size;
     };
@@ -188,7 +158,7 @@ FC_REFLECT_DERIVED(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_api_object),
-    (contact)(json_metadata)(local_type)(remote_type)(size))
+    (contact)(json_metadata)(local_type)(remote_type)(size)(last_message))
 
 FC_REFLECT(
     (golos::plugins::private_message::contacts_size_api_object),

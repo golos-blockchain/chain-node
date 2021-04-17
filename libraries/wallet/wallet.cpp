@@ -2994,7 +2994,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             private_settings_operation op;
 
             op.owner = owner;
-            op.ignore_messages_from_unknown_contact = s.ignore_messages_from_unknown_contact;
+            op.settings.insert(ignore_messages_from_unknown_contact{s.ignore_messages_from_unknown_contact});
 
             private_message_plugin_operation pop = op;
 

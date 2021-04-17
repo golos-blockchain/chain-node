@@ -41,6 +41,7 @@ namespace golos { namespace plugins { namespace tags {
         std::set<std::string>             filter_tags; ///< list of tags to exclude, posts with these tags are filtered;
         std::set<std::string>             filter_tag_masks; ///< list of tag masks to exclude, posts which have at least one tag matching at least one of masks;
         std::set<std::string>             select_categories; ///< list of categories to select
+        std::set<std::string>             select_category_masks; ///< list of category masks (prefixes) to select posts
         std::set<std::string>             select_languages; ///< list of language to select
         std::set<std::string>             filter_languages; ///< list of language to filter
         uint32_t                          truncate_body = 0; ///< the amount of bytes of the post body to return, 0 for all
@@ -114,7 +115,8 @@ namespace golos { namespace plugins { namespace tags {
 } } } // golos::plugins::tags
 
 FC_REFLECT((golos::plugins::tags::discussion_query),
-        (select_tags)(filter_tags)(filter_tag_masks)(select_categories)(select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
+        (select_tags)(filter_tags)(filter_tag_masks)(select_categories)(select_category_masks)
+        (select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
         (start_author)(start_permlink)(parent_author)
         (parent_permlink)(limit)(select_languages)(filter_languages)
 );

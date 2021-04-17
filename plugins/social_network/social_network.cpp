@@ -125,7 +125,8 @@ namespace golos { namespace plugins { namespace social_network {
             uint32_t from, uint32_t limit, const std::set<std::string>& categories,
             uint32_t vote_limit, uint32_t vote_offset,
             const std::set<comment_object::id_type>& filter_ids,
-            const std::set<account_name_type>& filter_authors
+            const std::set<account_name_type>& filter_authors,
+            const std::string& category_prefix
         ) const;
 
         discussion get_content(const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset) const;
@@ -1141,9 +1142,12 @@ namespace golos { namespace plugins { namespace social_network {
         uint32_t vote_limit,
         uint32_t vote_offset,
         const std::set<comment_object::id_type>& filter_ids,
-        const std::set<account_name_type>& filter_authors
+        const std::set<account_name_type>& filter_authors,
+        const std::string& category_prefix
     ) const {
         categorized_discussions result;
+
+        // Method returns only comments which are created when config flag was true
 
         if (!db.has_index<comment_last_update_index>()) {
             return result;
@@ -1153,48 +1157,101 @@ namespace golos { namespace plugins { namespace social_network {
 
         bool has_start = start_author.size() && start_permlink.size();
 
-        // Method returns only comments which are created when config flag was true
+        if (category_prefix.size()) {
+            std::vector<discussion> unordered;
 
-        for (const auto& category : categories) {
-            size_t i = 0;
-            bool reached_start = false;
-            if (from == 0 && !has_start) reached_start = true;
-
-            auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category));
-            while (
-                itr != idx.end() &&
-                itr->parent_author == STEEMIT_ROOT_POST_PARENT
-            ) {
-                if (category.size() && to_string(itr->parent_permlink) != category) break;
-
-                if (from != 0 && i == from) {
-                    reached_start = true;
+            auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category_prefix));
+            while (itr != idx.end() && itr->parent_author == STEEMIT_ROOT_POST_PARENT) {
+                auto parent_permlink = to_string(itr->parent_permlink);
+                
+                if (!boost::algorithm::starts_with(parent_permlink, category_prefix)) break;
+                
+                if (categories.size()) {
+                    bool matches = false;
+                    for (auto& cat : categories) {
+                        matches = boost::algorithm::starts_with(parent_permlink, cat);
+                        if (matches) break;
+                    }
+                    if (!matches) {
+                        ++itr;
+                        continue;
+                    }
                 }
+
                 const auto& cmt = db.get_comment(itr->comment);
-                if (has_start && cmt.author == start_author && to_string(cmt.permlink) == start_permlink) {
-                    reached_start = true;
-                }
-                if (!reached_start) {
-                    ++i;
-                    continue;
-                }
 
                 if (filter_ids.count(cmt.id) || filter_authors.count(cmt.author)) {
                     ++itr;
                     continue;
                 }
 
-                auto dis = get_discussion(cmt, vote_limit, vote_offset);
-
-                if (dis.last_reply_id != comment_id_type()) {
-                    dis.last_reply = get_discussion(db.get_comment(dis.last_reply_id), 0, 0);
-                }
-
-                auto& vec = result[category];
-                vec.emplace_back(dis);
-                if (vec.size() == limit) break;
+                unordered.emplace_back(get_discussion(cmt, vote_limit, vote_offset));
 
                 ++itr;
+            }
+
+            std::sort(unordered.begin(), unordered.end(), [&](auto& lhs, auto& rhs) {
+                return *lhs.active > *rhs.active;
+            });
+
+            auto& vec = result[category_prefix];
+
+            bool reached_start = !has_start;
+            for (size_t i = 0; i < unordered.size(); ++i) {
+                const auto& d = unordered[i];
+                if (!reached_start) {
+                    if (d.author == start_author && d.permlink == start_permlink)
+                        reached_start = true;
+                    else
+                        continue;
+                }
+                vec.push_back(std::move(d));
+                if (vec.size() == limit) break;
+            }
+        } else {
+            for (const auto& category : categories) {
+                size_t i = 0;
+                bool reached_start = false;
+                if (from == 0 && !has_start) reached_start = true;
+
+                auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category));
+                while (
+                    itr != idx.end() &&
+                    itr->parent_author == STEEMIT_ROOT_POST_PARENT
+                ) {
+                    auto parent_permlink = to_string(itr->parent_permlink);
+                    if (parent_permlink != category) break;
+
+                    const auto& cmt = db.get_comment(itr->comment);
+                    if (!reached_start) {
+                        if (from != 0 && i == from) {
+                            reached_start = true;
+                        } else if (cmt.author == start_author && to_string(cmt.permlink) == start_permlink) {
+                            reached_start = true;
+                        } else {
+                            ++i;
+                            ++itr;
+                            continue;
+                        }
+                    }
+
+                    if (filter_ids.count(cmt.id) || filter_authors.count(cmt.author)) {
+                        ++itr;
+                        continue;
+                    }
+
+                    auto dis = get_discussion(cmt, vote_limit, vote_offset);
+
+                    if (dis.last_reply_id != comment_id_type()) {
+                        dis.last_reply = get_discussion(db.get_comment(dis.last_reply_id), 0, 0);
+                    }
+
+                    auto& vec = result[category];
+                    vec.emplace_back(dis);
+                    if (vec.size() == limit) break;
+
+                    ++itr;
+                }
             }
         }
 
@@ -1241,9 +1298,10 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t, vote_offset, 0)
             (std::set<comment_object::id_type>, filter_ids, std::set<comment_object::id_type>())
             (std::set<account_name_type>, filter_authors, std::set<account_name_type>())
+            (std::string, category_prefix, "")
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_all_discussions_by_active(start_author, start_permlink, from, limit, categories, vote_limit, vote_offset, filter_ids, filter_authors);
+            return pimpl->get_all_discussions_by_active(start_author, start_permlink, from, limit, categories, vote_limit, vote_offset, filter_ids, filter_authors, category_prefix);
         });
     }
 

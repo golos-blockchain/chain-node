@@ -1,4 +1,5 @@
 #pragma once
+
 #include <golos/plugins/private_message/private_message_operations.hpp>
 #include <golos/plugins/private_message/private_message_api_objects.hpp>
 
@@ -14,6 +15,7 @@
 #include <fc/api.hpp>
 
 namespace golos { namespace plugins { namespace private_message {
+
     using namespace golos::chain;
 
     DEFINE_API_ARGS(get_inbox,         json_rpc::msg_pack, std::vector<message_api_object>)
@@ -49,6 +51,13 @@ namespace golos { namespace plugins { namespace private_message {
         void plugin_shutdown() override;
 
         static const std::string& name();
+
+        bool is_tracked_account(const account_name_type& name);
+
+        bool can_call_callbacks();
+
+        void call_callbacks(
+            callback_event_type event, const account_name_type& from, const account_name_type& to, fc::variant r);
 
         DECLARE_API(
             (get_inbox)
