@@ -150,7 +150,7 @@ namespace golos { namespace plugins { namespace social_network {
 
         const comment_content_object* find_comment_content(const comment_id_type& comment) const;
 
-        bool set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update, comment_id_type last_reply = comment_id_type()) const;
+        bool set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update, bool activate_if_modify = false, comment_id_type last_reply = comment_id_type()) const;
 
         void activate_parent_comments(const comment_object& comment) const;
 
@@ -294,14 +294,16 @@ namespace golos { namespace plugins { namespace social_network {
         return result;
     }
 
-    bool social_network::impl::set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update, comment_id_type last_reply) const {
-        const auto& clu_idx = db.get_index<comment_last_update_index>().indices().get<golos::plugins::social_network::by_comment>();
+    bool social_network::impl::set_comment_update(const comment_object& comment, time_point_sec active, bool set_last_update, bool activate_if_modify, comment_id_type last_reply) const {
+        const auto& clu_idx = db.get_index<comment_last_update_index, by_comment>();
         auto clu_itr = clu_idx.find(comment.id);
         if (clu_itr != clu_idx.end()) {
-            db.modify(*clu_itr, [&](comment_last_update_object& clu) {
-                clu.active = active;
+            db.modify(*clu_itr, [&](auto& clu) {
+                if (activate_if_modify) {
+                    clu.active = active;
+                }
                 if (set_last_update) {
-                    clu.last_update = clu.active;
+                    clu.last_update = active;
                 }
                 if (last_reply != comment_id_type()) {
                     clu.last_reply = last_reply;
@@ -309,14 +311,14 @@ namespace golos { namespace plugins { namespace social_network {
             });
             return true;
         } else {
-            db.create<comment_last_update_object>([&](comment_last_update_object& clu) {
+            db.create<comment_last_update_object>([&](auto& clu) {
                 clu.comment = comment.id;
                 clu.author = comment.author;
                 clu.parent_author = comment.parent_author;
                 clu.parent_permlink = comment.parent_permlink;
                 clu.active = active;
                 if (set_last_update) {
-                    clu.last_update = clu.active;
+                    clu.last_update = active;
                 }
                 clu.last_reply = last_reply;
             });
@@ -329,7 +331,7 @@ namespace golos { namespace plugins { namespace social_network {
             auto parent = &db.get_comment(comment.parent_author, comment.parent_permlink);
             auto now = db.head_block_time();
             while (parent) {
-                set_comment_update(*parent, now, false, comment.id);
+                set_comment_update(*parent, now, false, true, comment.id);
                 if (parent->parent_author != STEEMIT_ROOT_POST_PARENT) {
                     parent = &db.get_comment(parent->parent_author, parent->parent_permlink);
                 } else {
