@@ -72,8 +72,8 @@ namespace golos { namespace plugins { namespace social_network {
         account_name_type parent_author;
         shared_string parent_permlink;
         account_name_type author;
-        time_point_sec last_update;
-        time_point_sec active; ///< the last time this post was "touched" by voting or reply
+        time_point_sec last_update; ///< the last time this post was "touched" by modify
+        time_point_sec active; ///< the last time this post was "touched" by reply
         comment_id_type last_reply;
 
         uint32_t block_number;
