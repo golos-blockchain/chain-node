@@ -357,22 +357,26 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void operation_visitor::operator()(const donate_operation& op) const {
-        if (op.memo.app == "golos-id" && op.amount.symbol == STEEM_SYMBOL) {
-            const comment_object* comment = nullptr;
-            try {
-                auto author = account_name_type(op.memo.target["author"].as_string());
-                auto permlink = op.memo.target["permlink"].as_string();
+        if (op.amount.symbol != STEEM_SYMBOL)
+            return;
+        const comment_object* comment = nullptr;
+        try {
+            auto author_str = op.memo.target["author"].as_string();
+            auto permlink = op.memo.target["permlink"].as_string();
+
+            if (is_valid_account_name(author_str)) {
+                auto author = account_name_type(author_str);
+
                 comment = db_.find_comment(author, permlink);
-            } catch (...) {}
-            if (comment != nullptr) {
-                const auto& comment_idx = db_.get_index<tag_index, by_comment>();
-                auto citr = comment_idx.lower_bound(comment->id);
-                while (citr != comment_idx.end() && citr->comment == comment->id) {
-                    db_.modify(*citr, [&](auto& t) {
-                        t.donates += op.amount;
-                    });
-                    ++citr;
-                }
+            }
+        } catch (...) {}
+        if (comment != nullptr) {
+            const auto& comment_idx = db_.get_index<tag_index, by_comment>();
+            auto citr = comment_idx.lower_bound(comment->id);
+            for (; citr != comment_idx.end() && citr->comment == comment->id; ++citr) {
+                db_.modify(*citr, [&](auto& t) {
+                    t.donates += op.amount;
+                });
             }
         }
     }
