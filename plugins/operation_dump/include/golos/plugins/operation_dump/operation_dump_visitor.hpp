@@ -229,7 +229,7 @@ public:
         fc::raw::pack(b, op.permlink);
         fc::raw::pack(b, op.title); // Usually empty, but no problems to dump
         fc::raw::pack(b, op.body);
-        //fc::raw::pack(b, op.json_metadata); // Usually it is: {"app": "golos.io/0.1", "format": "text"} - not seems to be need
+        //fc::raw::pack(b, op.json_metadata); // Usually it is: {"app": "golos-blog/0.1", "format": "text"} - not seems to be need
         fc::raw::pack(b, _block.timestamp);
     }
 
