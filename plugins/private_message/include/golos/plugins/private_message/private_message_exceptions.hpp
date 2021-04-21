@@ -11,7 +11,7 @@ namespace golos { namespace plugins { namespace private_message {
             from_and_to_memo_keys_must_be_different,
             cannot_add_contact_to_yourself,
             sender_in_ignore_list,
-            recepient_ignores_messages_from_unknown_contact,
+            recipient_ignores_messages_from_unknown_contact,
             add_unknown_contact,
             contact_has_not_changed,
             no_unread_messages,
@@ -32,7 +32,7 @@ FC_REFLECT_ENUM(golos::plugins::private_message::logic_errors::types,
     (from_and_to_memo_keys_must_be_different)
     (cannot_add_contact_to_yourself)
     (sender_in_ignore_list)
-    (recepient_ignores_messages_from_unknown_contact)
+    (recipient_ignores_messages_from_unknown_contact)
     (add_unknown_contact)
     (contact_has_not_changed)
     (no_unread_messages)
