@@ -370,6 +370,8 @@ struct private_setting_visitor {
 };
 
 void private_settings_evaluator::do_apply(const private_settings_operation& op) {
+    GOLOS_ASSERT(false, unsupported_operation, "private_settings_operation is not yet supported");
+
     if (!_plugin->is_tracked_account(op.owner)) {
         return;
     }
@@ -394,6 +396,8 @@ void private_settings_evaluator::do_apply(const private_settings_operation& op) 
 }
 
 void private_contact_evaluator::do_apply(const private_contact_operation& op) {
+    GOLOS_ASSERT(false, unsupported_operation, "private_contact_operation is not yet supported");
+
     if (!_plugin->is_tracked_account(op.owner) && !_plugin->is_tracked_account(op.contact)) {
         return;
     }
