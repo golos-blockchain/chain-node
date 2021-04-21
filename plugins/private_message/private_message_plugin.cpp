@@ -410,10 +410,10 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_LIMIT_PARAM(query.limit, PRIVATE_DEFAULT_LIMIT);
 
         GOLOS_CHECK_PARAM(query.filter_accounts, {
-            for (auto& itr : query.filter_accounts) {
-                GOLOS_CHECK_VALUE(!query.select_accounts.count(itr),
-                    "Can't filter and select accounts '${account}' at the same time",
-                    ("account", itr));
+            for (auto& acc : query.filter_accounts) {
+                GOLOS_CHECK_VALUE(!query.select_accounts.count(acc),
+                    "Can't filter and select account '${account}' at the same time",
+                    ("account", acc));
             }
         });
 
@@ -436,10 +436,10 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_LIMIT_PARAM(query.limit, PRIVATE_DEFAULT_LIMIT);
 
         GOLOS_CHECK_PARAM(query.filter_accounts, {
-            for (auto& itr : query.filter_accounts) {
-                GOLOS_CHECK_VALUE(!query.select_accounts.count(itr),
-                    "Can't filter and select accounts '${account}' at the same time",
-                    ("account", itr));
+            for (auto& acc : query.filter_accounts) {
+                GOLOS_CHECK_VALUE(!query.select_accounts.count(acc),
+                    "Can't filter and select account '${account}' at the same time",
+                    ("account", acc));
             }
         });
 
@@ -526,18 +526,18 @@ namespace golos { namespace plugins { namespace private_message {
         );
 
         GOLOS_CHECK_PARAM(query.filter_accounts, {
-            for (auto& itr : query.filter_accounts) {
-                GOLOS_CHECK_VALUE(!query.select_accounts.count(itr),
-                    "Can't filter and select accounts '${account}' at the same time",
-                    ("account", itr));
+            for (auto& acc : query.filter_accounts) {
+                GOLOS_CHECK_VALUE(!query.select_accounts.count(acc),
+                    "Can't filter and select account '${account}' at the same time",
+                    ("account", acc));
             }
         });
 
         GOLOS_CHECK_PARAM(query.filter_events, {
-            for (auto& itr : query.filter_events) {
-                GOLOS_CHECK_VALUE(!query.select_events.count(itr),
+            for (auto& event : query.filter_events) {
+                GOLOS_CHECK_VALUE(!query.select_events.count(event),
                     "Can't filter and select event '${event}' at the same time",
-                    ("event", itr));
+                    ("event", event));
             }
         });
 

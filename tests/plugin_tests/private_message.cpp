@@ -389,7 +389,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
 
         GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(trx, sam_private_key, jop),
             CHECK_ERROR(tx_invalid_operation, 0,
-                CHECK_ERROR(logic_exception, logic_errors::recepient_ignores_messages_from_unknown_contact)));
+                CHECK_ERROR(logic_exception, logic_errors::recipient_ignores_messages_from_unknown_contact)));
 
         cop.owner = "alice";
         cop.contact = "dave";
