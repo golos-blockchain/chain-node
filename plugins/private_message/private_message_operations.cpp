@@ -42,7 +42,7 @@ namespace golos { namespace plugins { namespace private_message {
             "`from_key` can't be equal to `to_key`");
 
         GOLOS_CHECK_PARAM(nonce, {
-            GOLOS_CHECK_VALUE(nonce != 0, "Nonce can't be zero");
+            GOLOS_CHECK_VALUE(nonce != 0, "`nonce` can't be zero");
         });
 
         GOLOS_CHECK_PARAM(encrypted_message, {
@@ -73,14 +73,14 @@ namespace golos { namespace plugins { namespace private_message {
         });
 
         GOLOS_CHECK_PARAM(start_date, {
-            GOLOS_CHECK_VALUE(start_date <= stop_date, "`start_date` can't be greater then to_time");
+            GOLOS_CHECK_VALUE(start_date <= stop_date, "`start_date` can't be greater then `stop_date`");
         });
 
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
-                GOLOS_CHECK_VALUE(to.size(), "to and nonce should be set both");
-                GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "nonce and start_date can't be used together");
-                GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "nonce and stop_date can't be used together");
+                GOLOS_CHECK_VALUE(to.size(), "`to` and `nonce` should be set both");
+                GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "`nonce` and `start_date` can't be used together");
+                GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "`nonce` and `stop_date` can't be used together");
             }
         });
     }
@@ -101,7 +101,7 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
-                GOLOS_CHECK_VALUE(to.size(), "Non-zero 'nonce' requires 'to' to be set too");
+                GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
@@ -139,7 +139,7 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_LOGIC(contact != owner,
             logic_errors::cannot_add_contact_to_yourself,
-            "You add contact to yourself");
+            "You cannot add contact to yourself");
 
         GOLOS_CHECK_PARAM(type, {
             GOLOS_CHECK_VALUE(is_valid_contact_type(type), "Unknown contact type");

@@ -25,7 +25,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     GOLOS_CHECK_LOGIC(
         (cfg_itr == cfg_idx.end() || !cfg_itr->ignore_messages_from_unknown_contact) ||
         (contact_itr != contact_idx.end() && contact_itr->type == pinned),
-        logic_errors::recepient_ignores_messages_from_unknown_contact,
+        logic_errors::recipient_ignores_messages_from_unknown_contact,
         "Recipient accepts messages only from his contact list");
 
     auto& id_idx = _db.get_index<message_index, by_nonce>();
@@ -113,7 +113,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     auto modify_contact = [&](auto& owner, auto& contact, auto type, const bool is_send) {
         bool is_new_contact;
         auto contact_itr = contact_idx.find(std::make_tuple(owner, contact));
-        if (contact_idx.end() != contact_itr) {
+        if (contact_itr != contact_idx.end()) {
             _db.modify(*contact_itr, [&](auto& pco) {
                 inc_counters(pco.size, is_send);
             });
@@ -386,7 +386,7 @@ void private_settings_evaluator::do_apply(const private_settings_operation& op) 
         }
     };
 
-    if (idx.end() != itr) {
+    if (itr != idx.end()) {
         _db.modify(*itr, set_settings);
     } else {
         _db.create<settings_object>(set_settings);
@@ -403,7 +403,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
 
     _db.get_account(op.contact);
 
-    GOLOS_CHECK_LOGIC(contact_idx.end() != contact_itr || op.type != unknown,
+    GOLOS_CHECK_LOGIC(contact_itr != contact_idx.end() || op.type != unknown,
         logic_errors::add_unknown_contact,
         "Can't add unknown contact");
 
@@ -415,7 +415,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
     auto& owner_idx = _db.get_index<contact_size_index, by_owner>();
     auto dst_itr = owner_idx.find(std::make_tuple(op.owner, op.type));
 
-    if (contact_idx.end() != contact_itr) {
+    if (contact_itr != contact_idx.end()) {
         auto src_itr = owner_idx.find(std::make_tuple(op.owner, contact_itr->type));
         if (contact_itr->type != op.type) {
             // last contact
@@ -435,7 +435,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
                     dst.size += contact_itr->size;
                 };
 
-                if (owner_idx.end() == dst_itr) {
+                if (dst_itr == owner_idx.end()) {
                     _db.create<contact_size_object>([&](auto& dst) {
                         dst.owner = op.owner;
                         dst.type = op.type;
@@ -466,7 +466,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
 
         contact_itr = contact_idx.find(std::make_tuple(op.owner, op.contact));
 
-        if (owner_idx.end() == dst_itr) {
+        if (dst_itr == owner_idx.end()) {
             _db.create<contact_size_object>([&](auto& pcso) {
                 pcso.owner = op.owner;
                 pcso.type = op.type;
