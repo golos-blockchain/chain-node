@@ -78,9 +78,10 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
-                GOLOS_CHECK_VALUE(to.size(), "`to` and `nonce` should be set both");
-                GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "`nonce` and `start_date` can't be used together");
-                GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "`nonce` and `stop_date` can't be used together");
+                GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
+                GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
+                GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
+                GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
         });
     }
@@ -101,7 +102,7 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
-                GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
+                GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
@@ -148,7 +149,7 @@ namespace golos { namespace plugins { namespace private_message {
         if (json_metadata.size() > 0) {
             GOLOS_CHECK_PARAM(json_metadata, {
                 GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
-                GOLOS_CHECK_VALUE(type != unknown, "JSON Metadata can't be set for undefined contact");
+                GOLOS_CHECK_VALUE(type != unknown, "JSON Metadata can't be set for unknown contact");
             });
         }
     }

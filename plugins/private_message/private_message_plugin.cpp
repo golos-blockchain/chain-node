@@ -217,7 +217,7 @@ namespace golos { namespace plugins { namespace private_message {
         const auto& idx = _db.get_index<contact_index, by_contact>();
         auto itr = idx.find(std::make_tuple(o.contact, o.owner));
 
-        if (idx.end() != itr) {
+        if (itr != idx.end()) {
             result.remote_type = itr->type;
         }
 
@@ -299,7 +299,7 @@ namespace golos { namespace plugins { namespace private_message {
         callback_event_type event, const account_name_type& from, const account_name_type& to, fc::variant r
     ) {
         std::lock_guard<std::mutex> lock(callbacks_mutex_);
-        for (auto itr = callbacks_.begin(); callbacks_.end() != itr; ) {
+        for (auto itr = callbacks_.begin(); itr != callbacks_.end(); ) {
             auto& info = *itr;
 
             if (info.query.filter_events.count(event) ||
@@ -391,12 +391,12 @@ namespace golos { namespace plugins { namespace private_message {
         }
 
         auto list_itr = tracked_account_list_.find(name);
-        if (tracked_account_list_.end() != list_itr) {
+        if (list_itr != tracked_account_list_.end()) {
             return true;
         }
 
         auto range_itr = tracked_account_ranges_.lower_bound(name);
-        return tracked_account_ranges_.end() != range_itr && name >= range_itr->first && name <= range_itr->second;
+        return range_itr != tracked_account_ranges_.end() && name >= range_itr->first && name <= range_itr->second;
     }
 
     // Api Defines

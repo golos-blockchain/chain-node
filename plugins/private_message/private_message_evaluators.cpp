@@ -98,7 +98,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         };
 
         auto size_itr = size_idx.find(std::make_tuple(owner, type));
-        if (size_idx.end() == size_itr) {
+        if (size_itr == size_idx.end()) {
             _db.create<contact_size_object>([&](auto& pcso){
                 pcso.owner = owner;
                 pcso.type = type;
@@ -225,11 +225,11 @@ void process_group_message_operation(
         const auto& size = stat_info.second;
         auto contact_itr = contact_idx.find(stat_info.first);
 
-        FC_ASSERT(contact_idx.end() != contact_itr, "Invalid size");
+        FC_ASSERT(contact_itr != contact_idx.end(), "Invalid size");
 
         auto size_itr = size_idx.find(std::make_tuple(owner, contact_itr->type));
 
-        FC_ASSERT(size_idx.end() != size_itr, "Invalid size");
+        FC_ASSERT(size_itr != size_idx.end(), "Invalid size");
 
         if (!contact_action(*contact_itr, *size_itr, size)) {
             _db.modify(*contact_itr, [&](auto& pco) {
@@ -370,6 +370,8 @@ struct private_setting_visitor {
 };
 
 void private_settings_evaluator::do_apply(const private_settings_operation& op) {
+    GOLOS_ASSERT(false, unsupported_operation, "private_settings_operation is not yet supported");
+
     if (!_plugin->is_tracked_account(op.owner)) {
         return;
     }
@@ -394,6 +396,8 @@ void private_settings_evaluator::do_apply(const private_settings_operation& op) 
 }
 
 void private_contact_evaluator::do_apply(const private_contact_operation& op) {
+    GOLOS_ASSERT(false, unsupported_operation, "private_contact_operation is not yet supported");
+
     if (!_plugin->is_tracked_account(op.owner) && !_plugin->is_tracked_account(op.contact)) {
         return;
     }
@@ -416,6 +420,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
     auto dst_itr = owner_idx.find(std::make_tuple(op.owner, op.type));
 
     if (contact_itr != contact_idx.end()) {
+        // move counters' score from src to dst contact size type
         auto src_itr = owner_idx.find(std::make_tuple(op.owner, contact_itr->type));
         if (contact_itr->type != op.type) {
             // last contact
