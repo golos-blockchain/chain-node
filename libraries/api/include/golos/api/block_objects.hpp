@@ -49,10 +49,47 @@ struct annotated_signed_block : public signed_block {
     optional<block_operations> _virtual_operations;
 };
 
+struct timed_signed_block : public signed_block {
+    timed_signed_block();
+
+    timed_signed_block(const signed_block& block);
+
+    timed_signed_block(const timed_signed_block& block) = default;
+
+    uint64_t timestamp_msec;
+    uint64_t request_time_msec = time_point::now().time_since_epoch().to_milliseconds();
+};
+
+struct timed_block_header : public block_header {
+    timed_block_header();
+
+    timed_block_header(const block_header& bh);
+
+    timed_block_header(const timed_block_header& bh);
+
+    uint64_t timestamp_msec;
+    uint64_t request_time_msec = time_point::now().time_since_epoch().to_milliseconds();
+};
+
 } } // golos::api
 
 
-FC_REFLECT((golos::api::block_operation),
-    (trx_in_block)(op_in_trx)(virtual_op)(op))
-FC_REFLECT_DERIVED((golos::api::annotated_signed_block), ((golos::chain::signed_block)),
-    (block_id)(signing_key)(transaction_ids)(_virtual_operations))
+FC_REFLECT(
+    (golos::api::block_operation),
+    (trx_in_block)(op_in_trx)(virtual_op)(op)
+)
+
+FC_REFLECT_DERIVED(
+    (golos::api::annotated_signed_block), ((golos::chain::signed_block)),
+    (block_id)(signing_key)(transaction_ids)(_virtual_operations)
+)
+
+FC_REFLECT_DERIVED(
+    (golos::api::timed_signed_block), ((golos::chain::signed_block)),
+    (timestamp_msec)(request_time_msec)
+)
+
+FC_REFLECT_DERIVED(
+    (golos::api::timed_block_header), ((golos::chain::block_header)),
+    (timestamp_msec)(request_time_msec)
+)

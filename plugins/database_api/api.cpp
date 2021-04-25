@@ -5,7 +5,6 @@
 #include <golos/protocol/get_config.hpp>
 #include <golos/protocol/exceptions.hpp>
 #include <golos/chain/operation_notification.hpp>
-#include <golos/api/block_objects.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 
@@ -83,8 +82,8 @@ public:
     void op_applied_callback(const operation_notification& o);
 
     // Blocks and transactions
-    optional<block_header> get_block_header(uint32_t block_num) const;
-    optional<signed_block> get_block(uint32_t block_num) const;
+    optional<timed_block_header> get_block_header(uint32_t block_num) const;
+    optional<timed_signed_block> get_block(uint32_t block_num) const;
 
     // Globals
     fc::variant_object get_config() const;
@@ -165,7 +164,7 @@ DEFINE_API(plugin, get_block_header) {
     });
 }
 
-optional<block_header> plugin::api_impl::get_block_header(uint32_t block_num) const {
+optional<timed_block_header> plugin::api_impl::get_block_header(uint32_t block_num) const {
     auto result = database().fetch_block_by_number(block_num);
     if (result) {
         return *result;
@@ -182,7 +181,7 @@ DEFINE_API(plugin, get_block) {
     });
 }
 
-optional<signed_block> plugin::api_impl::get_block(uint32_t block_num) const {
+optional<timed_signed_block> plugin::api_impl::get_block(uint32_t block_num) const {
     return database().fetch_block_by_number(block_num);
 }
 
