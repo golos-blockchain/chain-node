@@ -17,6 +17,7 @@
 #include <golos/plugins/database_api/api_objects/asset_api_object.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 
+#include <golos/api/block_objects.hpp>
 #include <golos/api/chain_api_properties.hpp>
 #include <golos/api/dynamic_global_property_api_object.hpp>
 
@@ -77,28 +78,10 @@ struct get_tags_used_by_author {
     vector<tag_count_object> tags;
 };
 
-struct signed_block_api_object : public signed_block {
-    signed_block_api_object(const signed_block &block) : signed_block(block) {
-        block_id = id();
-        signing_key = signee();
-        transaction_ids.reserve(transactions.size());
-        for (const signed_transaction &tx : transactions) {
-            transaction_ids.push_back(tx.id());
-        }
-    }
-
-    signed_block_api_object() {
-    }
-
-    block_id_type block_id;
-    public_key_type signing_key;
-    vector<transaction_id_type> transaction_ids;
-};
-
 
 ///               API,                                    args,                return
-DEFINE_API_ARGS(get_block_header,                 msg_pack, optional<block_header>)
-DEFINE_API_ARGS(get_block,                        msg_pack, optional<signed_block>)
+DEFINE_API_ARGS(get_block_header,                 msg_pack, optional<timed_block_header>)
+DEFINE_API_ARGS(get_block,                        msg_pack, optional<timed_signed_block>)
 DEFINE_API_ARGS(set_block_applied_callback,       msg_pack, void_type)
 DEFINE_API_ARGS(set_pending_transaction_callback, msg_pack, void_type)
 DEFINE_API_ARGS(get_config,                       msg_pack, variant_object)
@@ -352,8 +335,6 @@ FC_REFLECT_ENUM(golos::plugins::database_api::delegations_type, (delegated)(rece
 FC_REFLECT((golos::plugins::database_api::tag_count_object), (tag)(count))
 
 FC_REFLECT((golos::plugins::database_api::get_tags_used_by_author), (tags))
-
-FC_REFLECT((golos::plugins::database_api::signed_block_api_object), (block_id)(signing_key)(transaction_ids))
 
 FC_REFLECT((golos::plugins::database_api::database_index_info), (name)(record_count))
 FC_REFLECT((golos::plugins::database_api::database_info), (total_size)(free_size)(reserved_size)(used_size)(index_list))

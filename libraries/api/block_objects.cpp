@@ -21,4 +21,18 @@ annotated_signed_block::annotated_signed_block(const signed_block& block, const 
     _virtual_operations = ops;
 }
 
+timed_signed_block::timed_signed_block() = default;
+
+timed_signed_block::timed_signed_block(const signed_block& block)
+        : signed_block(block) {
+    timestamp_msec = time_point(block.timestamp).time_since_epoch().to_milliseconds();
+}
+
+timed_block_header::timed_block_header() = default;
+
+timed_block_header::timed_block_header(const block_header& bh)
+        : block_header(bh) {
+    timestamp_msec = time_point(bh.timestamp).time_since_epoch().to_milliseconds();
+}
+
 } } // golos::api
