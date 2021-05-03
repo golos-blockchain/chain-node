@@ -16,9 +16,9 @@ Builds golos for use in a private testnet. Also required for building unit tests
 
 We ship a Dockerfile.  This builds both common node type binaries.
 
-    git clone https://github.com/goloschain/golos
+    git clone https://github.com/golos-blockchain/golos
     cd golos
-    docker build -t goloschain/golos .
+    docker build -t golos-blockchain/golos .
 
 ## Building on Ubuntu 16.04
 
@@ -60,7 +60,7 @@ will build out of the box without further effort:
         libreadline-dev \
         perl
 
-    git clone https://github.com/goloschain/golos
+    git clone https://github.com/golos-blockchain/golos
     cd golos
     git submodule update --init --recursive
     mkdir build
