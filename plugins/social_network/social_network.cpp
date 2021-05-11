@@ -1200,13 +1200,18 @@ namespace golos { namespace plugins { namespace social_network {
 
             bool reached_start = !has_start;
             for (size_t i = 0; i < unordered.size(); ++i) {
-                const auto& d = unordered[i];
+                auto& d = unordered[i];
                 if (!reached_start) {
                     if (d.author == start_author && d.permlink == start_permlink)
                         reached_start = true;
                     else
                         continue;
                 }
+
+                if (d.last_reply_id != comment_id_type()) {
+                    d.last_reply = get_discussion(db.get_comment(d.last_reply_id), 0, 0);
+                }
+
                 vec.push_back(std::move(d));
                 if (vec.size() == limit) break;
             }
