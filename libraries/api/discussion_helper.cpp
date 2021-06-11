@@ -314,6 +314,7 @@ namespace golos { namespace api {
             d.pending_author_payout_golos_value = to_steem;
             d.pending_author_payout_gbg_value = db.to_sbd(to_sbd);
             d.pending_author_payout_value = d.pending_author_payout_gbg_value + db.to_sbd(to_steem + vesting_steem);
+            d.pending_author_payout_in_golos = vesting_steem; // from HF23 there are no GOLOS and GBG
             d.pending_payout_value += d.pending_author_payout_value;
 
             // End of main calculation
