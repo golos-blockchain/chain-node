@@ -56,6 +56,7 @@ namespace golos { namespace api {
         asset curator_gests_payout_value = asset(0, VESTS_SYMBOL);
 
         share_type author_rewards;
+        asset author_payout_in_golos = asset(0, STEEM_SYMBOL);
         asset author_gbg_payout_value = asset(0, SBD_SYMBOL);
         asset author_golos_payout_value = asset(0, STEEM_SYMBOL);
         asset author_gests_payout_value = asset(0, VESTS_SYMBOL);
@@ -92,7 +93,7 @@ FC_REFLECT(
     (created)(active)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)
     (vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)(total_vote_weight)
     (reward_weight)(donates)(donates_uia)(total_payout_value)(beneficiary_payout_value)(beneficiary_gests_payout_value)(curator_payout_value)(curator_gests_payout_value)
-    (author_rewards)(author_gbg_payout_value)(author_golos_payout_value)(author_gests_payout_value)(net_votes)
+    (author_rewards)(author_payout_in_golos)(author_gbg_payout_value)(author_golos_payout_value)(author_gests_payout_value)(net_votes)
     (mode)(curation_reward_curve)(auction_window_reward_destination)
     (auction_window_size)(auction_window_weight)(votes_in_auction_window_weight)
     (root_comment)(root_title)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)
