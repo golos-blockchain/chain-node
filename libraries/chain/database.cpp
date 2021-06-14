@@ -2259,7 +2259,7 @@ namespace golos { namespace chain {
                         } \
                     ); \
                     vector<const witness_object*> TO; \
-                    std::copy_if(FROM.begin(), FROM.end(), back_inserter(TO), [&](auto& el) { return el->props.FIELD == active[FROM.size() / 2]->props.FIELD; });
+                    std::copy_if(FROM.begin(), FROM.end(), back_inserter(TO), [&](auto& el) { return el->props.FIELD == FROM[FROM.size() / 2]->props.FIELD; });
 
                 COPY_ALL_MEDIAN(active, act_worker, worker_reward_percent);
                 COPY_ALL_MEDIAN(act_worker, act_witness, witness_reward_percent);
