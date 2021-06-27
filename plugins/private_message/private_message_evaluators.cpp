@@ -115,6 +115,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         auto contact_itr = contact_idx.find(std::make_tuple(owner, contact));
         if (contact_itr != contact_idx.end()) {
             _db.modify(*contact_itr, [&](auto& pco) {
+                pco.is_hidden = false;
                 inc_counters(pco.size, is_send);
             });
             is_new_contact = false;
@@ -458,6 +459,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
         } else {
             _db.modify(*contact_itr, [&](auto& plo) {
                 plo.type = op.type;
+                plo.is_hidden = false;
                 from_string(plo.json_metadata, op.json_metadata);
             });
         }
