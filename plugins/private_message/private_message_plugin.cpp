@@ -8,6 +8,7 @@
 #include <golos/chain/index.hpp>
 #include <golos/chain/custom_operation_interpreter.hpp>
 #include <golos/chain/generic_custom_operation_interpreter.hpp>
+#include <golos/chain/operation_notification.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 
@@ -40,6 +41,32 @@ namespace golos { namespace plugins { namespace private_message {
         }
     };
 
+    struct post_operation_visitor {
+        golos::chain::database& _db;
+
+        post_operation_visitor(golos::chain::database& db) : _db(db) {
+        }
+
+        using result_type = void;
+
+        template<typename T>
+        result_type operator()(const T&) const {
+        }
+
+        result_type operator()(const account_update_operation& op) const {
+            if (op.memo_key == public_key_type())
+                return;
+
+            const auto& idx = _db.get_index<contact_index, by_owner>();
+            auto itr = idx.find(op.account);
+            for (; itr != idx.end() && itr->owner == op.account; ++itr) {
+                _db.modify(*itr, [&](auto& pco) {
+                    pco.is_hidden = true;
+                });
+            }
+        }
+    };
+
     class private_message_plugin::private_message_plugin_impl final {
     public:
         private_message_plugin_impl(private_message_plugin& plugin)
@@ -58,6 +85,8 @@ namespace golos { namespace plugins { namespace private_message {
 
             _db.set_custom_operation_interpreter(plugin.name(), custom_operation_interpreter_);
         }
+
+        void post_operation(const operation_notification& note) const;
 
         template <typename Direction, typename Filter>
         std::vector<message_api_object> get_message_box(
@@ -95,6 +124,17 @@ namespace golos { namespace plugins { namespace private_message {
         std::mutex callbacks_mutex_;
         std::list<callback_info> callbacks_;
     };
+
+
+    void private_message_plugin::private_message_plugin_impl::post_operation(const operation_notification& note) const {
+        try {
+            note.op.visit(post_operation_visitor(_db));
+        } catch (const fc::assert_exception&) {
+            if (_db.is_producing()) {
+                throw;
+            }
+        }
+    }
 
     template <typename Direction, typename GetAccount>
     std::vector<message_api_object> private_message_plugin::private_message_plugin_impl::get_message_box(
@@ -281,7 +321,8 @@ namespace golos { namespace plugins { namespace private_message {
         for (; itr != etr && offset; ++itr, --offset);
 
         for (; itr != etr; ++itr) {
-            result.push_back(get_contact_item(*itr));
+            if (!itr->is_hidden)
+                result.push_back(get_contact_item(*itr));
         }
 
         std::sort(result.begin(), result.end(), [&](auto& lhs, auto& rhs) {
@@ -362,6 +403,10 @@ namespace golos { namespace plugins { namespace private_message {
     void private_message_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
         ilog("Intializing private message plugin");
         my = std::make_unique<private_message_plugin::private_message_plugin_impl>(*this);
+
+        my->_db.post_apply_operation.connect([&](const operation_notification& note) {
+            my->post_operation(note);
+        });
 
         add_plugin_index<message_index>(my->_db);
         add_plugin_index<settings_index>(my->_db);
