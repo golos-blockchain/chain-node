@@ -1200,18 +1200,13 @@ namespace golos { namespace plugins { namespace social_network {
 
             bool reached_start = !has_start;
             for (size_t i = 0; i < unordered.size(); ++i) {
-                auto& d = unordered[i];
+                const auto& d = unordered[i];
                 if (!reached_start) {
                     if (d.author == start_author && d.permlink == start_permlink)
                         reached_start = true;
                     else
                         continue;
                 }
-
-                if (d.last_reply_id != comment_id_type()) {
-                    d.last_reply = get_discussion(db.get_comment(d.last_reply_id), 0, 0);
-                }
-
                 vec.push_back(std::move(d));
                 if (vec.size() == limit) break;
             }
@@ -1346,10 +1341,6 @@ namespace golos { namespace plugins { namespace social_network {
             const auto reward = db.find<comment_reward_object, by_comment>(co.id);
             if (reward != nullptr) {
                 con.author_rewards = reward->author_rewards;
-                if (reward->author_gests_payout_value.amount != 0) {
-                    const auto& props = db.get_dynamic_global_properties();
-                    con.author_payout_in_golos = reward->author_gests_payout_value * props.get_vesting_share_price();
-                }
                 con.author_gbg_payout_value = reward->author_gbg_payout_value;
                 con.author_golos_payout_value = reward->author_golos_payout_value;
                 con.author_gests_payout_value = reward->author_gests_payout_value;
@@ -1360,7 +1351,6 @@ namespace golos { namespace plugins { namespace social_network {
                 con.curator_gests_payout_value = reward->curator_gests_payout_value;
             } else {
                 con.author_rewards = 0;
-                con.author_payout_in_golos = asset(0, STEEM_SYMBOL);
                 con.author_gbg_payout_value = asset(0, SBD_SYMBOL);
                 con.author_golos_payout_value = asset(0, STEEM_SYMBOL);
                 con.author_gests_payout_value = asset(0, VESTS_SYMBOL);

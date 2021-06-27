@@ -18,7 +18,6 @@ namespace golos { namespace api {
         string url; /// /category/@rootauthor/root_permlink#author/permlink
 
         asset pending_author_payout_value = asset(0, SBD_SYMBOL);
-        asset pending_author_payout_in_golos = asset(0, STEEM_SYMBOL);
         asset pending_author_payout_gbg_value = asset(0, SBD_SYMBOL);
         asset pending_author_payout_gests_value = asset(0, VESTS_SYMBOL);
         asset pending_author_payout_golos_value = asset(0, STEEM_SYMBOL);
@@ -53,8 +52,8 @@ namespace golos { namespace api {
 } } // golos::api
 
 FC_REFLECT_DERIVED( (golos::api::discussion), ((golos::api::comment_api_object)),
-        (url)(pending_author_payout_value)(pending_author_payout_in_golos)
-        (pending_author_payout_gbg_value)(pending_author_payout_gests_value)(pending_author_payout_golos_value)
+        (url)(pending_author_payout_value)(pending_author_payout_gbg_value)
+        (pending_author_payout_gests_value)(pending_author_payout_golos_value)
         (pending_benefactor_payout_value)(pending_benefactor_payout_gests_value)
         (pending_curator_payout_value)(pending_curator_payout_gests_value)
         (pending_payout_value)(total_pending_payout_value)(active_votes)(active_votes_count)(replies)
