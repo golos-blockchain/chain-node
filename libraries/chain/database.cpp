@@ -5572,6 +5572,17 @@ namespace golos { namespace chain {
                         modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
                             auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                         });
+
+                        create<account_object>([&](auto& acc) {
+                            acc.name = "cyberfounder2";
+                            acc.memo_key = public_key_type(STEEMIT_INIT_PUBLIC_KEY);
+                        });
+                        create<account_authority_object>([&](auto& auth) {
+                            auth.account = "cyberfounder2";
+                            auth.active = authority(1, public_key_type(STEEMIT_INIT_PUBLIC_KEY), 1);
+                            auth.owner = auth.active;
+                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
+                        });
 #endif
                     }
                     break;
