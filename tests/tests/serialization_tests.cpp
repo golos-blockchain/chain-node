@@ -210,6 +210,29 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
         FC_LOG_AND_RETHROW()
     }
 
+    BOOST_AUTO_TEST_CASE(asset_uia_test) {
+        BOOST_TEST_MESSAGE("Testing: asset_uia_test");
+
+        try {
+            asset cats;
+
+            BOOST_TEST_MESSAGE("-- Basically test");
+            cats = asset::from_string("123.456789 CATS");
+            BOOST_CHECK_EQUAL(cats.amount.value, 123456789);
+            BOOST_CHECK_EQUAL(cats.decimals(), 6);
+            BOOST_CHECK_EQUAL(cats.symbol_name(), "CATS");
+            BOOST_CHECK_EQUAL(cats.to_string(), "123.456789 CATS");
+
+            BOOST_TEST_MESSAGE("-- Test with 2-part symbol");
+            cats = asset::from_string("123.456789 CATS.CATS");
+            BOOST_CHECK_EQUAL(cats.amount.value, 123456789);
+            BOOST_CHECK_EQUAL(cats.decimals(), 6);
+            BOOST_CHECK_EQUAL(cats.symbol_name(), "CATS.CATS");
+            BOOST_CHECK_EQUAL(cats.to_string(), "123.456789 CATS.CATS");
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
     BOOST_AUTO_TEST_CASE(json_tests) {
         BOOST_TEST_MESSAGE("Testing: json_tests");
 
