@@ -81,7 +81,7 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
             auto packed = fc::raw::pack(trx);
             signed_transaction unpacked = fc::raw::unpack<signed_transaction>(packed);
             unpacked.validate();
-            BOOST_CHECK(trx.digest() == unpacked.digest());
+            BOOST_CHECK_EQUAL(trx.digest(), unpacked.digest());
         } catch (fc::exception &e) {
             edump((e.to_detail_string()));
             throw;
@@ -100,13 +100,13 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
 
             fc::variant test(op.amount);
             auto tmp = test.as<asset>();
-            BOOST_REQUIRE(tmp == op.amount);
+            BOOST_CHECK_EQUAL(tmp, op.amount);
 
             trx.operations.push_back(op);
             fc::variant packed(trx);
             signed_transaction unpacked = packed.as<signed_transaction>();
             unpacked.validate();
-            BOOST_CHECK(trx.digest() == unpacked.digest());
+            BOOST_CHECK_EQUAL(trx.digest(), unpacked.digest());
         } catch (fc::exception &e) {
             edump((e.to_detail_string()));
             throw;
@@ -292,45 +292,45 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
             fc::variant ver_str("3.0.0");
             version ver;
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == version(3, 0, 0));
+            BOOST_CHECK(ver == version(3, 0, 0));
 
             ver_str = fc::variant("0.0.0");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == version());
+            BOOST_CHECK(ver == version());
 
             ver_str = fc::variant("1.0.1");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == version(1, 0, 1));
+            BOOST_CHECK(ver == version(1, 0, 1));
 
             ver_str = fc::variant("1_0_1");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == version(1, 0, 1));
+            BOOST_CHECK(ver == version(1, 0, 1));
 
             ver_str = fc::variant("12.34.56");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == version(12, 34, 56));
+            BOOST_CHECK(ver == version(12, 34, 56));
 
             BOOST_TEST_MESSAGE("-- Test failure when major version > 0xFF");
             ver_str = fc::variant("256.0.0");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
 
             BOOST_TEST_MESSAGE("-- Test failure when hardfork version > 0xFF");
             ver_str = fc::variant("0.256.0");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
 
             BOOST_TEST_MESSAGE("-- Test failure when revision version > 0xFFFF");
             ver_str = fc::variant("0.0.65536");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
 
             BOOST_TEST_MESSAGE("-- Test failure when too few parts");
             ver_str = fc::variant("1.0");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
 
             BOOST_TEST_MESSAGE("-- Test failure when too many parts");
             ver_str = fc::variant("1.0.0.1");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
             ver_str = fc::variant("1.0.0.");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
         }
         FC_LOG_AND_RETHROW();
     }
@@ -344,45 +344,45 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
             fc::variant ver_str("3.0.0");
             hardfork_version ver;
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == hardfork_version(3, 0));
+            BOOST_CHECK(ver == hardfork_version(3, 0));
 
             ver_str = fc::variant("0.0.0");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == hardfork_version());
+            BOOST_CHECK(ver == hardfork_version());
 
             ver_str = fc::variant("1.0.0");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == hardfork_version(1, 0));
+            BOOST_CHECK(ver == hardfork_version(1, 0));
 
             ver_str = fc::variant("1_0_0");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == hardfork_version(1, 0));
+            BOOST_CHECK(ver == hardfork_version(1, 0));
 
             ver_str = fc::variant("12.34.00");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == hardfork_version(12, 34));
+            BOOST_CHECK(ver == hardfork_version(12, 34));
 
             BOOST_TEST_MESSAGE("-- Test failure when major version > 0xFF");
             ver_str = fc::variant("256.0.0");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
 
             BOOST_TEST_MESSAGE("-- Test failure when hardfork version > 0xFF");
             ver_str = fc::variant("0.256.0");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
 
             ver_str = fc::variant("0.0.1");
             fc::from_variant(ver_str, ver);
-            BOOST_REQUIRE(ver == hardfork_version(0, 0));
+            BOOST_CHECK(ver == hardfork_version(0, 0));
 
             BOOST_TEST_MESSAGE("-- Test failure when too few parts");
             ver_str = fc::variant("1.0");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
 
             BOOST_TEST_MESSAGE("-- Test failure when too many parts");
             ver_str = fc::variant("1.0.0.1");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
             ver_str = fc::variant("1.0.0.");
-            STEEMIT_REQUIRE_THROW(fc::from_variant(ver_str, ver), fc::exception);
+            STEEMIT_CHECK_THROW(fc::from_variant(ver_str, ver), fc::exception);
         }
         FC_LOG_AND_RETHROW();
     }
@@ -445,26 +445,26 @@ BOOST_AUTO_TEST_CASE(unpack_clear_test) { try {
     // This operation should completely overwrite signed block 'b2'
     fc::raw::unpack(ss1, unpacked_block);
 
-    BOOST_REQUIRE(b1.transactions.size() == unpacked_block.transactions.size());
+    BOOST_CHECK_EQUAL(b1.transactions.size(), unpacked_block.transactions.size());
     for (size_t i = 0; i < unpacked_block.transactions.size(); i++) {
         signed_transaction tx = unpacked_block.transactions[i];
-        BOOST_REQUIRE(unpacked_block.transactions[i].operations.size() == b1.transactions[i].operations.size());
+        BOOST_CHECK_EQUAL(unpacked_block.transactions[i].operations.size(), b1.transactions[i].operations.size());
 
         vote_operation op = tx.operations[0].get<vote_operation>();
-        BOOST_REQUIRE(op.voter == "alice");
-        BOOST_REQUIRE(op.author == "bob");
-        BOOST_REQUIRE(op.permlink == "permlink1");
-        BOOST_REQUIRE(op.weight == STEEMIT_100_PERCENT);
+        BOOST_CHECK_EQUAL(op.voter, "alice");
+        BOOST_CHECK_EQUAL(op.author, "bob");
+        BOOST_CHECK_EQUAL(op.permlink, "permlink1");
+        BOOST_CHECK_EQUAL(op.weight, STEEMIT_100_PERCENT);
 
         vote_operation op2 = tx.operations[1].get<vote_operation>();
-        BOOST_REQUIRE(op2.voter == "charlie");
-        BOOST_REQUIRE(op2.author == "sam");
-        BOOST_REQUIRE(op2.permlink == "permlink2");
-        BOOST_REQUIRE(op2.weight == STEEMIT_100_PERCENT);
+        BOOST_CHECK_EQUAL(op2.voter, "charlie");
+        BOOST_CHECK_EQUAL(op2.author, "sam");
+        BOOST_CHECK_EQUAL(op2.permlink, "permlink2");
+        BOOST_CHECK_EQUAL(op2.weight, STEEMIT_100_PERCENT);
 
-        BOOST_REQUIRE(tx.ref_block_num == 1000);
-        BOOST_REQUIRE(tx.ref_block_prefix == 1000000000);
-        BOOST_REQUIRE(tx.expiration == fc::time_point_sec(1514764800 + i));
+        BOOST_CHECK_EQUAL(tx.ref_block_num, 1000);
+        BOOST_CHECK_EQUAL(tx.ref_block_prefix, 1000000000);
+        BOOST_CHECK_EQUAL(tx.expiration, fc::time_point_sec(1514764800 + i));
     }
 } FC_LOG_AND_RETHROW(); }
 
@@ -479,7 +479,7 @@ BOOST_AUTO_TEST_CASE(unpack_recursion_test) { try {
         fc::raw::pack(ss, static_cast<uint8_t>(variant::array_type));
     }
     std::vector<fc::variant> v;
-    STEEMIT_REQUIRE_THROW(fc::raw::unpack(ss, v), fc::assert_exception);
+    STEEMIT_CHECK_THROW(fc::raw::unpack(ss, v), fc::assert_exception);
 } FC_LOG_AND_RETHROW(); }
 
 
