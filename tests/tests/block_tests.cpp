@@ -50,10 +50,13 @@ using namespace golos::plugins;
 #define PUSH_BLOCK  golos::chain::test::_push_block
 
 
+// Requires build with MAX_19_VOTED_WITNESSES=TRUE
 BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_AUTO_TEST_CASE(generate_empty_blocks) {
         try {
+            BOOST_TEST_MESSAGE("Testing: generate_empty_blocks");
+
             fc::time_point_sec now(STEEMIT_TESTING_GENESIS_TIMESTAMP);
             fc::temp_directory data_dir(golos::utilities::temp_directory_path());
             signed_block b;
@@ -70,16 +73,16 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 // TODO:  Change this test when we correct #406
                 // n.b. we generate STEEMIT_MIN_UNDO_HISTORY+1 extra blocks which will be discarded on save
                 for (uint32_t i = 1;; ++i) {
-                    BOOST_CHECK(db.head_block_id() == b.id());
+                    BOOST_CHECK_EQUAL(db.head_block_id(), b.id());
                     //witness_id_type prev_witness = b.witness;
                     string cur_witness = db.get_scheduled_witness(1);
-                    //BOOST_CHECK( cur_witness != prev_witness );
+                    //BOOST_CHECK_NE(cur_witness, prev_witness);
                     b = db.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
-                    BOOST_CHECK(b.witness == cur_witness);
+                    BOOST_CHECK_EQUAL(b.witness, cur_witness);
                     uint32_t cutoff_height = db.get_dynamic_global_properties().last_irreversible_block_num;
                     if (cutoff_height >= 200) {
                         auto block = db.fetch_block_by_number(cutoff_height);
-                        BOOST_REQUIRE(block.valid());
+                        BOOST_CHECK(block.valid());
                         cutoff_block = *block;
                         break;
                     }
@@ -93,16 +96,16 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 BOOST_CHECK_EQUAL(db.head_block_num(), cutoff_block.block_num());
                 b = cutoff_block;
                 for (uint32_t i = 0; i < 200; ++i) {
-                    BOOST_CHECK(db.head_block_id() == b.id());
+                    BOOST_CHECK_EQUAL(db.head_block_id(), b.id());
                     //witness_id_type prev_witness = b.witness;
                     string cur_witness = db.get_scheduled_witness(1);
-                    //BOOST_CHECK( cur_witness != prev_witness );
+                    //BOOST_CHECK_NE(cur_witness, prev_witness);
                     b = db.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
                 }
                 BOOST_CHECK_EQUAL(db.head_block_num(),
                         cutoff_block.block_num() + 200);
             }
-        } catch (fc::exception &e) {
+        } catch (fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -110,6 +113,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_AUTO_TEST_CASE(undo_block) {
         try {
+            BOOST_TEST_MESSAGE("Testing: undo_block");
+
             fc::temp_directory data_dir(golos::utilities::temp_directory_path());
             {
                 database db;
@@ -124,31 +129,31 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                     time_stack.push_back(now);
                     auto b = db.generate_block(now, db.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
                 }
-                BOOST_CHECK(db.head_block_num() == 5);
-                BOOST_CHECK(db.head_block_time() == now);
+                BOOST_CHECK_EQUAL(db.head_block_num(), 5);
+                BOOST_CHECK_EQUAL(db.head_block_time(), now);
                 db.pop_block();
                 time_stack.pop_back();
                 now = time_stack.back();
-                BOOST_CHECK(db.head_block_num() == 4);
-                BOOST_CHECK(db.head_block_time() == now);
+                BOOST_CHECK_EQUAL(db.head_block_num(), 4);
+                BOOST_CHECK_EQUAL(db.head_block_time(), now);
                 db.pop_block();
                 time_stack.pop_back();
                 now = time_stack.back();
-                BOOST_CHECK(db.head_block_num() == 3);
-                BOOST_CHECK(db.head_block_time() == now);
+                BOOST_CHECK_EQUAL(db.head_block_num(), 3);
+                BOOST_CHECK_EQUAL(db.head_block_time(), now);
                 db.pop_block();
                 time_stack.pop_back();
                 now = time_stack.back();
-                BOOST_CHECK(db.head_block_num() == 2);
-                BOOST_CHECK(db.head_block_time() == now);
+                BOOST_CHECK_EQUAL(db.head_block_num(), 2);
+                BOOST_CHECK_EQUAL(db.head_block_time(), now);
                 for (uint32_t i = 0; i < 5; ++i) {
                     now = db.get_slot_time(1);
                     time_stack.push_back(now);
                     auto b = db.generate_block(now, db.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
                 }
-                BOOST_CHECK(db.head_block_num() == 7);
+                BOOST_CHECK_EQUAL(db.head_block_num(), 7);
             }
-        } catch (fc::exception &e) {
+        } catch (fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -156,6 +161,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_AUTO_TEST_CASE(fork_blocks) {
         try {
+            BOOST_TEST_MESSAGE("Testing: fork_blocks");
+
             fc::temp_directory data_dir1(golos::utilities::temp_directory_path());
             fc::temp_directory data_dir2(golos::utilities::temp_directory_path());
 
@@ -211,7 +218,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             BOOST_CHECK_EQUAL(db2.head_block_num(), 14);
             PUSH_BLOCK(db1, good_block);
             BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
-        } catch (fc::exception &e) {
+        } catch (fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -219,6 +226,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_AUTO_TEST_CASE(switch_forks_undo_create) {
         try {
+            BOOST_TEST_MESSAGE("Testing: switch_forks_undo_create");
+
             fc::temp_directory dir1(golos::utilities::temp_directory_path()),
                     dir2(golos::utilities::temp_directory_path());
             database db1,
@@ -252,7 +261,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             auto b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
 
             auto alice_id = db1.get_account("alice").id;
-            BOOST_CHECK(db1.get(alice_id).name == "alice");
+            BOOST_CHECK_EQUAL(db1.get(alice_id).name, "alice");
 
             b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
             db1.push_block(b);
@@ -268,9 +277,9 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
             db1.push_block(b);
 
-            BOOST_CHECK(db1.get(alice_id).name == "alice");
-            BOOST_CHECK(db2.get(alice_id).name == "alice");
-        } catch (fc::exception &e) {
+            BOOST_CHECK_EQUAL(db1.get(alice_id).name, "alice");
+            BOOST_CHECK_EQUAL(db2.get(alice_id).name, "alice");
+        } catch (fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -278,6 +287,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_AUTO_TEST_CASE(duplicate_transactions) {
         try {
+            BOOST_TEST_MESSAGE("Testing: duplicate_transactions");
+
             fc::temp_directory dir1(golos::utilities::temp_directory_path()),
                     dir2(golos::utilities::temp_directory_path());
             database db1,
@@ -286,7 +297,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write);
             db2._log_hardforks = false;
             db2.open(dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write);
-            BOOST_CHECK(db1.get_chain_id() == db2.get_chain_id());
+            BOOST_CHECK_EQUAL(db1.get_chain_id(), db2.get_chain_id());
 
             auto skip_sigs = database::skip_transaction_signatures |
                              database::skip_authority_check;
@@ -326,7 +337,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             STEEMIT_CHECK_THROW(PUSH_TX(db2, trx, skip_sigs), fc::exception);
             BOOST_CHECK_EQUAL(db1.get_balance("alice", STEEM_SYMBOL).amount.value, 500);
             BOOST_CHECK_EQUAL(db2.get_balance("alice", STEEM_SYMBOL).amount.value, 500);
-        } catch (fc::exception &e) {
+        } catch (fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -334,6 +345,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_AUTO_TEST_CASE(tapos) {
         try {
+            BOOST_TEST_MESSAGE("Testing: tapos");
+
             fc::temp_directory dir1(golos::utilities::temp_directory_path());
             database db1;
             db1._log_hardforks = false;
@@ -380,8 +393,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
             trx.signatures.clear();
             trx.sign(init_account_priv_key, db1.get_chain_id());
-            BOOST_REQUIRE_THROW(db1.push_transaction(trx, 0/*database::skip_transaction_signatures | database::skip_authority_check*/), fc::exception);
-        } catch (fc::exception &e) {
+            BOOST_CHECK_THROW(db1.push_transaction(trx, 0/*database::skip_transaction_signatures | database::skip_authority_check*/), fc::exception);
+        } catch (fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -389,6 +402,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_FIXTURE_TEST_CASE(optional_tapos, clean_database_fixture) {
         try {
+            BOOST_TEST_MESSAGE("Testing: optional_tapos");
+
             idump((db->get_account(STEEMIT_INIT_MINER_NAME)));
             ACTORS((alice)(bob));
 
@@ -452,7 +467,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             tx.sign(alice_private_key, db->get_chain_id());
             STEEMIT_REQUIRE_THROW(PUSH_TX(*db, tx, database::skip_transaction_dupe_check), fc::exception);
         }
-        catch (fc::exception &e) {
+        catch (fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -460,6 +475,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_FIXTURE_TEST_CASE(double_sign_check, clean_database_fixture) {
         try {
+            BOOST_TEST_MESSAGE("Testing: double_sign_check");
+
             generate_block();
             ACTOR(bob);
             share_type amount = 1000;
@@ -505,6 +522,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_FIXTURE_TEST_CASE(pop_block_twice, clean_database_fixture) {
         try {
+            BOOST_TEST_MESSAGE("Testing: pop_block_twice");
+
             uint32_t skip_flags = (
                     database::skip_witness_signature
                     | database::skip_transaction_signatures
@@ -535,7 +554,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
             db->pop_block();
             db->pop_block();
-        } catch (const fc::exception &e) {
+        } catch (const fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -543,6 +562,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_FIXTURE_TEST_CASE(rsf_missed_blocks, clean_database_fixture) {
         try {
+            BOOST_TEST_MESSAGE("Testing: rsf_missed_blocks");
+
             generate_block();
 
             auto rsf = [&]() -> string {
@@ -672,8 +693,10 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_FIXTURE_TEST_CASE(skip_block, clean_database_fixture) {
         try {
+            BOOST_TEST_MESSAGE("Testing: skip_block");
+
             BOOST_TEST_MESSAGE("Skipping blocks through db");
-            BOOST_REQUIRE(db->head_block_num() == 2);
+            BOOST_CHECK_EQUAL(db->head_block_num(), 2);
 
             int init_block_num = db->head_block_num();
             int miss_blocks =
@@ -683,13 +706,13 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             db->generate_block(block_time, witness, init_account_priv_key, 0);
 
             BOOST_CHECK_EQUAL(db->head_block_num(), init_block_num + 1);
-            BOOST_CHECK(db->head_block_time() == block_time);
+            BOOST_CHECK_EQUAL(db->head_block_time(), block_time);
 
             BOOST_TEST_MESSAGE("Generating a block through fixture");
             generate_block();
 
             BOOST_CHECK_EQUAL(db->head_block_num(), init_block_num + 2);
-            BOOST_CHECK(db->head_block_time() ==
+            BOOST_CHECK_EQUAL(db->head_block_time(),
                         block_time + STEEMIT_BLOCK_INTERVAL);
         }
         FC_LOG_AND_RETHROW();
@@ -697,25 +720,27 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
     BOOST_FIXTURE_TEST_CASE(hardfork_test, database_fixture) {
         try {
+            BOOST_TEST_MESSAGE("Testing: hardfork_test");
+
             try {
                 initialize();
                 open_database();
                 startup(false);
-            } catch (const fc::exception &e) {
+            } catch (const fc::exception& e) {
                 edump((e.to_detail_string()));
                 throw;
             }
 
             BOOST_TEST_MESSAGE("Check hardfork not applied at genesis");
-            BOOST_REQUIRE(db->has_hardfork(0));
-            BOOST_REQUIRE(!db->has_hardfork(STEEMIT_HARDFORK_0_1));
+            BOOST_CHECK(db->has_hardfork(0));
+            BOOST_CHECK(!db->has_hardfork(STEEMIT_HARDFORK_0_1));
 
             BOOST_TEST_MESSAGE("Generate blocks up to the hardfork time and check hardfork still not applied");
             generate_blocks(fc::time_point_sec(
                     STEEMIT_HARDFORK_0_1_TIME - STEEMIT_BLOCK_INTERVAL), true);
 
-            BOOST_REQUIRE(db->has_hardfork(0));
-            BOOST_REQUIRE(!db->has_hardfork(STEEMIT_HARDFORK_0_1));
+            BOOST_CHECK(db->has_hardfork(0));
+            BOOST_CHECK(!db->has_hardfork(STEEMIT_HARDFORK_0_1));
 
             BOOST_TEST_MESSAGE("Generate a block and check hardfork is applied");
             // hardfork time depends on genesis time, that is why we need more than 1 signed block
@@ -725,12 +750,12 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             auto itr = db->get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>().end();
             itr--;
 
-            BOOST_REQUIRE(db->has_hardfork(0));
-            BOOST_REQUIRE(db->has_hardfork(STEEMIT_HARDFORK_0_1));
-            BOOST_REQUIRE(
-                    get_last_operations(1)[0].get<custom_operation>().data ==
+            BOOST_CHECK(db->has_hardfork(0));
+            BOOST_CHECK(db->has_hardfork(STEEMIT_HARDFORK_0_1));
+            BOOST_CHECK_EQUAL(
+                    get_last_operations(1)[0].get<custom_operation>().data,
                     vector<char>(op_msg.begin(), op_msg.end()));
-            BOOST_REQUIRE(db->get(itr->op).timestamp == db->head_block_time());
+            BOOST_CHECK_EQUAL(db->get(itr->op).timestamp, db->head_block_time());
 
             BOOST_TEST_MESSAGE("Testing hardfork is only applied once");
             generate_block();
@@ -738,12 +763,12 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             itr = db->get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>().end();
             itr--;
 
-            BOOST_REQUIRE(db->has_hardfork(0));
-            BOOST_REQUIRE(db->has_hardfork(STEEMIT_HARDFORK_0_1));
-            BOOST_REQUIRE(
-                    get_last_operations(1)[0].get<custom_operation>().data ==
+            BOOST_CHECK(db->has_hardfork(0));
+            BOOST_CHECK(db->has_hardfork(STEEMIT_HARDFORK_0_1));
+            BOOST_CHECK_EQUAL(
+                    get_last_operations(1)[0].get<custom_operation>().data,
                     vector<char>(op_msg.begin(), op_msg.end()));
-            BOOST_REQUIRE(db->get(itr->op).timestamp ==
+            BOOST_CHECK_EQUAL(db->get(itr->op).timestamp,
                           db->head_block_time() - STEEMIT_BLOCK_INTERVAL);
         }
         FC_LOG_AND_RETHROW()
