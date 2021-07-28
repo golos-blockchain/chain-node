@@ -3807,8 +3807,6 @@ namespace golos { namespace chain {
                         a.name = name;
                         a.memo_key = init_public_key;
                         a.balance = asset(i ? 0 : init_supply, STEEM_SYMBOL);
-                        elog("set balance to ${amount}",("amount", a.balance.amount));
-
                     });
 
                     if (store_metadata_for_account(name)) {
