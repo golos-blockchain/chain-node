@@ -2569,6 +2569,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_authorities) {
+        BOOST_TEST_MESSAGE("Testing: custom_authorities");
+
         custom_operation op;
         op.required_auths.insert("alice");
         op.required_auths.insert("bob");
@@ -2576,6 +2578,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_json_authorities) {
+        BOOST_TEST_MESSAGE("Testing: custom_json_authorities");
+
         custom_json_operation op;
         op.required_auths.insert("alice");
         op.required_posting_auths.insert("bob");
@@ -2583,6 +2587,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_json_validate) {
+        BOOST_TEST_MESSAGE("Testing: custom_json_validate");
+
         custom_json_operation op;
 
         GOLOS_CHECK_ERROR_PROPS(op.validate(),
@@ -2598,6 +2604,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_binary_authorities) {
+        BOOST_TEST_MESSAGE("Testing: custom_binary_authorities");
+
         ACTORS((alice))
 
         auto alice_authority = db->get<account_authority_object, by_account>("alice").posting;
@@ -2617,6 +2625,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_binary_validate) {
+        BOOST_TEST_MESSAGE("Testing: custom_binary_validate");
+
         custom_binary_operation op;
 
         GOLOS_CHECK_ERROR_PROPS(op.validate(),
@@ -2638,6 +2648,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(feed_publish_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: feed_publish_validate");
+
             feed_publish_operation op;
 
             BOOST_TEST_MESSAGE("--- success on valid parameters");
@@ -2769,6 +2780,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(convert_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: convert_validate");
+
             convert_operation op;
 
             BOOST_TEST_MESSAGE("--- success on valid parameters");
@@ -2846,6 +2858,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(convert_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: convert_apply");
+
             ACTORS((alice)(bob));
             fund("alice", 10000);
             fund("bob", 10000);
@@ -2951,6 +2964,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     /*BOOST_AUTO_TEST_CASE(limit_order_create_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_create_validate");
+
             limit_order_create_operation op;
 
             BOOST_TEST_MESSAGE("--- success on valid parameters");
@@ -3371,6 +3385,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(limit_order_create2_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_create2_validate");
+
             limit_order_create2_operation op;
 
             BOOST_TEST_MESSAGE("--- success on valid parameters");
@@ -3973,6 +3988,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(request_account_recovery_validate) { try {
         BOOST_TEST_MESSAGE("Testing: request_account_recovery_validate");
+
         request_account_recovery_operation op;
         op.recovery_account = "alice";
         op.account_to_recover = "bob";
@@ -3998,15 +4014,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(request_account_recovery_authorities) { try {
         BOOST_TEST_MESSAGE("Testing: request_account_recovery_authorities");
+
         request_account_recovery_operation op;
         op.recovery_account = "alice";
         op.account_to_recover = "bob";
         CHECK_OP_AUTHS(op, account_name_set(), account_name_set({"alice"}), account_name_set());
     } FC_LOG_AND_RETHROW() }
-
-    // tested in account_recovery and change_recovery_account test cases
-    // BOOST_AUTO_TEST_CASE(request_account_recovery_apply) { try {
-    // } FC_LOG_AND_RETHROW() }
 
     BOOST_AUTO_TEST_SUITE_END() // request_account_recovery
 
@@ -4015,6 +4028,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(recover_account_validate) { try {
         BOOST_TEST_MESSAGE("Testing: recover_account_validate");
+
         recover_account_operation op;
         op.account_to_recover = "bob";
         op.new_owner_authority = authority(1, "alice", 1);
@@ -4043,6 +4057,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(recover_account_authorities) { try {
         BOOST_TEST_MESSAGE("Testing: recover_account_authorities");
+
         recover_account_operation op;
         op.account_to_recover = "alice";
         op.new_owner_authority = authority(1, "bob", 1);
@@ -4055,10 +4070,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
         // TODO: maybe here can be some more complex checks (like multisig)
     } FC_LOG_AND_RETHROW() }
 
-    // tested in account_recovery and change_recovery_account test cases
-    // BOOST_AUTO_TEST_CASE(recover_account_apply) { try {
-    // } FC_LOG_AND_RETHROW() }
-
     BOOST_AUTO_TEST_SUITE_END() // recover_account
 
 
@@ -4066,6 +4077,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(change_recovery_account_validate) { try {
         BOOST_TEST_MESSAGE("Testing: change_recovery_account_validate");
+
         change_recovery_account_operation op;
         op.account_to_recover = "alice";
         op.new_recovery_account = "bob";
@@ -4080,15 +4092,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(change_recovery_account_authorities) { try {
         BOOST_TEST_MESSAGE("Testing: change_recovery_account_authorities");
+
         change_recovery_account_operation op;
         op.account_to_recover = "alice";
         op.new_recovery_account = "bob";
         CHECK_OP_AUTHS(op, account_name_set({"alice"}), account_name_set(), account_name_set());
     } FC_LOG_AND_RETHROW() }
-
-    // tested in change_recovery_account test cases
-    // BOOST_AUTO_TEST_CASE(change_recovery_account_apply) { try {
-    // } FC_LOG_AND_RETHROW() }
 
     BOOST_AUTO_TEST_SUITE_END() // change_recovery_account
 
@@ -4096,6 +4105,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(account_recovery) {
         try {
             BOOST_TEST_MESSAGE("Testing: account recovery");
+
             ACTORS((alice));
             fund("alice", 1000000);
 
@@ -4271,6 +4281,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(vesting_withdraw_reset_on_recovery) {
         try {
             BOOST_TEST_MESSAGE("Testing: vesting withdraw reset on account recover");
+
             ACTORS((alice));
             fund("alice", 1000000);
 
@@ -4438,6 +4449,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
         try {
             using fc::ecc::private_key;
             BOOST_TEST_MESSAGE("Testing change_recovery_account_operation");
+
             ACTORS((alice)(sam))
 
             auto change_recovery_account = [&](const string& account_to_recover, const string& new_recovery_account) {
@@ -4805,6 +4817,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     // Technically it can be called, but will fail early due disabled challenge_authority_operation
     BOOST_AUTO_TEST_CASE(prove_authority_validate) { try {
         BOOST_TEST_MESSAGE("Testing: prove_authority_validate");
+
         prove_authority_operation op;
         op.challenged = "bob";
         CHECK_OP_VALID(op);
@@ -4813,6 +4826,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(prove_authority_authorities) { try {
         BOOST_TEST_MESSAGE("Testing: prove_authority_authorities");
+
         prove_authority_operation op;
         op.challenged = "bob";
         op.require_owner = true;
@@ -4823,6 +4837,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(prove_authority_apply) { try {
         BOOST_TEST_MESSAGE("Testing: prove_authority_apply");
+
         ACTOR(bob)
         prove_authority_operation op;
         op.challenged = "bob";
@@ -4896,6 +4911,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_transfer_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_transfer_authorities");
+
             escrow_transfer_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -4915,6 +4931,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_transfer_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_transfer_apply");
+
             ACTORS((alice)(bob)(sam))
             fund("alice", 10000);
 
@@ -4999,6 +5016,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_approve_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_approve_validate");
+
             escrow_approve_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5027,6 +5045,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_approve_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_approve_authorities");
+
             escrow_approve_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5044,6 +5063,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_approve_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_approve_apply");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
@@ -5231,6 +5251,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_dispute_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_dispute_validate");
+
             escrow_dispute_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5257,6 +5278,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_dispute_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_dispute_authorities");
+
             escrow_dispute_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5271,6 +5293,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_dispute_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_dispute_apply");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
@@ -5443,6 +5466,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_release_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow release validate");
+
             escrow_release_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5491,6 +5515,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_release_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_release_authorities");
+
             escrow_release_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5505,6 +5530,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_release_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_release_apply");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
@@ -5839,6 +5865,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(transfer_to_savings_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_to_savings_authorities");
+
             transfer_to_savings_operation op;
             op.from = "alice";
             op.to = "alice";
@@ -5960,6 +5987,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(transfer_from_savings_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_from_savings_authorities");
+
             transfer_from_savings_operation op;
             op.from = "alice";
             op.to = "alice";
@@ -6177,6 +6205,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(cancel_transfer_from_savings_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: cancel_transfer_from_savings_authorities");
+
             cancel_transfer_from_savings_operation op;
             op.from = "alice";
             CHECK_OP_AUTHS(op, account_name_set(), account_name_set({"alice"}), account_name_set());
@@ -6240,6 +6269,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(decline_voting_rights_validate) { try {
         BOOST_TEST_MESSAGE("Testing: decline_voting_rights_validate");
+
         decline_voting_rights_operation op;
         op.account = "alice";
         CHECK_OP_VALID(op);
@@ -6249,6 +6279,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(decline_voting_rights_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: decline_voting_rights_authorities");
+
             decline_voting_rights_operation op;
             op.account = "alice";
             CHECK_OP_AUTHS(op, account_name_set({"alice"}), account_name_set(), account_name_set());
@@ -6373,6 +6404,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(account_bandwidth) {
         try {
+            BOOST_TEST_MESSAGE("Testing: account_bandwidth");
+
             ACTORS((alice)(bob))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
@@ -6423,7 +6456,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_beneficiaries_validate) {
         try {
-            BOOST_TEST_MESSAGE("Test Comment Beneficiaries Validate");
+            BOOST_TEST_MESSAGE("Testing: comment_beneficiaries_validate");
+
             comment_options_operation op;
 
             op.author = "alice";
@@ -6495,7 +6529,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_beneficiaries_apply) {
         try {
-            BOOST_TEST_MESSAGE("Test Comment Beneficiaries");
+            BOOST_TEST_MESSAGE("Testing: comment_beneficiaries_apply");
+
             ACTORS((alice)(bob)(sam))
             generate_block();
 
@@ -6612,6 +6647,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(delete_comment_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: delete_comment_authorities");
+
             delete_comment_operation op;
             op.author = "alice";
             op.permlink = "foo";
@@ -6623,6 +6659,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(delete_comment_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: delete_comment_apply");
+
             ACTORS((alice)(bob))
 
             signed_transaction tx;
@@ -6727,6 +6764,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(account_create_with_delegation_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: account_create_with_delegation_authorities");
+
             account_create_with_delegation_operation op;
             op.creator = "bob";
             CHECK_OP_AUTHS(op, account_name_set(), account_name_set({"bob"}), account_name_set());
@@ -6737,6 +6775,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(account_create_with_delegation_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: account_create_with_delegation_apply");
+
             signed_transaction tx;
             ACTOR(alice);
 
@@ -6857,6 +6896,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(delegate_vesting_shares_validate) {
         try {
+            BOOST_TEST_MESSAGE("Testing: delegate_vesting_shares_validate");
+
             delegate_vesting_shares_operation op;
             op.delegator = "alice";
             op.delegatee = "bob";
@@ -6881,6 +6922,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(delegate_vesting_shares_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: delegate_vesting_shares_authorities");
+
             delegate_vesting_shares_operation op;
             op.delegator = "bob";
             op.delegatee = "alice";
@@ -6893,6 +6935,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(delegate_vesting_shares_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: delegate_vesting_shares_apply");
+
             signed_transaction tx;
             ACTORS((alice)(bob))
 
@@ -7050,6 +7093,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(reject_vesting_shares_delegation_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: reject_vesting_shares_delegation_apply");
+
             signed_transaction tx;
             ACTORS((alice)(bob))
 
@@ -7179,13 +7223,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             generate_block();
 
-            BOOST_TEST_MESSAGE("-- Checking total funds");
-
-            auto& gpo = db->get_dynamic_global_properties();
-
-            APPROX_CHECK_EQUAL(gpo.total_vesting_shares.to_real(), total_comment_fund.vesting_shares().to_real(), 10);
-            APPROX_CHECK_EQUAL(gpo.total_vesting_fund_steem.amount.value, total_comment_fund.vesting_fund().amount.value, 1);
-
             BOOST_TEST_MESSAGE("-- Checking bob delegatee payout");
 
             auto& bob_account = db->get_account("bob");
@@ -7205,7 +7242,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(freeze_with_delegation) {
         try {
-            BOOST_TEST_MESSAGE("Testing:freeze account with delegation");
+            BOOST_TEST_MESSAGE("Testing: freeze_with_delegation");
 
             ACTORS((alice)(bob)(carol)(dave))
             generate_block();
@@ -7292,6 +7329,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(account_metadata_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: account_metadata_authorities");
+
             account_metadata_operation op;
             op.account = "bob";
             op.json_metadata = "{}";
@@ -7803,6 +7841,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(comment_curation_rewards_percent_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: comment_curation_rewards_percent_validate");
+
             comment_options_operation op;
 
             op.author = "alice";
@@ -7837,6 +7876,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(comment_curation_rewards_percent_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: comment_curation_rewards_percent_apply");
+
             ACTORS((alice))
             generate_block();
 
@@ -7974,13 +8014,13 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             db_plugin->debug_update([=](database &db) {
                 auto &wso = db.get_witness_schedule_object();
-                BOOST_CHECK_EQUAL(wso.median_props.auction_window_size, 1800);
+                BOOST_CHECK_EQUAL(wso.median_props.auction_window_size, STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS);
 
                 db.modify(wso, [&](witness_schedule_object &w) {
-                    w.median_props.auction_window_size = 10 * 60;
+                    w.median_props.auction_window_size = STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS / 2;
                 });
 
-                BOOST_CHECK_EQUAL(wso.median_props.auction_window_size, 600);
+                BOOST_CHECK_EQUAL(wso.median_props.auction_window_size, STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS / 2);
             }, database::skip_witness_signature);
 
             BOOST_TEST_MESSAGE("Auction window reward goes to reward fund.");
@@ -8031,13 +8071,17 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
             auto& alice_post = db->get_comment(comment.author, comment.permlink);
             generate_voters(20);
 
-            BOOST_TEST_MESSAGE("Create votes.");
             BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
             vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
+
             generate_blocks((alice_post.created + alice_post.auction_window_size), true);
+
+            BOOST_TEST_MESSAGE("Create votes4.");
             vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
 
+            BOOST_TEST_MESSAGE(alice_post.cashout_time);
+            BOOST_TEST_MESSAGE(std::to_string(alice_post.mode));
             generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
 
             comment_fund total_comment_fund(*db);
@@ -8366,7 +8410,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
     BOOST_AUTO_TEST_CASE(auction_window_tokens_to_curators_case) {
         try {
-            BOOST_TEST_MESSAGE("Auction window reward goes to curators.");
+            BOOST_TEST_MESSAGE("Testing: auction_window_tokens_to_curators_case");
 
             // Needed to be sured, that auction window's been already enabled.
             generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
