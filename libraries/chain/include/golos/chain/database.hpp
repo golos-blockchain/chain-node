@@ -729,6 +729,8 @@ namespace golos { namespace chain {
 
             bool _clear_old_worker_votes = false;
 
+            asset _accumulative_remainder = asset(0, STEEM_SYMBOL);
+
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;
         };

@@ -3074,14 +3074,20 @@ namespace golos { namespace chain {
             const auto& props = get_dynamic_global_properties();
             if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) return;
 
+            auto distributed_sum = asset(0, STEEM_SYMBOL);
+
             const auto& acc_idx = get_index<account_index, by_vesting_shares>();
             auto acc_itr = acc_idx.upper_bound(asset(0, VESTS_SYMBOL));
             for (; acc_itr != acc_idx.end(); acc_itr++) {
                 const auto& acc = *acc_itr;
+                auto stake = asset((uint128_t(props.accumulative_balance.amount.value) * acc.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
                 modify(acc, [&](auto& a) {
-                    a.accumulative_balance += asset((uint128_t(props.accumulative_balance.amount.value) * a.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
+                    a.accumulative_balance += stake;
                 });
+                distributed_sum += stake;
             }
+
+            _accumulative_remainder += (props.accumulative_balance - distributed_sum);
 
             modify(props, [&](auto& props) {
                 props.accumulative_balance = asset(0, STEEM_SYMBOL);
@@ -5636,6 +5642,7 @@ namespace golos { namespace chain {
 
                 for (auto itr = account_idx.begin();
                      itr != account_idx.end(); ++itr) {
+                    total_supply += itr->accumulative_balance;
                     total_supply += itr->balance;
                     total_supply += itr->savings_balance;
                     total_sbd += itr->sbd_balance;
@@ -5719,6 +5726,7 @@ namespace golos { namespace chain {
 
                 total_supply += gpo.total_vesting_fund_steem +
                                 gpo.accumulative_balance +
+                                _accumulative_remainder +
                                 gpo.total_reward_fund_steem;
 
                 FC_ASSERT(gpo.current_supply ==
