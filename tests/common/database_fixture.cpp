@@ -539,7 +539,7 @@ namespace golos { namespace chain {
                 const share_type &amount
         ) {
             try {
-                transfer(STEEMIT_INIT_MINER_NAME, account_name, amount);
+                transfer(STEEMIT_INIT_MINER_NAME, account_name, asset(amount, STEEM_SYMBOL));
 
             } FC_CAPTURE_AND_RETHROW((account_name)(amount))
         }
@@ -607,7 +607,7 @@ namespace golos { namespace chain {
         void database_fixture::transfer(
                 const string &from,
                 const string &to,
-                const share_type &amount) {
+                const asset &amount) {
             try {
                 transfer_operation op;
                 op.from = from;

@@ -41,12 +41,12 @@
 
 // Check if 2 numeric values are approximately equal
 #define APPROX_CHECK_EQUAL(X, Y, DELTA) {                          \
-    BOOST_CHECK(std::abs(X - Y) <= DELTA);                         \
+    BOOST_CHECK_LE(std::abs(X - Y), DELTA);                         \
 }
 
 // Check if 2 doubles are approximately equal
 #define APPROX_CHECK_DOUBLE_EQUAL(X, Y, DELTA) {                   \
-    BOOST_CHECK(std::fabs(X - Y) < DELTA);                         \
+    BOOST_CHECK_LT(std::fabs(X - Y), DELTA);                         \
 }
 
 // internals

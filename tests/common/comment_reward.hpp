@@ -15,12 +15,18 @@ namespace golos { namespace chain {
         comment_fund(database& db):
             db_(db)
         {
-            auto& gpo = db.get_dynamic_global_properties();
+            auto& gpo = db_.get_dynamic_global_properties();
             reward_shares_ = gpo.total_reward_shares2;
             reward_fund_ = gpo.total_reward_fund_steem;
             vesting_shares_ = gpo.total_vesting_shares;
             vesting_fund_ = gpo.total_vesting_fund_steem;
-            worker_fund_ = db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance;
+            accumulative_fund_ = gpo.accumulative_balance;
+
+            if (db_.has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
+                worker_fund_ = db_.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance;
+            } else {
+                worker_fund_ = asset(0, STEEM_SYMBOL);
+            }
 
             process_funds();
         }
@@ -39,6 +45,10 @@ namespace golos { namespace chain {
 
         const asset& vesting_fund() const {
             return vesting_fund_;
+        }
+
+        const asset& accumulative_fund() const {
+            return accumulative_fund_;
         }
 
         const asset& worker_fund() const {
@@ -95,7 +105,11 @@ namespace golos { namespace chain {
             auto witness_normalize = db_.get_witness_schedule_object().witness_pay_normalization_factor;
             witness_reward = witness_reward * STEEMIT_MAX_WITNESSES / witness_normalize;
 
-            vesting_fund_ += asset(vesting_reward, STEEM_SYMBOL);
+            if (db_.has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
+                accumulative_fund_ += asset(vesting_reward, STEEM_SYMBOL);
+            } else {
+                vesting_fund_ += asset(vesting_reward, STEEM_SYMBOL);
+            }
             reward_fund_ += asset(content_reward, STEEM_SYMBOL);
 
             create_vesting(asset(witness_reward, STEEM_SYMBOL));
@@ -106,6 +120,7 @@ namespace golos { namespace chain {
         asset reward_fund_;
         asset vesting_shares_;
         asset vesting_fund_;
+        asset accumulative_fund_;
         asset worker_fund_;
     };
 
@@ -322,7 +337,10 @@ namespace golos { namespace chain {
             auto sbd_payout_value = comment_rewards_ / 2;
             auto vesting_payout_value = comment_rewards_ - sbd_payout_value;
 
-            sbd_payout_ = asset(sbd_payout_value, SBD_SYMBOL);
+            sbd_payout_ = asset(0, SBD_SYMBOL);
+            if (!db_.has_hardfork(STEEMIT_HARDFORK_0_23__84)) {
+                sbd_payout_ = asset(sbd_payout_value, SBD_SYMBOL);
+            }
             vesting_payout_ = fund_.create_vesting(asset(vesting_payout_value, STEEM_SYMBOL));
             total_payout_ = sbd_payout_ + db_.to_sbd(vesting_payout_ * fund_.get_vesting_share_price());
         }

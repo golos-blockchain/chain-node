@@ -411,7 +411,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
             BOOST_TEST_MESSAGE("Create transaction");
 
-            transfer(STEEMIT_INIT_MINER_NAME, "alice", 1000000);
+            transfer(STEEMIT_INIT_MINER_NAME, "alice", ASSET("1000.000 GOLOS"));
             transfer_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -543,7 +543,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
             db->get_account(STEEMIT_INIT_MINER_NAME);
             // transfer from committee account to Sam account
-            transfer(STEEMIT_INIT_MINER_NAME, "sam", 100000);
+            transfer(STEEMIT_INIT_MINER_NAME, "sam", ASSET("100.000 GOLOS"));
 
             generate_block(skip_flags);
 

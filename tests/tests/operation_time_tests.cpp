@@ -26,6 +26,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_payout) {
         try {
+            BOOST_TEST_MESSAGE("Testing: comment_payout");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             vest("alice", 10000);
@@ -180,11 +182,10 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
         FC_LOG_AND_RETHROW()
     }
 
-    BOOST_AUTO_TEST_CASE(discussion_rewards) {
-    }
-
     BOOST_AUTO_TEST_CASE(comment_payout1) {
         try {
+            BOOST_TEST_MESSAGE("Testing: comment_payout1");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             vest("alice", 10000);
@@ -464,6 +465,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(nested_comments) {
         try {
+            BOOST_TEST_MESSAGE("Testing: nested_comments");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             vest("alice", 10000);
@@ -723,7 +726,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_beneficiaries_payout) {
         try {
-            BOOST_TEST_MESSAGE("Test comment beneficiaries payout");
+            BOOST_TEST_MESSAGE("Testing: comment_beneficiaries_payout");
+
             ACTORS((alice)(bob)(sam))
             generate_block();
 
@@ -824,6 +828,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(vesting_withdrawals) {
         try {
+            BOOST_TEST_MESSAGE("Testing: vesting_withdrawals");
+
             ACTORS((alice))
             fund("alice", 100000);
             vest("alice", 100000);
@@ -954,6 +960,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(vesting_withdraw_route) {
         try {
+            BOOST_TEST_MESSAGE("Testing: vesting_withdraw_route");
+
             ACTORS((alice)(bob)(sam))
 
             auto original_vesting = alice.vesting_shares;
@@ -1088,6 +1096,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(feed_publish_mean) {
         try {
+            BOOST_TEST_MESSAGE("Testing: feed_publish_mean");
+
             resize_shared_mem(1024 * 1024 * 32);
 
             ACTORS((alice0)(alice1)(alice2)(alice3)(alice4)(alice5)(alice6))
@@ -1119,7 +1129,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             // Upgrade accounts to witnesses
             for (int i = 0; i < 7; i++) {
-                transfer(STEEMIT_INIT_MINER_NAME, accounts[i], 10000);
+                transfer(STEEMIT_INIT_MINER_NAME, accounts[i], ASSET("10.000 GOLOS"));
                 witness_create(accounts[i], keys[i], "foo.bar", keys[i].get_public_key(), 1000);
 
                 ops.push_back(feed_publish_operation());
@@ -1191,18 +1201,18 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(convert_delay) {
         try {
+            BOOST_TEST_MESSAGE("Testing: convert_delay");
+
             ACTORS((alice))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
 
             set_price_feed(price(asset::from_string("1.250 GOLOS"), asset::from_string("1.000 GBG")));
 
-            convert_operation op;
-            comment_operation comment;
-            vote_operation vote;
             signed_transaction tx;
             tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
 
+            comment_operation comment;
             comment.author = "alice";
             comment.title = "foo";
             comment.body = "bar";
@@ -1214,6 +1224,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             tx.operations.clear();
             tx.signatures.clear();
+            vote_operation vote;
             vote.voter = "alice";
             vote.author = "alice";
             vote.permlink = "test";
@@ -1222,8 +1233,11 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
+            BOOST_TEST_MESSAGE(db->get_account("workers").sbd_balance.to_string());
+
             generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
 
+            BOOST_TEST_MESSAGE(db->get_account("workers").sbd_balance.to_string());
             BOOST_REQUIRE(db->has_index<golos::plugins::social_network::comment_reward_index>());
 
             const auto& cr_idx = db->get_index<golos::plugins::social_network::comment_reward_index>().indices().get<golos::plugins::social_network::by_comment>();
@@ -1231,13 +1245,16 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             auto alice_cr_itr = cr_idx.find(db->get_comment("alice", string("test")).id);
             BOOST_REQUIRE(alice_cr_itr != cr_idx.end());
 
-            auto start_balance = asset(
-                alice_cr_itr->total_payout_value.amount /2,
-                SBD_SYMBOL);
+            BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
+            vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
+            transfer(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
+
+            auto start_balance = db->get_account("alice").sbd_balance;
 
             BOOST_TEST_MESSAGE("Setup conversion to GOLOS");
             tx.operations.clear();
             tx.signatures.clear();
+            convert_operation op;
             op.owner = "alice";
             op.amount = asset(2000, SBD_SYMBOL);
             op.requestid = 2;
@@ -1284,7 +1301,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(steem_inflation) {
         // commented in Steem too
         try {
-//            BOOST_TEST_MESSAGE("Testing STEEM Inflation until the vesting start block");
+//            BOOST_TEST_MESSAGE("Testing: steem_inflation");
 //
 //            auto gpo = db->get_dynamic_global_properties();
 //            auto virtual_supply = gpo.virtual_supply;
@@ -1565,14 +1582,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(sbd_interest) {
         try {
+            BOOST_TEST_MESSAGE("Testing: sbd_interest");
+
             ACTORS((alice)(bob))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
             vest("bob", ASSET("10.000 GOLOS"));
 
             set_price_feed(price(asset::from_string("1.000 GOLOS"), asset::from_string("1.000 GBG")));
-
-            BOOST_TEST_MESSAGE("Testing interest over smallest interest period");
 
             convert_operation op;
             comment_operation comment;
@@ -1601,7 +1618,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
 
+            BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
+            vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
+            transfer(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
+
             auto start_time = db->get_account("alice").sbd_seconds_last_update;
+
             auto alice_sbd = db->get_account("alice").sbd_balance;
 
             generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC), true);
@@ -1687,11 +1709,10 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(limit_sbd_interest_rate) try {
+        BOOST_TEST_MESSAGE("Testing: limit_sbd_interest_rate");
 
         const account_name_type alice_user_name = "alice";
         const account_name_type bob_user_name = "bob";
-
-        BOOST_TEST_MESSAGE("Testing limitation of the sbd interest rate");
 
         ACTORS((alice)(bob))
 
@@ -1767,8 +1788,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
     FC_LOG_AND_RETHROW()
 
     BOOST_AUTO_TEST_CASE(liquidity_rewards) {
-
         try {
+            BOOST_TEST_MESSAGE("Testing: liquidity_rewards");
+
             db->liquidity_rewards_enabled = false;
 
             ACTORS((alice)(bob)(sam)(dave))
@@ -1807,6 +1829,11 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             db->push_transaction(tx, 0);
 
             generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
+
+            BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
+            vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
+            transfer(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
+
             asset alice_sbd = db->get_account("alice").sbd_balance;
 
             fund("alice", alice_sbd.amount);
@@ -2438,6 +2465,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(post_rate_limit) {
         try {
+            BOOST_TEST_MESSAGE("Testing: post_rate_limit");
+
             ACTORS((alice))
 
             fund("alice", 10000);
@@ -2575,6 +2604,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_freeze) {
         try {
+            BOOST_TEST_MESSAGE("Testing: comment_freeze");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             fund("bob", 10000);
@@ -2695,6 +2726,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 #ifndef DEBUG
     BOOST_AUTO_TEST_CASE(sbd_stability) {
         try {
+            BOOST_TEST_MESSAGE("Testing: sbd_stability");
+
             // Due to number of blocks in the test, it requires a large file. (32 MB)
             resize_shared_mem(1024 * 1024 * 256);
 
@@ -2831,6 +2864,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(sbd_price_feed_limit) {
         try {
+            BOOST_TEST_MESSAGE("Testing: sbd_price_feed_limit");
+
             ACTORS((alice));
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
@@ -2878,7 +2913,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(clear_null_account) {
         try {
-            BOOST_TEST_MESSAGE("Testing clearing the null account's balances on block");
+            BOOST_TEST_MESSAGE("Testing: clear_null_account");
 
             ACTORS((alice));
             generate_block();
