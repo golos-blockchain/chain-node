@@ -586,7 +586,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
         const auto& wro_post = db->get_comment("dave", string("dave-request"));
         const auto& wro = db->get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
-        BOOST_CHECK_EQUAL(wro.remaining_payment, ASSET_GOLOS(29.999));
+        BOOST_CHECK_EQUAL(wro.remaining_payment, ASSET_GOLOS(30));
 
         BOOST_TEST_MESSAGE("-- Checking dave request has votes (it should, clearing is enabled after final vote)");
 
@@ -607,7 +607,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
         const auto& wro_post = db->get_comment("frad", string("frad-request"));
         const auto& wro = db->get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::closed_by_voters);
-        BOOST_CHECK_EQUAL(wro.remaining_payment, ASSET_GOLOS(2.999));
+        BOOST_CHECK_EQUAL(wro.remaining_payment, ASSET_GOLOS(3));
 
         BOOST_TEST_MESSAGE("-- Checking frad request has votes (it should, clearing is enabled after final vote)");
 
