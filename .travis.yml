@@ -6,15 +6,12 @@ services:
   - docker
 
 before_install:
-  - echo "$TRAVIS_TAG"
   - echo "$TRAVIS_BRANCH"
 
 env:
-  - DOCKERFILE=Dockerfile DOCKERNAME=""
-  - DOCKERFILE=share/golosd/docker/Dockerfile-test DOCKERNAME="-test"
-  - DOCKERFILE=share/golosd/docker/Dockerfile-livetest DOCKERNAME="-livetest"
-  # - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
-  # - DOCKERFILE=share/golosd/docker/Dockerfile-mongo DOCKERNAME="-mongo"
+  - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
+  #- DOCKERFILE=share/golosd/docker/Dockerfile-livetest DOCKERNAME="-livetest"
+  #- DOCKERFILE=Dockerfile DOCKERNAME=""
 
 jobs:
   fast_finish: true
@@ -22,17 +19,15 @@ jobs:
 script:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
       export DOCKERNAME="latest""$DOCKERNAME";
-    elif [ -n "$TRAVIS_TAG" ]; then
-      export DOCKERNAME="$TRAVIS_TAG""$DOCKERNAME";
-    elif [ "$DOCKERNAME" == "-testnet" ] || [ "$DOCKERNAME" == "-test" ]; then
-      export DOCKERNAME=develop"$DOCKERNAME";
+    elif [ "$TRAVIS_BRANCH" == "livetest" ]; then
+      export DOCKERNAME="livetest""$DOCKERNAME";
     else
       export DOCKERNAME="$TRAVIS_BRANCH""$DOCKERNAME";
     fi
   - echo "$DOCKERFILE"
   - echo "$DOCKERNAME"
   - if [ -n "$DOCKERNAME" ]; then
-      docker build -t goloschain/golos:"$DOCKERNAME" -f "$DOCKERFILE" .;
+      docker build -t golos-blockchain/golos:"$DOCKERNAME" -f "$DOCKERFILE" .;
     fi
 
 after_success:
@@ -40,7 +35,7 @@ after_success:
   # - docker images
   # - if [ -n "$EXPORTNAME" ]; then
   #     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-  #     docker push goloschain/golos:"$EXPORTNAME";
+  #     docker push golos-blockchain/golos:"$EXPORTNAME";
   #   fi
   # - if [ "$TRAVIS_BRANCH" == "master" -a "$EXPORTNAME" == "latest" ]; then
   #     bash deploy/deploy.sh;
