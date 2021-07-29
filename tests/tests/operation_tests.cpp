@@ -2876,15 +2876,15 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             const auto &new_alice = db->get_account("alice");
             const auto &new_bob = db->get_account("bob");
 
-            BOOST_TEST_MESSAGE("--- Test failure when account does not have the required GOLOS (invalid parameter, only GBG)");
+            BOOST_TEST_MESSAGE("--- Test failure when account does not have the required GOLOS");
             op.owner = "bob";
             op.amount = ASSET("5.000 GOLOS");
             tx.operations.push_back(op);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(bob_private_key, db->get_chain_id());
-            // Convert operation only available for GBG
             GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
                 CHECK_ERROR(tx_invalid_operation, 0,
-                    CHECK_ERROR(invalid_parameter, "amount")));
+                    CHECK_ERROR(insufficient_funds, "bob", "fund", "5.000 GOLOS"))); // 5% fee
 
             BOOST_CHECK_EQUAL(new_bob.balance.amount.value, ASSET("3.000 GOLOS").amount.value);
             BOOST_CHECK_EQUAL(new_bob.sbd_balance.amount.value, ASSET("7.000 GBG").amount.value);
@@ -2895,7 +2895,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.amount = ASSET("5.000 GBG");
             tx.operations.clear();
             tx.signatures.clear();
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.operations.push_back(op);
             tx.sign(alice_private_key, db->get_chain_id());
             GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),

@@ -96,14 +96,15 @@ namespace golos { namespace protocol {
             fill_convert_request_operation() {
             }
 
-            fill_convert_request_operation(const string &o, const uint32_t id, const asset &in, const asset &out)
-                    : owner(o), requestid(id), amount_in(in), amount_out(out) {
+            fill_convert_request_operation(const string& o, uint32_t id, const asset& in, const asset& out, const asset& fin)
+                    : owner(o), requestid(id), amount_in(in), amount_out(out), fee_in(fin) {
             }
 
             account_name_type owner;
             uint32_t requestid = 0;
             asset amount_in;
             asset amount_out;
+            asset fee_in;
         };
 
 
@@ -322,7 +323,7 @@ FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_pa
 FC_REFLECT((golos::protocol::curation_reward_operation), (curator)(reward)(comment_author)(comment_permlink))
 FC_REFLECT((golos::protocol::auction_window_reward_operation), (reward)(comment_author)(comment_permlink))
 FC_REFLECT((golos::protocol::comment_reward_operation), (author)(permlink)(payout))
-FC_REFLECT((golos::protocol::fill_convert_request_operation), (owner)(requestid)(amount_in)(amount_out))
+FC_REFLECT((golos::protocol::fill_convert_request_operation), (owner)(requestid)(amount_in)(amount_out)(fee_in))
 FC_REFLECT((golos::protocol::liquidity_reward_operation), (owner)(payout))
 FC_REFLECT((golos::protocol::interest_operation), (owner)(interest))
 FC_REFLECT((golos::protocol::fill_vesting_withdraw_operation), (from_account)(to_account)(withdrawn)(deposited))

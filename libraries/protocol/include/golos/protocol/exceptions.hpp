@@ -323,6 +323,7 @@ namespace golos {
 
             // convert operation
             no_price_feed_yet,
+            amount_is_too_low,
 
             // pow operation
             duplicate_work_discovered,
@@ -608,6 +609,7 @@ FC_REFLECT_ENUM(golos::logic_exception::error_types,
 
         // convert operation
         (no_price_feed_yet)
+        (amount_is_too_low)
 
         // pow operation
         (duplicate_work_discovered)

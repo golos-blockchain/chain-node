@@ -2176,7 +2176,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_24 median_props;
+            chain_properties_26 median_props;
 
             auto median = active.size() / 2;
 
@@ -2249,6 +2249,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_23::min_invite_balance);
             calc_median(&chain_properties_24::asset_creation_fee);
             calc_median(&chain_properties_24::invite_transfer_interval_sec);
+            calc_median(&chain_properties_26::convert_fee_percent);
 
             if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
                 #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
@@ -3246,10 +3247,10 @@ namespace golos { namespace chain {
  */
         void database::process_conversions() {
             auto now = head_block_time();
-            const auto &request_by_date = get_index<convert_request_index>().indices().get<by_conversion_date>();
+            const auto& request_by_date = get_index<convert_request_index, by_conversion_date>();
             auto itr = request_by_date.begin();
 
-            const auto &fhistory = get_feed_history();
+            const auto& fhistory = get_feed_history();
             if (fhistory.current_median_history.is_null()) {
                 return;
             }
@@ -3259,28 +3260,43 @@ namespace golos { namespace chain {
 
             while (itr != request_by_date.end() &&
                    itr->conversion_date <= now) {
-                const auto &user = get_account(itr->owner);
+                const auto& user = get_account(itr->owner);
+
+                auto clean_amount = itr->amount - itr->fee;
+
                 auto amount_to_issue =
-                        itr->amount * fhistory.current_median_history;
+                        clean_amount * fhistory.current_median_history;
 
                 adjust_balance(user, amount_to_issue);
 
-                net_sbd += itr->amount;
-                net_steem += amount_to_issue;
+                if (itr->amount.symbol == STEEM_SYMBOL) {
+                    net_sbd -= amount_to_issue;
+                    net_steem -= itr->amount;
+                } else {
+                    net_sbd += itr->amount;
+                    net_steem += amount_to_issue;
+                }
 
-                push_virtual_operation(fill_convert_request_operation(user.name, itr->requestid, itr->amount, amount_to_issue));
+                push_virtual_operation(fill_convert_request_operation(user.name, itr->requestid, itr->amount, amount_to_issue, itr->fee));
 
                 remove(*itr);
                 itr = request_by_date.begin();
             }
 
-            const auto &props = get_dynamic_global_properties();
-            modify(props, [&](dynamic_global_property_object &p) {
+            auto converted_sbd = asset(0, STEEM_SYMBOL);
+            if (net_sbd.amount < 0) {
+                converted_sbd = (-net_sbd) * fhistory.current_median_history;
+                converted_sbd = -converted_sbd;
+            } else {
+                converted_sbd = net_sbd * fhistory.current_median_history;
+            }
+
+            const auto& props = get_dynamic_global_properties();
+            modify(props, [&](dynamic_global_property_object& p) {
                 p.current_supply += net_steem;
                 p.current_sbd_supply -= net_sbd;
                 p.virtual_supply += net_steem;
-                p.virtual_supply -=
-                        net_sbd * get_feed_history().current_median_history;
+                p.virtual_supply -= converted_sbd;
             });
         }
 

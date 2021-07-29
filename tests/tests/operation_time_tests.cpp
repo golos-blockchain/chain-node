@@ -1210,7 +1210,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             set_price_feed(price(asset::from_string("1.250 GOLOS"), asset::from_string("1.000 GBG")));
 
             signed_transaction tx;
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
 
             comment_operation comment;
             comment.author = "alice";
@@ -1218,26 +1217,17 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             comment.body = "bar";
             comment.permlink = "test";
             comment.parent_permlink = "test";
-            tx.operations.push_back(comment);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
 
-            tx.operations.clear();
-            tx.signatures.clear();
             vote_operation vote;
             vote.voter = "alice";
             vote.author = "alice";
             vote.permlink = "test";
             vote.weight = STEEMIT_100_PERCENT;
-            tx.operations.push_back(vote);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
-
-            BOOST_TEST_MESSAGE(db->get_account("workers").sbd_balance.to_string());
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vote));
 
             generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
 
-            BOOST_TEST_MESSAGE(db->get_account("workers").sbd_balance.to_string());
             BOOST_REQUIRE(db->has_index<golos::plugins::social_network::comment_reward_index>());
 
             const auto& cr_idx = db->get_index<golos::plugins::social_network::comment_reward_index>().indices().get<golos::plugins::social_network::by_comment>();
@@ -1245,57 +1235,128 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             auto alice_cr_itr = cr_idx.find(db->get_comment("alice", string("test")).id);
             BOOST_REQUIRE(alice_cr_itr != cr_idx.end());
 
-            BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
+            BOOST_TEST_MESSAGE("--- Transferring worker sbd payout to alice");
             vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
             transfer(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
 
             auto start_balance = db->get_account("alice").sbd_balance;
 
-            BOOST_TEST_MESSAGE("Setup conversion to GOLOS");
-            tx.operations.clear();
-            tx.signatures.clear();
+            BOOST_TEST_MESSAGE("--- Convert GBG to GOLOS");
+
             convert_operation op;
             op.owner = "alice";
             op.amount = asset(2000, SBD_SYMBOL);
             op.requestid = 2;
-            tx.operations.push_back(op);
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
-            BOOST_TEST_MESSAGE("Generating Blocks up to conversion block");
+            BOOST_TEST_MESSAGE("--- Generating Blocks up to conversion block");
             generate_blocks(
                 db->head_block_time() + STEEMIT_CONVERSION_DELAY - fc::seconds(STEEMIT_BLOCK_INTERVAL / 2),
                 true);
 
-            BOOST_TEST_MESSAGE("Verify conversion is not applied");
-            const auto& alice_2 = db->get_account("alice");
-            const auto& convert_request_idx = db->get_index<convert_request_index>().indices().get<by_owner>();
-            auto convert_request = convert_request_idx.find(std::make_tuple("alice", 2));
+            BOOST_TEST_MESSAGE("--- Verify conversion is not applied");
 
-            BOOST_REQUIRE(convert_request != convert_request_idx.end());
-            BOOST_REQUIRE(alice_2.balance.amount.value == 0);
-            APPROX_CHECK_EQUAL(alice_2.sbd_balance.amount.value, (start_balance - op.amount).amount.value, 10);
+            const auto& convert_request_idx = db->get_index<convert_request_index>().indices().get<by_owner>();
+
+            {
+                auto convert_request = convert_request_idx.find(std::make_tuple("alice", 2));
+                BOOST_CHECK(convert_request != convert_request_idx.end());
+
+                const auto& alice = db->get_account("alice");
+                BOOST_CHECK_EQUAL(alice.balance.amount, 0);
+                BOOST_CHECK_EQUAL(alice.sbd_balance.amount, (start_balance - op.amount).amount);
+            }
+
             validate_database();
 
-            BOOST_TEST_MESSAGE("Generate one more block");
+            BOOST_TEST_MESSAGE("--- Generate one more block");
+
             generate_block();
 
-            BOOST_TEST_MESSAGE("Verify conversion applied");
-            const auto& alice_3 = db->get_account("alice");
-            auto vop = get_last_operations(1)[0].get<fill_convert_request_operation>();
+            BOOST_TEST_MESSAGE("--- Verify conversion applied");
 
-            convert_request = convert_request_idx.find(std::make_tuple("alice", 2));
-            BOOST_REQUIRE(convert_request == convert_request_idx.end());
-            BOOST_REQUIRE(alice_3.balance.amount.value == 2500);
-            APPROX_CHECK_EQUAL(alice_3.sbd_balance.amount.value, (start_balance - op.amount).amount.value, 10);
-            BOOST_REQUIRE(vop.owner == "alice");
-            BOOST_REQUIRE(vop.requestid == 2);
-            BOOST_REQUIRE(vop.amount_in.amount.value == ASSET("2.000 GBG").amount.value);
-            BOOST_REQUIRE(vop.amount_out.amount.value == ASSET("2.500 GOLOS").amount.value);
+            {
+                const auto& convert_request = convert_request_idx.find(std::make_tuple("alice", 2));
+                BOOST_CHECK(convert_request == convert_request_idx.end());
+
+                const auto& alice = db->get_account("alice");
+                BOOST_CHECK_EQUAL(alice.balance.amount, 2500);
+                BOOST_CHECK_EQUAL(alice.sbd_balance.amount, (start_balance - op.amount).amount);
+
+                auto fcrop = get_last_operations<fill_convert_request_operation>(1)[0];
+                BOOST_CHECK_EQUAL(fcrop.owner, "alice");
+                BOOST_CHECK_EQUAL(fcrop.requestid, 2);
+                BOOST_CHECK_EQUAL(fcrop.amount_in.symbol, SBD_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.amount_in.amount, ASSET("2.000 GBG").amount);
+                BOOST_CHECK_EQUAL(fcrop.amount_out.symbol,STEEM_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.amount_out.amount,ASSET("2.500 GOLOS").amount);
+                BOOST_CHECK_EQUAL(fcrop.fee_in.symbol, SBD_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.fee_in.amount, 0);
+            }
+
             validate_database();
+
+            BOOST_TEST_MESSAGE("--- Convert GOLOS to GBG");
+
+            op.amount = asset(2500, STEEM_SYMBOL);
+            op.requestid = 3;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+
+            BOOST_TEST_MESSAGE("--- Generating Blocks up to conversion block");
+
+            start_balance = db->get_account("alice").sbd_balance;
+
+            generate_blocks(
+                db->head_block_time() + STEEMIT_CONVERSION_DELAY - fc::seconds(STEEMIT_BLOCK_INTERVAL / 2),
+                true);
+
+            BOOST_TEST_MESSAGE("--- Verify conversion is not applied");
+
+            {
+                const auto& convert_request = convert_request_idx.find(std::make_tuple("alice", 3));
+                BOOST_CHECK(convert_request != convert_request_idx.end());
+     
+                const auto& alice = db->get_account("alice");
+                BOOST_CHECK_EQUAL(alice.balance.amount, 0);
+                BOOST_CHECK_EQUAL(alice.sbd_balance.amount, start_balance.amount);
+            }
+
+            validate_database();
+
+            BOOST_TEST_MESSAGE("--- Generate one more block");
+
+            start_balance = db->get_account("alice").sbd_balance;
+            generate_block();
+
+            BOOST_TEST_MESSAGE("--- Verify conversion applied");
+
+            {
+                const auto& convert_request = convert_request_idx.find(std::make_tuple("alice", 3));
+                BOOST_CHECK(convert_request == convert_request_idx.end());
+
+                const auto& alice = db->get_account("alice");
+                BOOST_CHECK_EQUAL(alice.balance.amount, 0);
+
+                auto fcrop = get_last_operations<fill_convert_request_operation>(1)[0];
+                BOOST_CHECK_EQUAL(fcrop.owner, "alice");
+                BOOST_CHECK_EQUAL(fcrop.requestid, 3);
+                BOOST_CHECK_EQUAL(fcrop.amount_in.symbol, STEEM_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.amount_in.amount, ASSET("2.500 GOLOS").amount);
+                BOOST_CHECK_EQUAL(fcrop.amount_out.symbol, SBD_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.amount_out.amount, ASSET("1.900 GBG").amount);
+                BOOST_CHECK_EQUAL(fcrop.fee_in.symbol, STEEM_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.fee_in.amount, 125);
+
+                auto iop = get_last_operations<interest_operation>(1)[0];
+                BOOST_CHECK_EQUAL(alice.sbd_balance.amount,
+                    (start_balance + ASSET("1.900 GBG") + iop.interest).amount);
+            }
+
+            validate_database();
+        } catch (fc::exception& e) {
+            edump((e.to_detail_string()));
+            throw;
         }
-        FC_LOG_AND_RETHROW();
     }
 
     BOOST_AUTO_TEST_CASE(steem_inflation) {

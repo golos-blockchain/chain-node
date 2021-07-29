@@ -244,7 +244,7 @@
 #define STEEMIT_MAX_FEED_AGE                    (fc::days(1))
 #define STEEMIT_MIN_FEEDS                       1 /// protects the network from conversions before price has been established
 #define STEEMIT_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
-#define STEEMIT_CONVERSION_DELAY                (fc::hours(STEEMIT_FEED_HISTORY_WINDOW)) //3.5 day conversion
+#define STEEMIT_CONVERSION_DELAY                (fc::seconds(30)) //30 second conversion
 
 #define STEEMIT_SBD_DEBT_CONVERT_THRESHOLD      (20*STEEMIT_1_PERCENT) ///< Start force conversion SBD debt to GOLOS on account balances at 20% Market Cap
 #define STEEMIT_SBD_DEBT_CONVERT_RATE           (STEEMIT_1_PERCENT) ///< Convert 1% of account balance (incl. savings) on each SBD debt conversion
@@ -274,6 +274,10 @@
 #define GOLOS_DEF_ASSET_CREATION_FEE            asset(0, SBD_SYMBOL)
 #define GOLOS_MIN_INVITE_TRANSFER_INTERVAL_SEC  0
 #define GOLOS_DEF_INVITE_TRANSFER_INTERVAL_SEC  60
+
+#define GOLOS_MIN_CONVERT_FEE_PERCENT           0
+#define GOLOS_MAX_CONVERT_FEE_PERCENT           STEEMIT_100_PERCENT
+#define GOLOS_DEF_CONVERT_FEE_PERCENT           (5.00*STEEMIT_1_PERCENT)
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
@@ -523,7 +527,11 @@
 #define STEEMIT_MAX_FEED_AGE                    (fc::days(7))
 #define STEEMIT_MIN_FEEDS                       (STEEMIT_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
 #define STEEMIT_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
+#ifdef STEEMIT_BUILD_LIVETEST
+#define STEEMIT_CONVERSION_DELAY                (fc::seconds(30)) //30 second conversion
+#else
 #define STEEMIT_CONVERSION_DELAY                (fc::hours(STEEMIT_FEED_HISTORY_WINDOW)) //3.5 day conversion
+#endif
 
 #define STEEMIT_SBD_DEBT_CONVERT_THRESHOLD      (20*STEEMIT_1_PERCENT) ///< Start force conversion SBD debt to GOLOS on account balances at 20% Market Cap
 #define STEEMIT_SBD_DEBT_CONVERT_RATE           (STEEMIT_1_PERCENT) ///< Convert 1% of account balance (incl. savings) on each SBD debt conversion
@@ -553,6 +561,10 @@
 #define GOLOS_DEF_ASSET_CREATION_FEE            asset(2000000, SBD_SYMBOL)
 #define GOLOS_MIN_INVITE_TRANSFER_INTERVAL_SEC  1
 #define GOLOS_DEF_INVITE_TRANSFER_INTERVAL_SEC  60
+
+#define GOLOS_MIN_CONVERT_FEE_PERCENT           0
+#define GOLOS_MAX_CONVERT_FEE_PERCENT           STEEMIT_100_PERCENT
+#define GOLOS_DEF_CONVERT_FEE_PERCENT           (5.00*STEEMIT_1_PERCENT)
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000

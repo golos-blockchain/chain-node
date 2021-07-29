@@ -376,6 +376,11 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_VALUE_GE(invite_transfer_interval_sec, GOLOS_MIN_INVITE_TRANSFER_INTERVAL_SEC);
         }
 
+        void chain_properties_26::validate() const {
+            chain_properties_24::validate();
+            GOLOS_CHECK_VALUE_LEGE(convert_fee_percent, GOLOS_MIN_CONVERT_FEE_PERCENT, GOLOS_MAX_CONVERT_FEE_PERCENT);
+        }
+
         void witness_update_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
             GOLOS_CHECK_PARAM(url, {
@@ -651,9 +656,7 @@ namespace golos { namespace protocol {
 
         void convert_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
-            /// only allow conversion from GBG to GOLOS, allowing the opposite can enable traders to abuse
-            /// market fluxuations through converting large quantities without moving the price.
-            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GBG));
+            GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GOLOS_OR_GBG));
         }
 
         void report_over_production_operation::validate() const {
