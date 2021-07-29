@@ -78,6 +78,8 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
     BOOST_AUTO_TEST_CASE(auction_window_tokens_to_reward_fund) {
         try {
+            BOOST_TEST_MESSAGE("Testing: auction_window_tokens_to_reward_fund");
+
             BOOST_TEST_MESSAGE("Test changing auction window size");
 
             db_plugin->debug_update([=](database &db) {
@@ -169,7 +171,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
     BOOST_AUTO_TEST_CASE(auction_window_tokens_to_reward_fund_empty_case) {
         try {
-            BOOST_TEST_MESSAGE("Auction window is 0.");
+            BOOST_TEST_MESSAGE("Testing: Auction window is 0.");
 
             // Needed to be sured, that auction window's been already enabled.
             generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
@@ -245,7 +247,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
     BOOST_AUTO_TEST_CASE(auction_window_tokens_to_reward_fund_all_in_auw) {
         try {
-            BOOST_TEST_MESSAGE("Auction window reward goes to reward fund. All votes made in auw");
+            BOOST_TEST_MESSAGE("Testing: Auction window reward goes to reward fund. All votes made in auw");
 
             // Needed to be sured, that auction window's been already enabled.
             generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
@@ -319,10 +321,9 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
         FC_LOG_AND_RETHROW()
     }
 
-
     BOOST_AUTO_TEST_CASE(auction_window_tokens_to_curators_case_empty_auw) {
         try {
-            BOOST_TEST_MESSAGE("Auction window is 0. The to_curators case.");
+            BOOST_TEST_MESSAGE("Testing: Auction window is 0. The to_curators case.");
 
             // Needed to be sured, that auction window's been already enabled.
             generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
@@ -399,7 +400,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
     BOOST_AUTO_TEST_CASE(auction_window_tokens_to_curators_case_all_in_auw) {
         try {
-            BOOST_TEST_MESSAGE("Auction window reward goes to reward fund. The to_curators case");
+            BOOST_TEST_MESSAGE("Testing: Auction window reward goes to reward fund. The to_curators case");
 
             // Needed to be sured, that auction window's been already enabled.
             generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
