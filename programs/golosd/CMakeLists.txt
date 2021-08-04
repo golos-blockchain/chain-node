@@ -43,6 +43,7 @@ target_link_libraries(
         golos::follow
         golos::worker_api
         golos::elastic_search
+        golos::event_plugin
         ${MONGO_LIB}
         golos_protocol
         fc
