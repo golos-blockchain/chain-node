@@ -527,11 +527,11 @@
 #define STEEMIT_MAX_FEED_AGE                    (fc::days(7))
 #define STEEMIT_MIN_FEEDS                       (STEEMIT_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
 #define STEEMIT_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
-#ifdef STEEMIT_BUILD_LIVETEST
-#define STEEMIT_CONVERSION_DELAY                (fc::seconds(30)) //30 second conversion
-#else
+//#ifdef STEEMIT_BUILD_LIVETEST
+//#define STEEMIT_CONVERSION_DELAY                (fc::seconds(30)) //30 second conversion
+//#else
 #define STEEMIT_CONVERSION_DELAY                (fc::hours(STEEMIT_FEED_HISTORY_WINDOW)) //3.5 day conversion
-#endif
+//#endif
 
 #define STEEMIT_SBD_DEBT_CONVERT_THRESHOLD      (20*STEEMIT_1_PERCENT) ///< Start force conversion SBD debt to GOLOS on account balances at 20% Market Cap
 #define STEEMIT_SBD_DEBT_CONVERT_RATE           (STEEMIT_1_PERCENT) ///< Convert 1% of account balance (incl. savings) on each SBD debt conversion
