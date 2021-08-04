@@ -64,6 +64,7 @@ namespace golos { namespace plugins { namespace chain {
         std::vector<std::string> accounts_to_store_metadata;
         bool store_asset_metadata = true;
         bool store_memo_in_savings_withdraws = true;
+        bool store_evaluator_events = false;
 
         boost::asio::deadline_timer transit_timer;
 
@@ -316,6 +317,9 @@ namespace golos { namespace plugins { namespace chain {
                 "store-memo-in-savings-withdraws", bpo::value<bool>()->default_value(true),
                 "store memo for all savings withdraws"
             ) (
+                "store-evaluator-events", bpo::value<bool>()->default_value(false),
+                "store events of evaluators and plugins"
+            ) (
                 "store-asset-metadata", bpo::value<bool>()->default_value(true),
                 "store metadata for all assets"
             ) (
@@ -456,6 +460,8 @@ namespace golos { namespace plugins { namespace chain {
 
         my->store_memo_in_savings_withdraws = options.at("store-memo-in-savings-withdraws").as<bool>();
 
+        my->store_evaluator_events = options.at("store-evaluator-events").as<bool>();
+
         my->clear_old_worker_votes = options.at("clear-old-worker-votes").as<bool>();
     }
 
@@ -491,6 +497,8 @@ namespace golos { namespace plugins { namespace chain {
         my->db.set_store_asset_metadata(my->store_asset_metadata);
 
         my->db.set_store_memo_in_savings_withdraws(my->store_memo_in_savings_withdraws);
+
+        my->db.set_store_evaluator_events(my->store_evaluator_events);
 
         my->db.set_clear_old_worker_votes(my->clear_old_worker_votes);
 

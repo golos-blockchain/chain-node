@@ -3,6 +3,7 @@
 #include <golos/chain/global_property_object.hpp>
 #include <golos/chain/node_property_object.hpp>
 #include <golos/chain/worker_objects.hpp>
+#include <golos/chain/event_objects.hpp>
 #include <golos/chain/fork_database.hpp>
 #include <golos/chain/block_log.hpp>
 #include <golos/chain/hardfork.hpp>
@@ -127,6 +128,7 @@ namespace golos { namespace chain {
             bool store_asset_metadata() const;
 
             void set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws);
+            void set_store_evaluator_events(bool store_evaluator_events);
             bool store_memo_in_savings_withdraws() const;
 
             void set_clear_old_worker_votes(bool clear_old_worker_votes);
@@ -726,6 +728,8 @@ namespace golos { namespace chain {
             bool _store_asset_metadata = true;
 
             bool _store_memo_in_savings_withdraws = true;
+
+            bool _store_evaluator_events = true;
 
             bool _clear_old_worker_votes = false;
 

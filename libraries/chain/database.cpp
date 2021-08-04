@@ -374,6 +374,10 @@ namespace golos { namespace chain {
             _store_memo_in_savings_withdraws = store_memo_in_savings_withdraws;
         }
 
+        void database::set_store_evaluator_events(bool store_evaluator_events) {
+            _store_evaluator_events = store_evaluator_events;
+        }
+
         bool database::store_memo_in_savings_withdraws() const {
             return _store_memo_in_savings_withdraws;
         }
@@ -3696,6 +3700,7 @@ namespace golos { namespace chain {
             add_core_index<invite_index>(*this);
             add_core_index<asset_index>(*this);
             add_core_index<account_balance_index>(*this);
+            add_core_index<event_index>(*this);
 
             _plugin_index_signal();
         }
