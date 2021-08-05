@@ -1464,6 +1464,42 @@ namespace golos { namespace chain {
             STEEMIT_TRY_NOTIFY(on_applied_transaction, tx)
         }
 
+        bool database::can_push_events() {
+            return _store_evaluator_events && !is_generating() && !is_producing();
+        }
+
+        void database::push_event(const operation& op) {
+            if (!can_push_events())
+                return;
+
+            create<event_object>([&](auto& o) {
+                const auto size = fc::raw::pack_size(op);
+                o.serialized_op.resize(size);
+                fc::datastream<char*> ds(o.serialized_op.data(), size);
+                fc::raw::pack(ds, op);
+            });
+        }
+
+        void database::process_events() {
+            if (!_store_evaluator_events)
+                return;
+
+            int processed = 0;
+            const auto& idx = get_index<event_index, by_id>();
+            auto itr = idx.begin();
+            for (; processed < 500 && itr != idx.end(); ++processed) {
+                operation op = fc::raw::unpack<operation>(itr->serialized_op);
+                push_virtual_operation(op);
+
+                const auto& current = *itr;
+                ++itr;
+                remove(current);
+            }
+            if (itr != idx.end()) {
+                wlog("process_events scheduled some events to next block");
+            }
+        }
+
         account_name_type database::get_scheduled_witness(uint32_t slot_num) const {
             const dynamic_global_property_object &dpo = get_dynamic_global_properties();
             const witness_schedule_object &wso = get_witness_schedule_object();
@@ -4258,6 +4294,7 @@ namespace golos { namespace chain {
                 process_worker_cashout();
                 check_account_idleness();
                 check_claim_idleness();
+                process_events();
                 process_vesting_withdrawals();
                 process_savings_withdraws();
                 pay_liquidity_reward();

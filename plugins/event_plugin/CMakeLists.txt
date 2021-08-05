@@ -26,6 +26,7 @@ set_property(TARGET golos_${CURRENT_TARGET} PROPERTY EXPORT_NAME ${CURRENT_TARGE
 target_link_libraries(
     golos_${CURRENT_TARGET}
     golos::chain_plugin
+    golos::json_rpc
     golos::social_network
     golos::tags
     appbase

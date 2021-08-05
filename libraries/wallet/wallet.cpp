@@ -3172,20 +3172,9 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 const set<string>& what,
                 const bool broadcast) {
 
-            GOLOS_CHECK_PARAM(following, GOLOS_CHECK_VALUE(following.size() > 0, "Empty string is not allowed"));
-            string _following = following;
-
-            auto follwer_account = get_account( follower );
-            if( _following[0] != '@' || _following[0] != '#' ) {
-                _following = '@' + _following;
-            }
-            if( _following[0] == '@' ) {
-                get_account( _following.substr(1) );
-            }
-
             follow::follow_operation fop;
             fop.follower = follower;
-            fop.following = _following;
+            fop.following = following;
             fop.what = what;
             follow::follow_plugin_operation op = fop;
 

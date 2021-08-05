@@ -194,6 +194,10 @@ namespace golos {
                                         f.account_feed_id = next_id;
                                     });
 
+                                    db.push_event(comment_feed_operation(itr->follower,
+                                        op.author, op.permlink, op.parent_author, op.parent_permlink,
+                                        op.title, op.body, op.json_metadata));
+
                                     const auto& old_feed_idx = db.get_index<feed_index, by_old_feed>();
                                     auto old_feed = old_feed_idx.lower_bound(itr->follower);
 

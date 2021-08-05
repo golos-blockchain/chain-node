@@ -1,7 +1,8 @@
-#include <golos/plugins/event_plugin/event_object.hpp>
 #include <golos/plugins/event_plugin/event_plugin.hpp>
 #include <golos/plugins/chain/plugin.hpp>
+#include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/protocol/block.hpp>
+#include <golos/protocol/exceptions.hpp>
 #include <golos/chain/operation_notification.hpp>
 
 namespace golos { namespace plugins { namespace event_plugin {
@@ -23,6 +24,20 @@ public:
 
         if (_db.head_block_num() < start_block)
             return;
+
+        _db.create<op_note_object>([&](auto& o) {
+            o.trx_id = note.trx_id;
+            o.block = note.block;
+            o.trx_in_block = note.trx_in_block;
+            o.op_in_trx = note.op_in_trx;
+            o.virtual_op = note.virtual_op;
+            o.timestamp = _db.head_block_time();
+
+            const auto size = fc::raw::pack_size(note.op);
+            o.serialized_op.resize(size);
+            fc::datastream<char*> ds(o.serialized_op.data(), size);
+            fc::raw::pack(ds, note.op);
+        });
     }
 
     void send_event() {
@@ -30,7 +45,35 @@ public:
     }
 
     void erase_old_blocks() {
+        uint32_t head_block = _db.head_block_num();
+        if (history_blocks <= head_block) {
+            uint32_t need_block = head_block - history_blocks;
+            const auto& idx = _db.get_index<op_note_index, by_location>();
+            auto itr = idx.begin();
+            while (itr != idx.end() && itr->block <= need_block) {
+                auto next_itr = itr;
+                ++next_itr;
+                _db.remove(*itr);
+                itr = next_itr;
+            }
+        }
+    }
 
+    std::vector<op_note_api_object> get_events_in_block(
+        uint32_t block_num,
+        bool only_virtual
+    ) {
+        std::vector<op_note_api_object> result;
+
+        const auto& idx = _db.get_index<op_note_index, by_location>();
+        auto itr = idx.lower_bound(block_num);
+        for (; itr != idx.end() && itr->block == block_num; ++itr) {
+            op_note_api_object operation(*itr);
+            if (!only_virtual || operation.virtual_op != 0) {
+                result.push_back(std::move(operation));
+            }
+        }
+        return result;
     }
 
     database& _db;
@@ -80,6 +123,8 @@ void event_plugin::plugin_initialize(const bpo::variables_map &options) {
     my->_db.post_apply_operation.connect([&](const operation_notification& note) {
         my->on_operation(note);
     });
+
+    JSON_RPC_REGISTER_API(name())
 } 
 
 void event_plugin::plugin_startup() {
@@ -88,6 +133,16 @@ void event_plugin::plugin_startup() {
 
 void event_plugin::plugin_shutdown() {
     ilog("Shutting down event plugin");
+}
+
+DEFINE_API(event_plugin, get_events_in_block) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (uint32_t, block_num)
+        (bool,     only_virtual)
+    );
+    return my->_db.with_weak_read_lock([&](){
+        return my->get_events_in_block(block_num, only_virtual);
+    });
 }
 
 } } } // golos::plugins::event_plugin

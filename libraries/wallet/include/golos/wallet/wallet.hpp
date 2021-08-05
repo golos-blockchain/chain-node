@@ -1583,7 +1583,7 @@ FC_API( golos::wallet::wallet_api,
                 (transit_to_cyberway)
                 (set_voting_proxy)
                 (vote_for_witness)
-                //(follow)
+                (follow)
                 (transfer)
                 (escrow_transfer)
                 (escrow_approve)

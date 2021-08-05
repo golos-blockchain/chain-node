@@ -331,6 +331,12 @@ namespace golos { namespace chain {
 
             void notify_on_applied_transaction(const signed_transaction &tx);
 
+            bool can_push_events();
+
+            void push_event(const operation &op);
+
+            void process_events();
+
             /**
              *  This signal is emitted for plugins to process every operation after it has been fully applied.
              */

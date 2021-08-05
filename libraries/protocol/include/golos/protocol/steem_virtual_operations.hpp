@@ -317,6 +317,31 @@ namespace golos { namespace protocol {
             /// The memo is plain-text only.
             string memo;
         };
+
+        struct comment_feed_operation : public virtual_operation {
+            comment_feed_operation() {
+            }
+
+            comment_feed_operation(const account_name_type& f,
+                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp,
+                const string& t, const string& b, const string& j)
+                    : follower(f),
+                    author(a), permlink(p), parent_author(pa), parent_permlink(pp),
+                    title(t), body(b), json_metadata(j) {
+            }
+
+            account_name_type follower;
+
+            account_name_type author;
+            string permlink;
+
+            account_name_type parent_author;
+            string parent_permlink;
+
+            string title;
+            string body;
+            string json_metadata;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -341,3 +366,4 @@ FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_a
 FC_REFLECT((golos::protocol::worker_state_operation), (author)(permlink)(state))
 FC_REFLECT((golos::protocol::convert_sbd_debt_operation), (owner)(sbd_amount)(steem_amount)(savings_sbd_amount)(savings_steem_amount))
 FC_REFLECT((golos::protocol::internal_transfer_operation), (from)(to)(amount)(memo))
+FC_REFLECT((golos::protocol::comment_feed_operation), (follower)(author)(permlink)(parent_author)(parent_permlink)(title)(body)(json_metadata))

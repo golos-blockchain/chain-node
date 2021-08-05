@@ -12,11 +12,13 @@ namespace golos { namespace chain {
         event_object() = delete;
 
         template <typename Constructor, typename Allocator>
-        event_object(Constructor&& c, allocator <Allocator> a) {
+        event_object(Constructor&& c, allocator<Allocator> a)
+            : serialized_op(a.get_segment_manager()) {
             c(*this);
         };
 
         id_type id;
+        buffer_type serialized_op;
     };
 
     using event_index = multi_index_container<

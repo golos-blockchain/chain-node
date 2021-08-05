@@ -84,9 +84,34 @@ namespace golos { namespace plugins { namespace event_plugin {
                     member<op_note_object, operation_id_type, &op_note_object::id>>>>,
         allocator<op_note_object>>;
 
+    struct op_note_api_object final {
+        op_note_api_object();
+
+        op_note_api_object(const op_note_object& opno)
+            : trx_id(opno.trx_id),
+            block(opno.block),
+            trx_in_block(opno.trx_in_block),
+            op_in_trx(opno.op_in_trx),
+            virtual_op(opno.virtual_op),
+            timestamp(opno.timestamp),
+            op(fc::raw::unpack<protocol::operation>(opno.serialized_op)) {
+        }
+
+        transaction_id_type trx_id;
+        uint32_t block = 0;
+        uint32_t trx_in_block = 0;
+        uint16_t op_in_trx = 0;
+        uint64_t virtual_op = 0;
+        fc::time_point_sec timestamp;
+        operation op;
+    };
 } } } // golos::plugins::event_plugin
 
 CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::event_plugin::op_note_object,
     golos::plugins::event_plugin::op_note_index)
 
+
+FC_REFLECT(
+    (golos::plugins::event_plugin::op_note_api_object),
+    (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op))
