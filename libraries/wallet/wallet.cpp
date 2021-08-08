@@ -373,6 +373,7 @@ namespace golos { namespace wallet {
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_26)) {
                         result["convert_fee_percent"]  = median_props.convert_fee_percent;
+                        result["min_golos_power_to_curate"]  = median_props.min_golos_power_to_curate;
                     }
 
                     return result;
@@ -2359,6 +2360,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 chain_properties_26 p26;
                 p26 = p;
                 SET_PROP(p26, convert_fee_percent);
+                SET_PROP(p26, min_golos_power_to_curate);
                 op.props = p26;
             }
 #undef SET_PROP

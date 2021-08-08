@@ -914,6 +914,10 @@ namespace golos { namespace chain {
                             com.curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
                         }
 
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
+                            com.min_golos_power_to_curate = mprops.min_golos_power_to_curate;
+                        }
+
                         com.author = o.author;
                         from_string(com.permlink, o.permlink);
                         com.created = _db.head_block_time();

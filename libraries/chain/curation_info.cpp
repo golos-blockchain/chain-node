@@ -159,6 +159,10 @@ namespace golos { namespace chain {
     : comment(comment) {
         calculate_weight_helper helper{db, comment};
         curve = helper.detect_curation_curve();
+        if (comment.min_golos_power_to_curate.amount != 0) {
+            const auto& v_share_price = db.get_dynamic_global_properties().get_vesting_share_price();
+            min_vesting_shares_to_curate = comment.min_golos_power_to_curate * v_share_price;
+        }
 
         if (comment.last_payout != fc::time_point_sec() && !full_list) {
             return;

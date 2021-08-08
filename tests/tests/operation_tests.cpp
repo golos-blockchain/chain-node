@@ -7153,8 +7153,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             fund("alice", 10000);
             vest("alice", ASSET_GOLOS(10000));
-            vest("carol", ASSET_GOLOS(10000));
-            vest("dave", ASSET_GOLOS(10000));
+            vest("carol", ASSET_GOLOS(500000));
+            vest("dave", ASSET_GOLOS(500000));
             generate_block();
 
             price exchange_rate(ASSET("1.000 GOLOS"), ASSET("1.000 GBG"));
@@ -7164,17 +7164,18 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             signed_transaction tx;
 
             delegate_vesting_shares_with_interest_operation op;
-            op.vesting_shares = ASSET_GESTS(50000);
             op.delegator = "carol";
             op.delegatee = "bob";
+            op.vesting_shares = db->get_account("carol").vesting_shares;
             op.payout_strategy = to_delegated_vesting;
             BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
             generate_block();
             tx.operations.clear();
             tx.signatures.clear();
 
-            op.payout_strategy = to_delegator;
             op.delegator = "dave";
+            op.payout_strategy = to_delegator;
+            op.vesting_shares = db->get_account("dave").vesting_shares;
             BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
             generate_block();
             tx.operations.clear();

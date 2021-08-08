@@ -374,12 +374,16 @@ namespace golos { namespace chain {
             _store_memo_in_savings_withdraws = store_memo_in_savings_withdraws;
         }
 
+        bool database::store_memo_in_savings_withdraws() const {
+            return _store_memo_in_savings_withdraws;
+        }
+
         void database::set_store_evaluator_events(bool store_evaluator_events) {
             _store_evaluator_events = store_evaluator_events;
         }
 
-        bool database::store_memo_in_savings_withdraws() const {
-            return _store_memo_in_savings_withdraws;
+        bool database::store_evaluator_events() const {
+            return _store_evaluator_events;
         }
 
         void database::set_skip_virtual_ops() {
@@ -2290,6 +2294,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_24::asset_creation_fee);
             calc_median(&chain_properties_24::invite_transfer_interval_sec);
             calc_median(&chain_properties_26::convert_fee_percent);
+            calc_median(&chain_properties_26::min_golos_power_to_curate);
 
             if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
                 #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
@@ -2737,9 +2742,14 @@ namespace golos { namespace chain {
             return delegators_reward;
         }
 
-        uint64_t database::pay_curator(const comment_vote_object& cvo, const uint64_t& claim, const account_name_type& author, const std::string& permlink) {
-            const auto &voter = get(cvo.voter);
+        uint64_t database::pay_curator(const comment_vote_object& cvo, const uint64_t& claim, const comment_curation_info& c, share_type& back_to_fund) {
+            const auto& voter = get(cvo.voter);
             auto voter_claim = claim;
+
+            if (voter.effective_vesting_shares() < c.min_vesting_shares_to_curate) {
+                back_to_fund += voter_claim;
+                return 0;
+            }
 
             if (has_hardfork(STEEMIT_HARDFORK_0_19__756)) {
                 voter_claim -= pay_delegators(voter, cvo, claim);
@@ -2747,9 +2757,9 @@ namespace golos { namespace chain {
 
             auto voter_reward = create_vesting(voter, asset(voter_claim, STEEM_SYMBOL));
 
-            push_virtual_operation(curation_reward_operation(voter.name, voter_reward, author, permlink, asset(voter_claim, STEEM_SYMBOL)));
+            push_virtual_operation(curation_reward_operation(voter.name, voter_reward, c.comment.author, to_string(c.comment.permlink), asset(voter_claim, STEEM_SYMBOL)));
 
-            modify(voter, [&](account_object &a) {
+            modify(voter, [&](auto& a) {
                 a.curation_rewards += voter_claim;
             });
 
@@ -2766,6 +2776,7 @@ namespace golos { namespace chain {
                 share_type unclaimed_rewards = max_rewards;
 
                 if (c.total_vote_weight > 0 && c.comment.allow_curation_rewards) {
+                    share_type back_to_fund = 0;
                     uint128_t total_weight(c.total_vote_weight);
                     uint128_t auction_window_reward = uint128_t(max_rewards.value) * c.auction_window_weight / total_weight;
 
@@ -2792,7 +2803,7 @@ namespace golos { namespace chain {
 
                         if (claim > 0) { // min_amt is non-zero satoshis
                             unclaimed_rewards -= claim;
-                            actual_rewards += pay_curator(*itr->vote, claim, c.comment.author, to_string(c.comment.permlink));
+                            actual_rewards += pay_curator(*itr->vote, claim, c, back_to_fund);
                         } else {
                             break;
                         }
@@ -2801,8 +2812,13 @@ namespace golos { namespace chain {
                         // pay needed claim + rest unclaimed tokens (close to zero value) to curator with greates weight
                         // BTW: it has to be unclaimed_rewards.value not heaviest_vote_after_auw_weight + unclaimed_rewards.value, coz
                         //      unclaimed_rewards already contains this.
-                        actual_rewards = pay_curator(*heaviest_itr->vote, unclaimed_rewards.value, c.comment.author, to_string(c.comment.permlink));
+                        actual_rewards = pay_curator(*heaviest_itr->vote, unclaimed_rewards.value, c, back_to_fund);
                         unclaimed_rewards = 0;
+                    }
+                    if (back_to_fund != 0) {
+                        modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
+                            props.total_reward_fund_steem += asset(back_to_fund, STEEM_SYMBOL);
+                        });
                     }
                 }
                 if (!c.comment.allow_curation_rewards) {

@@ -128,8 +128,10 @@ namespace golos { namespace chain {
             bool store_asset_metadata() const;
 
             void set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws);
-            void set_store_evaluator_events(bool store_evaluator_events);
             bool store_memo_in_savings_withdraws() const;
+
+            void set_store_evaluator_events(bool store_evaluator_events);
+            bool store_evaluator_events() const;
 
             void set_clear_old_worker_votes(bool clear_old_worker_votes);
 
@@ -683,7 +685,7 @@ namespace golos { namespace chain {
 
             bool _resize(uint32_t block_num);
 
-            uint64_t pay_curator(const comment_vote_object& cvo, const uint64_t& claim, const account_name_type& author, const std::string& permlink);
+            uint64_t pay_curator(const comment_vote_object& cvo, const uint64_t& claim, const comment_curation_info& c, share_type& back_to_fund);
 
             void adjust_sbd_balance(const account_object &a, const asset &delta);
 

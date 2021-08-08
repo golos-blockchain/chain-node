@@ -79,7 +79,7 @@ namespace golos { namespace chain {
             return vesting;
         }
 
-        void modify_reward_fund(asset& value) {
+        void modify_reward_fund(const asset& value) {
             _reward_fund += value;
         }
 
@@ -244,6 +244,8 @@ namespace golos { namespace chain {
             uint64_t heaviest_vote_after_auw_weight = 0;
             account_id_type heaviest_vote_after_auw_account;
 
+            uint64_t back_to_fund = 0;
+
             for (auto itr = c.vote_list.begin(); itr != c.vote_list.end(); ++itr) {
                 BOOST_REQUIRE(vote_payout_map_.find(itr->vote->voter) == vote_payout_map_.end());
                 auto weight = u256(itr->weight);
@@ -262,6 +264,11 @@ namespace golos { namespace chain {
                 }
 
                 auto reward = claim;
+
+                if (_db.get(itr->vote->voter).effective_vesting_shares() < c.min_vesting_shares_to_curate) {
+                    back_to_fund += reward;
+                    continue;
+                }
 
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__756)) {
                     for (auto& dvir : itr->vote->delegator_vote_interest_rates) {
@@ -287,26 +294,35 @@ namespace golos { namespace chain {
                 total_vote_payouts_ += payout;
             }
 
-            uint64_t unclaimed_rewards = vote_rewards_fund_ - total_vote_rewards_;
+            uint64_t unclaimed_rewards = vote_rewards_fund_ - total_vote_rewards_ - back_to_fund;
 
             if (comment_.auction_window_reward_destination == protocol::to_curators && heaviest_vote_after_auw_weight) {
                 // pay needed claim + rest unclaimed tokens (close to zero value) to curator with greates weight
                 // BTW: it has to be unclaimed_rewards.value not heaviest_vote_after_auw_weight + unclaimed_rewards.value, coz
                 //      unclaimed_rewards already contains this.
-                total_vote_rewards_ += unclaimed_rewards;
-                BOOST_REQUIRE_LE(total_vote_rewards_, vote_rewards_fund_);
 
-                auto payout = fund_.create_vesting(asset(unclaimed_rewards, STEEM_SYMBOL));
-                vote_payout_map_.emplace(heaviest_vote_after_auw_account, payout);
-                total_vote_payouts_ += payout;
+                if (_db.get(heaviest_vote_after_auw_account).effective_vesting_shares() < c.min_vesting_shares_to_curate) {
+                    back_to_fund += unclaimed_rewards;
+                } else {
+                    total_vote_rewards_ += unclaimed_rewards;
+                    BOOST_REQUIRE_LE(total_vote_rewards_, vote_rewards_fund_);
+
+                    auto payout = fund_.create_vesting(asset(unclaimed_rewards, STEEM_SYMBOL));
+                    vote_payout_map_.emplace(heaviest_vote_after_auw_account, payout);
+                    total_vote_payouts_ += payout;
+                }
 
                 unclaimed_rewards = 0;
             }
 
+            if (back_to_fund) {
+                comment_rewards_ -= back_to_fund;
+                fund_.modify_reward_fund(asset(back_to_fund, STEEM_SYMBOL));
+            }
+
             if (comment_.auction_window_reward_destination != protocol::to_author) {
                 comment_rewards_ -= unclaimed_rewards;
-                auto tokes_back_to_reward_fund = asset(unclaimed_rewards, STEEM_SYMBOL);
-                fund_.modify_reward_fund(tokes_back_to_reward_fund);
+                fund_.modify_reward_fund(asset(unclaimed_rewards, STEEM_SYMBOL));
             }
 
             comment_rewards_ -= total_vote_rewards_;

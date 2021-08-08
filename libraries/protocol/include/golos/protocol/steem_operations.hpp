@@ -842,6 +842,11 @@ namespace golos { namespace protocol {
              */
             uint16_t convert_fee_percent = GOLOS_DEF_CONVERT_FEE_PERCENT;
 
+            /**
+             * Minimum vesting shares amount (in GOLOS) to receive curation rewards.
+             */
+            asset min_golos_power_to_curate = GOLOS_DEF_GOLOS_POWER_TO_CURATE;
+
             void validate() const;
 
             chain_properties_26& operator=(const chain_properties_17& src) {
@@ -1852,7 +1857,7 @@ FC_REFLECT_DERIVED(
     (asset_creation_fee)(invite_transfer_interval_sec))
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_26), ((golos::protocol::chain_properties_24)),
-    (convert_fee_percent))
+    (convert_fee_percent)(min_golos_power_to_curate))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

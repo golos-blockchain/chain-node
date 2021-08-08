@@ -57,6 +57,7 @@ namespace golos { namespace api {
         }
         if (db.has_hardfork(STEEMIT_HARDFORK_0_26)) {
             convert_fee_percent = src.convert_fee_percent;
+            min_golos_power_to_curate = src.min_golos_power_to_curate;
         }
     }
 

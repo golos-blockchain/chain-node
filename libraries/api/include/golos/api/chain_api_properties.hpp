@@ -68,6 +68,7 @@ namespace golos { namespace api {
         fc::optional<uint32_t> invite_transfer_interval_sec;
 
         fc::optional<uint16_t> convert_fee_percent;
+        fc::optional<asset> min_golos_power_to_curate;
     };
 
 } } // golos::api
@@ -89,5 +90,5 @@ FC_REFLECT(
     (claim_idleness_time)(min_invite_balance)
     (asset_creation_fee)
     (invite_transfer_interval_sec)
-    (convert_fee_percent)
+    (convert_fee_percent)(min_golos_power_to_curate)
 )

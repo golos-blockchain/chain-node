@@ -468,12 +468,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             BOOST_TEST_MESSAGE("Testing: nested_comments");
 
             ACTORS((alice)(bob)(sam)(dave))
-            fund("alice", 10000);
-            vest("alice", 10000);
-            fund("bob", 10000);
-            vest("bob", 10000);
-            fund("sam", 10000);
-            vest("sam", 10000);
+            fund("alice", 1000000);
+            vest("alice", 1000000);
+            fund("bob", 1000000);
+            vest("bob", 1000000);
+            fund("sam", 1000000);
+            vest("sam", 1000000);
             fund("dave", 10000);
             vest("dave", 10000);
 
