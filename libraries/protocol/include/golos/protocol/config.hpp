@@ -314,11 +314,11 @@
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1476788400))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
-#ifdef STEEMIT_BUILD_LIVETEST
-#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*2)  // 2 minutes
-#else
+//#ifdef STEEMIT_BUILD_LIVETEST
+//#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*2)  // 2 minutes
+//#else
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24*7)  // 1 week
-#endif
+//#endif
 #define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)    // 1 day
 #define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
