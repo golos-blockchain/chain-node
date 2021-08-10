@@ -318,7 +318,7 @@ DEFINE_API(plugin, get_chain_properties) {
 }
 
 dynamic_global_property_api_object plugin::api_impl::get_dynamic_global_properties() const {
-    return dynamic_global_property_api_object(database().get(dynamic_global_property_object::id_type()));
+    return dynamic_global_property_api_object(database().get(dynamic_global_property_object::id_type()), database());
 }
 
 DEFINE_API(plugin, get_hardfork_version) {

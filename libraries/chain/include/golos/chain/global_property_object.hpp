@@ -26,7 +26,7 @@ namespace golos {
                 : public object<dynamic_global_property_object_type, dynamic_global_property_object> {
         public:
             template<typename Constructor, typename Allocator>
-            dynamic_global_property_object(Constructor &&c, allocator <Allocator> a) : recent_slots_filled(0), worker_requests(a) {
+            dynamic_global_property_object(Constructor &&c, allocator <Allocator> a) : recent_slots_filled(0) {
                 c(*this);
             }
 
@@ -142,8 +142,6 @@ namespace golos {
             uint32_t transit_block_num = UINT32_MAX;
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
 
-            flat_map<asset_symbol_type, uint32_t, std::less<asset_symbol_type>, allocator<std::pair<asset_symbol_type, uint32_t>>> worker_requests;
-
             asset accumulative_emission_per_day = asset(0, STEEM_SYMBOL);
         };
 
@@ -193,7 +191,6 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (is_forced_min_price)
                 (transit_block_num)
                 (transit_witnesses)
-                (worker_requests)
                 (accumulative_emission_per_day)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::dynamic_global_property_object, golos::chain::dynamic_global_property_index)
