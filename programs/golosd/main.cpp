@@ -3,6 +3,7 @@
 #include <fc/log/logger_config.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 #include <fc/git_revision.hpp>
+#include <fc/stacktrace.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/p2p/p2p_plugin.hpp>
 #include <golos/plugins/webserver/webserver_plugin.hpp>
@@ -132,6 +133,7 @@ void logo(){
 
 int main( int argc, char** argv ) {
     try {
+        fc::install_stacktrace_crash_handler();
 
         golos::plugins::register_plugins();
         appbase::app().set_version_string(version_string());
