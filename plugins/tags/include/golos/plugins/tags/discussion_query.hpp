@@ -53,6 +53,7 @@ namespace golos { namespace plugins { namespace tags {
         fc::optional<std::string>         start_permlink; ///< the permlink of discussion to start searching from
         fc::optional<std::string>         parent_author; ///< the author of parent discussion
         fc::optional<std::string>         parent_permlink; ///< the permlink of parent discussion
+        bool                              comments_only = false;
 
         discussion                        start_comment;
         discussion                        parent_comment;
@@ -96,6 +97,9 @@ namespace golos { namespace plugins { namespace tags {
         }
 
         bool is_good_parent(const comment_object::id_type& id) const {
+            if (comments_only) {
+                return id != comment_object::id_type();
+            } 
             return has_parent_comment() || id == parent_comment.id;
         }
 
@@ -118,7 +122,7 @@ FC_REFLECT((golos::plugins::tags::discussion_query),
         (select_tags)(filter_tags)(filter_tag_masks)(select_categories)(select_category_masks)
         (select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
         (start_author)(start_permlink)(parent_author)
-        (parent_permlink)(limit)(select_languages)(filter_languages)
+        (parent_permlink)(comments_only)(limit)(select_languages)(filter_languages)
 );
 
 #endif //GOLOS_DISCUSSION_QUERY_H

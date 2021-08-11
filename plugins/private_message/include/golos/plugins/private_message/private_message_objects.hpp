@@ -228,6 +228,7 @@ namespace golos { namespace plugins { namespace private_message {
         private_contact_type type;
         shared_string json_metadata;
         contact_size_info size;
+        bool is_hidden = false;
     };
 
     using contact_id_type = contact_object::id_type;
