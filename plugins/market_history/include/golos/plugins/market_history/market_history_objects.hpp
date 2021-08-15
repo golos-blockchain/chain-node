@@ -39,12 +39,12 @@ namespace golos {
 
             // Api params
             struct market_ticker {
-                double latest1 = 0; // close_asset2 / close_asset1 (for golos.id's asset1-asset2 pair)
-                double latest2 = 0; // close_asset1 / close_asset2 (for golos.id's asset2-asset1 pair)
+                double latest1 = 0; // close_asset2 / close_asset1 (for market's asset1-asset2 pair)
+                double latest2 = 0; // close_asset1 / close_asset2 (for market's asset2-asset1 pair)
                 double lowest_ask = 0;
                 double highest_bid = 0;
-                double percent_change1 = 0; // (for golos.id's asset1-asset2 pair)
-                double percent_change2 = 0; // (for golos.id's asset2-asset1 pair)
+                double percent_change1 = 0; // (for market's asset1-asset2 pair)
+                double percent_change2 = 0; // (for market's asset2-asset1 pair)
                 asset asset1_volume;
                 asset asset2_volume;
                 asset asset1_depth;
