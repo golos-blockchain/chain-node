@@ -55,6 +55,10 @@ namespace golos { namespace api {
             asset_creation_fee = src.asset_creation_fee;
             invite_transfer_interval_sec = src.invite_transfer_interval_sec;
         }
+        if (db.has_hardfork(STEEMIT_HARDFORK_0_26)) {
+            convert_fee_percent = src.convert_fee_percent;
+            min_golos_power_to_curate = src.min_golos_power_to_curate;
+        }
     }
 
 } } // golos::api

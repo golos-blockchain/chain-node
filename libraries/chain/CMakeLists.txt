@@ -64,6 +64,7 @@ if(BUILD_SHARED_LIBRARIES)
             include/golos/chain/witness_objects.hpp
             include/golos/chain/curation_info.hpp
             include/golos/chain/worker_objects.hpp
+            include/golos/chain/event_objects.hpp
 
             ${hardfork_hpp_file}
             "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
@@ -119,6 +120,7 @@ else()
             include/golos/chain/witness_objects.hpp
             include/golos/chain/curation_info.hpp
             include/golos/chain/worker_objects.hpp
+            include/golos/chain/event_objects.hpp
 
             ${hardfork_hpp_file}
             "${CMAKE_CURRENT_BINARY_DIR}/include/golos/chain/hardfork.hpp"

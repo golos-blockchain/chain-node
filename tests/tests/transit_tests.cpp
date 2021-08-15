@@ -94,7 +94,6 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
 
             BOOST_TEST_MESSAGE("-- save block to transit");
             generate_block();
-            auto transit_block_num = db->head_block_num();
         }
         FC_LOG_AND_RETHROW()
     }

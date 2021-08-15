@@ -105,6 +105,7 @@ namespace golos {
             bool allow_votes = true;      /// allows a post to receive votes;
             bool allow_curation_rewards = true;
             uint16_t curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
+            asset min_golos_power_to_curate = asset(0, STEEM_SYMBOL);
 
             bip::vector <protocol::beneficiary_route_type, allocator<protocol::beneficiary_route_type>> beneficiaries;
         };

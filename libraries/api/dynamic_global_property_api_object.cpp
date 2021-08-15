@@ -1,7 +1,7 @@
 #include <golos/api/dynamic_global_property_api_object.hpp>
 
 namespace golos { namespace api {
-    dynamic_global_property_api_object::dynamic_global_property_api_object(const dynamic_global_property_object &dgp)
+    dynamic_global_property_api_object::dynamic_global_property_api_object(const dynamic_global_property_object& dgp, const golos::chain::database& _db)
         : id(dgp.id), head_block_number(dgp.head_block_number), head_block_id(dgp.head_block_id),
         time(dgp.time), current_witness(dgp.current_witness), total_pow(dgp.total_pow),
         num_pow_witnesses(dgp.num_pow_witnesses), virtual_supply(dgp.virtual_supply),
@@ -16,7 +16,13 @@ namespace golos { namespace api {
         last_irreversible_block_num(dgp.last_irreversible_block_num), max_virtual_bandwidth(dgp.max_virtual_bandwidth),
         current_reserve_ratio(dgp.current_reserve_ratio), custom_ops_bandwidth_multiplier(dgp.custom_ops_bandwidth_multiplier),
         transit_block_num(dgp.transit_block_num), transit_witnesses(dgp.transit_witnesses) {
-            worker_requests.insert(dgp.worker_requests.begin(), dgp.worker_requests.end());
-            accumulative_emission_per_day = dgp.accumulative_emission_per_day;
+
+        const auto& wro_idx = _db.get_index<worker_request_index, by_state>();
+        auto itr = wro_idx.lower_bound(worker_request_state::payment);
+        for (; itr != wro_idx.end() && itr->state == worker_request_state::payment; ++itr) {
+            worker_requests[itr->required_amount_min.symbol]++;
+        }
+
+        accumulative_emission_per_day = dgp.accumulative_emission_per_day;
     }
 } } // golos::api

@@ -1,5 +1,9 @@
 FROM phusion/baseimage:0.9.19
 
+ARG TYPE=Release
+
+RUN echo BUILD TYPE IS $TYPE
+
 ENV LANG=en_US.UTF-8
 
 RUN \
@@ -8,6 +12,7 @@ RUN \
         autoconf \
         automake \
         autotools-dev \
+        binutils \
         bsdmainutils \
         build-essential \
         cmake \
@@ -38,7 +43,7 @@ RUN \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_BUILD_TYPE=$TYPE \
         -DBUILD_GOLOS_TESTNET=FALSE \
         -DBUILD_SHARED_LIBRARIES=FALSE \
         -DCHAINBASE_CHECK_LOCKING=FALSE \

@@ -371,6 +371,10 @@ namespace golos { namespace wallet {
                         result["asset_creation_fee"]  = median_props.asset_creation_fee;
                         result["invite_transfer_interval_sec"]  = median_props.invite_transfer_interval_sec;
                     }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_26)) {
+                        result["convert_fee_percent"]  = median_props.convert_fee_percent;
+                        result["min_golos_power_to_curate"]  = median_props.min_golos_power_to_curate;
+                    }
 
                     return result;
                 }
@@ -2296,7 +2300,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             chain_properties_update_operation op;
             chain_api_properties ap;
-            chain_properties_23 p;
+            chain_properties_24 p;
 
             // copy defaults in case of missing witness object
             ap.account_creation_fee = p.account_creation_fee;
@@ -2348,14 +2352,16 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             SET_PROP(p, account_idleness_time);
             SET_PROP(p, claim_idleness_time);
             SET_PROP(p, min_invite_balance);
+            SET_PROP(p, asset_creation_fee);
+            SET_PROP(p, invite_transfer_interval_sec);
             op.props = p;
             auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_24)) {
-                chain_properties_24 p24;
-                p24 = p;
-                SET_PROP(p24, asset_creation_fee);
-                SET_PROP(p24, invite_transfer_interval_sec);
-                op.props = p24;
+            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_26)) {
+                chain_properties_26 p26;
+                p26 = p;
+                SET_PROP(p26, convert_fee_percent);
+                SET_PROP(p26, min_golos_power_to_curate);
+                op.props = p26;
             }
 #undef SET_PROP
 
@@ -2731,7 +2737,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             return my->sign_transaction( tx, broadcast );
         }
 
-        annotated_signed_transaction wallet_api::convert_sbd(string from, asset amount, bool broadcast )
+        annotated_signed_transaction wallet_api::convert(string from, asset amount, bool broadcast)
         {
             WALLET_CHECK_UNLOCKED();
             convert_operation op;
@@ -2743,7 +2749,12 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             tx.operations.push_back( op );
             tx.validate();
 
-            return my->sign_transaction( tx, broadcast );
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::convert_sbd(string from, asset amount, bool broadcast)
+        {
+            return convert(from, amount, broadcast);
         }
 
         annotated_signed_transaction wallet_api::publish_feed(string witness, price exchange_rate, bool broadcast )
@@ -3163,20 +3174,9 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 const set<string>& what,
                 const bool broadcast) {
 
-            GOLOS_CHECK_PARAM(following, GOLOS_CHECK_VALUE(following.size() > 0, "Empty string is not allowed"));
-            string _following = following;
-
-            auto follwer_account = get_account( follower );
-            if( _following[0] != '@' || _following[0] != '#' ) {
-                _following = '@' + _following;
-            }
-            if( _following[0] == '@' ) {
-                get_account( _following.substr(1) );
-            }
-
             follow::follow_operation fop;
             fop.follower = follower;
-            fop.following = _following;
+            fop.following = following;
             fop.what = what;
             follow::follow_plugin_operation op = fop;
 

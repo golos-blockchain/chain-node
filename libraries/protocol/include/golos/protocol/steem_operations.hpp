@@ -835,6 +835,53 @@ namespace golos { namespace protocol {
             chain_properties_24& operator=(const chain_properties_24&) = default;
         };
 
+        struct chain_properties_26 : public chain_properties_24 {
+
+            /**
+             * Percent of fee on GOLOS-GBG conversions.
+             */
+            uint16_t convert_fee_percent = GOLOS_DEF_CONVERT_FEE_PERCENT;
+
+            /**
+             * Minimum vesting shares amount (in GOLOS) to receive curation rewards.
+             */
+            asset min_golos_power_to_curate = GOLOS_DEF_GOLOS_POWER_TO_CURATE;
+
+            void validate() const;
+
+            chain_properties_26& operator=(const chain_properties_17& src) {
+                chain_properties_24::operator=(src);
+                return *this;
+            }
+
+            chain_properties_26& operator=(const chain_properties_18& src) {
+                chain_properties_24::operator=(src);
+                return *this;
+            }
+
+            chain_properties_26& operator=(const chain_properties_19& src) {
+                chain_properties_24::operator=(src);
+                return *this;
+            }
+
+            chain_properties_26& operator=(const chain_properties_22& src) {
+                chain_properties_24::operator=(src);
+                return *this;
+            }
+
+            chain_properties_26& operator=(const chain_properties_23& src) {
+                chain_properties_24::operator=(src);
+                return *this;
+            }
+
+            chain_properties_26& operator=(const chain_properties_24& src) {
+                chain_properties_24::operator=(src);
+                return *this;
+            }
+
+            chain_properties_26& operator=(const chain_properties_26&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -848,7 +895,8 @@ namespace golos { namespace protocol {
             chain_properties_19,
             chain_properties_22,
             chain_properties_23,
-            chain_properties_24
+            chain_properties_24,
+            chain_properties_26
         >;
 
         /**
@@ -1807,6 +1855,9 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_24), ((golos::protocol::chain_properties_23)),
     (asset_creation_fee)(invite_transfer_interval_sec))
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_26), ((golos::protocol::chain_properties_24)),
+    (convert_fee_percent)(min_golos_power_to_curate))
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

@@ -26,6 +26,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_payout) {
         try {
+            BOOST_TEST_MESSAGE("Testing: comment_payout");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             vest("alice", 10000);
@@ -180,11 +182,10 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
         FC_LOG_AND_RETHROW()
     }
 
-    BOOST_AUTO_TEST_CASE(discussion_rewards) {
-    }
-
     BOOST_AUTO_TEST_CASE(comment_payout1) {
         try {
+            BOOST_TEST_MESSAGE("Testing: comment_payout1");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             vest("alice", 10000);
@@ -464,13 +465,15 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(nested_comments) {
         try {
+            BOOST_TEST_MESSAGE("Testing: nested_comments");
+
             ACTORS((alice)(bob)(sam)(dave))
-            fund("alice", 10000);
-            vest("alice", 10000);
-            fund("bob", 10000);
-            vest("bob", 10000);
-            fund("sam", 10000);
-            vest("sam", 10000);
+            fund("alice", 1000000);
+            vest("alice", 1000000);
+            fund("bob", 1000000);
+            vest("bob", 1000000);
+            fund("sam", 1000000);
+            vest("sam", 1000000);
             fund("dave", 10000);
             vest("dave", 10000);
 
@@ -723,7 +726,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_beneficiaries_payout) {
         try {
-            BOOST_TEST_MESSAGE("Test comment beneficiaries payout");
+            BOOST_TEST_MESSAGE("Testing: comment_beneficiaries_payout");
+
             ACTORS((alice)(bob)(sam))
             generate_block();
 
@@ -824,6 +828,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(vesting_withdrawals) {
         try {
+            BOOST_TEST_MESSAGE("Testing: vesting_withdrawals");
+
             ACTORS((alice))
             fund("alice", 100000);
             vest("alice", 100000);
@@ -954,6 +960,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(vesting_withdraw_route) {
         try {
+            BOOST_TEST_MESSAGE("Testing: vesting_withdraw_route");
+
             ACTORS((alice)(bob)(sam))
 
             auto original_vesting = alice.vesting_shares;
@@ -1088,6 +1096,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(feed_publish_mean) {
         try {
+            BOOST_TEST_MESSAGE("Testing: feed_publish_mean");
+
             resize_shared_mem(1024 * 1024 * 32);
 
             ACTORS((alice0)(alice1)(alice2)(alice3)(alice4)(alice5)(alice6))
@@ -1119,7 +1129,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             // Upgrade accounts to witnesses
             for (int i = 0; i < 7; i++) {
-                transfer(STEEMIT_INIT_MINER_NAME, accounts[i], 10000);
+                transfer(STEEMIT_INIT_MINER_NAME, accounts[i], ASSET("10.000 GOLOS"));
                 witness_create(accounts[i], keys[i], "foo.bar", keys[i].get_public_key(), 1000);
 
                 ops.push_back(feed_publish_operation());
@@ -1191,36 +1201,30 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(convert_delay) {
         try {
+            BOOST_TEST_MESSAGE("Testing: convert_delay");
+
             ACTORS((alice))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
 
             set_price_feed(price(asset::from_string("1.250 GOLOS"), asset::from_string("1.000 GBG")));
 
-            convert_operation op;
-            comment_operation comment;
-            vote_operation vote;
             signed_transaction tx;
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
 
+            comment_operation comment;
             comment.author = "alice";
             comment.title = "foo";
             comment.body = "bar";
             comment.permlink = "test";
             comment.parent_permlink = "test";
-            tx.operations.push_back(comment);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
 
-            tx.operations.clear();
-            tx.signatures.clear();
+            vote_operation vote;
             vote.voter = "alice";
             vote.author = "alice";
             vote.permlink = "test";
             vote.weight = STEEMIT_100_PERCENT;
-            tx.operations.push_back(vote);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vote));
 
             generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
 
@@ -1231,60 +1235,134 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             auto alice_cr_itr = cr_idx.find(db->get_comment("alice", string("test")).id);
             BOOST_REQUIRE(alice_cr_itr != cr_idx.end());
 
-            auto start_balance = asset(
-                alice_cr_itr->total_payout_value.amount /2,
-                SBD_SYMBOL);
+            BOOST_TEST_MESSAGE("--- Transferring worker sbd payout to alice");
+            vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
+            transfer(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
 
-            BOOST_TEST_MESSAGE("Setup conversion to GOLOS");
-            tx.operations.clear();
-            tx.signatures.clear();
+            auto start_balance = db->get_account("alice").sbd_balance;
+
+            BOOST_TEST_MESSAGE("--- Convert GBG to GOLOS");
+
+            convert_operation op;
             op.owner = "alice";
             op.amount = asset(2000, SBD_SYMBOL);
             op.requestid = 2;
-            tx.operations.push_back(op);
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
-            BOOST_TEST_MESSAGE("Generating Blocks up to conversion block");
+            BOOST_TEST_MESSAGE("--- Generating Blocks up to conversion block");
             generate_blocks(
                 db->head_block_time() + STEEMIT_CONVERSION_DELAY - fc::seconds(STEEMIT_BLOCK_INTERVAL / 2),
                 true);
 
-            BOOST_TEST_MESSAGE("Verify conversion is not applied");
-            const auto& alice_2 = db->get_account("alice");
-            const auto& convert_request_idx = db->get_index<convert_request_index>().indices().get<by_owner>();
-            auto convert_request = convert_request_idx.find(std::make_tuple("alice", 2));
+            BOOST_TEST_MESSAGE("--- Verify conversion is not applied");
 
-            BOOST_REQUIRE(convert_request != convert_request_idx.end());
-            BOOST_REQUIRE(alice_2.balance.amount.value == 0);
-            APPROX_CHECK_EQUAL(alice_2.sbd_balance.amount.value, (start_balance - op.amount).amount.value, 10);
+            const auto& convert_request_idx = db->get_index<convert_request_index>().indices().get<by_owner>();
+
+            {
+                auto convert_request = convert_request_idx.find(std::make_tuple("alice", 2));
+                BOOST_CHECK(convert_request != convert_request_idx.end());
+
+                const auto& alice = db->get_account("alice");
+                BOOST_CHECK_EQUAL(alice.balance.amount, 0);
+                BOOST_CHECK_EQUAL(alice.sbd_balance.amount, (start_balance - op.amount).amount);
+            }
+
             validate_database();
 
-            BOOST_TEST_MESSAGE("Generate one more block");
+            BOOST_TEST_MESSAGE("--- Generate one more block");
+
             generate_block();
 
-            BOOST_TEST_MESSAGE("Verify conversion applied");
-            const auto& alice_3 = db->get_account("alice");
-            auto vop = get_last_operations(1)[0].get<fill_convert_request_operation>();
+            BOOST_TEST_MESSAGE("--- Verify conversion applied");
 
-            convert_request = convert_request_idx.find(std::make_tuple("alice", 2));
-            BOOST_REQUIRE(convert_request == convert_request_idx.end());
-            BOOST_REQUIRE(alice_3.balance.amount.value == 2500);
-            APPROX_CHECK_EQUAL(alice_3.sbd_balance.amount.value, (start_balance - op.amount).amount.value, 10);
-            BOOST_REQUIRE(vop.owner == "alice");
-            BOOST_REQUIRE(vop.requestid == 2);
-            BOOST_REQUIRE(vop.amount_in.amount.value == ASSET("2.000 GBG").amount.value);
-            BOOST_REQUIRE(vop.amount_out.amount.value == ASSET("2.500 GOLOS").amount.value);
+            {
+                const auto& convert_request = convert_request_idx.find(std::make_tuple("alice", 2));
+                BOOST_CHECK(convert_request == convert_request_idx.end());
+
+                const auto& alice = db->get_account("alice");
+                BOOST_CHECK_EQUAL(alice.balance.amount, 2500);
+                BOOST_CHECK_EQUAL(alice.sbd_balance.amount, (start_balance - op.amount).amount);
+
+                auto fcrop = get_last_operations<fill_convert_request_operation>(1)[0];
+                BOOST_CHECK_EQUAL(fcrop.owner, "alice");
+                BOOST_CHECK_EQUAL(fcrop.requestid, 2);
+                BOOST_CHECK_EQUAL(fcrop.amount_in.symbol, SBD_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.amount_in.amount, ASSET("2.000 GBG").amount);
+                BOOST_CHECK_EQUAL(fcrop.amount_out.symbol,STEEM_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.amount_out.amount,ASSET("2.500 GOLOS").amount);
+                BOOST_CHECK_EQUAL(fcrop.fee_in.symbol, SBD_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.fee_in.amount, 0);
+            }
+
             validate_database();
+
+            BOOST_TEST_MESSAGE("--- Convert GOLOS to GBG");
+
+            op.amount = asset(2500, STEEM_SYMBOL);
+            op.requestid = 3;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+
+            BOOST_TEST_MESSAGE("--- Generating Blocks up to conversion block");
+
+            start_balance = db->get_account("alice").sbd_balance;
+
+            generate_blocks(
+                db->head_block_time() + STEEMIT_CONVERSION_DELAY - fc::seconds(STEEMIT_BLOCK_INTERVAL / 2),
+                true);
+
+            BOOST_TEST_MESSAGE("--- Verify conversion is not applied");
+
+            {
+                const auto& convert_request = convert_request_idx.find(std::make_tuple("alice", 3));
+                BOOST_CHECK(convert_request != convert_request_idx.end());
+     
+                const auto& alice = db->get_account("alice");
+                BOOST_CHECK_EQUAL(alice.balance.amount, 0);
+                BOOST_CHECK_EQUAL(alice.sbd_balance.amount, start_balance.amount);
+            }
+
+            validate_database();
+
+            BOOST_TEST_MESSAGE("--- Generate one more block");
+
+            start_balance = db->get_account("alice").sbd_balance;
+            generate_block();
+
+            BOOST_TEST_MESSAGE("--- Verify conversion applied");
+
+            {
+                const auto& convert_request = convert_request_idx.find(std::make_tuple("alice", 3));
+                BOOST_CHECK(convert_request == convert_request_idx.end());
+
+                const auto& alice = db->get_account("alice");
+                BOOST_CHECK_EQUAL(alice.balance.amount, 0);
+
+                auto fcrop = get_last_operations<fill_convert_request_operation>(1)[0];
+                BOOST_CHECK_EQUAL(fcrop.owner, "alice");
+                BOOST_CHECK_EQUAL(fcrop.requestid, 3);
+                BOOST_CHECK_EQUAL(fcrop.amount_in.symbol, STEEM_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.amount_in.amount, ASSET("2.500 GOLOS").amount);
+                BOOST_CHECK_EQUAL(fcrop.amount_out.symbol, SBD_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.amount_out.amount, ASSET("1.900 GBG").amount);
+                BOOST_CHECK_EQUAL(fcrop.fee_in.symbol, STEEM_SYMBOL);
+                BOOST_CHECK_EQUAL(fcrop.fee_in.amount, 125);
+
+                auto iop = get_last_operations<interest_operation>(1)[0];
+                BOOST_CHECK_EQUAL(alice.sbd_balance.amount,
+                    (start_balance + ASSET("1.900 GBG") + iop.interest).amount);
+            }
+
+            validate_database();
+        } catch (fc::exception& e) {
+            edump((e.to_detail_string()));
+            throw;
         }
-        FC_LOG_AND_RETHROW();
     }
 
     BOOST_AUTO_TEST_CASE(steem_inflation) {
         // commented in Steem too
         try {
-//            BOOST_TEST_MESSAGE("Testing STEEM Inflation until the vesting start block");
+//            BOOST_TEST_MESSAGE("Testing: steem_inflation");
 //
 //            auto gpo = db->get_dynamic_global_properties();
 //            auto virtual_supply = gpo.virtual_supply;
@@ -1565,14 +1643,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(sbd_interest) {
         try {
+            BOOST_TEST_MESSAGE("Testing: sbd_interest");
+
             ACTORS((alice)(bob))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
             vest("bob", ASSET("10.000 GOLOS"));
 
             set_price_feed(price(asset::from_string("1.000 GOLOS"), asset::from_string("1.000 GBG")));
-
-            BOOST_TEST_MESSAGE("Testing interest over smallest interest period");
 
             convert_operation op;
             comment_operation comment;
@@ -1601,7 +1679,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
 
+            BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
+            vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
+            transfer(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
+
             auto start_time = db->get_account("alice").sbd_seconds_last_update;
+
             auto alice_sbd = db->get_account("alice").sbd_balance;
 
             generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC), true);
@@ -1687,11 +1770,10 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(limit_sbd_interest_rate) try {
+        BOOST_TEST_MESSAGE("Testing: limit_sbd_interest_rate");
 
         const account_name_type alice_user_name = "alice";
         const account_name_type bob_user_name = "bob";
-
-        BOOST_TEST_MESSAGE("Testing limitation of the sbd interest rate");
 
         ACTORS((alice)(bob))
 
@@ -1767,8 +1849,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
     FC_LOG_AND_RETHROW()
 
     BOOST_AUTO_TEST_CASE(liquidity_rewards) {
-
         try {
+            BOOST_TEST_MESSAGE("Testing: liquidity_rewards");
+
             db->liquidity_rewards_enabled = false;
 
             ACTORS((alice)(bob)(sam)(dave))
@@ -1807,6 +1890,11 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             db->push_transaction(tx, 0);
 
             generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
+
+            BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
+            vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
+            transfer(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
+
             asset alice_sbd = db->get_account("alice").sbd_balance;
 
             fund("alice", alice_sbd.amount);
@@ -2438,6 +2526,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(post_rate_limit) {
         try {
+            BOOST_TEST_MESSAGE("Testing: post_rate_limit");
+
             ACTORS((alice))
 
             fund("alice", 10000);
@@ -2575,6 +2665,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_freeze) {
         try {
+            BOOST_TEST_MESSAGE("Testing: comment_freeze");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             fund("bob", 10000);
@@ -2695,6 +2787,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 #ifndef DEBUG
     BOOST_AUTO_TEST_CASE(sbd_stability) {
         try {
+            BOOST_TEST_MESSAGE("Testing: sbd_stability");
+
             // Due to number of blocks in the test, it requires a large file. (32 MB)
             resize_shared_mem(1024 * 1024 * 256);
 
@@ -2831,6 +2925,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(sbd_price_feed_limit) {
         try {
+            BOOST_TEST_MESSAGE("Testing: sbd_price_feed_limit");
+
             ACTORS((alice));
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
@@ -2878,7 +2974,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(clear_null_account) {
         try {
-            BOOST_TEST_MESSAGE("Testing clearing the null account's balances on block");
+            BOOST_TEST_MESSAGE("Testing: clear_null_account");
 
             ACTORS((alice));
             generate_block();

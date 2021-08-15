@@ -91,6 +91,9 @@ namespace golos { namespace wallet {
 
             fc::optional<asset> asset_creation_fee;
             fc::optional<uint32_t> invite_transfer_interval_sec;
+
+            fc::optional<uint16_t> convert_fee_percent;
+            fc::optional<asset> min_golos_power_to_curate;
         };
 
         struct optional_private_box_query {
@@ -1027,6 +1030,8 @@ namespace golos { namespace wallet {
              */
             annotated_signed_transaction set_withdraw_vesting_route( string from, string to, uint16_t percent, bool auto_vest, bool broadcast = false );
 
+            annotated_signed_transaction convert(string from, asset amount, bool broadcast = false);
+
             /**
              *  This method will convert SBD to STEEM at the current_median_history price one
              *  week from the time it is executed. This method depends upon there being a valid price feed.
@@ -1035,7 +1040,7 @@ namespace golos { namespace wallet {
              *  @param amount The amount of SBD to convert
              *  @param broadcast true if you wish to broadcast the transaction
              */
-            annotated_signed_transaction convert_sbd( string from, asset amount, bool broadcast = false );
+            annotated_signed_transaction convert_sbd(string from, asset amount, bool broadcast = false);
 
             /**
              * A witness can public a price feed for the STEEM:SBD market. The median price feed is used
@@ -1579,7 +1584,7 @@ FC_API( golos::wallet::wallet_api,
                 (transit_to_cyberway)
                 (set_voting_proxy)
                 (vote_for_witness)
-                //(follow)
+                (follow)
                 (transfer)
                 (escrow_transfer)
                 (escrow_approve)
@@ -1588,6 +1593,7 @@ FC_API( golos::wallet::wallet_api,
                 (transfer_to_vesting)
                 (withdraw_vesting)
                 (set_withdraw_vesting_route)
+                (convert)
                 (convert_sbd)
                 (publish_feed)
                 (get_order_book)
@@ -1698,7 +1704,10 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time)
     (claim_idleness_time)(min_invite_balance)
     (asset_creation_fee)
-    (invite_transfer_interval_sec))
+    (invite_transfer_interval_sec)
+    (convert_fee_percent)
+    (min_golos_power_to_curate)
+)
 
 FC_REFLECT(
     (golos::wallet::message_body),

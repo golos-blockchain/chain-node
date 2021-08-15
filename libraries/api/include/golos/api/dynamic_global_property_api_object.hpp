@@ -1,6 +1,7 @@
 #pragma once
 
 #include <golos/chain/global_property_object.hpp>
+#include <golos/chain/database.hpp>
 #include <golos/chain/steem_object_types.hpp>
 #include <golos/api/chain_api_properties.hpp>
 
@@ -8,7 +9,7 @@ namespace golos { namespace api {
     using namespace golos::chain;
 
     struct dynamic_global_property_api_object {
-        dynamic_global_property_api_object(const dynamic_global_property_object& dgp);
+        dynamic_global_property_api_object(const dynamic_global_property_object& dgp, const golos::chain::database& _db);
 
         dynamic_global_property_api_object() = default;
 

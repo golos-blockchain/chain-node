@@ -13,7 +13,7 @@ struct hf22_database_fixture : public database_fixture {
             generate_block();
             db->set_hardfork(STEEMIT_HARDFORK_0_21);
             startup(false);
-        } catch (const fc::exception &e) {
+        } catch (const fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
@@ -29,6 +29,7 @@ using namespace golos;
 using namespace golos::chain;
 using namespace golos::protocol;
 
+// Requires build with MAX_19_VOTED_WITNESSES=TRUE
 BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
 
     BOOST_AUTO_TEST_CASE(hf22_witness_vote_staked) { try {
@@ -140,7 +141,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
         }
         generate_block();
 
-        db_plugin->debug_update([&](database &db) {
+        db_plugin->debug_update([&](database& db) {
             for (auto i = 0; i < 6; ++i) {
                 db.modify(db.get_witness("witness" + std::to_string(i)), [&](auto& w) {
                     w.last_confirmed_block_num = 1;

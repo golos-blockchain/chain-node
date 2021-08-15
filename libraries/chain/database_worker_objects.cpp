@@ -100,9 +100,6 @@ namespace golos { namespace chain {
                 o.remaining_payment = asset(calculated_payment, wro.required_amount_min.symbol);
                 o.state = worker_request_state::payment;
             });
-            modify(props, [&](auto& o) {
-                o.worker_requests[wro.required_amount_min.symbol]++;
-            });
             send_worker_state(post, worker_request_state::payment);
         }
     }
@@ -114,8 +111,13 @@ namespace golos { namespace chain {
             return;
         }
 
-        const auto& props = get_dynamic_global_properties();
-        auto requests = props.worker_requests;
+        const auto& wro_idx = get_index<worker_request_index, by_state>();
+
+        flat_map<asset_symbol_type, uint32_t> requests;
+        auto itr = wro_idx.lower_bound(worker_request_state::payment);
+        for (; itr != wro_idx.end() && itr->state == worker_request_state::payment; ++itr) {
+            requests[itr->required_amount_min.symbol]++;
+        }
 
         const auto& pool = get_account(STEEMIT_WORKER_POOL_ACCOUNT);
         flat_map<asset_symbol_type, asset> max_request_payment;
@@ -126,8 +128,7 @@ namespace golos { namespace chain {
             return;
         }
 
-        const auto& wro_idx = get_index<worker_request_index, by_state>();
-        auto itr = wro_idx.lower_bound(worker_request_state::payment);
+        itr = wro_idx.lower_bound(worker_request_state::payment);
         for (; itr != wro_idx.end() && itr->state == worker_request_state::payment;) {
             const auto& wro = *itr;
             ++itr;
@@ -156,9 +157,6 @@ namespace golos { namespace chain {
             });
 
             if (wro.remaining_payment.amount <= 0) {
-                modify(props, [&](auto& o) {
-                    o.worker_requests[payment.symbol]--;
-                });
                 send_worker_state(post, worker_request_state::payment_complete);
             }
         }

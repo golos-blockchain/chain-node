@@ -59,16 +59,10 @@ BOOST_AUTO_TEST_CASE(account_notes_validate_size_limits) {
 
     op.key = "lorem";
     op.value = "";
-    for (int i = 0; i < 4096; i++) {
+    for (int i = 0; i < UINT16_MAX; i++) {
         op.value += "1";
     }
     BOOST_CHECK_NO_THROW(op.validate());
-
-    BOOST_TEST_MESSAGE("-- Long value case");
-
-    op.value += "1";
-    GOLOS_CHECK_ERROR_PROPS(op.validate(),
-        CHECK_ERROR(invalid_parameter, "value"));
 }
 
 BOOST_AUTO_TEST_CASE(account_notes_apply) {
@@ -135,7 +129,7 @@ BOOST_AUTO_TEST_CASE(account_notes_size_limits) {
 
     set_value_operation op;
     op.account = "alice";
-    op.key = "123456789012345678901";
+    op.key = "123456789012345678901234567890123456789012345678901";
     op.value = "ipsum";
 
     vec.push_back(op);
@@ -151,11 +145,7 @@ BOOST_AUTO_TEST_CASE(account_notes_size_limits) {
     BOOST_TEST_MESSAGE("-- Long value case");
 
     op.key = "lorem";
-    op.value = "";
-    for (auto i = 0; i < 50; i++) {
-        op.value += "1234567890";
-    }
-    op.value += "1234567890123";
+    op.value = std::string(size_t(UINT16_MAX) + 1, '1');
 
     vec.clear();
     vec.push_back(op);

@@ -19,13 +19,13 @@ namespace golos {
         using golos::protocol::asset_symbol_type;
 
         /**
-         *  This object is used to track pending requests to convert sbd to steem
+         *  This object is used to track pending requests to convert GBG to GOLOS (and vice-versa)
          */
         class convert_request_object
                 : public object<convert_request_object_type, convert_request_object> {
         public:
             template<typename Constructor, typename Allocator>
-            convert_request_object(Constructor &&c, allocator <Allocator> a) {
+            convert_request_object(Constructor &&c, allocator<Allocator> a) {
                 c(*this);
             }
 
@@ -37,6 +37,7 @@ namespace golos {
             account_name_type owner;
             uint32_t requestid = 0; ///< id set by owner, the owner,requestid pair must be unique
             asset amount;
+            asset fee; //< in GOLOS-GBG case. Amount includes this fee. Separate field is for virtual operation
             time_point_sec conversion_date; ///< at this time the feed_history_median_price * amount
         };
 
@@ -335,29 +336,23 @@ namespace golos {
 
         struct by_owner;
         struct by_conversion_date;
-        typedef multi_index_container <
-        convert_request_object,
-        indexed_by<
-                ordered_unique < tag <
-                by_id>, member<convert_request_object, convert_request_id_type, &convert_request_object::id>>,
-        ordered_unique <tag<by_conversion_date>,
-        composite_key<convert_request_object,
-                member <
-                convert_request_object, time_point_sec, &convert_request_object::conversion_date>,
-        member<convert_request_object, convert_request_id_type, &convert_request_object::id>
-        >
-        >,
-        ordered_unique <tag<by_owner>,
-        composite_key<convert_request_object,
-                member <
-                convert_request_object, account_name_type, &convert_request_object::owner>,
-        member<convert_request_object, uint32_t, &convert_request_object::requestid>
-        >
-        >
-        >,
-        allocator <convert_request_object>
-        >
-        convert_request_index;
+        using convert_request_index = multi_index_container <
+            convert_request_object,
+            indexed_by<
+                ordered_unique<tag<by_id>,
+                    member<convert_request_object, convert_request_id_type, &convert_request_object::id>
+                >,
+                ordered_unique<tag<by_conversion_date>, composite_key<convert_request_object,
+                    member<convert_request_object, time_point_sec, &convert_request_object::conversion_date>,
+                    member<convert_request_object, convert_request_id_type, &convert_request_object::id>
+                >>,
+                ordered_unique<tag<by_owner>, composite_key<convert_request_object,
+                    member<convert_request_object, account_name_type, &convert_request_object::owner>,
+                    member<convert_request_object, uint32_t, &convert_request_object::requestid>
+                >>
+            >,
+            allocator <convert_request_object>
+        >;
 
         struct by_owner;
         struct by_volume_weight;

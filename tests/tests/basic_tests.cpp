@@ -38,6 +38,8 @@ using namespace golos::protocol;
 
 BOOST_FIXTURE_TEST_SUITE(basic_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(parse_size_test) {
+        BOOST_TEST_MESSAGE("Testing: parse_size_test");
+
         BOOST_CHECK_THROW(fc::parse_size(""), fc::parse_error_exception);
         BOOST_CHECK_THROW(fc::parse_size("k"), fc::parse_error_exception);
 
@@ -65,6 +67,8 @@ BOOST_FIXTURE_TEST_SUITE(basic_tests, clean_database_fixture)
  * https://github.com/cryptonomex/graphene/issues/15
  */
     BOOST_AUTO_TEST_CASE(valid_name_test) {
+        BOOST_TEST_MESSAGE("Testing: valid_name_test");
+
         BOOST_CHECK(!is_valid_account_name("a"));
         BOOST_CHECK(!is_valid_account_name("A"));
         BOOST_CHECK(!is_valid_account_name("0"));
@@ -122,6 +126,8 @@ BOOST_FIXTURE_TEST_SUITE(basic_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(merkle_root) {
+        BOOST_TEST_MESSAGE("Testing: merkle_root");
+
         signed_block block;
         vector<signed_transaction> tx;
         vector<digest_type> t;

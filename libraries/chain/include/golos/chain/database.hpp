@@ -3,6 +3,7 @@
 #include <golos/chain/global_property_object.hpp>
 #include <golos/chain/node_property_object.hpp>
 #include <golos/chain/worker_objects.hpp>
+#include <golos/chain/event_objects.hpp>
 #include <golos/chain/fork_database.hpp>
 #include <golos/chain/block_log.hpp>
 #include <golos/chain/hardfork.hpp>
@@ -128,6 +129,9 @@ namespace golos { namespace chain {
 
             void set_store_memo_in_savings_withdraws(bool store_memo_in_savings_withdraws);
             bool store_memo_in_savings_withdraws() const;
+
+            void set_store_evaluator_events(bool store_evaluator_events);
+            bool store_evaluator_events() const;
 
             void set_clear_old_worker_votes(bool clear_old_worker_votes);
 
@@ -328,6 +332,12 @@ namespace golos { namespace chain {
             void notify_on_pending_transaction(const signed_transaction &tx);
 
             void notify_on_applied_transaction(const signed_transaction &tx);
+
+            bool can_push_events();
+
+            void push_event(const operation &op);
+
+            void process_events();
 
             /**
              *  This signal is emitted for plugins to process every operation after it has been fully applied.
@@ -675,7 +685,7 @@ namespace golos { namespace chain {
 
             bool _resize(uint32_t block_num);
 
-            uint64_t pay_curator(const comment_vote_object& cvo, const uint64_t& claim, const account_name_type& author, const std::string& permlink);
+            uint64_t pay_curator(const comment_vote_object& cvo, const uint64_t& claim, const comment_curation_info& c, share_type& back_to_fund);
 
             void adjust_sbd_balance(const account_object &a, const asset &delta);
 
@@ -727,7 +737,11 @@ namespace golos { namespace chain {
 
             bool _store_memo_in_savings_withdraws = true;
 
+            bool _store_evaluator_events = true;
+
             bool _clear_old_worker_votes = false;
+
+            asset _accumulative_remainder = asset(0, STEEM_SYMBOL);
 
             flat_map<std::string, std::shared_ptr<custom_operation_interpreter>> _custom_operation_interpreters;
             std::string _json_schema;

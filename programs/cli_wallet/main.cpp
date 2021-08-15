@@ -11,6 +11,7 @@
 #include <fc/rpc/http_api.hpp>
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/smart_ref_impl.hpp>
+#include <fc/stacktrace.hpp>
 #include <fc/log/console_appender.hpp>
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger.hpp>
@@ -66,6 +67,7 @@ void parse_commands(
 int unsafe_main(int argc, char** argv);
 
 int main(int argc, char** argv) {
+    fc::install_stacktrace_crash_handler();
     try {
         return unsafe_main(argc, argv);
     } catch (const fc::exception& e) {

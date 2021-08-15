@@ -2569,6 +2569,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_authorities) {
+        BOOST_TEST_MESSAGE("Testing: custom_authorities");
+
         custom_operation op;
         op.required_auths.insert("alice");
         op.required_auths.insert("bob");
@@ -2576,6 +2578,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_json_authorities) {
+        BOOST_TEST_MESSAGE("Testing: custom_json_authorities");
+
         custom_json_operation op;
         op.required_auths.insert("alice");
         op.required_posting_auths.insert("bob");
@@ -2583,6 +2587,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_json_validate) {
+        BOOST_TEST_MESSAGE("Testing: custom_json_validate");
+
         custom_json_operation op;
 
         GOLOS_CHECK_ERROR_PROPS(op.validate(),
@@ -2598,6 +2604,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_binary_authorities) {
+        BOOST_TEST_MESSAGE("Testing: custom_binary_authorities");
+
         ACTORS((alice))
 
         auto alice_authority = db->get<account_authority_object, by_account>("alice").posting;
@@ -2617,6 +2625,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_CASE(custom_binary_validate) {
+        BOOST_TEST_MESSAGE("Testing: custom_binary_validate");
+
         custom_binary_operation op;
 
         GOLOS_CHECK_ERROR_PROPS(op.validate(),
@@ -2638,6 +2648,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(feed_publish_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: feed_publish_validate");
+
             feed_publish_operation op;
 
             BOOST_TEST_MESSAGE("--- success on valid parameters");
@@ -2769,6 +2780,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(convert_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: convert_validate");
+
             convert_operation op;
 
             BOOST_TEST_MESSAGE("--- success on valid parameters");
@@ -2846,6 +2858,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(convert_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: convert_apply");
+
             ACTORS((alice)(bob));
             fund("alice", 10000);
             fund("bob", 10000);
@@ -2863,15 +2876,15 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             const auto &new_alice = db->get_account("alice");
             const auto &new_bob = db->get_account("bob");
 
-            BOOST_TEST_MESSAGE("--- Test failure when account does not have the required GOLOS (invalid parameter, only GBG)");
+            BOOST_TEST_MESSAGE("--- Test failure when account does not have the required GOLOS");
             op.owner = "bob";
             op.amount = ASSET("5.000 GOLOS");
             tx.operations.push_back(op);
+            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.sign(bob_private_key, db->get_chain_id());
-            // Convert operation only available for GBG
             GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
                 CHECK_ERROR(tx_invalid_operation, 0,
-                    CHECK_ERROR(invalid_parameter, "amount")));
+                    CHECK_ERROR(insufficient_funds, "bob", "fund", "5.000 GOLOS"))); // 5% fee
 
             BOOST_CHECK_EQUAL(new_bob.balance.amount.value, ASSET("3.000 GOLOS").amount.value);
             BOOST_CHECK_EQUAL(new_bob.sbd_balance.amount.value, ASSET("7.000 GBG").amount.value);
@@ -2882,7 +2895,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.amount = ASSET("5.000 GBG");
             tx.operations.clear();
             tx.signatures.clear();
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.operations.push_back(op);
             tx.sign(alice_private_key, db->get_chain_id());
             GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
@@ -2951,6 +2963,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     /*BOOST_AUTO_TEST_CASE(limit_order_create_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_create_validate");
+
             limit_order_create_operation op;
 
             BOOST_TEST_MESSAGE("--- success on valid parameters");
@@ -3371,6 +3384,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(limit_order_create2_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_create2_validate");
+
             limit_order_create2_operation op;
 
             BOOST_TEST_MESSAGE("--- success on valid parameters");
@@ -3973,6 +3987,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(request_account_recovery_validate) { try {
         BOOST_TEST_MESSAGE("Testing: request_account_recovery_validate");
+
         request_account_recovery_operation op;
         op.recovery_account = "alice";
         op.account_to_recover = "bob";
@@ -3998,15 +4013,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(request_account_recovery_authorities) { try {
         BOOST_TEST_MESSAGE("Testing: request_account_recovery_authorities");
+
         request_account_recovery_operation op;
         op.recovery_account = "alice";
         op.account_to_recover = "bob";
         CHECK_OP_AUTHS(op, account_name_set(), account_name_set({"alice"}), account_name_set());
     } FC_LOG_AND_RETHROW() }
-
-    // tested in account_recovery and change_recovery_account test cases
-    // BOOST_AUTO_TEST_CASE(request_account_recovery_apply) { try {
-    // } FC_LOG_AND_RETHROW() }
 
     BOOST_AUTO_TEST_SUITE_END() // request_account_recovery
 
@@ -4015,6 +4027,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(recover_account_validate) { try {
         BOOST_TEST_MESSAGE("Testing: recover_account_validate");
+
         recover_account_operation op;
         op.account_to_recover = "bob";
         op.new_owner_authority = authority(1, "alice", 1);
@@ -4043,6 +4056,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(recover_account_authorities) { try {
         BOOST_TEST_MESSAGE("Testing: recover_account_authorities");
+
         recover_account_operation op;
         op.account_to_recover = "alice";
         op.new_owner_authority = authority(1, "bob", 1);
@@ -4055,10 +4069,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
         // TODO: maybe here can be some more complex checks (like multisig)
     } FC_LOG_AND_RETHROW() }
 
-    // tested in account_recovery and change_recovery_account test cases
-    // BOOST_AUTO_TEST_CASE(recover_account_apply) { try {
-    // } FC_LOG_AND_RETHROW() }
-
     BOOST_AUTO_TEST_SUITE_END() // recover_account
 
 
@@ -4066,6 +4076,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(change_recovery_account_validate) { try {
         BOOST_TEST_MESSAGE("Testing: change_recovery_account_validate");
+
         change_recovery_account_operation op;
         op.account_to_recover = "alice";
         op.new_recovery_account = "bob";
@@ -4080,15 +4091,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(change_recovery_account_authorities) { try {
         BOOST_TEST_MESSAGE("Testing: change_recovery_account_authorities");
+
         change_recovery_account_operation op;
         op.account_to_recover = "alice";
         op.new_recovery_account = "bob";
         CHECK_OP_AUTHS(op, account_name_set({"alice"}), account_name_set(), account_name_set());
     } FC_LOG_AND_RETHROW() }
-
-    // tested in change_recovery_account test cases
-    // BOOST_AUTO_TEST_CASE(change_recovery_account_apply) { try {
-    // } FC_LOG_AND_RETHROW() }
 
     BOOST_AUTO_TEST_SUITE_END() // change_recovery_account
 
@@ -4096,6 +4104,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(account_recovery) {
         try {
             BOOST_TEST_MESSAGE("Testing: account recovery");
+
             ACTORS((alice));
             fund("alice", 1000000);
 
@@ -4271,6 +4280,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(vesting_withdraw_reset_on_recovery) {
         try {
             BOOST_TEST_MESSAGE("Testing: vesting withdraw reset on account recover");
+
             ACTORS((alice));
             fund("alice", 1000000);
 
@@ -4438,6 +4448,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
         try {
             using fc::ecc::private_key;
             BOOST_TEST_MESSAGE("Testing change_recovery_account_operation");
+
             ACTORS((alice)(sam))
 
             auto change_recovery_account = [&](const string& account_to_recover, const string& new_recovery_account) {
@@ -4805,6 +4816,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     // Technically it can be called, but will fail early due disabled challenge_authority_operation
     BOOST_AUTO_TEST_CASE(prove_authority_validate) { try {
         BOOST_TEST_MESSAGE("Testing: prove_authority_validate");
+
         prove_authority_operation op;
         op.challenged = "bob";
         CHECK_OP_VALID(op);
@@ -4813,6 +4825,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(prove_authority_authorities) { try {
         BOOST_TEST_MESSAGE("Testing: prove_authority_authorities");
+
         prove_authority_operation op;
         op.challenged = "bob";
         op.require_owner = true;
@@ -4823,6 +4836,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(prove_authority_apply) { try {
         BOOST_TEST_MESSAGE("Testing: prove_authority_apply");
+
         ACTOR(bob)
         prove_authority_operation op;
         op.challenged = "bob";
@@ -4896,6 +4910,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_transfer_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_transfer_authorities");
+
             escrow_transfer_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -4915,6 +4930,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_transfer_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_transfer_apply");
+
             ACTORS((alice)(bob)(sam))
             fund("alice", 10000);
 
@@ -4999,6 +5015,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_approve_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_approve_validate");
+
             escrow_approve_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5027,6 +5044,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_approve_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_approve_authorities");
+
             escrow_approve_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5044,6 +5062,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_approve_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_approve_apply");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
@@ -5231,6 +5250,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_dispute_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_dispute_validate");
+
             escrow_dispute_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5257,6 +5277,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_dispute_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_dispute_authorities");
+
             escrow_dispute_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5271,6 +5292,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_dispute_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_dispute_apply");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
@@ -5443,6 +5465,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_release_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow release validate");
+
             escrow_release_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5491,6 +5514,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_release_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_release_authorities");
+
             escrow_release_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -5505,6 +5529,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(escrow_release_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_release_apply");
+
             ACTORS((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
@@ -5839,6 +5864,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(transfer_to_savings_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_to_savings_authorities");
+
             transfer_to_savings_operation op;
             op.from = "alice";
             op.to = "alice";
@@ -5960,6 +5986,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(transfer_from_savings_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_from_savings_authorities");
+
             transfer_from_savings_operation op;
             op.from = "alice";
             op.to = "alice";
@@ -6177,6 +6204,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(cancel_transfer_from_savings_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: cancel_transfer_from_savings_authorities");
+
             cancel_transfer_from_savings_operation op;
             op.from = "alice";
             CHECK_OP_AUTHS(op, account_name_set(), account_name_set({"alice"}), account_name_set());
@@ -6240,6 +6268,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(decline_voting_rights_validate) { try {
         BOOST_TEST_MESSAGE("Testing: decline_voting_rights_validate");
+
         decline_voting_rights_operation op;
         op.account = "alice";
         CHECK_OP_VALID(op);
@@ -6249,6 +6278,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(decline_voting_rights_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: decline_voting_rights_authorities");
+
             decline_voting_rights_operation op;
             op.account = "alice";
             CHECK_OP_AUTHS(op, account_name_set({"alice"}), account_name_set(), account_name_set());
@@ -6373,6 +6403,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(account_bandwidth) {
         try {
+            BOOST_TEST_MESSAGE("Testing: account_bandwidth");
+
             ACTORS((alice)(bob))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
@@ -6423,7 +6455,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_beneficiaries_validate) {
         try {
-            BOOST_TEST_MESSAGE("Test Comment Beneficiaries Validate");
+            BOOST_TEST_MESSAGE("Testing: comment_beneficiaries_validate");
+
             comment_options_operation op;
 
             op.author = "alice";
@@ -6495,7 +6528,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(comment_beneficiaries_apply) {
         try {
-            BOOST_TEST_MESSAGE("Test Comment Beneficiaries");
+            BOOST_TEST_MESSAGE("Testing: comment_beneficiaries_apply");
+
             ACTORS((alice)(bob)(sam))
             generate_block();
 
@@ -6612,6 +6646,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(delete_comment_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: delete_comment_authorities");
+
             delete_comment_operation op;
             op.author = "alice";
             op.permlink = "foo";
@@ -6623,6 +6658,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(delete_comment_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: delete_comment_apply");
+
             ACTORS((alice)(bob))
 
             signed_transaction tx;
@@ -6727,6 +6763,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(account_create_with_delegation_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: account_create_with_delegation_authorities");
+
             account_create_with_delegation_operation op;
             op.creator = "bob";
             CHECK_OP_AUTHS(op, account_name_set(), account_name_set({"bob"}), account_name_set());
@@ -6737,6 +6774,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(account_create_with_delegation_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: account_create_with_delegation_apply");
+
             signed_transaction tx;
             ACTOR(alice);
 
@@ -6857,6 +6895,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(delegate_vesting_shares_validate) {
         try {
+            BOOST_TEST_MESSAGE("Testing: delegate_vesting_shares_validate");
+
             delegate_vesting_shares_operation op;
             op.delegator = "alice";
             op.delegatee = "bob";
@@ -6881,6 +6921,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(delegate_vesting_shares_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: delegate_vesting_shares_authorities");
+
             delegate_vesting_shares_operation op;
             op.delegator = "bob";
             op.delegatee = "alice";
@@ -6893,6 +6934,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(delegate_vesting_shares_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: delegate_vesting_shares_apply");
+
             signed_transaction tx;
             ACTORS((alice)(bob))
 
@@ -7050,6 +7092,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(reject_vesting_shares_delegation_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: reject_vesting_shares_delegation_apply");
+
             signed_transaction tx;
             ACTORS((alice)(bob))
 
@@ -7110,8 +7153,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             fund("alice", 10000);
             vest("alice", ASSET_GOLOS(10000));
-            vest("carol", ASSET_GOLOS(10000));
-            vest("dave", ASSET_GOLOS(10000));
+            vest("carol", ASSET_GOLOS(500000));
+            vest("dave", ASSET_GOLOS(500000));
             generate_block();
 
             price exchange_rate(ASSET("1.000 GOLOS"), ASSET("1.000 GBG"));
@@ -7121,17 +7164,18 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             signed_transaction tx;
 
             delegate_vesting_shares_with_interest_operation op;
-            op.vesting_shares = ASSET_GESTS(50000);
             op.delegator = "carol";
             op.delegatee = "bob";
+            op.vesting_shares = db->get_account("carol").vesting_shares;
             op.payout_strategy = to_delegated_vesting;
             BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
             generate_block();
             tx.operations.clear();
             tx.signatures.clear();
 
-            op.payout_strategy = to_delegator;
             op.delegator = "dave";
+            op.payout_strategy = to_delegator;
+            op.vesting_shares = db->get_account("dave").vesting_shares;
             BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
             generate_block();
             tx.operations.clear();
@@ -7179,13 +7223,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             generate_block();
 
-            BOOST_TEST_MESSAGE("-- Checking total funds");
-
-            auto& gpo = db->get_dynamic_global_properties();
-
-            APPROX_CHECK_EQUAL(gpo.total_vesting_shares.to_real(), total_comment_fund.vesting_shares().to_real(), 10);
-            APPROX_CHECK_EQUAL(gpo.total_vesting_fund_steem.amount.value, total_comment_fund.vesting_fund().amount.value, 1);
-
             BOOST_TEST_MESSAGE("-- Checking bob delegatee payout");
 
             auto& bob_account = db->get_account("bob");
@@ -7205,7 +7242,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(freeze_with_delegation) {
         try {
-            BOOST_TEST_MESSAGE("Testing:freeze account with delegation");
+            BOOST_TEST_MESSAGE("Testing: freeze_with_delegation");
 
             ACTORS((alice)(bob)(carol)(dave))
             generate_block();
@@ -7292,6 +7329,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(account_metadata_authorities) {
         try {
             BOOST_TEST_MESSAGE("Testing: account_metadata_authorities");
+
             account_metadata_operation op;
             op.account = "bob";
             op.json_metadata = "{}";
@@ -7803,6 +7841,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(comment_curation_rewards_percent_validate) {
         try {
             BOOST_TEST_MESSAGE("Testing: comment_curation_rewards_percent_validate");
+
             comment_options_operation op;
 
             op.author = "alice";
@@ -7837,6 +7876,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(comment_curation_rewards_percent_apply) {
         try {
             BOOST_TEST_MESSAGE("Testing: comment_curation_rewards_percent_apply");
+
             ACTORS((alice))
             generate_block();
 
@@ -7901,547 +7941,4 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-
-struct votes_extended_fixture : public golos::chain::clean_database_fixture {
-
-    void initialize(const plugin_options& opts = {}) {
-        database_fixture::initialize(opts);
-        open_database();
-        startup();
-    }
-
-    fc::ecc::private_key vote_key;
-    uint32_t current_voter = 0;
-    static const uint32_t cashout_blocks = STEEMIT_CASHOUT_WINDOW_SECONDS / STEEMIT_BLOCK_INTERVAL;
-
-    void generate_voters(uint32_t n) {
-        fc::ecc::private_key private_key = generate_private_key("test");
-        fc::ecc::private_key post_key = generate_private_key("test_post");
-        vote_key = post_key;
-        for (uint32_t i = 0; i < n; i++) {
-            const auto name = "voter" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, private_key.get_public_key(), post_key.get_public_key()));
-        }
-        generate_block();
-        validate_database();
-    }
-
-    void vote_sequence(const std::string& author, const std::string& permlink, uint32_t n_votes, uint32_t interval = 0) {
-        uint32_t end = current_voter + n_votes;
-        for (; current_voter < end; current_voter++) {
-            const auto name = "voter" + std::to_string(current_voter);
-            vote_operation op;
-            op.voter = name;
-            op.author = author;
-            op.permlink = permlink;
-            op.weight = STEEMIT_100_PERCENT;
-            signed_transaction tx;
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, vote_key, op));
-            if (interval > 0) {
-                generate_blocks(interval);
-            }
-        }
-        validate_database();
-    }
-
-    void post(const std::string& permlink = "post", const std::string& parent_permlink = "test") {
-        ACTOR(alice);
-        comment_operation op;
-        op.author = "alice";
-        op.permlink = permlink;
-        op.parent_author = parent_permlink == "test" ? "" : "alice";
-        op.parent_permlink = parent_permlink;
-        op.title = "foo";
-        op.body = "bar";
-        signed_transaction tx;
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
-        validate_database();
-    }
-
-    uint32_t count_stored_votes() {
-        const auto n = db->get_index<golos::chain::comment_vote_index>().indices().size();
-        return n;
-    }
-};
-
-BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
-
-    BOOST_AUTO_TEST_SUITE(auction_window)
-
-    BOOST_AUTO_TEST_CASE(auction_window_tokens_to_reward_fund) {
-        try {
-            BOOST_TEST_MESSAGE("Test changing auction window size");
-
-            db_plugin->debug_update([=](database &db) {
-                auto &wso = db.get_witness_schedule_object();
-                BOOST_CHECK_EQUAL(wso.median_props.auction_window_size, 1800);
-
-                db.modify(wso, [&](witness_schedule_object &w) {
-                    w.median_props.auction_window_size = 10 * 60;
-                });
-
-                BOOST_CHECK_EQUAL(wso.median_props.auction_window_size, 600);
-            }, database::skip_witness_signature);
-
-            BOOST_TEST_MESSAGE("Auction window reward goes to reward fund.");
-
-            // Needed to be sured, that auction window's been already enabled.
-            generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
-
-            auto &wso = db->get_witness_schedule_object();
-            db->modify(wso, [&](witness_schedule_object &w) {
-                w.median_props.auction_window_size = 10 * 60;
-            });
-
-            generate_block();
-
-            ACTOR(alice);
-            int voters_count = 10;
-
-            comment_operation comment;
-            comment_options_operation cop;
-            signed_transaction tx;
-            set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
-
-            BOOST_TEST_MESSAGE("Create a post.");
-            comment.author = "alice";
-            comment.permlink = "testauw";
-            comment.parent_permlink = "test";
-            comment.title = "test";
-            comment.body = "Let's test auction window improvements!";
-
-            tx.operations.clear();
-            tx.signatures.clear();
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
-            generate_block();
-
-            protocol::comment_auction_window_reward_destination dest;
-            dest.destination = protocol::to_reward_fund;
-
-            cop.author = comment.author;
-            cop.permlink = comment.permlink;
-
-            cop.extensions.insert(dest);
-
-            tx.operations.clear();
-            tx.signatures.clear();
-
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
-            generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
-            generate_voters(20);
-
-            BOOST_TEST_MESSAGE("Create votes.");
-            BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
-
-            vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
-            vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
-
-            generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
-
-            comment_fund total_comment_fund(*db);
-            comment_reward alice_post_reward(*db, total_comment_fund, alice_post);
-
-            generate_block();
-
-            share_type rwd = 0;
-            for (int i = 0; i < voters_count; i++) {
-                std::string acc_name = "voter" + std::to_string(i);
-                auto& account = db->get_account(acc_name);
-                rwd += account.curation_rewards;
-            }
-            auto& alice_acc = db->get_account(alice_post.author);
-            BOOST_CHECK_EQUAL(rwd.value, alice_post_reward.total_curators_reward());
-            BOOST_CHECK_EQUAL(alice_acc.posting_rewards.value, alice_post_reward.total_author_reward());
-        }
-        FC_LOG_AND_RETHROW()
-    }
-
-    BOOST_AUTO_TEST_CASE(auction_window_tokens_to_reward_fund_empty_case) {
-        try {
-            BOOST_TEST_MESSAGE("Auction window is 0.");
-
-            // Needed to be sured, that auction window's been already enabled.
-            generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
-
-            auto &wso = db->get_witness_schedule_object();
-            db->modify(wso, [&](witness_schedule_object &w) {
-                w.median_props.auction_window_size = 10 * 60;
-            });
-
-            generate_block();
-
-            ACTOR(alice);
-            int voters_count = 10;
-
-            comment_operation comment;
-            comment_options_operation cop;
-            signed_transaction tx;
-            set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
-
-            BOOST_TEST_MESSAGE("Create a post.");
-            comment.author = "alice";
-            comment.permlink = "testauw2";
-            comment.parent_permlink = "test";
-            comment.title = "test";
-            comment.body = "Let's test auction window improvements!";
-
-            tx.operations.clear();
-            tx.signatures.clear();
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
-            generate_block();
-
-            protocol::comment_auction_window_reward_destination dest;
-            dest.destination = protocol::to_reward_fund;
-
-            cop.author = comment.author;
-            cop.permlink = comment.permlink;
-
-            cop.extensions.insert(dest);
-
-            tx.operations.clear();
-            tx.signatures.clear();
-
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
-            generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
-            generate_voters(voters_count);
-
-            BOOST_TEST_MESSAGE("Create votes.");
-            BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
-
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
-            vote_sequence(comment.author, comment.permlink, voters_count, 5);
-
-            generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
-
-            comment_fund total_comment_fund(*db);
-            comment_reward alice_post_reward(*db, total_comment_fund, alice_post);
-
-            generate_block();
-
-            share_type rwd = 0;
-            for (int i = 0; i < voters_count; i++) {
-                std::string acc_name = "voter" + std::to_string(i);
-                auto& account = db->get_account(acc_name);
-                rwd += account.curation_rewards;
-            }
-            auto& alice_acc = db->get_account(alice_post.author);
-            BOOST_CHECK_EQUAL(rwd.value, alice_post_reward.total_curators_reward());
-            BOOST_CHECK_EQUAL(alice_acc.posting_rewards.value, alice_post_reward.total_author_reward());
-        }
-        FC_LOG_AND_RETHROW()
-    }
-
-    BOOST_AUTO_TEST_CASE(auction_window_tokens_to_reward_fund_all_in_auw) {
-        try {
-            BOOST_TEST_MESSAGE("Auction window reward goes to reward fund. All votes made in auw");
-
-            // Needed to be sured, that auction window's been already enabled.
-            generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
-
-            auto &wso = db->get_witness_schedule_object();
-            db->modify(wso, [&](witness_schedule_object &w) {
-                w.median_props.auction_window_size = 10 * 60;
-            });
-
-            generate_block();
-
-            ACTOR(alice);
-            int voters_count = 10;
-
-            comment_operation comment;
-            comment_options_operation cop;
-            signed_transaction tx;
-            set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
-
-            BOOST_TEST_MESSAGE("Create a post.");
-            comment.author = "alice";
-            comment.permlink = "testauw3";
-            comment.parent_permlink = "test";
-            comment.title = "test";
-            comment.body = "Let's test auction window improvements!";
-
-            tx.operations.clear();
-            tx.signatures.clear();
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
-            generate_block();
-
-            protocol::comment_auction_window_reward_destination dest;
-            dest.destination = protocol::to_reward_fund;
-
-            cop.author = comment.author;
-            cop.permlink = comment.permlink;
-
-            cop.extensions.insert(dest);
-
-            tx.operations.clear();
-            tx.signatures.clear();
-
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
-            generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
-            generate_voters(voters_count);
-
-            BOOST_TEST_MESSAGE("Create votes.");
-            BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
-
-            vote_sequence(comment.author, comment.permlink, voters_count, 5);
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
-
-            generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
-
-            comment_fund total_comment_fund(*db);
-            comment_reward alice_post_reward(*db, total_comment_fund, alice_post);
-
-            generate_block();
-
-            share_type rwd = 0;
-            for (int i = 0; i < voters_count; i++) {
-                std::string acc_name = "voter" + std::to_string(i);
-                auto& account = db->get_account(acc_name);
-                rwd += account.curation_rewards;
-            }
-            auto& alice_acc = db->get_account(alice_post.author);
-            BOOST_CHECK_EQUAL(rwd.value, alice_post_reward.total_curators_reward());
-            BOOST_CHECK_EQUAL(alice_acc.posting_rewards.value, alice_post_reward.total_author_reward());
-        }
-        FC_LOG_AND_RETHROW()
-    }
-
-
-    BOOST_AUTO_TEST_CASE(auction_window_tokens_to_curators_case_empty_auw) {
-        try {
-            BOOST_TEST_MESSAGE("Auction window is 0. The to_curators case.");
-
-            // Needed to be sured, that auction window's been already enabled.
-            generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
-
-            auto &wso = db->get_witness_schedule_object();
-            db->modify(wso, [&](witness_schedule_object &w) {
-                w.median_props.auction_window_size = 10 * 60;
-            });
-
-            generate_block();
-
-            ACTOR(alice);
-            int voters_count = 10;
-
-            comment_operation comment;
-            comment_options_operation cop;
-            signed_transaction tx;
-            set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
-
-            BOOST_TEST_MESSAGE("Create a post.");
-            comment.author = "alice";
-            comment.permlink = "testauw4";
-            comment.parent_permlink = "test";
-            comment.title = "test";
-            comment.body = "Let's test auction window improvements!";
-
-            tx.operations.clear();
-            tx.signatures.clear();
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
-            generate_block();
-
-            protocol::comment_auction_window_reward_destination dest;
-            dest.destination = protocol::to_curators;
-
-            cop.author = comment.author;
-            cop.permlink = comment.permlink;
-
-            cop.extensions.insert(dest);
-
-            tx.operations.clear();
-            tx.signatures.clear();
-
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
-            generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
-            generate_voters(voters_count);
-
-            BOOST_TEST_MESSAGE("Create votes.");
-            BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
-
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
-            vote_sequence(comment.author, comment.permlink, voters_count, 5);
-
-            generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
-
-            comment_fund total_comment_fund(*db);
-            comment_reward alice_post_reward(*db, total_comment_fund, alice_post);
-
-            generate_block();
-
-            share_type rwd = 0;
-            for (int i = 0; i < voters_count; i++) {
-                std::string acc_name = "voter" + std::to_string(i);
-                auto& account = db->get_account(acc_name);
-                rwd += account.curation_rewards;
-            }
-
-            auto& alice_acc = db->get_account(alice_post.author);
-            BOOST_CHECK_EQUAL(rwd.value, alice_post_reward.total_curators_reward());
-            BOOST_CHECK_EQUAL(alice_acc.posting_rewards.value, alice_post_reward.total_author_reward());
-        }
-        FC_LOG_AND_RETHROW()
-    }
-
-    BOOST_AUTO_TEST_CASE(auction_window_tokens_to_curators_case_all_in_auw) {
-        try {
-            BOOST_TEST_MESSAGE("Auction window reward goes to reward fund. The to_curators case");
-
-            // Needed to be sured, that auction window's been already enabled.
-            generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
-
-            auto &wso = db->get_witness_schedule_object();
-            db->modify(wso, [&](witness_schedule_object &w) {
-                w.median_props.auction_window_size = 10 * 60;
-            });
-
-            generate_block();
-
-            ACTOR(alice);
-            int voters_count = 10;
-
-            comment_operation comment;
-            comment_options_operation cop;
-            signed_transaction tx;
-            set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
-
-            BOOST_TEST_MESSAGE("Create a post.");
-            comment.author = "alice";
-            comment.permlink = "testauw5";
-            comment.parent_permlink = "test";
-            comment.title = "test";
-            comment.body = "Let's test auction window improvements!";
-
-            tx.operations.clear();
-            tx.signatures.clear();
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
-            generate_block();
-
-            protocol::comment_auction_window_reward_destination dest;
-            dest.destination = protocol::to_curators;
-
-            cop.author = comment.author;
-            cop.permlink = comment.permlink;
-
-            cop.extensions.insert(dest);
-
-            tx.operations.clear();
-            tx.signatures.clear();
-
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
-            generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
-            generate_voters(voters_count);
-
-            BOOST_TEST_MESSAGE("Create votes.");
-            BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
-
-            vote_sequence(comment.author, comment.permlink, voters_count, 5);
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
-
-            generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
-
-            comment_fund total_comment_fund(*db);
-            comment_reward alice_post_reward(*db, total_comment_fund, alice_post);
-
-            generate_block();
-
-            share_type rwd = 0;
-            for (int i = 0; i < voters_count; i++) {
-                std::string acc_name = "voter" + std::to_string(i);
-                auto& account = db->get_account(acc_name);
-                rwd += account.curation_rewards;
-            }
-            auto& alice_acc = db->get_account(alice_post.author);
-            BOOST_CHECK_EQUAL(rwd.value, alice_post_reward.total_curators_reward());
-            BOOST_CHECK_EQUAL(alice_acc.posting_rewards.value, alice_post_reward.total_author_reward());
-        }
-        FC_LOG_AND_RETHROW()
-    }
-
-    BOOST_AUTO_TEST_CASE(auction_window_tokens_to_curators_case) {
-        try {
-            BOOST_TEST_MESSAGE("Auction window reward goes to curators.");
-
-            // Needed to be sured, that auction window's been already enabled.
-            generate_blocks(fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME), true);
-
-            auto &wso = db->get_witness_schedule_object();
-            db->modify(wso, [&](witness_schedule_object &w) {
-                w.median_props.auction_window_size = 10 * 60;
-            });
-
-            generate_block();
-
-            ACTOR(alice);
-            int voters_count = 6;
-
-            comment_operation comment;
-            comment_options_operation cop;
-            signed_transaction tx;
-            set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
-
-            BOOST_TEST_MESSAGE("Create a post.");
-            comment.author = "alice";
-            comment.permlink = "testauw6";
-            comment.parent_permlink = "test";
-            comment.title = "test";
-            comment.body = "Let's test auction window improvements!";
-
-            tx.operations.clear();
-            tx.signatures.clear();
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
-            generate_block();
-
-            protocol::comment_auction_window_reward_destination dest;
-            dest.destination = protocol::to_curators;
-
-            cop.author = comment.author;
-            cop.permlink = comment.permlink;
-
-            cop.extensions.insert(dest);
-
-            tx.operations.clear();
-            tx.signatures.clear();
-
-            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
-            generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
-            generate_voters(voters_count);
-
-            BOOST_TEST_MESSAGE("Create votes.");
-            BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
-
-            vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
-            vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
-
-            generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
-
-            comment_fund total_comment_fund(*db);
-            comment_reward alice_post_reward(*db, total_comment_fund, alice_post);
-
-            generate_block();
-
-            share_type rwd = 0;
-            for (int i = 0; i < voters_count; i++) {
-                std::string acc_name = "voter" + std::to_string(i);
-                auto& account = db->get_account(acc_name);
-                rwd += account.curation_rewards;
-            }
-            auto& alice_acc = db->get_account(alice_post.author);
-
-            BOOST_CHECK_EQUAL(rwd.value, alice_post_reward.total_curators_reward());
-            BOOST_CHECK_EQUAL(alice_acc.posting_rewards.value, alice_post_reward.total_author_reward());
-        }
-        FC_LOG_AND_RETHROW()
-    }
-
-    BOOST_AUTO_TEST_SUITE_END() // auction_window
-BOOST_AUTO_TEST_SUITE_END()
 #endif

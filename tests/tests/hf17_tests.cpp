@@ -28,7 +28,7 @@ namespace golos { namespace chain {
                 generate_block();
                 db->set_hardfork(STEEMIT_HARDFORK_0_16);
                 startup(false);
-            } catch (const fc::exception &e) {
+            } catch (const fc::exception& e) {
                 edump((e.to_detail_string()));
                 throw;
             }
@@ -54,6 +54,7 @@ using namespace golos::chain;
 using namespace golos::protocol;
 using std::string;
 
+// Requires build with MAX_19_VOTED_WITNESSES=TRUE
 BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
 
     BOOST_AUTO_TEST_CASE(hf17_linear_reward_curve) {
@@ -67,9 +68,9 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             ACTORS((alice)(bob)(sam))
             generate_block();
 
-            const auto &alice_account = db->get_account("alice");
-            const auto &bob_account = db->get_account("bob");
-            const auto &sam_account = db->get_account("sam");
+            const auto& alice_account = db->get_account("alice");
+            const auto& bob_account = db->get_account("bob");
+            const auto& sam_account = db->get_account("sam");
 
             vest("alice", ASSET("30.000 GOLOS"));
             vest("bob", ASSET("20.000 GOLOS"));
@@ -77,8 +78,8 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             generate_block();
             validate_database();
 
-            const auto &gpo = db->get_dynamic_global_properties();
-            BOOST_REQUIRE(gpo.total_reward_shares2 == 0);
+            const auto& gpo = db->get_dynamic_global_properties();
+            BOOST_CHECK_EQUAL(gpo.total_reward_shares2, 0);
 
             comment_op.author = "alice";
             comment_op.permlink = "foo";
@@ -92,7 +93,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto &alice_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& alice_comment = db->get_comment(comment_op.author, comment_op.permlink);
 
             comment_op.author = "bob";
 
@@ -102,7 +103,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto &bob_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& bob_comment = db->get_comment(comment_op.author, comment_op.permlink);
 
             vote_op.voter = "bob";
             vote_op.author = "alice";
@@ -155,22 +156,23 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             const auto alice_power = (STEEMIT_1_PERCENT * 75 + vote_denom - 1) / vote_denom;
             const auto alice_vshares = alice_account.vesting_shares.amount.value * alice_power / STEEMIT_100_PERCENT;
 
-            BOOST_REQUIRE(
-                gpo.total_reward_shares2 ==
+            BOOST_CHECK_EQUAL(
+                gpo.total_reward_shares2,
                 quadratic_curve(sam_vshares + bob_vshares) + quadratic_curve(sam_vshares + alice_vshares));
-            BOOST_REQUIRE(
-                gpo.total_reward_shares2 ==
+            BOOST_CHECK_EQUAL(
+                gpo.total_reward_shares2,
                 quadratic_curve(alice_comment.net_rshares.value) + quadratic_curve(bob_comment.net_rshares.value));
 
             db->set_hardfork(STEEMIT_HARDFORK_0_17);
+
             generate_block();
             validate_database();
 
-            BOOST_REQUIRE(
-                gpo.total_reward_shares2 ==
+            BOOST_CHECK_EQUAL(
+                gpo.total_reward_shares2,
                 linear_curve(sam_vshares + bob_vshares) + linear_curve(sam_vshares + alice_vshares));
-            BOOST_REQUIRE(
-                gpo.total_reward_shares2 ==
+            BOOST_CHECK_EQUAL(
+                gpo.total_reward_shares2,
                 linear_curve(alice_comment.net_rshares.value) + linear_curve(bob_comment.net_rshares.value));
 
             comment_op.author = "sam";
@@ -194,17 +196,16 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            BOOST_REQUIRE(
-                gpo.total_reward_shares2 ==
+            BOOST_CHECK_EQUAL(
+                gpo.total_reward_shares2,
                 linear_curve(sam_vshares + bob_vshares) +
                 linear_curve(sam_vshares + alice_vshares) +
                 linear_curve(alice_vshares));
-            BOOST_REQUIRE(
-                gpo.total_reward_shares2 ==
+            BOOST_CHECK_EQUAL(
+                gpo.total_reward_shares2,
                 linear_curve(alice_comment.net_rshares.value) +
                 linear_curve(bob_comment.net_rshares.value) +
                 linear_curve(sam_comment.net_rshares.value));
-
         }
         FC_LOG_AND_RETHROW()
     }
@@ -250,20 +251,20 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
 
             validate_database();
 
-            BOOST_REQUIRE(alice_comment.cashout_time == alice_comment.created +STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17);
-            BOOST_REQUIRE(bob_comment.cashout_time == bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17);
+            BOOST_CHECK_EQUAL(alice_comment.cashout_time, alice_comment.created +STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17);
+            BOOST_CHECK_EQUAL(bob_comment.cashout_time, bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17);
 
             db->set_hardfork(STEEMIT_HARDFORK_0_17);
             generate_block();
             validate_database();
 
-            BOOST_REQUIRE(alice_comment.cashout_time == alice_comment.created +STEEMIT_CASHOUT_WINDOW_SECONDS);
-            BOOST_REQUIRE(bob_comment.cashout_time == bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
+            BOOST_CHECK_EQUAL(alice_comment.cashout_time, alice_comment.created +STEEMIT_CASHOUT_WINDOW_SECONDS);
+            BOOST_CHECK_EQUAL(bob_comment.cashout_time, bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
             generate_blocks(bob_comment.cashout_time);
 
-            BOOST_REQUIRE(alice_comment.cashout_time == fc::time_point_sec::maximum());
-            BOOST_REQUIRE(bob_comment.cashout_time == fc::time_point_sec::maximum());
+            BOOST_CHECK_EQUAL(alice_comment.cashout_time, fc::time_point_sec::maximum());
+            BOOST_CHECK_EQUAL(bob_comment.cashout_time, fc::time_point_sec::maximum());
         }
         FC_LOG_AND_RETHROW()
     }
@@ -351,7 +352,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             tx.operations = { comment_op };
             tx.signatures.clear();
             tx.sign(alice_private_key, db->get_chain_id());
-            STEEMIT_REQUIRE_THROW(db->push_transaction(tx, 0), fc::exception);
+            STEEMIT_CHECK_THROW(db->push_transaction(tx, 0), fc::exception);
 
             generate_block();
             db->set_hardfork(STEEMIT_HARDFORK_0_17);

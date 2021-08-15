@@ -3,6 +3,7 @@
 #include <fc/log/logger_config.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 #include <fc/git_revision.hpp>
+#include <fc/stacktrace.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/p2p/p2p_plugin.hpp>
 #include <golos/plugins/webserver/webserver_plugin.hpp>
@@ -27,6 +28,7 @@
 #include <golos/plugins/operation_dump/operation_dump_plugin.hpp>
 #include <golos/plugins/worker_api/worker_api_plugin.hpp>
 #include <golos/plugins/elastic_search/elastic_search_plugin.hpp>
+#include <golos/plugins/event_plugin/event_plugin.hpp>
 #ifdef MONGODB_PLUGIN_BUILT
     #include <golos/plugins/mongo_db/mongo_db_plugin.hpp>
 #endif
@@ -87,6 +89,7 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::operation_dump::operation_dump_plugin>();
             appbase::app().register_plugin<golos::plugins::worker_api::worker_api_plugin>();
             appbase::app().register_plugin<golos::plugins::elastic_search::elastic_search_plugin>();
+            appbase::app().register_plugin<golos::plugins::event_plugin::event_plugin>();
             #ifdef MONGODB_PLUGIN_BUILT
                 appbase::app().register_plugin<golos::plugins::mongo_db::mongo_db_plugin>();
             #endif
@@ -130,6 +133,7 @@ void logo(){
 
 int main( int argc, char** argv ) {
     try {
+        fc::install_stacktrace_crash_handler();
 
         golos::plugins::register_plugins();
         appbase::app().set_version_string(version_string());

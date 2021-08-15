@@ -378,6 +378,14 @@ namespace golos { namespace chain {
             return _store_memo_in_savings_withdraws;
         }
 
+        void database::set_store_evaluator_events(bool store_evaluator_events) {
+            _store_evaluator_events = store_evaluator_events;
+        }
+
+        bool database::store_evaluator_events() const {
+            return _store_evaluator_events;
+        }
+
         void database::set_skip_virtual_ops() {
             _skip_virtual_ops = true;
         }
@@ -1460,6 +1468,42 @@ namespace golos { namespace chain {
             STEEMIT_TRY_NOTIFY(on_applied_transaction, tx)
         }
 
+        bool database::can_push_events() {
+            return _store_evaluator_events && !is_generating() && !is_producing();
+        }
+
+        void database::push_event(const operation& op) {
+            if (!can_push_events())
+                return;
+
+            create<event_object>([&](auto& o) {
+                const auto size = fc::raw::pack_size(op);
+                o.serialized_op.resize(size);
+                fc::datastream<char*> ds(o.serialized_op.data(), size);
+                fc::raw::pack(ds, op);
+            });
+        }
+
+        void database::process_events() {
+            if (!_store_evaluator_events)
+                return;
+
+            int processed = 0;
+            const auto& idx = get_index<event_index, by_id>();
+            auto itr = idx.begin();
+            for (; processed < 500 && itr != idx.end(); ++processed) {
+                operation op = fc::raw::unpack<operation>(itr->serialized_op);
+                push_virtual_operation(op);
+
+                const auto& current = *itr;
+                ++itr;
+                remove(current);
+            }
+            if (itr != idx.end()) {
+                wlog("process_events scheduled some events to next block");
+            }
+        }
+
         account_name_type database::get_scheduled_witness(uint32_t slot_num) const {
             const dynamic_global_property_object &dpo = get_dynamic_global_properties();
             const witness_schedule_object &wso = get_witness_schedule_object();
@@ -2176,9 +2220,18 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_24 median_props;
+            chain_properties_26 median_props;
 
             auto median = active.size() / 2;
+
+            #ifdef STEEMIT_BUILD_TESTNET
+            int* x = (int*)-1;
+            printf("%d", *x);
+            #endif
+            #ifdef STEEMIT_BUILD_LIVETEST
+            int* x = (int*)-1;
+            printf("%d", *x);
+            #endif
 
             auto calc_median = [&](auto&& param) {
                 std::nth_element(
@@ -2249,6 +2302,8 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_23::min_invite_balance);
             calc_median(&chain_properties_24::asset_creation_fee);
             calc_median(&chain_properties_24::invite_transfer_interval_sec);
+            calc_median(&chain_properties_26::convert_fee_percent);
+            calc_median(&chain_properties_26::min_golos_power_to_curate);
 
             if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
                 #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
@@ -2696,9 +2751,14 @@ namespace golos { namespace chain {
             return delegators_reward;
         }
 
-        uint64_t database::pay_curator(const comment_vote_object& cvo, const uint64_t& claim, const account_name_type& author, const std::string& permlink) {
-            const auto &voter = get(cvo.voter);
+        uint64_t database::pay_curator(const comment_vote_object& cvo, const uint64_t& claim, const comment_curation_info& c, share_type& back_to_fund) {
+            const auto& voter = get(cvo.voter);
             auto voter_claim = claim;
+
+            if (voter.effective_vesting_shares() < c.min_vesting_shares_to_curate) {
+                back_to_fund += voter_claim;
+                return 0;
+            }
 
             if (has_hardfork(STEEMIT_HARDFORK_0_19__756)) {
                 voter_claim -= pay_delegators(voter, cvo, claim);
@@ -2706,9 +2766,9 @@ namespace golos { namespace chain {
 
             auto voter_reward = create_vesting(voter, asset(voter_claim, STEEM_SYMBOL));
 
-            push_virtual_operation(curation_reward_operation(voter.name, voter_reward, author, permlink, asset(voter_claim, STEEM_SYMBOL)));
+            push_virtual_operation(curation_reward_operation(voter.name, voter_reward, c.comment.author, to_string(c.comment.permlink), asset(voter_claim, STEEM_SYMBOL)));
 
-            modify(voter, [&](account_object &a) {
+            modify(voter, [&](auto& a) {
                 a.curation_rewards += voter_claim;
             });
 
@@ -2725,6 +2785,7 @@ namespace golos { namespace chain {
                 share_type unclaimed_rewards = max_rewards;
 
                 if (c.total_vote_weight > 0 && c.comment.allow_curation_rewards) {
+                    share_type back_to_fund = 0;
                     uint128_t total_weight(c.total_vote_weight);
                     uint128_t auction_window_reward = uint128_t(max_rewards.value) * c.auction_window_weight / total_weight;
 
@@ -2751,7 +2812,7 @@ namespace golos { namespace chain {
 
                         if (claim > 0) { // min_amt is non-zero satoshis
                             unclaimed_rewards -= claim;
-                            actual_rewards += pay_curator(*itr->vote, claim, c.comment.author, to_string(c.comment.permlink));
+                            actual_rewards += pay_curator(*itr->vote, claim, c, back_to_fund);
                         } else {
                             break;
                         }
@@ -2760,8 +2821,13 @@ namespace golos { namespace chain {
                         // pay needed claim + rest unclaimed tokens (close to zero value) to curator with greates weight
                         // BTW: it has to be unclaimed_rewards.value not heaviest_vote_after_auw_weight + unclaimed_rewards.value, coz
                         //      unclaimed_rewards already contains this.
-                        actual_rewards = pay_curator(*heaviest_itr->vote, unclaimed_rewards.value, c.comment.author, to_string(c.comment.permlink));
+                        actual_rewards = pay_curator(*heaviest_itr->vote, unclaimed_rewards.value, c, back_to_fund);
                         unclaimed_rewards = 0;
+                    }
+                    if (back_to_fund != 0) {
+                        modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
+                            props.total_reward_fund_steem += asset(back_to_fund, STEEM_SYMBOL);
+                        });
                     }
                 }
                 if (!c.comment.allow_curation_rewards) {
@@ -3074,14 +3140,20 @@ namespace golos { namespace chain {
             const auto& props = get_dynamic_global_properties();
             if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) return;
 
+            auto distributed_sum = asset(0, STEEM_SYMBOL);
+
             const auto& acc_idx = get_index<account_index, by_vesting_shares>();
             auto acc_itr = acc_idx.upper_bound(asset(0, VESTS_SYMBOL));
             for (; acc_itr != acc_idx.end(); acc_itr++) {
                 const auto& acc = *acc_itr;
+                auto stake = asset((uint128_t(props.accumulative_balance.amount.value) * acc.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
                 modify(acc, [&](auto& a) {
-                    a.accumulative_balance += asset((uint128_t(props.accumulative_balance.amount.value) * a.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
+                    a.accumulative_balance += stake;
                 });
+                distributed_sum += stake;
             }
+
+            _accumulative_remainder += (props.accumulative_balance - distributed_sum);
 
             modify(props, [&](auto& props) {
                 props.accumulative_balance = asset(0, STEEM_SYMBOL);
@@ -3240,10 +3312,10 @@ namespace golos { namespace chain {
  */
         void database::process_conversions() {
             auto now = head_block_time();
-            const auto &request_by_date = get_index<convert_request_index>().indices().get<by_conversion_date>();
+            const auto& request_by_date = get_index<convert_request_index, by_conversion_date>();
             auto itr = request_by_date.begin();
 
-            const auto &fhistory = get_feed_history();
+            const auto& fhistory = get_feed_history();
             if (fhistory.current_median_history.is_null()) {
                 return;
             }
@@ -3253,28 +3325,43 @@ namespace golos { namespace chain {
 
             while (itr != request_by_date.end() &&
                    itr->conversion_date <= now) {
-                const auto &user = get_account(itr->owner);
+                const auto& user = get_account(itr->owner);
+
+                auto clean_amount = itr->amount - itr->fee;
+
                 auto amount_to_issue =
-                        itr->amount * fhistory.current_median_history;
+                        clean_amount * fhistory.current_median_history;
 
                 adjust_balance(user, amount_to_issue);
 
-                net_sbd += itr->amount;
-                net_steem += amount_to_issue;
+                if (itr->amount.symbol == STEEM_SYMBOL) {
+                    net_sbd -= amount_to_issue;
+                    net_steem -= itr->amount;
+                } else {
+                    net_sbd += itr->amount;
+                    net_steem += amount_to_issue;
+                }
 
-                push_virtual_operation(fill_convert_request_operation(user.name, itr->requestid, itr->amount, amount_to_issue));
+                push_virtual_operation(fill_convert_request_operation(user.name, itr->requestid, itr->amount, amount_to_issue, itr->fee));
 
                 remove(*itr);
                 itr = request_by_date.begin();
             }
 
-            const auto &props = get_dynamic_global_properties();
-            modify(props, [&](dynamic_global_property_object &p) {
+            auto converted_sbd = asset(0, STEEM_SYMBOL);
+            if (net_sbd.amount < 0) {
+                converted_sbd = (-net_sbd) * fhistory.current_median_history;
+                converted_sbd = -converted_sbd;
+            } else {
+                converted_sbd = net_sbd * fhistory.current_median_history;
+            }
+
+            const auto& props = get_dynamic_global_properties();
+            modify(props, [&](dynamic_global_property_object& p) {
                 p.current_supply += net_steem;
                 p.current_sbd_supply -= net_sbd;
                 p.virtual_supply += net_steem;
-                p.virtual_supply -=
-                        net_sbd * get_feed_history().current_median_history;
+                p.virtual_supply -= converted_sbd;
             });
         }
 
@@ -3674,6 +3761,7 @@ namespace golos { namespace chain {
             add_core_index<invite_index>(*this);
             add_core_index<asset_index>(*this);
             add_core_index<account_balance_index>(*this);
+            add_core_index<event_index>(*this);
 
             _plugin_index_signal();
         }
@@ -3801,8 +3889,6 @@ namespace golos { namespace chain {
                         a.name = name;
                         a.memo_key = init_public_key;
                         a.balance = asset(i ? 0 : init_supply, STEEM_SYMBOL);
-                        elog("set balance to ${amount}",("amount", a.balance.amount));
-
                     });
 
                     if (store_metadata_for_account(name)) {
@@ -4233,6 +4319,7 @@ namespace golos { namespace chain {
                 process_worker_cashout();
                 check_account_idleness();
                 check_claim_idleness();
+                process_events();
                 process_vesting_withdrawals();
                 process_savings_withdraws();
                 pay_liquidity_reward();
@@ -5568,8 +5655,19 @@ namespace golos { namespace chain {
                         }
 #endif
 #ifdef STEEMIT_BUILD_TESTNET
-                        adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
+                        // adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
                         modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
+                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
+                        });
+
+                        create<account_object>([&](auto& acc) {
+                            acc.name = "cyberfounder100";
+                            acc.memo_key = public_key_type(STEEMIT_INIT_PUBLIC_KEY);
+                        });
+                        create<account_authority_object>([&](auto& auth) {
+                            auth.account = "cyberfounder100";
+                            auth.active = authority(1, public_key_type(STEEMIT_INIT_PUBLIC_KEY), 1);
+                            auth.owner = auth.active;
                             auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                         });
 #endif
@@ -5625,6 +5723,7 @@ namespace golos { namespace chain {
 
                 for (auto itr = account_idx.begin();
                      itr != account_idx.end(); ++itr) {
+                    total_supply += itr->accumulative_balance;
                     total_supply += itr->balance;
                     total_supply += itr->savings_balance;
                     total_sbd += itr->sbd_balance;
@@ -5707,6 +5806,8 @@ namespace golos { namespace chain {
                 }
 
                 total_supply += gpo.total_vesting_fund_steem +
+                                gpo.accumulative_balance +
+                                _accumulative_remainder +
                                 gpo.total_reward_fund_steem;
 
                 FC_ASSERT(gpo.current_supply ==

@@ -4,6 +4,7 @@
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/block_summary_object.hpp>
 #include <golos/chain/worker_objects.hpp>
+#include <golos/protocol/validate_helper.hpp>
 #include <fc/io/json.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -911,6 +912,10 @@ namespace golos { namespace chain {
                             com.curation_rewards_percent = mprops.min_curation_percent;
                         } else {
                             com.curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
+                        }
+
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
+                            com.min_golos_power_to_curate = mprops.min_golos_power_to_curate;
                         }
 
                         com.author = o.author;
@@ -2122,32 +2127,51 @@ namespace golos { namespace chain {
             });
         }
 
-        void convert_evaluator::do_apply(const convert_operation &o) {
-            const auto &owner = _db.get_account(o.owner);
-            GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount);
+        void convert_evaluator::do_apply(const convert_operation& op) {
+            auto amount = op.amount;
+            asset fee(0, amount.symbol);
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__155)) {
+                if (amount.symbol == STEEM_SYMBOL) {
+                    auto fee_percent = _db.get_witness_schedule_object().median_props.convert_fee_percent;
+                    fee = asset((uint128_t(amount.amount)
+                        * fee_percent
+                        / STEEMIT_100_PERCENT).to_uint64(),
+                        amount.symbol);
 
-            _db.adjust_balance(owner, -o.amount);
+                    GOLOS_CHECK_LOGIC(fee.amount > 0,
+                        logic_exception::amount_is_too_low,
+                        "Cannot convert GOLOS because amount is too low, fee (${fee_percent}) is zero.",
+                        ("fee_percent", fee_percent));
+                }
+            } else {
+                GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_ASSET_GT0(amount, GBG));
+            }
 
-            const auto &fhistory = _db.get_feed_history();
+            const auto& owner = _db.get_account(op.owner);
+            GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, amount);
+
+            _db.adjust_balance(owner, -amount);
+
+            const auto& fhistory = _db.get_feed_history();
             GOLOS_CHECK_LOGIC(!fhistory.current_median_history.is_null(),
-                    logic_exception::no_price_feed_yet,
-                    "Cannot convert SBD because there is no price feed.");
+                logic_exception::no_price_feed_yet,
+                "Cannot convert SBD because there is no price feed.");
 
             auto steem_conversion_delay = STEEMIT_CONVERSION_DELAY_PRE_HF_16;
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_16__551)) {
                 steem_conversion_delay = STEEMIT_CONVERSION_DELAY;
             }
 
-            GOLOS_CHECK_OBJECT_MISSING(_db, convert_request, o.owner, o.requestid);
+            GOLOS_CHECK_OBJECT_MISSING(_db, convert_request, op.owner, op.requestid);
 
-            _db.create<convert_request_object>([&](convert_request_object &obj) {
-                obj.owner = o.owner;
-                obj.requestid = o.requestid;
-                obj.amount = o.amount;
+            _db.create<convert_request_object>([&](auto& obj) {
+                obj.owner = op.owner;
+                obj.requestid = op.requestid;
+                obj.amount = amount;
+                obj.fee = fee;
                 obj.conversion_date =
-                        _db.head_block_time() + steem_conversion_delay;
+                    _db.head_block_time() + steem_conversion_delay;
             });
-
         }
 
         bool inline is_asset_type(asset asset, asset_symbol_type symbol) {

@@ -12,6 +12,7 @@ namespace golos { namespace chain {
 
     struct comment_curation_info {
         const comment_object& comment;
+        asset min_vesting_shares_to_curate = asset(0, VESTS_SYMBOL); ///< Same as min_golos_power_to_curate, but in GESTS
 
         std::vector<comment_vote_info> vote_list;
 
