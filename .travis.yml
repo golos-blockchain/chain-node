@@ -9,9 +9,9 @@ before_install:
   - echo "$TRAVIS_BRANCH"
 
 env:
-  # - DOCKERFILE=share/golosd/docker/Dockerfile-testnet DOCKERNAME="-testnet"
-  - DOCKERFILE=share/golosd/docker/Dockerfile-livetest DOCKERNAME="-livetest"
-  - DOCKERFILE=Dockerfile DOCKERNAME=""
+  - DOCKERFILE=share/golosd/docker/Dockerfile-test DOCKERNAME="-test"
+  #- DOCKERFILE=share/golosd/docker/Dockerfile-livetest DOCKERNAME="-livetest"
+  #- DOCKERFILE=Dockerfile DOCKERNAME=""
 
 jobs:
   fast_finish: true
