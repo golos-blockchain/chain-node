@@ -2224,15 +2224,6 @@ namespace golos { namespace chain {
 
             auto median = active.size() / 2;
 
-            #ifdef STEEMIT_BUILD_TESTNET
-            int* x = (int*)-1;
-            printf("%d", *x);
-            #endif
-            #ifdef STEEMIT_BUILD_LIVETEST
-            int* x = (int*)-1;
-            printf("%d", *x);
-            #endif
-
             auto calc_median = [&](auto&& param) {
                 std::nth_element(
                     active.begin(), active.begin() + median, active.end(),
