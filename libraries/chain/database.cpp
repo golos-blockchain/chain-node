@@ -1499,9 +1499,9 @@ namespace golos { namespace chain {
                 ++itr;
                 remove(current);
             }
-            if (itr != idx.end()) {
-                wlog("process_events scheduled some events to next block");
-            }
+            // if (itr != idx.end()) {
+            //     wlog("process_events scheduled some events to next block");
+            // }
         }
 
         account_name_type database::get_scheduled_witness(uint32_t slot_num) const {

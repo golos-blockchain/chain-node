@@ -62,8 +62,12 @@ struct post_operation_visitor {
         _db.remove(*wtmo_itr);
     }
 
-    result_type operator()(const vote_operation& o) const {
-        const auto& post = _db.get_comment(o.author, o.permlink);
+    result_type operator()(const vote_operation& op) const {
+        if (_db.is_account_vote(op)) {
+            return;
+        }
+
+        const auto& post = _db.get_comment(op.author, op.permlink);
 
         const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);

@@ -159,6 +159,10 @@ public:
     }
 
     auto operator()(const vote_operation& op) -> result_type {
+        if (_db.is_account_vote(op)) {
+            return;
+        }
+
         auto& b = write_op_header("votes", COMMENT_ID(op));
 
         fc::raw::pack(b, op);

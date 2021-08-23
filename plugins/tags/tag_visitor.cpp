@@ -441,6 +441,9 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void operation_visitor::operator()(const vote_operation& op) const {
+        if (db_.is_account_vote(op)) {
+            return;
+        }
         // only update existing tags
         update_tags(op.author, op.permlink);
     }

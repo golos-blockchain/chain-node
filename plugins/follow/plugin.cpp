@@ -56,9 +56,9 @@ namespace golos {
 
             struct pre_operation_visitor {
                 plugin& _plugin;
-                golos::chain::database& db;
+                golos::chain::database& _db;
 
-                pre_operation_visitor(plugin& plugin, golos::chain::database& db) : _plugin(plugin), db(db) {
+                pre_operation_visitor(plugin& plugin, golos::chain::database& db) : _plugin(plugin), _db(db) {
                 }
 
                 typedef void result_type;
@@ -69,22 +69,25 @@ namespace golos {
 
                 void operator()(const vote_operation& op) const {
                     try {
-
-                        const auto& c = db.get_comment(op.author, op.permlink);
-
-                        if (db.calculate_discussion_payout_time(c) == fc::time_point_sec::maximum()) {
+                        if (_db.is_account_vote(op)) {
                             return;
                         }
 
-                        const auto& cv_idx = db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
-                        auto cv = cv_idx.find(std::make_tuple(c.id, db.get_account(op.voter).id));
+                        const auto& c = _db.get_comment(op.author, op.permlink);
+
+                        if (_db.calculate_discussion_payout_time(c) == fc::time_point_sec::maximum()) {
+                            return;
+                        }
+
+                        const auto& cv_idx = _db.get_index<comment_vote_index, by_comment_voter>();
+                        auto cv = cv_idx.find(std::make_tuple(c.id, _db.get_account(op.voter).id));
 
                         if (cv != cv_idx.end()) {
-                            const auto& rep_idx = db.get_index<reputation_index>().indices().get<by_account>();
+                            const auto& rep_idx = _db.get_index<reputation_index, by_account>();
                             auto rep = rep_idx.find(op.author);
 
                             if (rep != rep_idx.end()) {
-                                db.modify(*rep, [&](reputation_object& r) {
+                                _db.modify(*rep, [&](auto& r) {
                                     r.reputation -= (cv->rshares >> 6); // Shift away precision from vests. It is noise
                                 });
                             }
@@ -95,7 +98,7 @@ namespace golos {
 
                 void operator()(const delete_comment_operation& op) const {
                     try {
-                        const auto* comment = db.find_comment(op.author, op.permlink);
+                        const auto* comment = _db.find_comment(op.author, op.permlink);
 
                         if (comment == nullptr) {
                             return;
@@ -104,22 +107,22 @@ namespace golos {
                             return;
                         }
 
-                        const auto& feed_idx = db.get_index<feed_index>().indices().get<by_comment>();
+                        const auto& feed_idx = _db.get_index<feed_index, by_comment>();
                         auto itr = feed_idx.lower_bound(comment->id);
 
                         while (itr != feed_idx.end() && itr->comment == comment->id) {
                             const auto& old_feed = *itr;
                             ++itr;
-                            db.remove(old_feed);
+                            _db.remove(old_feed);
                         }
 
-                        const auto& blog_idx = db.get_index<blog_index>().indices().get<by_comment>();
+                        const auto& blog_idx = _db.get_index<blog_index, by_comment>();
                         auto blog_itr = blog_idx.lower_bound(comment->id);
 
                         while (blog_itr != blog_idx.end() && blog_itr->comment == comment->id) {
                             const auto& old_blog = *blog_itr;
                             ++blog_itr;
-                            db.remove(old_blog);
+                            _db.remove(old_blog);
                         }
                     } FC_CAPTURE_AND_RETHROW()
                 }
@@ -127,9 +130,9 @@ namespace golos {
 
             struct post_operation_visitor {
                 plugin& _plugin;
-                database& db;
+                database& _db;
 
-                post_operation_visitor(plugin& plugin, database& db) : _plugin(plugin), db(db) {
+                post_operation_visitor(plugin& plugin, database& db) : _plugin(plugin), _db(db) {
                 }
 
                 typedef void result_type;
@@ -156,7 +159,7 @@ namespace golos {
 
                             auto new_fop = follow_plugin_operation(fop);
                             new_cop.json = fc::json::to_string(new_fop);
-                            std::shared_ptr<custom_operation_interpreter> eval = db.get_custom_json_evaluator(op.id);
+                            std::shared_ptr<custom_operation_interpreter> eval = _db.get_custom_json_evaluator(op.id);
                             eval->apply(new_cop);
                         }
                     } FC_CAPTURE_AND_RETHROW()
@@ -168,16 +171,16 @@ namespace golos {
                             return;
                         }
 
-                        const auto& c = db.get_comment(op.author, op.permlink);
+                        const auto& c = _db.get_comment(op.author, op.permlink);
 
-                        if (c.created != db.head_block_time()) {
+                        if (c.created != _db.head_block_time()) {
                             return;
                         }
 
-                        const auto& comment_idx = db.get_index<feed_index, by_comment>();
-                        const auto& feed_idx = db.get_index<feed_index, by_feed>();
+                        const auto& comment_idx = _db.get_index<feed_index, by_comment>();
+                        const auto& feed_idx = _db.get_index<feed_index, by_feed>();
 
-                        const auto& idx = db.get_index<follow_index, by_following_follower>();
+                        const auto& idx = _db.get_index<follow_index, by_following_follower>();
                         auto itr = idx.find(op.author);
                         for (; itr != idx.end() && itr->following == op.author; ++itr) {
                             if (itr->what & (1 << blog)) {
@@ -188,38 +191,38 @@ namespace golos {
                                 }
 
                                 if (comment_idx.find(std::make_tuple(c.id, itr->follower)) == comment_idx.end()) {
-                                    db.create<feed_object>([&](auto& f) {
+                                    _db.create<feed_object>([&](auto& f) {
                                         f.account = itr->follower;
                                         f.comment = c.id;
                                         f.account_feed_id = next_id;
                                     });
 
-                                    db.push_event(comment_feed_operation(itr->follower,
+                                    _db.push_event(comment_feed_operation(itr->follower,
                                         op.author, op.permlink, op.parent_author, op.parent_permlink,
                                         op.title, op.body, op.json_metadata));
 
-                                    const auto& old_feed_idx = db.get_index<feed_index, by_old_feed>();
+                                    const auto& old_feed_idx = _db.get_index<feed_index, by_old_feed>();
                                     auto old_feed = old_feed_idx.lower_bound(itr->follower);
 
                                     while (old_feed->account == itr->follower &&
                                            next_id - old_feed->account_feed_id > _plugin.max_feed_size()) {
-                                        db.remove(*old_feed);
+                                        _db.remove(*old_feed);
                                         old_feed = old_feed_idx.lower_bound(itr->follower);
                                     }
                                 }
                             }
                         }
 
-                        const auto& blog_idx = db.get_index<blog_index, by_blog>();
+                        const auto& blog_idx = _db.get_index<blog_index, by_blog>();
                         auto last_blog = blog_idx.lower_bound(op.author);
                         uint32_t next_id = 0;
                         if (last_blog != blog_idx.end() && last_blog->account == op.author) {
                             next_id = last_blog->blog_feed_id + 1;
                         }
 
-                        const auto& comment_blog_idx = db.get_index<blog_index, by_comment>();
+                        const auto& comment_blog_idx = _db.get_index<blog_index, by_comment>();
                         if (comment_blog_idx.find(std::make_tuple(c.id, op.author)) == comment_blog_idx.end()) {
-                            db.create<blog_object>([&](auto& b) {
+                            _db.create<blog_object>([&](auto& b) {
                                 b.account = op.author;
                                 b.comment = c.id;
                                 b.blog_feed_id = next_id;
@@ -230,16 +233,22 @@ namespace golos {
 
                 void operator()(const vote_operation& op) const {
                     try {
-                        const auto& comment = db.get_comment(op.author, op.permlink);
-
-                        if (db.calculate_discussion_payout_time(comment) == fc::time_point_sec::maximum()) {
+                        // Vote without permlink is vote on account
+                        // There is a specific case - via account_voted_operation event
+                        if (_db.is_account_vote(op)) {
                             return;
                         }
 
-                        const auto& cv_idx = db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
-                        auto cv = cv_idx.find(boost::make_tuple(comment.id, db.get_account(op.voter).id));
+                        const auto& comment = _db.get_comment(op.author, op.permlink);
 
-                        const auto& rep_idx = db.get_index<reputation_index>().indices().get<by_account>();
+                        if (_db.calculate_discussion_payout_time(comment) == fc::time_point_sec::maximum()) {
+                            return;
+                        }
+
+                        const auto& cv_idx = _db.get_index<comment_vote_index, by_comment_voter>();
+                        auto cv = cv_idx.find(boost::make_tuple(comment.id, _db.get_account(op.voter).id));
+
+                        const auto& rep_idx = _db.get_index<reputation_index, by_account>();
                         auto voter_rep = rep_idx.find(op.voter);
                         auto author_rep = rep_idx.find(op.author);
 
@@ -256,7 +265,7 @@ namespace golos {
                                 return;
                             }
 
-                            db.create<reputation_object>([&](reputation_object& r) {
+                            _db.create<reputation_object>([&](auto& r) {
                                 r.account = op.author;
                                 r.reputation = (cv->rshares >> 6); // Shift away precision from vests. It is noise
                             });
@@ -267,10 +276,51 @@ namespace golos {
                                 return;
                             }
 
-                            db.modify(*author_rep, [&](reputation_object& r) {
+                            _db.modify(*author_rep, [&](auto& r) {
                                 r.reputation += (cv->rshares >> 6); // Shift away precision from vests. It is noise
                             });
                         }
+                    } FC_CAPTURE_AND_RETHROW()
+                }
+
+                void operator()(const account_voted_operation& op) const {
+                    try {
+                        const auto& rep_idx = _db.get_index<reputation_index, by_account>();
+                        auto voter_rep = rep_idx.find(op.voter);
+                        auto author_rep = rep_idx.find(op.author);
+
+                        // Rules are same as in vote_operation
+
+                        if (voter_rep != rep_idx.end() && voter_rep->reputation < 0) {
+                            return;
+                        }
+
+                        int64_t reputation_before = 0;
+
+                        if (author_rep == rep_idx.end()) {
+                            if (op.reputation < 0 && !(voter_rep != rep_idx.end() && voter_rep->reputation > 0)) {
+                                return;
+                            }
+
+                            _db.create<reputation_object>([&](auto& r) {
+                                r.account = op.author;
+                                r.reputation = op.reputation; // Noise already removed
+                            });
+                        } else {
+                            if (op.reputation < 0 &&
+                                !(voter_rep != rep_idx.end() && voter_rep->reputation > author_rep->reputation)) {
+                                return;
+                            }
+
+                            reputation_before = author_rep->reputation.value;
+
+                            _db.modify(*author_rep, [&](auto& r) {
+                                r.reputation += op.reputation; // Noise already removed
+                            });
+                        }
+
+                        _db.push_event(account_reputation_operation(op.voter,
+                            op.author, reputation_before, (reputation_before + op.reputation), op.weight));
                     } FC_CAPTURE_AND_RETHROW()
                 }
             };
