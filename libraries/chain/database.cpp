@@ -5105,7 +5105,7 @@ namespace golos { namespace chain {
 
             modify(a, [&](account_object& acnt) {
 
-                if (a.sbd_seconds_last_update != head_block_time()) {
+                if (!has_hardfork(STEEMIT_HARDFORK_0_26__131) && a.sbd_seconds_last_update != head_block_time()) {
                     acnt.sbd_seconds += fc::uint128_t(a.sbd_balance.amount.value) * (head_block_time() - a.sbd_seconds_last_update).to_seconds();
 
                     acnt.sbd_seconds_last_update = head_block_time();

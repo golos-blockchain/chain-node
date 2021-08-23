@@ -1347,9 +1347,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
                 BOOST_CHECK_EQUAL(fcrop.fee_in.symbol, STEEM_SYMBOL);
                 BOOST_CHECK_EQUAL(fcrop.fee_in.amount, 125);
 
-                auto iop = get_last_operations<interest_operation>(1)[0];
-                BOOST_CHECK_EQUAL(alice.sbd_balance.amount,
-                    (start_balance + ASSET("1.900 GBG") + iop.interest).amount);
+                BOOST_CHECK_EQUAL(get_last_operations<interest_operation>(1).size(), 0);
             }
 
             validate_database();
@@ -1772,9 +1770,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
     BOOST_AUTO_TEST_CASE(limit_sbd_interest_rate) try {
         BOOST_TEST_MESSAGE("Testing: limit_sbd_interest_rate");
 
-        const account_name_type alice_user_name = "alice";
-        const account_name_type bob_user_name = "bob";
-
         ACTORS((alice)(bob))
 
         generate_block();
@@ -1795,16 +1790,16 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
         generate_block();
 
-        fund(alice_user_name, ASSET("90.000 GOLOS"));
-        fund(alice_user_name, ASSET("9.000 GBG")); // this sets current_median_history to 1
+        fund("alice", ASSET("90.000 GOLOS"));
+        fund("alice", ASSET("9.000 GBG")); // this sets current_median_history to 1
 
         BOOST_TEST_MESSAGE("--- Generate blocks to get GBG ~ 11%");
 
         generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_SECONDS_PER_YEAR / 4), true);
 
-        transfer_operation transfer_op;
-        transfer_op.from = alice_user_name;
-        transfer_op.to = bob_user_name;
+        transfer_to_savings_operation transfer_op;
+        transfer_op.from = "alice";
+        transfer_op.to = "bob";
         transfer_op.amount = asset(1, SBD_SYMBOL);
 
         signed_transaction tx;
@@ -1821,11 +1816,11 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
         {
             const auto& dynamic_global_properties = db->get_dynamic_global_properties();
 
-            BOOST_CHECK_EQUAL(dynamic_global_properties.is_forced_min_price, true);
+            BOOST_CHECK_EQUAL(dynamic_global_properties.is_forced_min_price, false);
 
             const auto total_amount = dynamic_global_properties.current_supply.amount + dynamic_global_properties.current_sbd_supply.amount;
 
-            BOOST_CHECK_EQUAL(100 * dynamic_global_properties.current_sbd_supply.amount / total_amount, 11);
+            BOOST_CHECK_EQUAL(100 * dynamic_global_properties.current_sbd_supply.amount / total_amount, 9);
         }
 
         BOOST_TEST_MESSAGE("--- Try to get sbd fee again");
@@ -1837,14 +1832,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
         {
             const auto& dynamic_global_properties = db->get_dynamic_global_properties();
 
-            BOOST_CHECK_EQUAL(dynamic_global_properties.is_forced_min_price, true);
+            BOOST_CHECK_EQUAL(dynamic_global_properties.is_forced_min_price, false);
 
             const auto total_amount = dynamic_global_properties.current_supply.amount + dynamic_global_properties.current_sbd_supply.amount;
 
-            BOOST_CHECK_EQUAL(100 * dynamic_global_properties.current_sbd_supply.amount / total_amount, 11);
+            BOOST_CHECK_EQUAL(100 * dynamic_global_properties.current_sbd_supply.amount / total_amount, 9);
         }
-
-
     }
     FC_LOG_AND_RETHROW()
 
