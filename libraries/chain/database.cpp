@@ -3368,10 +3368,20 @@ namespace golos { namespace chain {
             const auto& props = get_dynamic_global_properties();
             if (props.sbd_debt_percent < STEEMIT_SBD_DEBT_CONVERT_THRESHOLD) return;
 
-            const auto& orders = get_index<limit_order_index>().indices();
-            for (auto itr = orders.begin(); itr != orders.end(); ) {
-                cancel_order(*itr);
-                itr = orders.begin();
+            if (has_hardfork(STEEMIT_HARDFORK_0_26__159)) {
+                const auto& orders = get_index<limit_order_index, by_symbol>();
+                for (auto itr = orders.find(SBD_SYMBOL);
+                        itr != orders.end() && itr->symbol == SBD_SYMBOL; ) {
+                    const auto& val = *itr;
+                    ++itr;
+                    cancel_order(val);
+                }
+            } else {
+                const auto& orders = get_index<limit_order_index>().indices();
+                for (auto itr = orders.begin(); itr != orders.end(); ) {
+                    cancel_order(*itr);
+                    itr = orders.begin();
+                }
             }
 
             asset net_sbd(0, SBD_SYMBOL);

@@ -2216,6 +2216,7 @@ namespace golos { namespace chain {
                 obj.seller = o.owner;
                 obj.orderid = o.orderid;
                 obj.for_sale = o.amount_to_sell.amount;
+                obj.symbol = o.amount_to_sell.symbol;
                 obj.sell_price = o.get_price();
                 obj.expiration = o.expiration;
             });
@@ -2265,6 +2266,7 @@ namespace golos { namespace chain {
                 obj.seller = o.owner;
                 obj.orderid = o.orderid;
                 obj.for_sale = o.amount_to_sell.amount;
+                obj.symbol = o.amount_to_sell.symbol;
                 obj.sell_price = o.exchange_rate;
                 obj.expiration = o.expiration;
             });
