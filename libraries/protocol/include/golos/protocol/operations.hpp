@@ -113,7 +113,9 @@ namespace golos { namespace protocol {
                 worker_state_operation,
                 convert_sbd_debt_operation,
                 internal_transfer_operation,
-                comment_feed_operation
+                comment_feed_operation,
+                account_voted_operation,
+                account_reputation_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

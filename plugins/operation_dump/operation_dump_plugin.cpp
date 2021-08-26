@@ -35,6 +35,10 @@ struct post_operation_clarifier {
     }
 
     result_type operator()(const vote_operation& op) const {
+        if (_db.is_account_vote(op)) {
+            return;
+        }
+
         const auto& comment = _db.get_comment(op.author, op.permlink);
         const auto& vote_idx = _db.get_index<comment_vote_index, by_comment_voter>();
         auto vote_itr = vote_idx.find(std::make_tuple(comment.id, _db.get_account(op.voter).id));

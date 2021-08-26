@@ -169,6 +169,9 @@ public:
         if (_db.head_block_num() < 35000000) { // Speed up replay
             return;
         }
+        if (_db.is_account_vote(op)) {
+            return;
+        }
 
         auto id = std::string(op.author) + "." + op.permlink;
         auto found = buffer.find(id);

@@ -485,6 +485,10 @@ namespace golos { namespace plugins { namespace social_network {
         }
 
         void operator()(const golos::protocol::vote_operation& op) const {
+            if (db.is_account_vote(op)) {
+                return;
+            }
+
             const auto* comment = db.find_comment(op.author, op.permlink);
             if (comment == nullptr) {
                 return;

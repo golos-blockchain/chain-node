@@ -339,6 +339,11 @@ namespace golos { namespace chain {
 
             void process_events();
 
+            bool is_account_vote(const vote_operation& op) const {
+                // Check if it is account vote, not comment vote
+                return !op.permlink.size() && has_hardfork(STEEMIT_HARDFORK_0_26__164);
+            }
+
             /**
              *  This signal is emitted for plugins to process every operation after it has been fully applied.
              */

@@ -1499,9 +1499,9 @@ namespace golos { namespace chain {
                 ++itr;
                 remove(current);
             }
-            if (itr != idx.end()) {
-                wlog("process_events scheduled some events to next block");
-            }
+            // if (itr != idx.end()) {
+            //     wlog("process_events scheduled some events to next block");
+            // }
         }
 
         account_name_type database::get_scheduled_witness(uint32_t slot_num) const {
@@ -2223,15 +2223,6 @@ namespace golos { namespace chain {
             chain_properties_26 median_props;
 
             auto median = active.size() / 2;
-
-            #ifdef STEEMIT_BUILD_TESTNET
-            int* x = (int*)-1;
-            printf("%d", *x);
-            #endif
-            #ifdef STEEMIT_BUILD_LIVETEST
-            int* x = (int*)-1;
-            printf("%d", *x);
-            #endif
 
             auto calc_median = [&](auto&& param) {
                 std::nth_element(
@@ -3377,10 +3368,20 @@ namespace golos { namespace chain {
             const auto& props = get_dynamic_global_properties();
             if (props.sbd_debt_percent < STEEMIT_SBD_DEBT_CONVERT_THRESHOLD) return;
 
-            const auto& orders = get_index<limit_order_index>().indices();
-            for (auto itr = orders.begin(); itr != orders.end(); ) {
-                cancel_order(*itr);
-                itr = orders.begin();
+            if (has_hardfork(STEEMIT_HARDFORK_0_26__159)) {
+                const auto& orders = get_index<limit_order_index, by_symbol>();
+                for (auto itr = orders.find(SBD_SYMBOL);
+                        itr != orders.end() && itr->symbol == SBD_SYMBOL; ) {
+                    const auto& val = *itr;
+                    ++itr;
+                    cancel_order(val);
+                }
+            } else {
+                const auto& orders = get_index<limit_order_index>().indices();
+                for (auto itr = orders.begin(); itr != orders.end(); ) {
+                    cancel_order(*itr);
+                    itr = orders.begin();
+                }
             }
 
             asset net_sbd(0, SBD_SYMBOL);
@@ -5104,7 +5105,7 @@ namespace golos { namespace chain {
 
             modify(a, [&](account_object& acnt) {
 
-                if (a.sbd_seconds_last_update != head_block_time()) {
+                if (!has_hardfork(STEEMIT_HARDFORK_0_26__131) && a.sbd_seconds_last_update != head_block_time()) {
                     acnt.sbd_seconds += fc::uint128_t(a.sbd_balance.amount.value) * (head_block_time() - a.sbd_seconds_last_update).to_seconds();
 
                     acnt.sbd_seconds_last_update = head_block_time();

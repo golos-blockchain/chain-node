@@ -730,6 +730,9 @@ namespace mongo_db {
     }
 
     auto state_writer::operator()(const vote_operation& op) -> result_type {
+        if (db_.is_account_vote(op)) {
+            return;
+        }
         format_comment(op.author, op.permlink);
         
         try {

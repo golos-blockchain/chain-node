@@ -193,6 +193,7 @@ namespace golos {
             account_name_type seller;
             uint32_t orderid = 0;
             share_type for_sale; ///< asset id is sell_price.base.symbol
+            asset_symbol_type symbol;
             price sell_price;
 
             pair <asset_symbol_type, asset_symbol_type> get_market() const {
@@ -308,35 +309,37 @@ namespace golos {
         struct by_price;
         struct by_expiration;
         struct by_account;
-        typedef multi_index_container <
-        limit_order_object,
-        indexed_by<
-                ordered_unique < tag <
-                by_id>, member<limit_order_object, limit_order_id_type, &limit_order_object::id>>,
-        ordered_non_unique <tag<by_expiration>, member<limit_order_object, time_point_sec, &limit_order_object::expiration>>,
-        ordered_unique <tag<by_price>,
-        composite_key<limit_order_object,
-                member <
-                limit_order_object, price, &limit_order_object::sell_price>,
-        member<limit_order_object, limit_order_id_type, &limit_order_object::id>
-        >,
-        composite_key_compare <std::greater<price>, std::less<limit_order_id_type>>
-        >,
-        ordered_unique <tag<by_account>,
-        composite_key<limit_order_object,
-                member <
-                limit_order_object, account_name_type, &limit_order_object::seller>,
-        member<limit_order_object, uint32_t, &limit_order_object::orderid>
-        >
-        >
-        >,
-        allocator <limit_order_object>
-        >
-        limit_order_index;
+        struct by_symbol;
+        using limit_order_index = multi_index_container<
+            limit_order_object,
+            indexed_by<
+                ordered_unique<tag<by_id>,
+                    member<limit_order_object, limit_order_id_type, &limit_order_object::id>
+                >,
+                ordered_non_unique<tag<by_expiration>,
+                    member<limit_order_object, time_point_sec, &limit_order_object::expiration>
+                >,
+                ordered_unique<tag<by_price>, composite_key<limit_order_object,
+                    member<limit_order_object, price, &limit_order_object::sell_price>,
+                    member<limit_order_object, limit_order_id_type, &limit_order_object::id>
+                >, composite_key_compare<
+                    std::greater<price>,
+                    std::less<limit_order_id_type>
+                >>,
+                ordered_unique<tag<by_account>, composite_key<limit_order_object,
+                    member<limit_order_object, account_name_type, &limit_order_object::seller>,
+                    member<limit_order_object, uint32_t, &limit_order_object::orderid>
+                >>,
+                ordered_non_unique<tag<by_symbol>,
+                    member<limit_order_object, asset_symbol_type, &limit_order_object::symbol>
+                >
+            >,
+            allocator<limit_order_object>
+        >;
 
         struct by_owner;
         struct by_conversion_date;
-        using convert_request_index = multi_index_container <
+        using convert_request_index = multi_index_container<
             convert_request_object,
             indexed_by<
                 ordered_unique<tag<by_id>,
@@ -536,7 +539,6 @@ namespace golos {
             allocator<donate_object>>;
 
         struct by_creator_symbol_name;
-        struct by_symbol;
         struct by_symbol_name;
 
         using asset_index = multi_index_container<

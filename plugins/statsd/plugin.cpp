@@ -119,6 +119,9 @@ struct operation_process {
     }
 
     void operator()(const vote_operation &op) const {
+        if (_db.is_account_vote(op)) {
+            return;
+        }
         const auto &cv_idx = _db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
         auto &comment = _db.get_comment(op.author, op.permlink);
         auto &voter = _db.get_account(op.voter);
