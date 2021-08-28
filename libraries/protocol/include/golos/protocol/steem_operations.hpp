@@ -687,17 +687,17 @@ namespace golos { namespace protocol {
             /**
              * Percent of emission on each block being redirected to worker fund
              */
-            uint16_t worker_reward_percent = GOLOS_WORKER_REWARD_PERCENT;
+            uint16_t worker_reward_percent = GOLOS_WORKER_REWARD_PERCENT_PRE_HF26;
 
             /**
              * Percent of emission on each block being redirected to witness fund
              */
-            uint16_t witness_reward_percent = GOLOS_WITNESS_REWARD_PERCENT;
+            uint16_t witness_reward_percent = GOLOS_WITNESS_REWARD_PERCENT_PRE_HF26;
 
             /**
              * Percent of emission on each block being redirected to vesting fund
              */
-            uint16_t vesting_reward_percent = GOLOS_VESTING_REWARD_PERCENT;
+            uint16_t vesting_reward_percent = GOLOS_VESTING_REWARD_PERCENT_PRE_HF26;
 
             /**
              * Amount of fee in GBG have to be claimed from worker request author on creating request
@@ -846,6 +846,17 @@ namespace golos { namespace protocol {
              * Minimum vesting shares amount (in GOLOS) to receive curation rewards.
              */
             asset min_golos_power_to_curate = GOLOS_DEF_GOLOS_POWER_TO_CURATE;
+
+            /**
+             * Percent of emission on each block being redirected to worker fund.
+             */
+            uint16_t worker_emission_percent = GOLOS_WORKER_EMISSION_PERCENT;
+
+            /**
+             * Percent of remain (emission - witness - workers), being redirected to vesting.
+             * And another part of remain being redirected to author fund.
+             */
+            uint16_t vesting_of_remain_percent = GOLOS_VESTING_OF_REMAIN_PERCENT;
 
             void validate() const;
 
@@ -1857,7 +1868,9 @@ FC_REFLECT_DERIVED(
     (asset_creation_fee)(invite_transfer_interval_sec))
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_26), ((golos::protocol::chain_properties_24)),
-    (convert_fee_percent)(min_golos_power_to_curate))
+    (convert_fee_percent)(min_golos_power_to_curate)
+    (worker_emission_percent)(vesting_of_remain_percent)
+)
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
 

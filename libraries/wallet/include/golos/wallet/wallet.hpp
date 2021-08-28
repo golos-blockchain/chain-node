@@ -94,6 +94,8 @@ namespace golos { namespace wallet {
 
             fc::optional<uint16_t> convert_fee_percent;
             fc::optional<asset> min_golos_power_to_curate;
+            fc::optional<uint16_t> worker_emission_percent;
+            fc::optional<uint16_t> vesting_of_remain_percent;
         };
 
         struct optional_private_box_query {

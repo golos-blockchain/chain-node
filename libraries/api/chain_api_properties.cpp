@@ -56,8 +56,13 @@ namespace golos { namespace api {
             invite_transfer_interval_sec = src.invite_transfer_interval_sec;
         }
         if (db.has_hardfork(STEEMIT_HARDFORK_0_26)) {
+            worker_reward_percent = 0;
+            witness_reward_percent = 0;
+            vesting_reward_percent = 0;
             convert_fee_percent = src.convert_fee_percent;
             min_golos_power_to_curate = src.min_golos_power_to_curate;
+            worker_emission_percent = src.worker_emission_percent;
+            vesting_of_remain_percent = src.vesting_of_remain_percent;
         }
     }
 

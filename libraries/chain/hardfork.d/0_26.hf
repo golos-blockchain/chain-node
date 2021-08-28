@@ -6,6 +6,7 @@
 #define STEEMIT_HARDFORK_0_26__159 (STEEMIT_HARDFORK_0_26) // Fix canceling orders
 #define STEEMIT_HARDFORK_0_26__131 (STEEMIT_HARDFORK_0_26) // SBD interest only on saving balance
 #define STEEMIT_HARDFORK_0_26__164 (STEEMIT_HARDFORK_0_26) // Upvoting/downvoting reputation
+#define STEEMIT_HARDFORK_0_26__163 (STEEMIT_HARDFORK_0_26) // Change emission distribution
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_26_TIME  1608483600 // 20 dec 2020 20:00:00 MSK

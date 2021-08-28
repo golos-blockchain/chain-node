@@ -352,9 +352,6 @@ namespace golos { namespace wallet {
                         result["curation_reward_curve"] = median_props.curation_reward_curve;
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
-                        result["worker_reward_percent"] = median_props.worker_reward_percent;
-                        result["witness_reward_percent"] = median_props.witness_reward_percent;
-                        result["vesting_reward_percent"] = median_props.vesting_reward_percent;
                         result["worker_request_creation_fee"] = median_props.worker_request_creation_fee;
                         result["worker_request_approve_min_percent"] = median_props.worker_request_approve_min_percent;
                         result["sbd_debt_convert_rate"] = median_props.sbd_debt_convert_rate;
@@ -374,6 +371,12 @@ namespace golos { namespace wallet {
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_26)) {
                         result["convert_fee_percent"]  = median_props.convert_fee_percent;
                         result["min_golos_power_to_curate"]  = median_props.min_golos_power_to_curate;
+                        result["worker_emission_percent"]  = median_props.worker_emission_percent;
+                        result["vesting_of_remain_percent"]  = median_props.vesting_of_remain_percent;
+                    } else if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
+                        result["worker_reward_percent"] = median_props.worker_reward_percent;
+                        result["witness_reward_percent"] = median_props.witness_reward_percent;
+                        result["vesting_reward_percent"] = median_props.vesting_reward_percent;
                     }
 
                     return result;
@@ -2361,6 +2364,11 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 p26 = p;
                 SET_PROP(p26, convert_fee_percent);
                 SET_PROP(p26, min_golos_power_to_curate);
+                p26.witness_reward_percent = 0;
+                p26.worker_reward_percent = 0;
+                p26.vesting_reward_percent = 0;
+                SET_PROP(p26, worker_emission_percent);
+                SET_PROP(p26, vesting_of_remain_percent);
                 op.props = p26;
             }
 #undef SET_PROP

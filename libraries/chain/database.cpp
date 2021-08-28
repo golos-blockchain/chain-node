@@ -2296,40 +2296,50 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_26::convert_fee_percent);
             calc_median(&chain_properties_26::min_golos_power_to_curate);
 
-            if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
-                #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
-                    std::nth_element( \
-                        FROM.begin(), FROM.begin() + FROM.size() / 2, FROM.end(), \
-                        [&](const auto* a, const auto* b) { \
-                            return a->props.FIELD < b->props.FIELD; \
-                        } \
-                    ); \
-                    vector<const witness_object*> TO; \
-                    std::copy_if(FROM.begin(), FROM.end(), back_inserter(TO), [&](auto& el) { return el->props.FIELD == FROM[FROM.size() / 2]->props.FIELD; });
-
-                COPY_ALL_MEDIAN(active, act_worker, worker_reward_percent);
-                COPY_ALL_MEDIAN(act_worker, act_witness, witness_reward_percent);
-                std::nth_element(
-                    act_witness.begin(), act_witness.begin() + act_witness.size() / 2, act_witness.end(),
-                    [&](const auto* a, const auto* b) { \
-                        return a->props.vesting_reward_percent < b->props.vesting_reward_percent;
-                    }
-                );
-                median_props.worker_reward_percent = act_witness[act_witness.size() / 2]->props.worker_reward_percent;
-                median_props.witness_reward_percent = act_witness[act_witness.size() / 2]->props.witness_reward_percent;
-                median_props.vesting_reward_percent = act_witness[act_witness.size() / 2]->props.vesting_reward_percent;
+            if (has_hardfork(STEEMIT_HARDFORK_0_26__163)) {
+                // Now these parameters are unused
+                calc_median(&chain_properties_26::worker_reward_percent);
+                calc_median(&chain_properties_26::witness_reward_percent);
+                calc_median(&chain_properties_26::vesting_reward_percent);
             } else {
-                std::nth_element(
-                    active.begin(), active.begin() + median, active.end(),
-                    [&](const auto* a, const auto* b) {
-                        return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
-                            < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
-                    }
-                );
-                median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
-                median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
-                median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
+                if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
+                    #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
+                        std::nth_element( \
+                            FROM.begin(), FROM.begin() + FROM.size() / 2, FROM.end(), \
+                            [&](const auto* a, const auto* b) { \
+                                return a->props.FIELD < b->props.FIELD; \
+                            } \
+                        ); \
+                        vector<const witness_object*> TO; \
+                        std::copy_if(FROM.begin(), FROM.end(), back_inserter(TO), [&](auto& el) { return el->props.FIELD == FROM[FROM.size() / 2]->props.FIELD; });
+
+                    COPY_ALL_MEDIAN(active, act_worker, worker_reward_percent);
+                    COPY_ALL_MEDIAN(act_worker, act_witness, witness_reward_percent);
+                    std::nth_element(
+                        act_witness.begin(), act_witness.begin() + act_witness.size() / 2, act_witness.end(),
+                        [&](const auto* a, const auto* b) { \
+                            return a->props.vesting_reward_percent < b->props.vesting_reward_percent;
+                        }
+                    );
+                    median_props.worker_reward_percent = act_witness[act_witness.size() / 2]->props.worker_reward_percent;
+                    median_props.witness_reward_percent = act_witness[act_witness.size() / 2]->props.witness_reward_percent;
+                    median_props.vesting_reward_percent = act_witness[act_witness.size() / 2]->props.vesting_reward_percent;
+                } else {
+                    std::nth_element(
+                        active.begin(), active.begin() + median, active.end(),
+                        [&](const auto* a, const auto* b) {
+                            return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
+                                < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
+                        }
+                    );
+                    median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
+                    median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
+                    median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
+                }
             }
+
+            calc_median(&chain_properties_26::worker_emission_percent);
+            calc_median(&chain_properties_26::vesting_of_remain_percent);
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -3050,7 +3060,13 @@ namespace golos { namespace chain {
                 auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 6.66% to witness pay
 
                 share_type worker_reward = 0;
-                if (has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
+                if (has_hardfork(STEEMIT_HARDFORK_0_26__163)) {
+                    worker_reward = new_steem * wso.median_props.worker_emission_percent / STEEMIT_100_PERCENT;
+                    witness_reward = new_steem * uint16_t(GOLOS_WITNESS_EMISSION_PERCENT) / STEEMIT_100_PERCENT;
+                    auto remain = new_steem - worker_reward - witness_reward;
+                    vesting_reward = remain * wso.median_props.vesting_of_remain_percent / STEEMIT_100_PERCENT;
+                    content_reward = remain - vesting_reward;
+                } else if (has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
                     worker_reward = new_steem * wso.median_props.worker_reward_percent / STEEMIT_100_PERCENT;
                     witness_reward = new_steem * wso.median_props.witness_reward_percent / STEEMIT_100_PERCENT;
                     vesting_reward = new_steem * wso.median_props.vesting_reward_percent / STEEMIT_100_PERCENT;

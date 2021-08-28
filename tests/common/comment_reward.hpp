@@ -93,14 +93,22 @@ namespace golos { namespace chain {
             auto vesting_reward = total_reward * uint16_t(STEEMIT_VESTING_FUND_PERCENT_PRE_HF22) / STEEMIT_100_PERCENT;
             auto witness_reward = total_reward - content_reward - vesting_reward;
 
-            if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
-                auto worker_reward = total_reward * uint16_t(GOLOS_WORKER_REWARD_PERCENT) / STEEMIT_100_PERCENT;
-                witness_reward = total_reward * uint16_t(GOLOS_WITNESS_REWARD_PERCENT) / STEEMIT_100_PERCENT;
-                vesting_reward = total_reward * uint16_t(GOLOS_VESTING_REWARD_PERCENT) / STEEMIT_100_PERCENT;
-                content_reward = total_reward - worker_reward - witness_reward - vesting_reward;
+            int64_t worker_reward = 0;
 
-                _worker_fund += asset(worker_reward, STEEM_SYMBOL);
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__163)) {
+                worker_reward = total_reward * uint16_t(GOLOS_WORKER_EMISSION_PERCENT) / STEEMIT_100_PERCENT;
+                witness_reward = total_reward * uint16_t(GOLOS_WITNESS_EMISSION_PERCENT) / STEEMIT_100_PERCENT;
+                auto remain = total_reward - worker_reward - witness_reward;
+                vesting_reward = remain * uint16_t(GOLOS_VESTING_OF_REMAIN_PERCENT) / STEEMIT_100_PERCENT;
+                content_reward = remain - vesting_reward;
+            } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
+                worker_reward = total_reward * uint16_t(GOLOS_WORKER_REWARD_PERCENT_PRE_HF26) / STEEMIT_100_PERCENT;
+                witness_reward = total_reward * uint16_t(GOLOS_WITNESS_REWARD_PERCENT_PRE_HF26) / STEEMIT_100_PERCENT;
+                vesting_reward = total_reward * uint16_t(GOLOS_VESTING_REWARD_PERCENT_PRE_HF26) / STEEMIT_100_PERCENT;
+                content_reward = total_reward - worker_reward - witness_reward - vesting_reward;
             }
+
+            _worker_fund += asset(worker_reward, STEEM_SYMBOL);
 
             auto witness_normalize = _db.get_witness_schedule_object().witness_pay_normalization_factor;
             witness_reward = witness_reward * STEEMIT_MAX_WITNESSES / witness_normalize;
