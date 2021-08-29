@@ -25,7 +25,6 @@ namespace golos { namespace plugins { namespace tags {
         impl(): database_(appbase::app().get_plugin<chain::plugin>().db()) {
             helper = std::make_unique<discussion_helper>(
                 database_,
-                follow::fill_account_reputation,
                 fill_promoted,
                 social_network::fill_comment_info);
         }

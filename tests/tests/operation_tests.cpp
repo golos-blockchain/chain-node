@@ -525,6 +525,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             ACTORS((alice)(bob)(sam))
             generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
 
+            BOOST_TEST_MESSAGE("-- Checking initial conditions");
+
+            const auto& mp = db->get_witness_schedule_object().median_props;
+            BOOST_CHECK_EQUAL(mp.comments_window, 3);
+            BOOST_CHECK_EQUAL(mp.comments_per_window, 10);
+            BOOST_CHECK_EQUAL(mp.posts_window, 1);
+            BOOST_CHECK_EQUAL(mp.posts_per_window, 1);
+
             BOOST_CHECK(db->has_index<golos::plugins::social_network::comment_last_update_index>());
 
             const auto& clu_idx = db->get_index<golos::plugins::social_network::comment_last_update_index>().indices().get<golos::plugins::social_network::by_comment>();
@@ -715,6 +723,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                     CHECK_ERROR(bandwidth_exception, golos::bandwidth_exception::post_bandwidth)));
 
             validate_database();
+
+            BOOST_TEST_MESSAGE("-- Trying again after time");
 
             generate_block();
             BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
@@ -7938,6 +7948,298 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
     }
 
     BOOST_AUTO_TEST_SUITE_END() // comment_curation_rewards_percent
+
+    BOOST_AUTO_TEST_SUITE(reputation)
+
+    BOOST_AUTO_TEST_CASE(vote_reputation) {
+        try {
+            BOOST_TEST_MESSAGE("Testing: vote_reputation");
+
+            ACTORS((alice)(bob)(carol)(dave))
+            generate_block();
+
+            signed_transaction tx;
+            vote_operation op;
+
+            BOOST_TEST_MESSAGE("-- Creating post by alice");
+
+            comment_create("alice", alice_private_key, "test", "", "test");
+
+            BOOST_TEST_MESSAGE("-- Upvoting alice account");
+
+            op.voter = "bob";
+            op.author = "alice";
+            op.permlink = "";
+            op.weight = STEEMIT_100_PERCENT;
+            BOOST_TEST_MESSAGE("-- validating that operation");
+            BOOST_CHECK_NO_THROW(op.validate());
+            BOOST_TEST_MESSAGE("-- upvoting");
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Checking that alice now has some reputation");
+
+            share_type rep_for_acc_vote = 0;
+            {
+                BOOST_CHECK_GT(db->get_account_reputation("alice"), 0);
+                rep_for_acc_vote = db->get_account_reputation("alice");
+            }
+
+            BOOST_TEST_MESSAGE("-- Checking bob power");
+
+            {
+                int64_t max_vote_denom =
+                        (STEEMIT_VOTE_REGENERATION_PER_DAY *
+                         STEEMIT_VOTE_REGENERATION_SECONDS) / (60 * 60 * 24);
+
+                auto used_power = ((STEEMIT_100_PERCENT + max_vote_denom - 1) / max_vote_denom);
+
+                BOOST_CHECK_EQUAL(db->get_account("bob").voting_power,
+                    STEEMIT_100_PERCENT - used_power
+                );
+
+                BOOST_TEST_MESSAGE("-- Checking that alice reputation increment calculated correctly");
+
+                int64_t abs_rshares = 
+                    (db->get_account("bob").effective_vesting_shares().amount.value * used_power) /
+                    STEEMIT_100_PERCENT;
+
+                BOOST_CHECK_EQUAL(rep_for_acc_vote, abs_rshares >> 6);
+            }
+
+            BOOST_TEST_MESSAGE("-- Checking virtual operation");
+
+            {
+                auto arop = get_last_operations<account_reputation_operation>(1)[0];
+                BOOST_CHECK_EQUAL(arop.voter, op.voter);
+                BOOST_CHECK_EQUAL(arop.author, op.author);
+                BOOST_CHECK_EQUAL(arop.reputation_before, 0);
+                BOOST_CHECK_EQUAL(arop.reputation_after, rep_for_acc_vote);
+                BOOST_CHECK_EQUAL(arop.vote_weight, op.weight);
+
+                BOOST_CHECK_EQUAL(get_last_operations<minus_reputation_operation>(1).size(), 0);
+            }
+
+            BOOST_TEST_MESSAGE("-- Upvoting alice post");
+            op.voter = "carol";
+            op.permlink = "test";
+            BOOST_TEST_MESSAGE("-- validating that operation");
+            BOOST_CHECK_NO_THROW(op.validate());
+            BOOST_TEST_MESSAGE("-- upvoting");
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Checking that alice reputation growed, and this delta is same as in account upvote");
+
+            BOOST_CHECK_EQUAL(db->get_account_reputation("alice"),
+                rep_for_acc_vote * 2);
+
+            BOOST_TEST_MESSAGE("-- Checking there are NO reputation virtual operation");
+
+            {
+                BOOST_CHECK_EQUAL(get_last_operations<minus_reputation_operation>(1).size(), 0);
+            }
+
+            BOOST_TEST_MESSAGE("-- Upvoting alice account again (to check modify case) by dave");
+
+            op.voter = "dave";
+            op.permlink = "";
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Checking that alice reputation growed again");
+
+            BOOST_CHECK_EQUAL(db->get_account_reputation("alice"),
+                rep_for_acc_vote * 3);
+
+            BOOST_TEST_MESSAGE("-- Checking virtual operation");
+
+            {
+                auto arop = get_last_operations<account_reputation_operation>(1)[0];
+                BOOST_CHECK_EQUAL(arop.voter, op.voter);
+                BOOST_CHECK_EQUAL(arop.author, op.author);
+                BOOST_CHECK_EQUAL(arop.reputation_before, rep_for_acc_vote * 2);
+                BOOST_CHECK_EQUAL(arop.reputation_after, rep_for_acc_vote * 3);
+                BOOST_CHECK_EQUAL(arop.vote_weight, op.weight);
+
+                BOOST_CHECK_EQUAL(get_last_operations<minus_reputation_operation>(1).size(), 0);
+            }
+
+            BOOST_TEST_MESSAGE("-- Checking that cannot vote with 0% weight");
+
+            op.weight = 0;
+            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, dave_private_key, op),
+                CHECK_ERROR(tx_invalid_operation, 0));
+
+            validate_database();
+            generate_block();
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
+    BOOST_AUTO_TEST_CASE(downvote_reputation) {
+        try {
+            BOOST_TEST_MESSAGE("Testing: downvote_reputation");
+
+            ACTORS((alice)(bob)(carol)(dave))
+            generate_block();
+
+            signed_transaction tx;
+            vote_operation op;
+
+            BOOST_TEST_MESSAGE("-- Downvoting alice account (by bob, who have 0 reputation)");
+
+            op.voter = "bob";
+            op.author = "alice";
+            op.permlink = "";
+            op.weight = -STEEMIT_1_PERCENT;
+            BOOST_TEST_MESSAGE("-- validating that operation");
+            BOOST_CHECK_NO_THROW(op.validate());
+            BOOST_TEST_MESSAGE("-- voting");
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Checking that alice still has 0 reputation");
+
+            BOOST_CHECK_EQUAL(db->get_account_reputation("alice"), 0);
+
+            validate_database();
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Checking virtual operations");
+
+            {
+                BOOST_CHECK_EQUAL(get_last_operations<account_reputation_operation>(1).size(), 0);
+                BOOST_CHECK_EQUAL(get_last_operations<minus_reputation_operation>(1).size(), 0);
+            }
+
+            BOOST_TEST_MESSAGE("-- Upvote bob with carol");
+
+            op.voter = "carol";
+            op.author = "bob";
+            op.permlink = "";
+            op.weight = STEEMIT_1_PERCENT;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Try downvote alice by bob again");
+
+            op.voter = "bob";
+            op.author = "alice";
+            op.permlink = "";
+            op.weight = -STEEMIT_1_PERCENT;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Checking that alice now has negative reputation");
+
+            share_type rep_for_acc_vote = 0;
+            {
+                BOOST_CHECK_LT(db->get_account_reputation("alice"), 0);
+                rep_for_acc_vote = db->get_account_reputation("alice");
+            }
+
+            BOOST_TEST_MESSAGE("-- Checking bob power");
+
+            {
+                int64_t max_vote_denom =
+                        (STEEMIT_VOTE_REGENERATION_PER_DAY *
+                         STEEMIT_VOTE_REGENERATION_SECONDS) / (60 * 60 * 24);
+
+                auto used_power = ((STEEMIT_1_PERCENT + max_vote_denom - 1) / max_vote_denom);
+
+                BOOST_CHECK_EQUAL(db->get_account("bob").voting_power,
+                    STEEMIT_100_PERCENT - (used_power * 2) // 2 attempts - fail and success
+                );
+
+                BOOST_TEST_MESSAGE("-- Checking that alice reputation decrement calculated correctly");
+
+                int64_t abs_rshares = 
+                    (db->get_account("bob").effective_vesting_shares().amount.value * used_power) /
+                    STEEMIT_100_PERCENT;
+
+                BOOST_CHECK_EQUAL(rep_for_acc_vote, (-abs_rshares) >> 6);
+            }
+
+            BOOST_TEST_MESSAGE("-- Checking virtual operation");
+
+            {
+                auto arop = get_last_operations<account_reputation_operation>(1)[0];
+                BOOST_CHECK_EQUAL(arop.voter, op.voter);
+                BOOST_CHECK_EQUAL(arop.author, op.author);
+                BOOST_CHECK_EQUAL(arop.reputation_before, 0);
+                BOOST_CHECK_EQUAL(arop.reputation_after, rep_for_acc_vote);
+                BOOST_CHECK_EQUAL(arop.vote_weight, op.weight);
+
+                auto mrop = get_last_operations<minus_reputation_operation>(1)[0];
+                BOOST_CHECK_EQUAL(mrop.voter, arop.voter);
+                BOOST_CHECK_EQUAL(mrop.author, arop.author);
+                BOOST_CHECK_EQUAL(mrop.reputation_before, arop.reputation_before);
+                BOOST_CHECK_EQUAL(mrop.reputation_after, arop.reputation_after);
+                BOOST_CHECK_EQUAL(mrop.vote_weight, arop.vote_weight);
+
+            }
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
+    BOOST_AUTO_TEST_CASE(reputation_bandwidth) {
+        try {
+            BOOST_TEST_MESSAGE("Testing: reputation_bandwidth");
+
+            ACTORS((alice)(bob)(carol)(dave))
+            generate_block();
+
+            signed_transaction tx;
+            vote_operation vop;
+
+            BOOST_TEST_MESSAGE("-- Upvote bob with carol");
+
+            vop.voter = "carol";
+            vop.author = "bob";
+            vop.permlink = "";
+            vop.weight = STEEMIT_1_PERCENT;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, vop));
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Downvote alice by bob");
+
+            vop.voter = "bob";
+            vop.author = "alice";
+            vop.permlink = "";
+            vop.weight = -STEEMIT_1_PERCENT;
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, vop));
+            generate_block();
+
+            BOOST_TEST_MESSAGE("-- Checking that alice now has negative reputation");
+
+            BOOST_CHECK_LT(db->get_account_reputation("alice"), 0);
+
+            BOOST_TEST_MESSAGE("-- Checking that alice has now decreased bandwidth");
+
+            for (int i = 0; i < GOLOS_NEGREP_POSTING_PER_WINDOW; i++) {
+                vop.voter = "alice";
+                vop.author = "bob";
+                vop.permlink = "";
+                vop.weight = -STEEMIT_1_PERCENT;
+                push_tx_with_ops(tx, alice_private_key, vop);
+                generate_block();
+            }
+
+            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, vop),
+                CHECK_ERROR(tx_invalid_operation, 0,
+                    CHECK_ERROR(bandwidth_exception, golos::bandwidth_exception::negrep_posting_bandwidth)));
+
+            generate_blocks(db->head_block_time() + GOLOS_NEGREP_POSTING_WINDOW * 60, true);
+
+            push_tx_with_ops(tx, alice_private_key, vop);
+        } catch (fc::exception& e) {
+            edump((e.to_detail_string()));
+            throw;
+        }
+    }
+
+    BOOST_AUTO_TEST_SUITE_END() // reputation
 
 BOOST_AUTO_TEST_SUITE_END()
 

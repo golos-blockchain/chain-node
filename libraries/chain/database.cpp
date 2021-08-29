@@ -620,29 +620,35 @@ namespace golos { namespace chain {
             }
         }
 
-        const witness_object &database::get_witness(const account_name_type &name) const {
+        const witness_object& database::get_witness(const account_name_type& name) const {
             try {
                 return get<witness_object, by_name>(name);
-            } catch(const std::out_of_range &e) {
+            } catch(const std::out_of_range& e) {
                 GOLOS_THROW_MISSING_OBJECT("witness", name);
             } FC_CAPTURE_AND_RETHROW((name))
         }
 
-        const witness_object *database::find_witness(const account_name_type &name) const {
+        const witness_object* database::find_witness(const account_name_type& name) const {
             return find<witness_object, by_name>(name);
         }
 
-        const account_object &database::get_account(const account_name_type &name) const {
+        const account_object& database::get_account(const account_name_type& name) const {
             try {
                 return get<account_object, by_name>(name);
-            } catch(const std::out_of_range &e) {
+            } catch(const std::out_of_range& e) {
                 GOLOS_THROW_MISSING_OBJECT("account", name);
             }
             FC_CAPTURE_AND_RETHROW((name))
         }
 
-        const account_object *database::find_account(const account_name_type &name) const {
+        const account_object* database::find_account(const account_name_type& name) const {
             return find<account_object, by_name>(name);
+        }
+
+        share_type database::get_account_reputation(const account_name_type& name) const {
+            const auto* acc = find_account(name);
+            if (!acc) return 0;
+            return acc->reputation;
         }
 
         const comment_object &database::get_comment(const account_name_type &author, const shared_string &permlink) const {
@@ -984,6 +990,36 @@ namespace golos { namespace chain {
             }
 
             return has_bandwidth;
+        }
+
+        void database::check_negrep_posting_bandwidth(const account_object& acc) {
+            auto now = head_block_time();
+
+            if (!has_hardfork(STEEMIT_HARDFORK_0_26__168) || acc.reputation >= 0) {
+                modify(acc, [&](auto& a) {
+                    a.last_posting_action = now;
+                });
+                return;
+            }
+
+            const auto& mprops = get_witness_schedule_object().median_props;
+
+            auto consumption = mprops.negrep_posting_window / mprops.negrep_posting_per_window;
+
+            auto elapsed_minutes = (now - acc.last_posting_action).to_seconds() / 60;
+
+            auto regenerated_capacity = std::min(uint32_t(mprops.negrep_posting_window), uint32_t(elapsed_minutes));
+            auto current_capacity = std::min(uint16_t(acc.negrep_posting_capacity + regenerated_capacity), mprops.negrep_posting_window);
+
+            GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                bandwidth_exception::negrep_posting_bandwidth,
+                "Can only comment/post/vote ${negrep_posting_per_window} times in ${negrep_posting_window} minutes.",
+                ("negrep_posting_per_window", mprops.negrep_posting_per_window)("negrep_posting_window", mprops.negrep_posting_window));
+
+            modify(acc, [&](auto& a) {
+                a.negrep_posting_capacity = current_capacity - consumption;
+                a.last_posting_action = now;
+            });
         }
 
         uint32_t database::witness_participation_rate() const {
@@ -1819,6 +1855,22 @@ namespace golos { namespace chain {
             }
         }
 
+        void database::update_witness_windows_sec_to_min() {
+            const auto& widx = get_index<witness_index, by_vote_name>();
+            int num_updated = 0;
+            for (auto itr = widx.begin();
+                    itr != widx.end() && num_updated < 50;
+                    ++itr, ++num_updated) {
+                modify(*itr, [&](auto& w) {
+                    w.props.hf26_windows_sec_to_min();
+                });
+            }
+
+            modify(get_witness_schedule_object(), [&](auto& wso) {
+                wso.median_props.hf26_windows_sec_to_min();
+            });
+        }
+
         void database::update_witness_schedule4() {
             vector<account_name_type> active_witnesses;
             active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
@@ -2340,7 +2392,8 @@ namespace golos { namespace chain {
 
             calc_median(&chain_properties_26::worker_emission_percent);
             calc_median(&chain_properties_26::vesting_of_remain_percent);
-
+            calc_median_battery(&chain_properties_26::negrep_posting_window, &chain_properties_26::negrep_posting_per_window);
+            
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
             modify(wso, [&](witness_schedule_object &_wso) {
@@ -5688,6 +5741,7 @@ namespace golos { namespace chain {
                             auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                         });
 #endif
+                        update_witness_windows_sec_to_min();
                     }
                     break;
                 default:

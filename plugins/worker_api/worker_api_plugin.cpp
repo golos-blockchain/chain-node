@@ -143,7 +143,6 @@ public:
             : _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()) {
         helper = std::make_unique<discussion_helper>(
             _db,
-            follow::fill_account_reputation,
             nullptr,
             golos::plugins::social_network::fill_comment_info
         );

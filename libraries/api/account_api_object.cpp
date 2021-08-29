@@ -105,6 +105,8 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         expire = now + (expire_block - now_block) * STEEMIT_BLOCK_INTERVAL;
         claim_expiration = time_point_sec(expire);
     }
+
+    reputation = a.reputation;
 }
 
 account_api_object::account_api_object() = default;

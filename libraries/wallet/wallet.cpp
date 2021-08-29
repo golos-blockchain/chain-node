@@ -358,21 +358,23 @@ namespace golos { namespace wallet {
                         result["vote_regeneration_per_day"] = median_props.vote_regeneration_per_day;
                         result["witness_skipping_reset_time"] = median_props.witness_skipping_reset_time;
                         result["witness_idleness_time"] = median_props.witness_idleness_time;
-                        result["account_idleness_time"]  = median_props.account_idleness_time;
+                        result["account_idleness_time"] = median_props.account_idleness_time;
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_23)) {
-                        result["claim_idleness_time"]  = median_props.claim_idleness_time;
-                        result["min_invite_balance"]  = median_props.min_invite_balance;
+                        result["claim_idleness_time"] = median_props.claim_idleness_time;
+                        result["min_invite_balance"] = median_props.min_invite_balance;
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_24)) {
-                        result["asset_creation_fee"]  = median_props.asset_creation_fee;
-                        result["invite_transfer_interval_sec"]  = median_props.invite_transfer_interval_sec;
+                        result["asset_creation_fee"] = median_props.asset_creation_fee;
+                        result["invite_transfer_interval_sec"] = median_props.invite_transfer_interval_sec;
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_26)) {
-                        result["convert_fee_percent"]  = median_props.convert_fee_percent;
-                        result["min_golos_power_to_curate"]  = median_props.min_golos_power_to_curate;
-                        result["worker_emission_percent"]  = median_props.worker_emission_percent;
-                        result["vesting_of_remain_percent"]  = median_props.vesting_of_remain_percent;
+                        result["convert_fee_percent"] = median_props.convert_fee_percent;
+                        result["min_golos_power_to_curate"] = median_props.min_golos_power_to_curate;
+                        result["worker_emission_percent"] = median_props.worker_emission_percent;
+                        result["vesting_of_remain_percent"] = median_props.vesting_of_remain_percent;
+                        result["negrep_posting_window"] = median_props.negrep_posting_window;
+                        result["negrep_posting_per_window"] = median_props.negrep_posting_per_window;
                     } else if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
                         result["worker_reward_percent"] = median_props.worker_reward_percent;
                         result["witness_reward_percent"] = median_props.witness_reward_percent;
@@ -2369,6 +2371,8 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 p26.vesting_reward_percent = 0;
                 SET_PROP(p26, worker_emission_percent);
                 SET_PROP(p26, vesting_of_remain_percent);
+                SET_PROP(p26, negrep_posting_window);
+                SET_PROP(p26, negrep_posting_per_window);
                 op.props = p26;
             }
 #undef SET_PROP

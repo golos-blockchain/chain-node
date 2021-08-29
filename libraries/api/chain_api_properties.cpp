@@ -63,6 +63,8 @@ namespace golos { namespace api {
             min_golos_power_to_curate = src.min_golos_power_to_curate;
             worker_emission_percent = src.worker_emission_percent;
             vesting_of_remain_percent = src.vesting_of_remain_percent;
+            negrep_posting_window = src.negrep_posting_window;
+            negrep_posting_per_window = src.negrep_posting_per_window;
         }
     }
 

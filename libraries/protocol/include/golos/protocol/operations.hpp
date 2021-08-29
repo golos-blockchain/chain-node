@@ -115,7 +115,8 @@ namespace golos { namespace protocol {
                 internal_transfer_operation,
                 comment_feed_operation,
                 account_voted_operation,
-                account_reputation_operation
+                account_reputation_operation,
+                minus_reputation_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

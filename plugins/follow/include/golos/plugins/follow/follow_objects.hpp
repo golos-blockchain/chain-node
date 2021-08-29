@@ -25,10 +25,9 @@ namespace golos {
             enum follow_plugin_object_type {
                 follow_object_type = (FOLLOW_SPACE_ID << 8),
                 feed_object_type = (FOLLOW_SPACE_ID << 8) + 1,
-                reputation_object_type = (FOLLOW_SPACE_ID << 8) + 2,
-                blog_object_type = (FOLLOW_SPACE_ID << 8) + 3,
-                follow_count_object_type = (FOLLOW_SPACE_ID << 8) + 4,
-                blog_author_stats_object_type = (FOLLOW_SPACE_ID << 8) + 5
+                blog_object_type = (FOLLOW_SPACE_ID << 8) + 2,
+                follow_count_object_type = (FOLLOW_SPACE_ID << 8) + 3,
+                blog_author_stats_object_type = (FOLLOW_SPACE_ID << 8) + 4
             };
 
 
@@ -117,23 +116,6 @@ namespace golos {
             };
 
             typedef object_id<blog_author_stats_object> blog_author_stats_id_type;
-
-
-            class reputation_object : public object<reputation_object_type, reputation_object> {
-            public:
-                template<typename Constructor, typename Allocator>
-                reputation_object(Constructor &&c, allocator<Allocator> a) {
-                    c(*this);
-                }
-
-                id_type id;
-
-                account_name_type account;
-                share_type reputation;
-            };
-
-            typedef object_id<reputation_object> reputation_id_type;
-
 
             class follow_count_object : public object<follow_count_object_type, follow_count_object> {
             public:
@@ -224,19 +206,6 @@ namespace golos {
                                     composite_key_compare<std::less<comment_object::id_type>,
                                             std::less<account_name_type>>> >, allocator<blog_object> > blog_index;
 
-            struct by_reputation;
-
-            typedef multi_index_container<reputation_object, indexed_by<
-                    ordered_unique<tag<by_id>, member<reputation_object, reputation_id_type, &reputation_object::id>>,
-                    ordered_unique<tag<by_reputation>, composite_key<reputation_object,
-                            member<reputation_object, share_type, &reputation_object::reputation>,
-                            member<reputation_object, account_name_type, &reputation_object::account> >,
-                            composite_key_compare<std::greater<share_type>, std::less<account_name_type>>>,
-                    ordered_unique<tag<by_account>,
-                            member<reputation_object, account_name_type, &reputation_object::account>>>,
-                    allocator<reputation_object> > reputation_index;
-
-
             struct by_followers;
             struct by_following;
 
@@ -269,9 +238,6 @@ CHAINBASE_SET_INDEX_TYPE(golos::plugins::follow::feed_object, golos::plugins::fo
 
 FC_REFLECT((golos::plugins::follow::blog_object), (id)(account)(comment)(reblogged_on)(blog_feed_id))
 CHAINBASE_SET_INDEX_TYPE(golos::plugins::follow::blog_object, golos::plugins::follow::blog_index)
-
-FC_REFLECT((golos::plugins::follow::reputation_object), (id)(account)(reputation))
-CHAINBASE_SET_INDEX_TYPE(golos::plugins::follow::reputation_object, golos::plugins::follow::reputation_index)
 
 FC_REFLECT((golos::plugins::follow::follow_count_object), (id)(account)(follower_count)(following_count))
 CHAINBASE_SET_INDEX_TYPE(golos::plugins::follow::follow_count_object, golos::plugins::follow::follow_count_index)
