@@ -53,7 +53,9 @@ public:
     uint16_t posts_capacity = STEEMIT_POSTS_WINDOW;
     uint16_t comments_capacity = STEEMIT_COMMENTS_WINDOW;
     uint16_t voting_capacity = STEEMIT_VOTES_WINDOW;
+    uint16_t negrep_posting_capacity = GOLOS_NEGREP_POSTING_WINDOW;
     time_point_sec last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
+    share_type reputation = 0;
 
     asset balance = asset(0, STEEM_SYMBOL);  ///< total liquid shares held by this account
     asset savings_balance = asset(0, STEEM_SYMBOL);  ///< total liquid shares held by this account
@@ -109,6 +111,7 @@ public:
 
     time_point_sec last_comment;
     time_point_sec last_post;
+    time_point_sec last_posting_action;
 
     account_name_type referrer_account;
     uint16_t referrer_interest_rate = 0;
@@ -613,7 +616,7 @@ FC_REFLECT((golos::chain::account_object),
     (id)(name)(memo_key)(proxy)(last_account_update)
     (created)(mined)
     (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
-    (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
+    (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)(reputation)
     (balance)
     (savings_balance)
     (accumulative_balance)
@@ -627,7 +630,7 @@ FC_REFLECT((golos::chain::account_object),
     (delegation_rewards)
     (posting_rewards)
     (proxied_vsf_votes)(witnesses_voted_for)
-    (last_comment)(last_post)
+    (last_comment)(last_post)(last_posting_action)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
     (last_active_operation)
     (last_claim)

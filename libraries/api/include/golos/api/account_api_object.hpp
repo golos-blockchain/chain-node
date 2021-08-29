@@ -104,7 +104,7 @@ struct account_api_object {
 
     set<string> witness_votes;
 
-    fc::optional<share_type> reputation;
+    share_type reputation;
 
     account_name_type referrer_account;
     uint16_t referrer_interest_rate = 0;

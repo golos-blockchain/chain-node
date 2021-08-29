@@ -52,6 +52,10 @@
         GOLOS_DECLARE_DERIVED_EXCEPTION_BODY(TYPE, BASE, CODE, WHAT) \
     };
 
+#define GOLOS_CHECK_BANDWIDTH(NOW, NEXT, TYPE, MSG, ...) \
+        GOLOS_ASSERT((NOW) > (NEXT), golos::bandwidth_exception, MSG, \
+                ("bandwidth",TYPE)("now",NOW)("next",NEXT) __VA_ARGS__)
+
 #define GOLOS_CHECK_LOGIC(expr, TYPE, MSG, ...) \
         GOLOS_ASSERT(expr, golos::logic_exception, MSG, ("errid", TYPE)("namespace",golos::get_logic_error_namespace<decltype(TYPE)>())__VA_ARGS__)
 
@@ -189,6 +193,7 @@ namespace golos {
             vote_bandwidth,
             change_owner_authority_bandwidth,
             custom_json_bandwidth,
+            negrep_posting_bandwidth,
         };
     };
 
@@ -649,6 +654,7 @@ FC_REFLECT_ENUM(golos::bandwidth_exception::bandwidth_types,
         (vote_bandwidth)
         (change_owner_authority_bandwidth)
         (custom_json_bandwidth)
+        (negrep_posting_bandwidth)
 );
 
 FC_REFLECT_ENUM(golos::database_corrupted::error_types,

@@ -86,7 +86,7 @@ namespace golos { namespace plugins { namespace social_network {
 
     struct social_network::impl final {
         impl(): db(appbase::app().get_plugin<chain::plugin>().db()) {
-            helper = std::make_unique<discussion_helper>(db, follow::fill_account_reputation, fill_promoted, fill_comment_info);
+            helper = std::make_unique<discussion_helper>(db, fill_promoted, fill_comment_info);
         }
 
         ~impl() = default;
@@ -904,7 +904,7 @@ namespace golos { namespace plugins { namespace social_network {
         const std::set<account_name_type>& filter_authors,
         bool filter_negative_rep_authors
     ) const {
-        discussion_helper helper_no_rep(db, follow::fill_account_reputation, fill_promoted, fill_comment_info, false);
+        discussion_helper helper_no_rep(db, fill_promoted, fill_comment_info, false);
 
         account_name_type acc_name = account_name_type(author);
         const auto& by_permlink_idx = db.get_index<comment_index>().indices().get<by_parent>();
@@ -917,9 +917,8 @@ namespace golos { namespace plugins { namespace social_network {
             if (filter_ids.count(itr->id) || filter_authors.count(itr->author)) {
                 continue;
             }
-            fc::optional<share_type> author_reputation;
-            follow::fill_account_reputation(db, itr->author, author_reputation);
-            if (filter_negative_rep_authors && !!author_reputation && *author_reputation < 0) {
+            auto author_reputation = db.get_account_reputation(itr->author);
+            if (filter_negative_rep_authors && author_reputation < 0) {
                 continue;
             }
             auto d = helper_no_rep.get_discussion(*itr, vote_limit, vote_offset);

@@ -626,6 +626,12 @@ namespace golos { namespace protocol {
              */
             uint16_t votes_per_window = STEEMIT_VOTES_PER_WINDOW;
 
+            void hf26_windows_sec_to_min() {
+                posts_window = std::max(posts_window / 60, 1);
+                comments_window = std::max(comments_window / 60, 1);
+                votes_window = std::max(votes_window / 60, 1);
+            }
+
             /**
              * Auction window size
              */
@@ -857,6 +863,16 @@ namespace golos { namespace protocol {
              * And another part of remain being redirected to author fund.
              */
             uint16_t vesting_of_remain_percent = GOLOS_VESTING_OF_REMAIN_PERCENT;
+
+            /**
+             * Posting window (in minutes) for accounts with negative reputation
+             */
+            uint16_t negrep_posting_window = GOLOS_NEGREP_POSTING_WINDOW;
+
+            /**
+             * Posting operations total (comment, vote) available per posting window, per 1 account
+             */
+            uint16_t negrep_posting_per_window = GOLOS_NEGREP_POSTING_PER_WINDOW;
 
             void validate() const;
 
@@ -1870,6 +1886,7 @@ FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_26), ((golos::protocol::chain_properties_24)),
     (convert_fee_percent)(min_golos_power_to_curate)
     (worker_emission_percent)(vesting_of_remain_percent)
+    (negrep_posting_window)(negrep_posting_per_window)
 )
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))

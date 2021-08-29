@@ -1,5 +1,6 @@
 #include <golos/chain/steem_evaluator.hpp>
 #include <golos/chain/database.hpp>
+#include <golos/chain/reputation_manager.hpp>
 #include <golos/chain/custom_operation_interpreter.hpp>
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/block_summary_object.hpp>
@@ -7,10 +8,6 @@
 #include <golos/protocol/validate_helper.hpp>
 #include <fc/io/json.hpp>
 #include <graphene/utilities/key_conversion.hpp>
-
-#define GOLOS_CHECK_BANDWIDTH(NOW, NEXT, TYPE, MSG, ...) \
-    GOLOS_ASSERT((NOW) > (NEXT), golos::bandwidth_exception, MSG, \
-            ("bandwidth",TYPE)("now",NOW)("next",NEXT) __VA_ARGS__)
 
 
 namespace golos { namespace chain {
@@ -103,6 +100,17 @@ namespace golos { namespace chain {
                     from_string(a.json_metadata, json_metadata);
                 });
             }
+        }
+
+        uint32_t get_elapsed(database& _db, const time_point_sec& last, std::string& unit) {
+            auto now = _db.head_block_time();
+            unit = "seconds";
+            uint32_t elapsed = (now - last).to_seconds();
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__168)) {
+                elapsed /= 60;
+                unit = "minutes";
+            }
+            return elapsed;
         }
 
         void account_create_evaluator::do_apply(const account_create_operation &o) {
@@ -705,14 +713,17 @@ namespace golos { namespace chain {
             }
 
             void hf22() const {
+                db.check_negrep_posting_bandwidth(auth);
+
                 if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
                     auto consumption = mprops.posts_window / mprops.posts_per_window;
 
-                    auto elapsed_seconds = (now - auth.last_post).to_seconds();
+                    std::string unit;
+                    auto elapsed = get_elapsed(db, auth.last_post, unit);
 
                     auto regenerated_capacity = std::min(
                         uint32_t(mprops.posts_window),
-                        uint32_t(elapsed_seconds));
+                        elapsed);
 
                     auto current_capacity = std::min(
                         uint16_t(auth.posts_capacity + regenerated_capacity),
@@ -720,9 +731,10 @@ namespace golos { namespace chain {
 
                     GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
                         bandwidth_exception::post_bandwidth,
-                        "You may only post ${posts_per_window} times in ${posts_window} seconds.",
+                        "You may only post ${posts_per_window} times in ${posts_window} ${unit}.",
                         ("posts_per_window", mprops.posts_per_window)
-                        ("posts_window", mprops.posts_window));
+                        ("posts_window", mprops.posts_window)
+                        ("unit", unit));
 
                     db.modify(auth, [&](account_object& a) {
                         a.posts_capacity = current_capacity - consumption;
@@ -730,11 +742,12 @@ namespace golos { namespace chain {
                 } else {
                     auto consumption = mprops.comments_window / mprops.comments_per_window;
 
-                    auto elapsed_seconds = (now - auth.last_comment).to_seconds();
+                    std::string unit;
+                    auto elapsed = get_elapsed(db, auth.last_comment, unit);
 
                     auto regenerated_capacity = std::min(
                         uint32_t(mprops.comments_window),
-                        uint32_t(elapsed_seconds));
+                        elapsed);
 
                     auto current_capacity = std::min(
                         uint16_t(auth.comments_capacity + regenerated_capacity),
@@ -742,9 +755,10 @@ namespace golos { namespace chain {
 
                     GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
                         bandwidth_exception::comment_bandwidth,
-                        "You may only comment ${comments_per_window} times in ${comments_window} seconds.",
+                        "You may only comment ${comments_per_window} times in ${comments_window} ${unit}.",
                         ("comments_per_window", mprops.comments_per_window)
-                        ("comments_window", mprops.comments_window));
+                        ("comments_window", mprops.comments_window)
+                        ("unit", unit));
 
                     db.modify(auth, [&](account_object& a) {
                         a.comments_capacity = current_capacity - consumption;
@@ -1510,6 +1524,8 @@ namespace golos { namespace chain {
                         "Votes are not allowed on the comment.");
                 }
 
+                _db.check_negrep_posting_bandwidth(voter);
+
                 if (comment && _db.calculate_discussion_payout_time(*comment) == fc::time_point_sec::maximum()) {
                     // non-consensus vote (after cashout)
                     const auto& comment_vote_idx = _db.get_index<comment_vote_index, by_comment_voter>();
@@ -1540,13 +1556,19 @@ namespace golos { namespace chain {
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__533_1002)) {
                     auto consumption = mprops.votes_window / mprops.votes_per_window;
 
-                    auto regenerated_capacity = std::min(uint32_t(mprops.votes_window), uint32_t(elapsed_seconds));
+                    std::string unit;
+                    auto elapsed = get_elapsed(_db, voter.last_vote_time, unit);
+
+                    auto regenerated_capacity = std::min(uint32_t(mprops.votes_window), elapsed);
                     auto current_capacity = std::min(uint16_t(voter.voting_capacity + regenerated_capacity), mprops.votes_window);
 
                     GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
                         bandwidth_exception::vote_bandwidth,
-                        "Can only vote ${votes_per_window} times in ${votes_window} seconds.",
-                        ("votes_per_window", mprops.votes_per_window)("votes_window", mprops.votes_window));
+                        "Can only vote ${votes_per_window} times in ${votes_window} ${unit}.",
+                        ("votes_per_window", mprops.votes_per_window)
+                        ("votes_window", mprops.votes_window)
+                        ("unit", unit)
+                    );
 
                     _db.modify(voter, [&](auto& a) {
                         a.voting_capacity = current_capacity - consumption;
@@ -1601,6 +1623,8 @@ namespace golos { namespace chain {
                             "Voting weight is too small, please accumulate more voting power or steem power.");
                 }
 
+                reputation_manager repman{_db};
+
                 if (!comment) {
                     GOLOS_CHECK_OP_PARAM(op, weight, GOLOS_CHECK_VALUE(op.weight != 0, "Vote weight cannot be 0"));
 
@@ -1609,8 +1633,7 @@ namespace golos { namespace chain {
 
                     int64_t rshares = op.weight < 0 ? -abs_rshares : abs_rshares;
 
-                    _db.push_event(account_voted_operation(op.voter,
-                        op.author, rshares >> 6, op.weight));
+                    repman.vote_reputation(voter, op, rshares, true);
 
                     _db.modify(voter, [&](auto& a) {
                         a.voting_power = current_power - used_power;
@@ -1770,7 +1793,11 @@ namespace golos { namespace chain {
                     });
 
                     _db.adjust_rshares2(*comment, old_rshares, new_rshares);
+
+                    repman.vote_reputation(voter, op, rshares);
                 } else {
+                    repman.unvote_reputation(*itr, op);
+
                     GOLOS_CHECK_LOGIC(itr->num_changes < STEEMIT_MAX_VOTE_CHANGES,
                             logic_exception::voter_has_used_maximum_vote_changes,
                             "Voter has used the maximum number of vote changes on this comment.");
@@ -1877,6 +1904,8 @@ namespace golos { namespace chain {
                     });
 
                     _db.adjust_rshares2(*comment, old_rshares, new_rshares);
+
+                    repman.vote_reputation(voter, op, rshares);
                 }
             } FC_CAPTURE_AND_RETHROW((op))
         }
@@ -2014,6 +2043,9 @@ namespace golos { namespace chain {
                 db.create<witness_object>([&](witness_object &w) {
                     w.owner = name;
                     w.props = o.props;
+                    if (db.has_hardfork(STEEMIT_HARDFORK_0_26__168)) {
+                        w.props.hf26_windows_sec_to_min();
+                    }
                     w.signing_key = o.work.worker;
                     w.pow_worker = dgp.total_pow;
                     w.last_work = o.work.work;
@@ -2109,6 +2141,9 @@ namespace golos { namespace chain {
                 db.create<witness_object>([&](witness_object &w) {
                     w.owner = worker_account;
                     w.props = o.props;
+                    if (db.has_hardfork(STEEMIT_HARDFORK_0_26__168)) {
+                        w.props.hf26_windows_sec_to_min();
+                    }
                     w.signing_key = *o.new_owner_key;
                     w.pow_worker = dgp.total_pow;
                 });

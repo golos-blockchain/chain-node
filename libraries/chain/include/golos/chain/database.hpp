@@ -173,17 +173,19 @@ namespace golos { namespace chain {
 
             chain_id_type get_chain_id() const;
 
-            void throw_if_exists_limit_order(const account_name_type &account, uint32_t id) const;
+            void throw_if_exists_limit_order(const account_name_type& account, uint32_t id) const;
 
-            void throw_if_exists_account(const account_name_type &account) const;
+            void throw_if_exists_account(const account_name_type& account) const;
 
-            const witness_object &get_witness(const account_name_type &name) const;
+            const witness_object &get_witness(const account_name_type& name) const;
 
-            const witness_object *find_witness(const account_name_type &name) const;
+            const witness_object *find_witness(const account_name_type& name) const;
 
-            const account_object &get_account(const account_name_type &name) const;
+            const account_object &get_account(const account_name_type& name) const;
 
-            const account_object *find_account(const account_name_type &name) const;
+            const account_object *find_account(const account_name_type& name) const;
+
+            share_type get_account_reputation(const account_name_type& name) const;
 
             const proposal_object& get_proposal(const account_name_type&, const std::string&) const;
             const proposal_object* find_proposal(const account_name_type&, const std::string&) const;
@@ -262,7 +264,7 @@ namespace golos { namespace chain {
              */
             bool update_account_bandwidth(const dynamic_global_property_object& props, const account_object &a, uint32_t trx_size, const bandwidth_type type);
 
-            void max_bandwidth_per_share() const;
+            void check_negrep_posting_bandwidth(const account_object& acc);
 
             /**
              *  Calculate the percent of block production slots that were missed in the
@@ -436,6 +438,8 @@ namespace golos { namespace chain {
             void check_account_idleness();
 
             void check_claim_idleness();
+
+            void update_witness_windows_sec_to_min();
 
             void update_witness_schedule();
 

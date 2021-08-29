@@ -96,6 +96,8 @@ namespace golos { namespace wallet {
             fc::optional<asset> min_golos_power_to_curate;
             fc::optional<uint16_t> worker_emission_percent;
             fc::optional<uint16_t> vesting_of_remain_percent;
+            fc::optional<uint16_t> negrep_posting_window;
+            fc::optional<uint16_t> negrep_posting_per_window;
         };
 
         struct optional_private_box_query {
@@ -1709,6 +1711,9 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (invite_transfer_interval_sec)
     (convert_fee_percent)
     (min_golos_power_to_curate)
+    (worker_emission_percent)
+    (vesting_of_remain_percent)
+    (negrep_posting_window)(negrep_posting_per_window)
 )
 
 FC_REFLECT(

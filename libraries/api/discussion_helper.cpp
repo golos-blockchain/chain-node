@@ -21,16 +21,13 @@ namespace golos { namespace api {
         impl() = delete;
         impl(
             golos::chain::database& db,
-            std::function<void(const golos::chain::database&, const account_name_type&, fc::optional<share_type>&)> fill_reputation,
             std::function<void(const golos::chain::database&, discussion&)> fill_promoted,
             std::function<void(const golos::chain::database&, const comment_object&, comment_api_object&)> fill_comment_info,
-            bool fills_author_reputation = true, bool fills_voter_reputation = true)
+            bool fills_author_reputation = true)
             : database_(db),
-              fill_reputation_(fill_reputation),
               fill_promoted_(fill_promoted),
               fill_comment_info_(fill_comment_info),
-              fills_author_reputation_(fills_author_reputation),
-              fills_voter_reputation_(fills_voter_reputation) {
+              fills_author_reputation_(fills_author_reputation) {
         }
         ~impl() = default;
 
@@ -69,11 +66,9 @@ namespace golos { namespace api {
 
     private:
         golos::chain::database& database_;
-        std::function<void(const golos::chain::database&, const account_name_type&, fc::optional<share_type>&)> fill_reputation_;
         std::function<void(const golos::chain::database&, discussion&)> fill_promoted_;
         std::function<void(const golos::chain::database&, const comment_object&, comment_api_object&)> fill_comment_info_;
         bool fills_author_reputation_;
-        bool fills_voter_reputation_;
     };
 
 // create_comment_api_object 
@@ -158,7 +153,7 @@ namespace golos { namespace api {
         set_url(d);
 
         if (fills_author_reputation_) {
-            fill_reputation_(database_, d.author, d.author_reputation);
+            d.author_reputation = database_.get_account_reputation(d.author);
         }
 
         if (d.body.size() > 1024 * 128) {
@@ -222,9 +217,7 @@ namespace golos { namespace api {
             vstate.rshares = itr->vote->rshares;
             vstate.percent = itr->vote->vote_percent;
             vstate.time = itr->vote->last_update;
-            if (fills_voter_reputation_) {
-                fill_reputation_(database(), vo.name, vstate.reputation);
-            }
+            vstate.reputation = vo.reputation;
             result.emplace_back(std::move(vstate));
         }
         return result;
@@ -345,7 +338,7 @@ namespace golos { namespace api {
     discussion discussion_helper::impl::create_discussion(const std::string& author) const {
         auto dis = discussion();
         if (fills_author_reputation_) {
-            fill_reputation_(database_, author, dis.author_reputation);
+            dis.author_reputation = database_.get_account_reputation(dis.author);
         }
         dis.active = time_point_sec::min();
         dis.last_update = time_point_sec::min();
@@ -368,13 +361,12 @@ namespace golos { namespace api {
 
     discussion_helper::discussion_helper(
         golos::chain::database& db,
-        std::function<void(const golos::chain::database&, const account_name_type&, fc::optional<share_type>&)> fill_reputation,
         std::function<void(const golos::chain::database&, discussion&)> fill_promoted,
         std::function<void(const database&, const comment_object &, comment_api_object&)> fill_comment_info,
-        bool fills_author_reputation, bool fills_voter_reputation
+        bool fills_author_reputation
     ) {
-        pimpl = std::make_unique<impl>(db, fill_reputation, fill_promoted, fill_comment_info,
-            fills_author_reputation, fills_voter_reputation);
+        pimpl = std::make_unique<impl>(db, fill_promoted, fill_comment_info,
+            fills_author_reputation);
     }
 
     discussion_helper::~discussion_helper() {}

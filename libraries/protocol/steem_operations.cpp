@@ -383,6 +383,8 @@ namespace golos { namespace protocol {
 
             GOLOS_CHECK_VALUE_LE(worker_emission_percent, GOLOS_MAX_WORKER_EMISSION_PERCENT);
             GOLOS_CHECK_VALUE_LE(vesting_of_remain_percent, STEEMIT_100_PERCENT);
+
+            GOLOS_CHECK_VALUE_LEGE(negrep_posting_window, 1, std::numeric_limits<uint16_t>::max() / 2);
         }
 
         void witness_update_operation::validate() const {
