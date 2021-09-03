@@ -380,6 +380,11 @@ namespace golos { namespace protocol {
             chain_properties_24::validate();
             GOLOS_CHECK_VALUE_LEGE(convert_fee_percent, GOLOS_MIN_CONVERT_FEE_PERCENT, GOLOS_MAX_CONVERT_FEE_PERCENT);
             GOLOS_CHECK_ASSET_GE(min_golos_power_to_curate, GOLOS, GOLOS_MIN_GOLOS_POWER_TO_CURATE);
+
+            GOLOS_CHECK_VALUE_LE(worker_emission_percent, GOLOS_MAX_WORKER_EMISSION_PERCENT);
+            GOLOS_CHECK_VALUE_LE(vesting_of_remain_percent, STEEMIT_100_PERCENT);
+
+            GOLOS_CHECK_VALUE_LEGE(negrep_posting_window, 1, std::numeric_limits<uint16_t>::max() / 2);
         }
 
         void witness_update_operation::validate() const {

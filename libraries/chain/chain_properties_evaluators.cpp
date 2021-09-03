@@ -36,6 +36,9 @@ namespace golos { namespace chain {
                 w.owner = o.owner;
                 w.created = _db.head_block_time();
                 update_witness(w);
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__168)) {
+                    w.props.hf26_windows_sec_to_min();
+                }
             });
         }
     }

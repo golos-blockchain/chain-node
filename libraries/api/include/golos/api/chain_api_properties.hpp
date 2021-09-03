@@ -47,9 +47,12 @@ namespace golos { namespace api {
         fc::optional<bool> allow_distribute_auction_reward;
         fc::optional<bool> allow_return_auction_reward_to_fund;
 
-        fc::optional<uint16_t> worker_reward_percent;
-        fc::optional<uint16_t> witness_reward_percent;
-        fc::optional<uint16_t> vesting_reward_percent;
+        fc::optional<uint16_t> worker_reward_percent; // not reflected, just for cli-wallet
+        fc::optional<uint16_t> witness_reward_percent; // not reflected, just for cli-wallet
+        fc::optional<uint16_t> vesting_reward_percent; // not reflected, just for cli-wallet
+        fc::optional<uint16_t> worker_emission_percent;
+        fc::optional<uint16_t> vesting_of_remain_percent;
+
         fc::optional<asset> worker_request_creation_fee;
         fc::optional<uint16_t> worker_request_approve_min_percent;
 
@@ -69,6 +72,8 @@ namespace golos { namespace api {
 
         fc::optional<uint16_t> convert_fee_percent;
         fc::optional<asset> min_golos_power_to_curate;
+        fc::optional<uint16_t> negrep_posting_window;
+        fc::optional<uint16_t> negrep_posting_per_window;
     };
 
 } } // golos::api
@@ -84,6 +89,7 @@ FC_REFLECT(
     (min_curation_percent)(max_curation_percent)(curation_reward_curve)
     (allow_distribute_auction_reward)(allow_return_auction_reward_to_fund)
     (worker_reward_percent)(witness_reward_percent)(vesting_reward_percent)
+    (worker_emission_percent)(vesting_of_remain_percent)
     (worker_request_creation_fee)(worker_request_approve_min_percent)
     (sbd_debt_convert_rate)(vote_regeneration_per_day)
     (witness_skipping_reset_time)(witness_idleness_time)(account_idleness_time)
@@ -91,4 +97,5 @@ FC_REFLECT(
     (asset_creation_fee)
     (invite_transfer_interval_sec)
     (convert_fee_percent)(min_golos_power_to_curate)
+    (negrep_posting_window)(negrep_posting_per_window)
 )

@@ -319,7 +319,8 @@ void plugin::state_serializer::serialize(golos::chain::database &db_, const bfs:
         wlog("Data SHA256 hash: ${h}", ("h", out.hash().str()));
         out.close();
 
-        auto rep_file = output;
+        // TODO: at HF26 reputation integrated into accounts
+        /*auto rep_file = output;
         rep_file += ".reputation";
         if (db_.has_index<golos::plugins::follow::reputation_index>()) {
             ofstream_sha256 out(rep_file);  // create var with the same name to reuse macro
@@ -329,7 +330,7 @@ void plugin::state_serializer::serialize(golos::chain::database &db_, const bfs:
             out.close();
         } else {
             bfs::remove(rep_file);
-        }
+        }*/
 #undef STORE
 
         auto map_file = output;

@@ -620,29 +620,35 @@ namespace golos { namespace chain {
             }
         }
 
-        const witness_object &database::get_witness(const account_name_type &name) const {
+        const witness_object& database::get_witness(const account_name_type& name) const {
             try {
                 return get<witness_object, by_name>(name);
-            } catch(const std::out_of_range &e) {
+            } catch(const std::out_of_range& e) {
                 GOLOS_THROW_MISSING_OBJECT("witness", name);
             } FC_CAPTURE_AND_RETHROW((name))
         }
 
-        const witness_object *database::find_witness(const account_name_type &name) const {
+        const witness_object* database::find_witness(const account_name_type& name) const {
             return find<witness_object, by_name>(name);
         }
 
-        const account_object &database::get_account(const account_name_type &name) const {
+        const account_object& database::get_account(const account_name_type& name) const {
             try {
                 return get<account_object, by_name>(name);
-            } catch(const std::out_of_range &e) {
+            } catch(const std::out_of_range& e) {
                 GOLOS_THROW_MISSING_OBJECT("account", name);
             }
             FC_CAPTURE_AND_RETHROW((name))
         }
 
-        const account_object *database::find_account(const account_name_type &name) const {
+        const account_object* database::find_account(const account_name_type& name) const {
             return find<account_object, by_name>(name);
+        }
+
+        share_type database::get_account_reputation(const account_name_type& name) const {
+            const auto* acc = find_account(name);
+            if (!acc) return 0;
+            return acc->reputation;
         }
 
         const comment_object &database::get_comment(const account_name_type &author, const shared_string &permlink) const {
@@ -984,6 +990,36 @@ namespace golos { namespace chain {
             }
 
             return has_bandwidth;
+        }
+
+        void database::check_negrep_posting_bandwidth(const account_object& acc) {
+            auto now = head_block_time();
+
+            if (!has_hardfork(STEEMIT_HARDFORK_0_26__168) || acc.reputation >= 0) {
+                modify(acc, [&](auto& a) {
+                    a.last_posting_action = now;
+                });
+                return;
+            }
+
+            const auto& mprops = get_witness_schedule_object().median_props;
+
+            auto consumption = mprops.negrep_posting_window / mprops.negrep_posting_per_window;
+
+            auto elapsed_minutes = (now - acc.last_posting_action).to_seconds() / 60;
+
+            auto regenerated_capacity = std::min(uint32_t(mprops.negrep_posting_window), uint32_t(elapsed_minutes));
+            auto current_capacity = std::min(uint16_t(acc.negrep_posting_capacity + regenerated_capacity), mprops.negrep_posting_window);
+
+            GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                bandwidth_exception::negrep_posting_bandwidth,
+                "Can only comment/post/vote ${negrep_posting_per_window} times in ${negrep_posting_window} minutes.",
+                ("negrep_posting_per_window", mprops.negrep_posting_per_window)("negrep_posting_window", mprops.negrep_posting_window));
+
+            modify(acc, [&](auto& a) {
+                a.negrep_posting_capacity = current_capacity - consumption;
+                a.last_posting_action = now;
+            });
         }
 
         uint32_t database::witness_participation_rate() const {
@@ -1819,6 +1855,22 @@ namespace golos { namespace chain {
             }
         }
 
+        void database::update_witness_windows_sec_to_min() {
+            const auto& widx = get_index<witness_index, by_vote_name>();
+            int num_updated = 0;
+            for (auto itr = widx.begin();
+                    itr != widx.end() && num_updated < 50;
+                    ++itr, ++num_updated) {
+                modify(*itr, [&](auto& w) {
+                    w.props.hf26_windows_sec_to_min();
+                });
+            }
+
+            modify(get_witness_schedule_object(), [&](auto& wso) {
+                wso.median_props.hf26_windows_sec_to_min();
+            });
+        }
+
         void database::update_witness_schedule4() {
             vector<account_name_type> active_witnesses;
             active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
@@ -2296,41 +2348,52 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_26::convert_fee_percent);
             calc_median(&chain_properties_26::min_golos_power_to_curate);
 
-            if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
-                #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
-                    std::nth_element( \
-                        FROM.begin(), FROM.begin() + FROM.size() / 2, FROM.end(), \
-                        [&](const auto* a, const auto* b) { \
-                            return a->props.FIELD < b->props.FIELD; \
-                        } \
-                    ); \
-                    vector<const witness_object*> TO; \
-                    std::copy_if(FROM.begin(), FROM.end(), back_inserter(TO), [&](auto& el) { return el->props.FIELD == FROM[FROM.size() / 2]->props.FIELD; });
-
-                COPY_ALL_MEDIAN(active, act_worker, worker_reward_percent);
-                COPY_ALL_MEDIAN(act_worker, act_witness, witness_reward_percent);
-                std::nth_element(
-                    act_witness.begin(), act_witness.begin() + act_witness.size() / 2, act_witness.end(),
-                    [&](const auto* a, const auto* b) { \
-                        return a->props.vesting_reward_percent < b->props.vesting_reward_percent;
-                    }
-                );
-                median_props.worker_reward_percent = act_witness[act_witness.size() / 2]->props.worker_reward_percent;
-                median_props.witness_reward_percent = act_witness[act_witness.size() / 2]->props.witness_reward_percent;
-                median_props.vesting_reward_percent = act_witness[act_witness.size() / 2]->props.vesting_reward_percent;
+            if (has_hardfork(STEEMIT_HARDFORK_0_26__163)) {
+                // Now these parameters are unused
+                calc_median(&chain_properties_26::worker_reward_percent);
+                calc_median(&chain_properties_26::witness_reward_percent);
+                calc_median(&chain_properties_26::vesting_reward_percent);
             } else {
-                std::nth_element(
-                    active.begin(), active.begin() + median, active.end(),
-                    [&](const auto* a, const auto* b) {
-                        return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
-                            < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
-                    }
-                );
-                median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
-                median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
-                median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
+                if (has_hardfork(STEEMIT_HARDFORK_0_23)) {
+                    #define COPY_ALL_MEDIAN(FROM, TO, FIELD) \
+                        std::nth_element( \
+                            FROM.begin(), FROM.begin() + FROM.size() / 2, FROM.end(), \
+                            [&](const auto* a, const auto* b) { \
+                                return a->props.FIELD < b->props.FIELD; \
+                            } \
+                        ); \
+                        vector<const witness_object*> TO; \
+                        std::copy_if(FROM.begin(), FROM.end(), back_inserter(TO), [&](auto& el) { return el->props.FIELD == FROM[FROM.size() / 2]->props.FIELD; });
+
+                    COPY_ALL_MEDIAN(active, act_worker, worker_reward_percent);
+                    COPY_ALL_MEDIAN(act_worker, act_witness, witness_reward_percent);
+                    std::nth_element(
+                        act_witness.begin(), act_witness.begin() + act_witness.size() / 2, act_witness.end(),
+                        [&](const auto* a, const auto* b) { \
+                            return a->props.vesting_reward_percent < b->props.vesting_reward_percent;
+                        }
+                    );
+                    median_props.worker_reward_percent = act_witness[act_witness.size() / 2]->props.worker_reward_percent;
+                    median_props.witness_reward_percent = act_witness[act_witness.size() / 2]->props.witness_reward_percent;
+                    median_props.vesting_reward_percent = act_witness[act_witness.size() / 2]->props.vesting_reward_percent;
+                } else {
+                    std::nth_element(
+                        active.begin(), active.begin() + median, active.end(),
+                        [&](const auto* a, const auto* b) {
+                            return std::tie(a->props.worker_reward_percent, a->props.witness_reward_percent, a->props.vesting_reward_percent)
+                                < std::tie(b->props.worker_reward_percent, b->props.witness_reward_percent, b->props.vesting_reward_percent);
+                        }
+                    );
+                    median_props.worker_reward_percent = active[median]->props.worker_reward_percent;
+                    median_props.witness_reward_percent = active[median]->props.witness_reward_percent;
+                    median_props.vesting_reward_percent = active[median]->props.vesting_reward_percent;
+                }
             }
 
+            calc_median(&chain_properties_26::worker_emission_percent);
+            calc_median(&chain_properties_26::vesting_of_remain_percent);
+            calc_median_battery(&chain_properties_26::negrep_posting_window, &chain_properties_26::negrep_posting_per_window);
+            
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
             modify(wso, [&](witness_schedule_object &_wso) {
@@ -3050,7 +3113,13 @@ namespace golos { namespace chain {
                 auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 6.66% to witness pay
 
                 share_type worker_reward = 0;
-                if (has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
+                if (has_hardfork(STEEMIT_HARDFORK_0_26__163)) {
+                    worker_reward = new_steem * wso.median_props.worker_emission_percent / STEEMIT_100_PERCENT;
+                    witness_reward = new_steem * uint16_t(GOLOS_WITNESS_EMISSION_PERCENT) / STEEMIT_100_PERCENT;
+                    auto remain = new_steem - worker_reward - witness_reward;
+                    vesting_reward = remain * wso.median_props.vesting_of_remain_percent / STEEMIT_100_PERCENT;
+                    content_reward = remain - vesting_reward;
+                } else if (has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
                     worker_reward = new_steem * wso.median_props.worker_reward_percent / STEEMIT_100_PERCENT;
                     witness_reward = new_steem * wso.median_props.witness_reward_percent / STEEMIT_100_PERCENT;
                     vesting_reward = new_steem * wso.median_props.vesting_reward_percent / STEEMIT_100_PERCENT;
@@ -5672,6 +5741,7 @@ namespace golos { namespace chain {
                             auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                         });
 #endif
+                        update_witness_windows_sec_to_min();
                     }
                     break;
                 default:

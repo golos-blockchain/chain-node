@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "database_fixture.hpp"
+#include "comment_reward.hpp"
 
 namespace golos { namespace chain {
 
@@ -88,6 +89,48 @@ BOOST_FIXTURE_TEST_SUITE(hf26_tests, hf26_database_fixture)
         GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, op),
             CHECK_ERROR(tx_invalid_operation, 0,
                 CHECK_ERROR(logic_exception, logic_exception::amount_is_too_low)));
+    } FC_LOG_AND_RETHROW() }
+
+    BOOST_AUTO_TEST_CASE(emission_distribution) { try {
+        BOOST_TEST_MESSAGE("Testing: emission_distribution");
+
+        BOOST_TEST_MESSAGE("-- Before HF26");
+
+        comment_fund fund(*db);
+
+        generate_block();
+
+        {
+            auto& gpo = db->get_dynamic_global_properties();
+            BOOST_CHECK_EQUAL(gpo.total_reward_fund_steem, fund.reward_fund());
+            BOOST_CHECK_EQUAL(gpo.total_vesting_shares, fund.vesting_shares());
+            BOOST_CHECK_EQUAL(gpo.total_vesting_fund_steem, fund.vesting_fund());
+            BOOST_CHECK_EQUAL(gpo.total_vesting_fund_steem, fund.vesting_fund());
+            BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, fund.worker_fund());
+        }
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Apply HF26");
+
+        db->set_hardfork(STEEMIT_HARDFORK_0_26);
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- After HF26");
+
+        comment_fund fund2(*db);
+
+        generate_block();
+
+        {
+            auto& gpo = db->get_dynamic_global_properties();
+            BOOST_CHECK_EQUAL(gpo.total_reward_fund_steem, fund2.reward_fund());
+            BOOST_CHECK_EQUAL(gpo.total_vesting_shares, fund2.vesting_shares());
+            BOOST_CHECK_EQUAL(gpo.total_vesting_fund_steem, fund2.vesting_fund());
+            BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, fund2.worker_fund());
+        }
+
+        validate_database();
     } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
