@@ -360,7 +360,7 @@ if (options.count(name)) { \
         }
 
         void operator()(const minus_reputation_operation& op) {
-            insert_pair(op.voter, op.author);
+            insert_pair(STEEMIT_NULL_ACCOUNT, op.author);
         }
 
         void operator()(const author_reward_operation& op) {
