@@ -1782,6 +1782,7 @@ namespace golos { namespace chain {
 
             auto has_hf23 = has_hardfork(STEEMIT_HARDFORK_0_23__104);
             auto has_hf25 = has_hardfork(STEEMIT_HARDFORK_0_25__122);
+            auto has_hf26 = has_hardfork(STEEMIT_HARDFORK_0_26__157);
 
             auto min_vs = 30000000000;
 
@@ -1815,9 +1816,11 @@ namespace golos { namespace chain {
                     to_withdraw = std::min(to_withdraw, itr->vesting_shares.amount.value);
                 }
                 modify(*itr, [&](auto& a) {
-                    if (has_hf23) {
+                    if (has_hf26) {
                         a.vesting_withdraw_rate = asset(to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
-                    } else {
+                    } else if (has_hf23) {
+                        a.vesting_withdraw_rate = asset(to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_26, VESTS_SYMBOL);
+                    } else{
                         a.vesting_withdraw_rate = asset(to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_23, VESTS_SYMBOL);
                     }
                     if (a.vesting_withdraw_rate.amount == 0)
