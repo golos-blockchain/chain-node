@@ -3221,6 +3221,10 @@ namespace golos { namespace chain {
             modify(props, [&](auto& props) {
                 props.accumulative_balance = asset(0, STEEM_SYMBOL);
             });
+
+            if (_accumulative_remainder.amount.value) {
+                push_virtual_operation(accumulative_remainder_operation(_accumulative_remainder));
+            }
         }
 
         void database::process_savings_withdraws() {

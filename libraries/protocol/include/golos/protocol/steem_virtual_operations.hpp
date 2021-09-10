@@ -389,6 +389,17 @@ namespace golos { namespace protocol {
             int64_t reputation_after;
             int16_t vote_weight;
         };
+
+        struct accumulative_remainder_operation : public virtual_operation {
+            accumulative_remainder_operation() {
+            }
+
+            accumulative_remainder_operation(const asset& a)
+                    : amount(a) {
+            }
+
+            asset amount;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -417,3 +428,4 @@ FC_REFLECT((golos::protocol::comment_feed_operation), (follower)(author)(permlin
 FC_REFLECT((golos::protocol::account_voted_operation), (voter)(author)(reputation)(weight))
 FC_REFLECT((golos::protocol::account_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
 FC_REFLECT((golos::protocol::minus_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
+FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
