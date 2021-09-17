@@ -574,7 +574,7 @@ FC_REFLECT((golos::chain::feed_history_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::feed_history_object, golos::chain::feed_history_index)
 
 FC_REFLECT((golos::chain::convert_request_object),
-        (id)(owner)(requestid)(amount)(conversion_date))
+        (id)(owner)(requestid)(amount)(fee)(conversion_date))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::convert_request_object, golos::chain::convert_request_index)
 
 FC_REFLECT((golos::chain::liquidity_reward_balance_object),
