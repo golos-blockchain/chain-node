@@ -438,6 +438,16 @@ namespace golos { namespace protocol {
             string title;
             string body;
             string json_metadata;
+
+        struct accumulative_remainder_operation : public virtual_operation {
+            accumulative_remainder_operation() {
+            }
+
+            accumulative_remainder_operation(const asset& a)
+                    : amount(a) {
+            }
+
+            asset amount;
         };
 } } //golos::protocol
 
@@ -469,3 +479,4 @@ FC_REFLECT((golos::protocol::account_reputation_operation), (voter)(author)(repu
 FC_REFLECT((golos::protocol::minus_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
 FC_REFLECT((golos::protocol::comment_reply_operation), (author)(permlink)(parent_author)(parent_permlink)(title)(body)(json_metadata))
 FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(permlink)(parent_author)(parent_permlink)(title)(body)(json_metadata))
+FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
