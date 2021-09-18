@@ -438,6 +438,7 @@ namespace golos { namespace protocol {
             string title;
             string body;
             string json_metadata;
+        };
 
         struct accumulative_remainder_operation : public virtual_operation {
             accumulative_remainder_operation() {
