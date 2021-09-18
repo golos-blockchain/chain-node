@@ -5,6 +5,7 @@
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
 #include "follow_api_object.hpp"
+#include <regex>
 
 namespace golos { namespace plugins { namespace follow {
     using json_rpc::msg_pack;
@@ -72,6 +73,10 @@ namespace golos { namespace plugins { namespace follow {
         void plugin_initialize(const boost::program_options::variables_map& options) override;
 
         uint32_t max_feed_size();
+
+        uint16_t max_mentions_count();
+
+        const std::regex& mention_regex();
 
         void plugin_startup() override;
 

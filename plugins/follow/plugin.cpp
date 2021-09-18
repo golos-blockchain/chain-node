@@ -118,22 +118,65 @@ namespace golos {
                     } FC_CAPTURE_AND_RETHROW()
                 }
 
+                void process_mentions(const comment_operation& op) const {
+                    const auto& idx = _db.get_index<follow_index, by_following_follower>();
+                    
+                    auto max_mentions = _plugin.max_mentions_count();
+
+                    auto body = op.body;
+                    std::smatch match;
+                    std::set<std::string> proceed;
+                    for (uint16_t mentions = 0;
+                        std::regex_search(body, match, _plugin.mention_regex())
+                            && mentions < max_mentions;
+                        ++mentions) {
+                        auto mentioned = match.str();
+                        if (mentioned.size() >= 4) {
+                            mentioned = mentioned.substr(1); // remove @
+
+                            if (mentioned != op.author && mentioned != op.parent_author
+                                    && proceed.insert(mentioned).second
+                                    && _db.find_account(mentioned)) {
+                                auto itr = idx.find(std::make_tuple(op.author, mentioned));
+                                if (itr == idx.end() || !(itr->what & (1 << ignore))) {
+                                    _db.push_event(comment_mention_operation(mentioned,
+                                            op.author, op.permlink, op.parent_author, op.parent_permlink,
+                                            op.title, op.body, op.json_metadata));
+                                }
+                            }
+                        }
+                        body = match.suffix();
+                    }
+                }
+
                 void operator()(const comment_operation& op) const {
                     try {
-                        if (op.parent_author.size() > 0) {
-                            return;
-                        }
-
                         const auto& c = _db.get_comment(op.author, op.permlink);
 
                         if (c.created != _db.head_block_time()) {
                             return;
                         }
 
+                        process_mentions(op);
+
+                        const auto& idx = _db.get_index<follow_index, by_following_follower>();
+
+                        if (op.parent_author.size() && op.parent_author != op.author) {
+                            auto itr = idx.find(std::make_tuple(op.author, op.parent_author));
+                            if (itr == idx.end() || !(itr->what & (1 << ignore))) {
+                                _db.push_event(comment_reply_operation(
+                                            op.author, op.permlink, op.parent_author, op.parent_permlink,
+                                            op.title, op.body, op.json_metadata));
+                            }
+                        }
+
+                        if (op.parent_author.size() > 0) {
+                            return;
+                        }
+
                         const auto& comment_idx = _db.get_index<feed_index, by_comment>();
                         const auto& feed_idx = _db.get_index<feed_index, by_feed>();
 
-                        const auto& idx = _db.get_index<follow_index, by_following_follower>();
                         auto itr = idx.find(op.author);
                         for (; itr != idx.end() && itr->following == op.author; ++itr) {
                             if (itr->what & (1 << blog)) {
@@ -305,10 +348,14 @@ namespace golos {
 
                 uint32_t max_feed_size_ = 500;
 
+                uint16_t max_mentions_count_ = 30;
+
                 std::shared_ptr<generic_custom_operation_interpreter<
                         follow::follow_plugin_operation>> _custom_operation_interpreter;
 
                 std::unique_ptr<discussion_helper> helper;
+
+                std::regex mention_regex_{"\\@[\\w\\d.-]+"};
             };
 
             plugin::plugin() {
@@ -317,9 +364,13 @@ namespace golos {
 
             void plugin::set_program_options(boost::program_options::options_description& cli,
                                                     boost::program_options::options_description& cfg) {
-                cfg.add_options()
-                    ("follow-max-feed-size", boost::program_options::value<uint32_t>()->default_value(500),
-                        "Set the maximum size of cached feed for an account");
+                cfg.add_options() (
+                    "follow-max-feed-size", boost::program_options::value<uint32_t>()->default_value(500),
+                    "Set the maximum size of cached feed for an account"
+                ) (
+                    "max-comment-mentions-count", boost::program_options::value<uint16_t>()->default_value(30),
+                    "Set the maximum of @ mentions in comment or post, to be processed"
+                );
             }
 
             void plugin::plugin_initialize(const boost::program_options::variables_map& options) {
@@ -345,6 +396,9 @@ namespace golos {
                         uint32_t feed_size = options["follow-max-feed-size"].as<uint32_t>();
                         pimpl->max_feed_size_ = feed_size;
                     }
+                    if (options.count("max-comment-mentions-count")) {
+                        pimpl->max_mentions_count_ = options["max-comment-mentions-count"].as<uint16_t>();
+                    }
 
                     JSON_RPC_REGISTER_API ( name() ) ;
                 } FC_CAPTURE_AND_RETHROW()
@@ -355,6 +409,14 @@ namespace golos {
 
             uint32_t plugin::max_feed_size() {
                 return pimpl->max_feed_size_;
+            }
+
+            uint16_t plugin::max_mentions_count() {
+                return pimpl->max_mentions_count_;
+            }
+
+            const std::regex& plugin::mention_regex() {
+                return pimpl->mention_regex_;
             }
 
             plugin::~plugin() {
