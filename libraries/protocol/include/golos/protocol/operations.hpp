@@ -118,7 +118,7 @@ namespace golos { namespace protocol {
                 account_reputation_operation,
                 minus_reputation_operation,
                 comment_reply_operation,
-                comment_mention_operation
+                comment_mention_operation,
                 accumulative_remainder_operation
         > operation;
 
