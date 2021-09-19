@@ -421,13 +421,8 @@ namespace golos { namespace protocol {
             }
 
             comment_mention_operation(const account_name_type& m,
-                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp,
-                const string& t, const string& b, const string& j)
-                    : mentioned(m), author(a), permlink(p), parent_author(pa), parent_permlink(pp),
-                    title(t), body(b), json_metadata(j) {
-                if (body.size() > 200) {
-                    body.erase(200);
-                }
+                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp)
+                    : mentioned(m), author(a), permlink(p), parent_author(pa), parent_permlink(pp) {
             }
 
             account_name_type mentioned;
@@ -435,9 +430,6 @@ namespace golos { namespace protocol {
             string permlink;
             account_name_type parent_author;
             string parent_permlink;
-            string title;
-            string body;
-            string json_metadata;
         };
 
         struct accumulative_remainder_operation : public virtual_operation {
@@ -479,5 +471,5 @@ FC_REFLECT((golos::protocol::account_voted_operation), (voter)(author)(reputatio
 FC_REFLECT((golos::protocol::account_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
 FC_REFLECT((golos::protocol::minus_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
 FC_REFLECT((golos::protocol::comment_reply_operation), (author)(permlink)(parent_author)(parent_permlink)(title)(body)(json_metadata))
-FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(permlink)(parent_author)(parent_permlink)(title)(body)(json_metadata))
+FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(permlink)(parent_author)(parent_permlink))
 FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))

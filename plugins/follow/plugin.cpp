@@ -140,8 +140,7 @@ namespace golos {
                                 auto itr = idx.find(std::make_tuple(op.author, mentioned));
                                 if (itr == idx.end() || !(itr->what & (1 << ignore))) {
                                     _db.push_event(comment_mention_operation(mentioned,
-                                            op.author, op.permlink, op.parent_author, op.parent_permlink,
-                                            op.title, op.body, op.json_metadata));
+                                            op.author, op.permlink, op.parent_author, op.parent_permlink));
                                 }
                             }
                         }
