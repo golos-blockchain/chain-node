@@ -323,14 +323,9 @@ namespace golos { namespace protocol {
             }
 
             comment_feed_operation(const account_name_type& f,
-                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp,
-                const string& t, const string& b, const string& j)
+                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp)
                     : follower(f),
-                    author(a), permlink(p), parent_author(pa), parent_permlink(pp),
-                    title(t), body(b), json_metadata(j) {
-                if (body.size() > 200) {
-                    body.erase(200);
-                }
+                    author(a), permlink(p), parent_author(pa), parent_permlink(pp) {
             }
 
             account_name_type follower;
@@ -340,27 +335,9 @@ namespace golos { namespace protocol {
 
             account_name_type parent_author;
             string parent_permlink;
-
-            string title;
-            string body;
-            string json_metadata;
         };
 
-        struct account_voted_operation : public virtual_operation {
-            account_voted_operation() {
-            }
-
-            account_voted_operation(const account_name_type& v,
-                const account_name_type& a, int64_t r, int16_t w)
-                    : voter(v), author(a), reputation(r), weight(w) {
-            }
-
-            account_name_type voter;
-            account_name_type author;
-            int64_t reputation; // = rshares >> 6
-            int16_t weight;
-        };
-
+        // available only in event_plugin and account_history
         struct account_reputation_operation : public virtual_operation {
             account_reputation_operation() {
             }
@@ -377,6 +354,7 @@ namespace golos { namespace protocol {
             int16_t vote_weight;
         };
 
+        // available only in event_plugin and account_history
         struct minus_reputation_operation : public virtual_operation {
             minus_reputation_operation() {
             }
@@ -398,24 +376,17 @@ namespace golos { namespace protocol {
             }
 
             comment_reply_operation(
-                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp,
-                const string& t, const string& b, const string& j)
-                    : author(a), permlink(p), parent_author(pa), parent_permlink(pp),
-                    title(t), body(b), json_metadata(j) {
-                if (body.size() > 200) {
-                    body.erase(200);
-                }
+                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp)
+                    : author(a), permlink(p), parent_author(pa), parent_permlink(pp) {
             }
 
             account_name_type author;
             string permlink;
             account_name_type parent_author;
             string parent_permlink;
-            string title;
-            string body;
-            string json_metadata;
         };
 
+        // available only in event_plugin and account_history
         struct comment_mention_operation : public virtual_operation {
             comment_mention_operation() {
             }
@@ -466,10 +437,9 @@ FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_a
 FC_REFLECT((golos::protocol::worker_state_operation), (author)(permlink)(state))
 FC_REFLECT((golos::protocol::convert_sbd_debt_operation), (owner)(sbd_amount)(steem_amount)(savings_sbd_amount)(savings_steem_amount))
 FC_REFLECT((golos::protocol::internal_transfer_operation), (from)(to)(amount)(memo))
-FC_REFLECT((golos::protocol::comment_feed_operation), (follower)(author)(permlink)(parent_author)(parent_permlink)(title)(body)(json_metadata))
-FC_REFLECT((golos::protocol::account_voted_operation), (voter)(author)(reputation)(weight))
+FC_REFLECT((golos::protocol::comment_feed_operation), (follower)(author)(permlink)(parent_author)(parent_permlink))
 FC_REFLECT((golos::protocol::account_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
 FC_REFLECT((golos::protocol::minus_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
-FC_REFLECT((golos::protocol::comment_reply_operation), (author)(permlink)(parent_author)(parent_permlink)(title)(body)(json_metadata))
+FC_REFLECT((golos::protocol::comment_reply_operation), (author)(permlink)(parent_author)(parent_permlink))
 FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(permlink)(parent_author)(parent_permlink))
 FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
