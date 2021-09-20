@@ -164,8 +164,7 @@ namespace golos {
                             auto itr = idx.find(std::make_tuple(op.author, op.parent_author));
                             if (itr == idx.end() || !(itr->what & (1 << ignore))) {
                                 _db.push_event(comment_reply_operation(
-                                            op.author, op.permlink, op.parent_author, op.parent_permlink,
-                                            op.title, op.body, op.json_metadata));
+                                            op.author, op.permlink, op.parent_author, op.parent_permlink));
                             }
                         }
 
@@ -193,8 +192,7 @@ namespace golos {
                                     });
 
                                     _db.push_event(comment_feed_operation(itr->follower,
-                                        op.author, op.permlink, op.parent_author, op.parent_permlink,
-                                        op.title, op.body, op.json_metadata));
+                                        op.author, op.permlink, op.parent_author, op.parent_permlink));
 
                                     const auto& old_feed_idx = _db.get_index<feed_index, by_old_feed>();
                                     auto old_feed = old_feed_idx.lower_bound(itr->follower);

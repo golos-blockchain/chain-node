@@ -56,6 +56,18 @@ namespace golos { namespace plugins { namespace operation_history {
                 });
             }
         }
+
+        // available only in event_plugin and account_history
+        void operator()(const comment_mention_operation& op) {
+        }
+
+        // available only in event_plugin and account_history
+        void operator()(const account_reputation_operation& op) {
+        }
+
+        // available only in event_plugin and account_history
+        void operator()(const minus_reputation_operation& op) {
+        }
     };
 
     struct operation_visitor_filter final : operation_visitor {

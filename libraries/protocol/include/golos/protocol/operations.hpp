@@ -114,7 +114,6 @@ namespace golos { namespace protocol {
                 convert_sbd_debt_operation,
                 internal_transfer_operation,
                 comment_feed_operation,
-                account_voted_operation,
                 account_reputation_operation,
                 minus_reputation_operation,
                 comment_reply_operation,
