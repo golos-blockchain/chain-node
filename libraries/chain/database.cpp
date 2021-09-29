@@ -5756,6 +5756,16 @@ namespace golos { namespace chain {
                             });
                         }
 #endif
+#ifdef STEEMIT_BUILD_TESTNET
+                        create<account_object>([&](auto& a) {
+                            a.name = STEEMIT_OAUTH_ACCOUNT;
+                        });
+                        create<account_authority_object>([&](auto& auth) {
+                            auth.account = STEEMIT_OAUTH_ACCOUNT;
+                            auth.active = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
+                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
+                        });
+#endif
                     }
                     break;
                 default:
