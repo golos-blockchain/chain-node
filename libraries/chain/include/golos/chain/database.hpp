@@ -453,7 +453,7 @@ namespace golos { namespace chain {
 
             void adjust_rshares2(const comment_object &comment, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2);
 
-            void update_owner_authority(const account_object &account, const authority &owner_authority);
+            authority update_owner_authority(const account_object &account, const authority &owner_authority);
 
             asset get_balance(const account_object &a, asset_symbol_type symbol) const;
 

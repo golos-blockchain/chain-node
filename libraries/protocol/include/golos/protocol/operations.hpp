@@ -118,7 +118,8 @@ namespace golos { namespace protocol {
                 minus_reputation_operation,
                 comment_reply_operation,
                 comment_mention_operation,
-                accumulative_remainder_operation
+                accumulative_remainder_operation,
+                authority_updated_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

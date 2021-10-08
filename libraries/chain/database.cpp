@@ -2612,7 +2612,7 @@ namespace golos { namespace chain {
             }
         }
 
-        void database::update_owner_authority(const account_object &account, const authority &owner_authority) {
+        authority database::update_owner_authority(const account_object &account, const authority &owner_authority) {
             if (head_block_num() >=
                 STEEMIT_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM) {
                 create<owner_authority_history_object>([&](owner_authority_history_object &hist) {
@@ -2622,10 +2622,13 @@ namespace golos { namespace chain {
                 });
             }
 
-            modify(get_authority(account.name), [&](account_authority_object &auth) {
+            const auto& auth = get_authority(account.name);
+            authority old(auth.owner);
+            modify(auth, [&](account_authority_object& auth) {
                 auth.owner = owner_authority;
                 auth.last_owner_update = head_block_time();
             });
+            return old;
         }
 
         void database::process_vesting_withdrawals() {
