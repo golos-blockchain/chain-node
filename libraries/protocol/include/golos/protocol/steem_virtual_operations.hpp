@@ -413,6 +413,30 @@ namespace golos { namespace protocol {
 
             asset amount;
         };
+
+        using updated_authority = std::pair<authority, authority>;
+
+        using updated_key = std::pair<public_key_type, public_key_type>;
+
+        struct authority_updated_operation : public virtual_operation {
+            authority_updated_operation() {
+            }
+
+            authority_updated_operation(const account_name_type& a)
+                    : account(a) {
+            }
+
+            bool empty() {
+                return !
+                    (!!owner || !!active || !!posting || !!memo_key);
+            }
+
+            account_name_type account;
+            optional<updated_authority> owner;
+            optional<updated_authority> active;
+            optional<updated_authority> posting;
+            optional<updated_key> memo_key;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -443,3 +467,4 @@ FC_REFLECT((golos::protocol::minus_reputation_operation), (voter)(author)(reputa
 FC_REFLECT((golos::protocol::comment_reply_operation), (author)(permlink)(parent_author)(parent_permlink))
 FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(permlink)(parent_author)(parent_permlink))
 FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
+FC_REFLECT((golos::protocol::authority_updated_operation), (account)(owner)(active)(posting)(memo_key))

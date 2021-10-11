@@ -2612,7 +2612,7 @@ namespace golos { namespace chain {
             }
         }
 
-        void database::update_owner_authority(const account_object &account, const authority &owner_authority) {
+        authority database::update_owner_authority(const account_object &account, const authority &owner_authority) {
             if (head_block_num() >=
                 STEEMIT_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM) {
                 create<owner_authority_history_object>([&](owner_authority_history_object &hist) {
@@ -2622,10 +2622,13 @@ namespace golos { namespace chain {
                 });
             }
 
-            modify(get_authority(account.name), [&](account_authority_object &auth) {
+            const auto& auth = get_authority(account.name);
+            authority old(auth.owner);
+            modify(auth, [&](account_authority_object& auth) {
                 auth.owner = owner_authority;
                 auth.last_owner_update = head_block_time();
             });
+            return old;
         }
 
         void database::process_vesting_withdrawals() {
@@ -5383,6 +5386,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_26 == 26, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_26] = fc::time_point_sec(STEEMIT_HARDFORK_0_26_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_26] = STEEMIT_HARDFORK_0_26_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_27 == 27, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_27] = fc::time_point_sec(STEEMIT_HARDFORK_0_27_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_27] = STEEMIT_HARDFORK_0_27_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -5701,6 +5707,28 @@ namespace golos { namespace chain {
                     break;
                 case STEEMIT_HARDFORK_0_26:
                     {
+#ifdef STEEMIT_BUILD_TESTNET
+                        // adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
+                        modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
+                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
+                        });
+
+                        create<account_object>([&](auto& acc) {
+                            acc.name = "cyberfounder100";
+                            acc.memo_key = public_key_type(STEEMIT_INIT_PUBLIC_KEY);
+                        });
+                        create<account_authority_object>([&](auto& auth) {
+                            auth.account = "cyberfounder100";
+                            auth.active = authority(1, public_key_type(STEEMIT_INIT_PUBLIC_KEY), 1);
+                            auth.owner = auth.active;
+                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
+                        });
+#endif
+                        update_witness_windows_sec_to_min();
+                    }
+                    break;
+                case STEEMIT_HARDFORK_0_27:
+                    {
 #ifdef STEEMIT_BUILD_LIVETEST
                         //active and signing_key, also memo_key
                         //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
@@ -5732,23 +5760,15 @@ namespace golos { namespace chain {
                         }
 #endif
 #ifdef STEEMIT_BUILD_TESTNET
-                        // adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
-                        modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
-                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
-                        });
-
-                        create<account_object>([&](auto& acc) {
-                            acc.name = "cyberfounder100";
-                            acc.memo_key = public_key_type(STEEMIT_INIT_PUBLIC_KEY);
+                        create<account_object>([&](auto& a) {
+                            a.name = STEEMIT_OAUTH_ACCOUNT;
                         });
                         create<account_authority_object>([&](auto& auth) {
-                            auth.account = "cyberfounder100";
-                            auth.active = authority(1, public_key_type(STEEMIT_INIT_PUBLIC_KEY), 1);
-                            auth.owner = auth.active;
+                            auth.account = STEEMIT_OAUTH_ACCOUNT;
+                            auth.active = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
                             auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
                         });
 #endif
-                        update_witness_windows_sec_to_min();
                     }
                     break;
                 default:

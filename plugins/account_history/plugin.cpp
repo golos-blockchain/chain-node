@@ -343,6 +343,10 @@ if (options.count(name)) { \
             insert_dual(op.account);
         }
 
+        void operator()(const authority_updated_operation& op) {
+            insert_dual(op.account);
+        }
+
         void operator()(const comment_operation& op) {
             insert_pair(op.author, op.parent_author, op.parent_author.size());
         }

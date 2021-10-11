@@ -350,9 +350,17 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             BOOST_TEST_MESSAGE("Testing: account_update_apply");
 
             ACTORS((alice))
-            private_key_type new_private_key = generate_private_key("new_key");
+
+            signed_transaction tx;
+
+            BOOST_TEST_MESSAGE("--- Saving old authority");
+
+            auto old_acct = db->get_account("alice");
+            auto old_auth = db->get<account_authority_object, by_account>("alice");
 
             BOOST_TEST_MESSAGE("--- Test normal update");
+
+            private_key_type new_private_key = generate_private_key("new_key");
 
             account_update_operation op;
             op.account = "alice";
@@ -361,14 +369,10 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.memo_key = new_private_key.get_public_key();
             op.json_metadata = "{\"bar\":\"foo\"}";
 
-            signed_transaction tx;
-            tx.operations.push_back(op);
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
-            const account_object &acct = db->get_account("alice");
-            const account_authority_object &acct_auth = db->get<account_authority_object, by_account>("alice");
+            const auto& acct = db->get_account("alice");
+            const auto& acct_auth = db->get<account_authority_object, by_account>("alice");
 
             BOOST_CHECK_EQUAL(acct.name, "alice");
             BOOST_CHECK_EQUAL(acct_auth.owner, authority(1, new_private_key.get_public_key(), 1));
@@ -383,27 +387,38 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             validate_database();
 
+            BOOST_TEST_MESSAGE("--- Test authority_updated event");
+
+            generate_block();
+
+            auto auop = get_last_operations<authority_updated_operation>(1)[0];
+            BOOST_CHECK_EQUAL(auop.account, "alice");
+            BOOST_CHECK(auop.owner.valid());
+            BOOST_CHECK_EQUAL((*auop.owner).first, authority(old_auth.owner));
+            BOOST_CHECK_EQUAL((*auop.owner).second, *op.owner);
+            BOOST_CHECK(auop.active.valid());
+            BOOST_CHECK_EQUAL((*auop.active).first, authority(old_auth.active));
+            BOOST_CHECK_EQUAL((*auop.active).second, *op.active);
+            BOOST_CHECK(!auop.posting.valid());
+            BOOST_CHECK(auop.memo_key.valid());
+            BOOST_CHECK_EQUAL((*auop.memo_key).first, old_acct.memo_key);
+            BOOST_CHECK_EQUAL((*auop.memo_key).second, op.memo_key);
+
             BOOST_TEST_MESSAGE("--- Test failure when updating a non-existent account");
-            tx.operations.clear();
-            tx.signatures.clear();
+
             op.account = "bob";
-            tx.operations.push_back(op);
-            tx.sign(new_private_key, db->get_chain_id());
-            GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
+            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, new_private_key, op),
                 CHECK_ERROR(missing_object, "authority", "bob"));
             validate_database();
 
-
             BOOST_TEST_MESSAGE("--- Test failure when account authority does not exist");
-            tx.clear();
+
             op = account_update_operation();
             op.account = "alice";
             op.posting = authority();
             op.posting->weight_threshold = 1;
             op.posting->add_authorities("dave", 1);
-            tx.operations.push_back(op);
-            tx.sign(new_private_key, db->get_chain_id());
-            GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
+            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, new_private_key, op),
                 CHECK_ERROR(tx_invalid_operation, 0,
                     CHECK_ERROR(missing_object, "account", "dave")));
             validate_database();

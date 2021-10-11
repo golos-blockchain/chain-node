@@ -4,7 +4,7 @@
 #pragma once
 
 
-#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 26, 0))
+#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 27, 0))
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     (hardfork_version(STEEMIT_BLOCKCHAIN_VERSION))
 
 
@@ -299,6 +299,8 @@
 #define GRAPHENE_CURRENT_DB_VERSION             "GPH2.4"
 
 #define STEEMIT_IRREVERSIBLE_THRESHOLD          (75 * STEEMIT_1_PERCENT)
+
+#define STEEMIT_OAUTH_ACCOUNT                   "oauth"
 
 #else // IS LIVE STEEM NETWORK
 

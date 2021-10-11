@@ -357,6 +357,13 @@ namespace golos { namespace chain {
                      o.posting->validate();
             }
 
+            authority_updated_operation event(o.account);
+
+#define SET_UPDATED_AUTH(FIELD, OLD) \
+    if (!(OLD == *o.FIELD)) { \
+        event.FIELD = updated_authority{OLD, *o.FIELD}; \
+    }
+
             const auto &account = _db.get_account(o.account);
             const auto &account_auth = _db.get_authority(o.account);
 
@@ -377,8 +384,8 @@ namespace golos { namespace chain {
                     }
                 }
 
-
-                _db.update_owner_authority(account, *o.owner);
+                auto old = _db.update_owner_authority(account, *o.owner);
+                SET_UPDATED_AUTH(owner, old);
             }
 
             if (o.active && (_db.has_hardfork(STEEMIT_HARDFORK_0_15__465) ||
@@ -399,6 +406,9 @@ namespace golos { namespace chain {
 
             _db.modify(account, [&](account_object &acc) {
                 if (o.memo_key != public_key_type()) {
+                    if (acc.memo_key != o.memo_key) {
+                        event.memo_key = updated_key{acc.memo_key, o.memo_key};
+                    }
                     acc.memo_key = o.memo_key;
                 }
                 if ((o.active || o.owner) && acc.active_challenged) {
@@ -412,14 +422,23 @@ namespace golos { namespace chain {
             if (o.active || o.posting) {
                 _db.modify(account_auth, [&](account_authority_object &auth) {
                     if (o.active) {
+                        const authority old(auth.active);
+                        SET_UPDATED_AUTH(active, old);
                         auth.active = *o.active;
                     }
                     if (o.posting) {
+                        const authority old(auth.posting);
+                        SET_UPDATED_AUTH(posting, old);
                         auth.posting = *o.posting;
                     }
                 });
             }
 
+#undef SET_UPDATED_AUTH
+
+            if (!event.empty()) {
+                _db.push_event(event);
+            }
         }
 
         void account_metadata_evaluator::do_apply(const account_metadata_operation& o) {

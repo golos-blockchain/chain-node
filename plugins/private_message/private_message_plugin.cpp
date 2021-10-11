@@ -53,8 +53,8 @@ namespace golos { namespace plugins { namespace private_message {
         result_type operator()(const T&) const {
         }
 
-        result_type operator()(const account_update_operation& op) const {
-            if (op.memo_key == public_key_type())
+        result_type operator()(const authority_updated_operation& op) const {
+            if (!op.memo_key.valid())
                 return;
 
             const auto& idx = _db.get_index<contact_index, by_owner>();
