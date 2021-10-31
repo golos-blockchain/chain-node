@@ -171,6 +171,7 @@ namespace golos { namespace plugins { namespace social_network {
         fc::sha256 target_id;
         shared_string comment;
         time_point_sec time;
+        bool wrong;
 
         share_type get_amount() const {
             return (amount.amount / amount.precision());
@@ -189,6 +190,7 @@ namespace golos { namespace plugins { namespace social_network {
         fc::sha256 target_id;
         string comment;
         time_point_sec time;
+        bool wrong;
 
         donate_api_object(const donate_data_object& don, const database& db) {
             from = don.from; to = don.to; amount = don.amount; uia = don.uia;
@@ -199,6 +201,7 @@ namespace golos { namespace plugins { namespace social_network {
             target_id = don.target_id;
             comment = to_string(don.comment);
             time = don.time;
+            wrong = don.wrong;
         }
 
         share_type get_amount() const {
@@ -259,4 +262,4 @@ CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::social_network::donate_data_object,
     golos::plugins::social_network::donate_data_index)
 FC_REFLECT((golos::plugins::social_network::donate_api_object),
-    (from)(to)(amount)(uia)(app)(version)(target)(target_id)(comment)(time))
+    (from)(to)(amount)(uia)(app)(version)(target)(target_id)(comment)(time)(wrong))
