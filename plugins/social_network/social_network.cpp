@@ -96,7 +96,7 @@ namespace golos { namespace plugins { namespace social_network {
         ) const ;
 
         std::vector<donate_api_object> select_donates (
-            bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
+            bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms, bool with_wrongs
         ) const ;
 
         std::vector<discussion> get_content_replies(
@@ -233,7 +233,7 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     std::vector<donate_api_object> social_network::impl::select_donates(
-        bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms
+        bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms, bool with_wrongs
     ) const {
         if (limit == 0) {
             return {};
@@ -252,6 +252,7 @@ namespace golos { namespace plugins { namespace social_network {
                 } else {
                     if (itr->amount.symbol != STEEM_SYMBOL) continue;
                 }
+                if (itr->wrong && !with_wrongs) continue;
                 if (join_froms) {
                     auto join_itr = std::find_if(result.begin(), result.end(), [&](auto& dao) {
                         return dao.from == itr->from && dao.amount.symbol == itr->amount.symbol;
@@ -601,7 +602,7 @@ namespace golos { namespace plugins { namespace social_network {
             const auto& donate_idx = db.get_index<donate_index, by_id>();
             auto donate = --donate_idx.end();
 
-            db.create<donate_data_object>([&](auto& don) {
+            const auto& ddo = db.create<donate_data_object>([&](auto& don) {
                 don.donate = donate->id;
                 don.from = op.from;
                 don.to = op.to.size() ? op.to : op.from;
@@ -610,6 +611,7 @@ namespace golos { namespace plugins { namespace social_network {
                 don.target_id = impl.get_donate_target_id(op.memo.target);
                 if (!!op.memo.comment) from_string(don.comment, *op.memo.comment);
                 don.time = db.head_block_time();
+                don.wrong = false;
             });
 
             try {
@@ -618,6 +620,14 @@ namespace golos { namespace plugins { namespace social_network {
 
                 if (!is_valid_account_name(author_str)) return;
                 auto author = account_name_type(author_str);
+
+                auto wrong = op.to != author || op.from == op.to;
+                if (wrong) {
+                    db.modify(ddo, [&](auto& don) {
+                        don.wrong = true;
+                    });
+                    return;
+                }
 
                 const auto* comment = db.find_comment(author, permlink);
                 if (comment) {
@@ -1049,9 +1059,10 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t,           limit, DEFAULT_VOTE_LIMIT)
             (uint32_t,           offset, 0)
             (bool,               join_froms, false)
+            (bool,               with_wrongs, false)
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->select_donates(uia, target, from, to, limit, offset, join_froms);
+            return pimpl->select_donates(uia, target, from, to, limit, offset, join_froms, with_wrongs);
         });
     }
 
@@ -1061,12 +1072,13 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t,           limit, DEFAULT_VOTE_LIMIT)
             (uint32_t,           offset, 0)
             (bool,               join_froms, false)
+            (bool,               with_wrongs, false)
         );
         return pimpl->db.with_weak_read_lock([&]() {
             std::vector<std::vector<donate_api_object>> result;
             for (const auto& target : targets) {
-                result.push_back(pimpl->select_donates(false, target, "", "", limit, offset, join_froms));
-                result.push_back(pimpl->select_donates(true, target, "", "", limit, offset, join_froms));
+                result.push_back(pimpl->select_donates(false, target, "", "", limit, offset, join_froms, with_wrongs));
+                result.push_back(pimpl->select_donates(true, target, "", "", limit, offset, join_froms, with_wrongs));
             }
             return result;
         });
