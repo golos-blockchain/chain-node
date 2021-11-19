@@ -847,17 +847,21 @@ namespace golos { namespace chain {
                 def.account = account;
                 def.balance = asset(0, symbol);
                 def.tip_balance = asset(0, symbol);
+                def.market_balance = asset(0, symbol);
                 return def;
             }
         }
 
-        void database::adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip) {
+        void database::adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip, asset delta_market) {
             const auto& idx = get_index<account_balance_index, by_symbol_account>();
             auto itr = idx.find(std::make_tuple(delta.symbol, account));
             if (itr != idx.end()) {
                 modify(*itr, [&](auto& o) {
                     o.balance += delta;
                     o.tip_balance += delta_tip;
+                    if (delta_market.amount != 0) {
+                        o.market_balance += delta_market;
+                    }
                 });
             } else {
                 const auto& sym_idx = get_index<asset_index, by_symbol>();
@@ -868,8 +872,24 @@ namespace golos { namespace chain {
                     o.account = account;
                     o.balance = delta;
                     o.tip_balance = delta_tip;
+                    if (delta_market.amount != 0) {
+                        o.market_balance = delta_market;
+                    } else {
+                        o.market_balance = asset(0, delta.symbol);
+                    }
                 });
             }
+        }
+
+        void database::update_asset_marketed(asset_symbol_type symbol) {
+            FC_ASSERT(symbol != VESTS_SYMBOL && symbol != STMD_SYMBOL);
+            if (symbol == STEEM_SYMBOL || symbol == SBD_SYMBOL)
+                return;
+            const auto& obj = get_asset(symbol);
+            const auto now = head_block_time();
+            modify(obj, [&](auto& o) {
+                o.marketed = now;
+            });
         }
 
         const dynamic_global_property_object& database::get_dynamic_global_properties() const {
@@ -5100,6 +5120,7 @@ namespace golos { namespace chain {
                 const account_object &seller = get_account(order.seller);
 
                 adjust_balance(seller, receives);
+                adjust_market_balance(seller, -pays);
 
                 if (pays == order.amount_for_sale()) {
                     remove(order);
@@ -5125,7 +5146,9 @@ namespace golos { namespace chain {
         }
 
         void database::cancel_order(const limit_order_object &order) {
-            adjust_balance(get_account(order.seller), order.amount_for_sale());
+            const auto& owner = get_account(order.seller);
+            adjust_balance(owner, order.amount_for_sale());
+            adjust_market_balance(owner, -order.amount_for_sale());
             remove(order);
         }
 
@@ -5213,7 +5236,6 @@ namespace golos { namespace chain {
             });
         }
 
-
         void database::adjust_savings_balance(const account_object &a, const asset &delta) {
             modify(a, [&](account_object &acnt) {
                 if (delta.symbol == STEEM_SYMBOL) {
@@ -5254,6 +5276,17 @@ namespace golos { namespace chain {
                     GOLOS_CHECK_VALUE(false, "invalid symbol");
                 }
             });
+        }
+
+        void database::adjust_market_balance(const account_object& a, const asset& delta) {
+            if (delta.symbol == STEEM_SYMBOL) {
+                modify(a, [&](auto& acnt) {acnt.market_balance += delta;});
+            } else if (delta.symbol == SBD_SYMBOL) {
+                modify(a, [&](auto& acnt) {acnt.market_sbd_balance += delta;});
+            } else {
+                GOLOS_CHECK_VALUE(has_hardfork(STEEMIT_HARDFORK_0_24__95), "invalid symbol");
+                adjust_account_balance(a.name, asset(0, delta.symbol), asset(0, delta.symbol), delta);
+            }
         }
 
 

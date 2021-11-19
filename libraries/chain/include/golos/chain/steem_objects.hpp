@@ -287,6 +287,7 @@ namespace golos {
             bool allow_override_transfer = false;
             time_point_sec created;
             time_point_sec modified;
+            time_point_sec marketed;
             using symbol_allocator_type = allocator<asset_symbol_type>;
             using symbol_set_type = bip::flat_set<asset_symbol_type, std::less<asset_symbol_type>, symbol_allocator_type>;
             symbol_set_type symbols_whitelist;
@@ -539,7 +540,9 @@ namespace golos {
             allocator<donate_object>>;
 
         struct by_creator_symbol_name;
+        struct by_creator_marketed;
         struct by_symbol_name;
+        struct by_marketed;
 
         using asset_index = multi_index_container<
             asset_object,
@@ -551,12 +554,28 @@ namespace golos {
                     member<asset_object, account_name_type, &asset_object::creator>,
                     const_mem_fun<asset_object, std::string, &asset_object::symbol_name>
                 >>,
+                ordered_unique<tag<by_creator_marketed>, composite_key<asset_object,
+                    member<asset_object, account_name_type, &asset_object::creator>,
+                    member<asset_object, time_point_sec, &asset_object::marketed>,
+                    member<asset_object, asset_object_id_type, &asset_object::id>
+                >, composite_key_compare<
+                    std::less<account_name_type>,
+                    std::greater<time_point_sec>,
+                    std::greater<asset_object_id_type>
+                >>,
                 ordered_unique<tag<by_symbol>,
                     const_mem_fun<asset_object, asset_symbol_type, &asset_object::symbol>
                 >,
                 ordered_unique<tag<by_symbol_name>,
                     const_mem_fun<asset_object, std::string, &asset_object::symbol_name>
-                >
+                >,
+                ordered_unique<tag<by_marketed>, composite_key<asset_object,
+                    member<asset_object, time_point_sec, &asset_object::marketed>,
+                    member<asset_object, asset_object_id_type, &asset_object::id>
+                >, composite_key_compare<
+                    std::greater<time_point_sec>,
+                    std::greater<asset_object_id_type>
+                >>
             >, allocator<asset_object>>;
     }
 } // golos::chain

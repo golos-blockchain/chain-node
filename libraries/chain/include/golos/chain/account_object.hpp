@@ -61,6 +61,7 @@ public:
     asset savings_balance = asset(0, STEEM_SYMBOL);  ///< total liquid shares held by this account
     asset accumulative_balance = asset(0, STEEM_SYMBOL);
     asset tip_balance = asset(0, STEEM_SYMBOL);
+    asset market_balance = asset(0, STEEM_SYMBOL);
 
     /**
      *  SBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
@@ -81,6 +82,7 @@ public:
     time_point_sec sbd_seconds_last_update; ///< the last time the sbd_seconds was updated
     time_point_sec sbd_last_interest_payment; ///< used to pay interest at most once per month
 
+    asset market_sbd_balance = asset(0, SBD_SYMBOL);
 
     asset savings_sbd_balance = asset(0, SBD_SYMBOL); /// total sbd balance
     uint128_t savings_sbd_seconds; ///< total sbd * how long it has been hel
@@ -322,6 +324,7 @@ public:
     account_name_type account;
     asset balance;
     asset tip_balance;
+    asset market_balance;
 
     asset_symbol_type symbol() const {
         return balance.symbol;
@@ -621,7 +624,9 @@ FC_REFLECT((golos::chain::account_object),
     (savings_balance)
     (accumulative_balance)
     (tip_balance)
+    (market_balance)
     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
+    (market_sbd_balance)
     (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
     (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
     (vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
@@ -676,6 +681,6 @@ FC_REFLECT((golos::chain::invite_object),
 CHAINBASE_SET_INDEX_TYPE(golos::chain::invite_object, golos::chain::invite_index)
 
 FC_REFLECT((golos::chain::account_balance_object),
-        (id)(account)(balance)(tip_balance)
+        (id)(account)(balance)(tip_balance)(market_balance)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_balance_object, golos::chain::account_balance_index)
