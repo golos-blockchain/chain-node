@@ -200,7 +200,7 @@ namespace golos { namespace chain {
                 auto end = fc::time_point::now();
                 wlog("Done opening database, elapsed time ${t} sec", ("t", double((end - start).count()) / 1000000.0));
 
-                if (chainbase_flags & chainbase::database::read_write) {
+                if (chainbase_flags & chainbase::database::read_write && _init_block_log) {
                     start = fc::time_point::now();
                     wlog("Start opening block log. Please wait, don't break application...");
 
@@ -345,6 +345,9 @@ namespace golos { namespace chain {
             _block_num_check_free_memory = value;
         }
 
+        void database::set_init_block_log(bool init_block_log) {
+            _init_block_log = init_block_log;
+        }
 
         void database::set_store_account_metadata(store_metadata_modes store_account_metadata) {
             _store_account_metadata = store_account_metadata;

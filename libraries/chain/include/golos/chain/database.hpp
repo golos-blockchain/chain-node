@@ -120,6 +120,8 @@ namespace golos { namespace chain {
 
             void set_skip_virtual_ops();
 
+            void set_init_block_log(bool init_block_log);
+
             void set_store_account_metadata(store_metadata_modes store_account_metadata);
             void set_accounts_to_store_metadata(const std::vector<std::string>& accounts_to_store_metadata);
             bool store_metadata_for_account(const std::string& name) const;
@@ -742,6 +744,8 @@ namespace golos { namespace chain {
             uint32_t _clear_votes_block = 0;
             bool _skip_virtual_ops = false;
             bool _enable_plugins_on_push_transaction = true;
+
+            bool _init_block_log = true;
 
             store_metadata_modes _store_account_metadata = store_metadata_for_all;
             std::vector<std::string> _accounts_to_store_metadata;
