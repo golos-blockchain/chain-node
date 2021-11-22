@@ -1,4 +1,5 @@
 #include <golos/plugins/database_api/plugin.hpp>
+#include <golos/plugins/database_api/api_objects/asset_api_sort.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/protocol/get_config.hpp>
@@ -103,7 +104,7 @@ public:
     std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type) const;
     std::vector<proposal_api_object> get_proposed_transactions(const std::string&, uint32_t, uint32_t) const;
 
-    std::vector<asset_api_object> get_assets(const std::string& creator, const std::vector<std::string>& symbols, const std::string& from, uint32_t limit) const ;
+    std::vector<asset_api_object> get_assets(const std::string& creator, const std::vector<std::string>& symbols, const std::string& from, uint32_t limit, asset_api_sort sort = asset_api_sort::by_symbol_name) const ;
     std::vector<account_balances_map_api_object> get_accounts_balances(const std::vector<std::string>& account_names) const;
 
     golos::chain::database& database() const {
@@ -901,20 +902,42 @@ DEFINE_API(plugin, get_invite) {
 std::vector<asset_api_object> plugin::api_impl::get_assets(
         const std::string& creator,
         const std::vector<std::string>& symbols,
-        const std::string& from, uint32_t limit) const {
+        const std::string& from, uint32_t limit,
+        asset_api_sort sort) const {
     std::vector<asset_api_object> results;
     results.reserve(limit);
 
-    if (creator.size()) {
-        const auto& cre_idx = _db.get_index<asset_index, by_creator_symbol_name>();
-        auto itr = cre_idx.lower_bound(std::make_tuple(creator, from));
-        for (; itr != cre_idx.end() && itr->creator == creator; ++itr) {
+    auto go_page = [&](const auto& idx, auto& itr) {
+        if (from == account_name_type()) return;
+        for (; itr != idx.end() && itr->symbol_name() != from; ++itr);
+    };
+
+    auto fill_assets = [&](const auto& idx, auto& itr, auto&& verify) {
+        for (; itr != idx.end() && verify(itr); ++itr) {
             if (results.size() == limit) break;
             results.push_back(asset_api_object(*itr, _db));
         }
+    };
+
+    const auto& indices = _db.get_index<asset_index>().indices();
+
+    if (creator.size()) {
+        auto verify = [&](auto& itr) { return itr->creator == creator; };
+        if (sort == asset_api_sort::by_symbol_name) {
+            const auto& idx = indices.get<by_creator_symbol_name>();
+            auto itr = idx.lower_bound(std::make_tuple(creator, from));
+
+            fill_assets(idx, itr, verify);
+        } else {
+            const auto& idx = indices.get<by_creator_marketed>();
+            auto itr = idx.lower_bound(std::make_tuple(creator));
+
+            go_page(idx, itr);
+            fill_assets(idx, itr, verify);
+        }
     } else {
-        const auto& sym_idx = _db.get_index<asset_index, by_symbol_name>();
         if (symbols.size()) {
+            const auto& sym_idx = indices.get<by_symbol_name>();
             for (auto symbol : symbols) {
                 GOLOS_CHECK_PARAM(symbols, {
                     GOLOS_CHECK_VALUE(symbol.size() >= 3 && symbol.size() <= 14, "symbol must be between 3 and 14");
@@ -926,11 +949,27 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
                     results.push_back(asset_api_object(*itr, _db));
                 }
             }
+
+            if (sort == asset_api_sort::by_marketed) {
+                std::sort(results.begin(), results.end(), [&](auto& lhs, auto& rhs) {
+                    if (lhs.marketed == rhs.marketed)
+                        return lhs.id > rhs.id;
+                    return lhs.marketed > rhs.marketed;
+                });
+            }
         } else {
-            auto itr = sym_idx.lower_bound(from);
-            for (; itr != sym_idx.end(); ++itr) {
-                if (results.size() == limit) break;
-                results.push_back(asset_api_object(*itr, _db));
+            auto verify = [&](auto& itr) { return true; };
+            if (sort == asset_api_sort::by_symbol_name) {
+                const auto& idx = indices.get<by_symbol_name>();
+                auto itr = idx.lower_bound(from);
+
+                fill_assets(idx, itr, verify);
+            } else {
+                const auto& idx = indices.get<by_marketed>();
+                auto itr = idx.begin();
+
+                go_page(idx, itr);
+                fill_assets(idx, itr, verify);
             }
         }
     }
@@ -944,11 +983,12 @@ DEFINE_API(plugin, get_assets) {
         (std::vector<std::string>, symbols, std::vector<std::string>())
         (std::string, from, std::string())
         (uint32_t, limit, 20)
+        (asset_api_sort, sort, asset_api_sort::by_symbol_name)
     );
     GOLOS_CHECK_LIMIT_PARAM(limit, 5000);
 
     return my->database().with_weak_read_lock([&]() {
-        return my->get_assets(creator, symbols, from, limit);
+        return my->get_assets(creator, symbols, from, limit, sort);
     });
 }
 

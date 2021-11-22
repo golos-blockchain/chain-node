@@ -14,7 +14,7 @@ namespace golos { namespace plugins { namespace database_api {
                 : id(p.id), creator(p.creator), max_supply(p.max_supply), supply(p.supply),
                 allow_fee(p.allow_fee), allow_override_transfer(p.allow_override_transfer),
                 json_metadata(golos::chain::to_string(p.json_metadata)),
-                created(p.created), modified(p.modified), fee_percent(p.fee_percent) {
+                created(p.created), modified(p.modified), marketed(p.marketed), fee_percent(p.fee_percent) {
             can_issue = max_supply - supply;
             precision = supply.decimals();
             for (const auto sym : p.symbols_whitelist) {
@@ -40,6 +40,7 @@ namespace golos { namespace plugins { namespace database_api {
         std::string json_metadata;
         time_point_sec created;
         time_point_sec modified;
+        time_point_sec marketed;
         std::set<std::string> symbols_whitelist;
         uint16_t fee_percent;
     };
@@ -49,5 +50,5 @@ namespace golos { namespace plugins { namespace database_api {
 FC_REFLECT(
     (golos::plugins::database_api::asset_api_object),
     (id)(creator)(max_supply)(supply)(can_issue)(precision)(allow_fee)(allow_override_transfer)
-    (json_metadata)(created)(modified)(symbols_whitelist)(fee_percent)
+    (json_metadata)(created)(modified)(marketed)(symbols_whitelist)(fee_percent)
 )

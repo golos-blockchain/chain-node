@@ -120,6 +120,8 @@ namespace golos { namespace chain {
 
             void set_skip_virtual_ops();
 
+            void set_init_block_log(bool init_block_log);
+
             void set_store_account_metadata(store_metadata_modes store_account_metadata);
             void set_accounts_to_store_metadata(const std::vector<std::string>& accounts_to_store_metadata);
             bool store_metadata_for_account(const std::string& name) const;
@@ -237,7 +239,9 @@ namespace golos { namespace chain {
             void                 throw_if_exists_asset(const std::string& symbol_name) const;
 
             account_balance_object get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const;
-            void                   adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip);
+            void                   adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip, asset delta_market = asset());
+
+            void update_asset_marketed(asset_symbol_type symbol);
 
             const account_authority_object &get_authority(const account_name_type &name) const;
 
@@ -448,6 +452,8 @@ namespace golos { namespace chain {
             void adjust_balance(const account_object &a, const asset &delta);
 
             void adjust_savings_balance(const account_object &a, const asset &delta);
+
+            void adjust_market_balance(const account_object& a, const asset& delta);
 
             void adjust_supply(const asset &delta, bool adjust_vesting = false);
 
@@ -738,6 +744,8 @@ namespace golos { namespace chain {
             uint32_t _clear_votes_block = 0;
             bool _skip_virtual_ops = false;
             bool _enable_plugins_on_push_transaction = true;
+
+            bool _init_block_log = true;
 
             store_metadata_modes _store_account_metadata = store_metadata_for_all;
             std::vector<std::string> _accounts_to_store_metadata;

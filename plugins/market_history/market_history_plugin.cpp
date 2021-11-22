@@ -30,7 +30,7 @@ namespace golos {
                 }
 
                 symbol_type_pair get_symbol_type_pair(asset asset1, asset asset2, bool* pair_reversed = nullptr) const;
-                symbol_type_pair get_symbol_type_pair(const symbol_name_pair& pair, bool* pair_reversed = nullptr) const;
+                symbol_type_pair get_symbol_type_pair(const symbol_name_pair& pair, bool* pair_reversed = nullptr, bool allow_partial = false) const;
                 void reverse_price(double& price);
 
                 market_ticker get_ticker(const symbol_type_pair& pair) const;
@@ -194,10 +194,12 @@ namespace golos {
                 return symbol_type_pair(sym1, sym2);
             }
 
-            symbol_type_pair market_history_plugin::market_history_plugin_impl::get_symbol_type_pair(const symbol_name_pair& pair, bool* pair_reversed) const {
+            symbol_type_pair market_history_plugin::market_history_plugin_impl::get_symbol_type_pair(const symbol_name_pair& pair, bool* pair_reversed, bool allow_partial) const {
                 GOLOS_CHECK_PARAM(pair, {
-                    GOLOS_CHECK_VALUE(pair.first.size() >= 3 && pair.first.size() <= 14, "pair.first must be between 3 and 14");
-                    GOLOS_CHECK_VALUE(pair.second.size() >= 3 && pair.second.size() <= 14, "pair.second must be between 3 and 14");
+                    if (!allow_partial || pair.first.size())
+                        GOLOS_CHECK_VALUE(pair.first.size() >= 3 && pair.first.size() <= 14, "pair.first must be between 3 and 14");
+                    if (!allow_partial || pair.second.size())
+                        GOLOS_CHECK_VALUE(pair.second.size() >= 3 && pair.second.size() <= 14, "pair.second must be between 3 and 14");
                 });
                 auto sym_from_str = [&](std::string str) {
                     boost::to_upper(str);
@@ -206,7 +208,7 @@ namespace golos {
                         sym = STEEM_SYMBOL;
                     } else if (str == "GBG") {
                         sym = SBD_SYMBOL;
-                    } else {
+                    } else if (!allow_partial || str != "") {
                         sym = _db.get_asset(str).symbol();
                     }
                     return sym;
@@ -474,8 +476,18 @@ namespace golos {
                     const auto& idx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_account>();
                     auto itr = idx.lower_bound(owner);
                     while (itr != idx.end() && itr->seller == owner) {
-                        auto ask = itr->sell_price.base.symbol == pair.first && itr->sell_price.quote.symbol == pair.second;
-                        auto bid = itr->sell_price.base.symbol == pair.second && itr->sell_price.quote.symbol == pair.first;
+                        bool ask = true;
+                        bool bid = true;
+                        if (pair.first != 0 && pair.second != 0) {
+                            ask = itr->sell_price.base.symbol == pair.first && itr->sell_price.quote.symbol == pair.second;
+                            bid = itr->sell_price.base.symbol == pair.second && itr->sell_price.quote.symbol == pair.first;
+                        } else if (pair.first != 0) {
+                            ask = itr->sell_price.base.symbol == pair.first;
+                            bid = false;
+                        } else if (pair.second != 0) {
+                            ask = false;
+                            bid = itr->sell_price.base.symbol == pair.second;
+                        }
                         if (ask || bid) {
                             result.push_back(*itr);
                             auto& last = result.back();
@@ -765,7 +777,7 @@ namespace golos {
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
                     bool reversed;
-                    auto type_pair = _my->get_symbol_type_pair(pair, &reversed);
+                    auto type_pair = _my->get_symbol_type_pair(pair, &reversed, true);
                     auto res = _my->get_open_orders(type_pair, reversed, account, sort_by_price, sort_lesser);
                     if (reversed) {
                         for (auto& order : res) {

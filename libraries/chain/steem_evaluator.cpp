@@ -2285,6 +2285,7 @@ namespace golos { namespace chain {
 
             GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount_to_sell);
             _db.adjust_balance(owner, -o.amount_to_sell);
+            _db.adjust_market_balance(owner, o.amount_to_sell);
 
             GOLOS_CHECK_OBJECT_MISSING(_db, limit_order, o.owner, o.orderid);
 
@@ -2303,6 +2304,9 @@ namespace golos { namespace chain {
             if (o.fill_or_kill)
                 GOLOS_CHECK_LOGIC(filled, logic_exception::cancelling_not_filled_order,
                         "Cancelling order because it was not filled.");
+
+            _db.update_asset_marketed(o.amount_to_sell.symbol);
+            _db.update_asset_marketed(o.min_to_receive.symbol);
         }
 
         void limit_order_create2_evaluator::do_apply(const limit_order_create2_operation& o) {
@@ -2335,6 +2339,7 @@ namespace golos { namespace chain {
 
             GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount_to_sell);
             _db.adjust_balance(owner, -o.amount_to_sell);
+            _db.adjust_market_balance(owner, o.amount_to_sell);
 
             GOLOS_CHECK_OBJECT_MISSING(_db, limit_order, o.owner, o.orderid);
 
@@ -2353,6 +2358,9 @@ namespace golos { namespace chain {
             if (o.fill_or_kill)
                 GOLOS_CHECK_LOGIC(filled, logic_exception::cancelling_not_filled_order,
                         "Cancelling order because it was not filled.");
+
+            _db.update_asset_marketed(o.amount_to_sell.symbol);
+            _db.update_asset_marketed(o.exchange_rate.quote.symbol);
         }
 
         void limit_order_cancel_evaluator::do_apply(const limit_order_cancel_operation &o) {
