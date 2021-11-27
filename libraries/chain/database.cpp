@@ -1779,7 +1779,7 @@ namespace golos { namespace chain {
                     auto new_delta = witness_vote_weight / std::max(uint16_t(voter.witnesses_voted_for-1), uint16_t(1));
 
                     adjust_witness_votes(voter, -old_delta + new_delta);
-                    adjust_witness_vote(get(witn), -new_delta);
+                    adjust_witness_vote(voter, get(witn), -new_delta);
 
                     modify(voter, [&](auto& a) {
                         a.witnesses_voted_for--;
@@ -2492,12 +2492,12 @@ namespace golos { namespace chain {
             const auto &vidx = get_index<witness_vote_index>().indices().get<by_account_witness>();
             auto itr = vidx.lower_bound(boost::make_tuple(a.id, witness_id_type()));
             while (itr != vidx.end() && itr->account == a.id) {
-                adjust_witness_vote(get(itr->witness), delta);
+                adjust_witness_vote(a, get(itr->witness), delta);
                 ++itr;
             }
         }
 
-        void database::adjust_witness_vote(const witness_object &witness, share_type delta) {
+        void database::adjust_witness_vote(const account_object& a, const witness_object& witness, share_type delta, bool overwrite) {
             const witness_schedule_object &wso = get_witness_schedule_object();
             modify(witness, [&](witness_object &w) {
                 auto delta_pos = w.votes.value * (wso.current_virtual_time -
@@ -2529,6 +2529,16 @@ namespace golos { namespace chain {
                     }
                 }
             });
+
+            const auto& vidx = get_index<witness_vote_index, by_account_witness>();
+            auto vitr = vidx.find(std::make_tuple(a.id, witness.id));
+            if (vitr != vidx.end()) {
+                modify(*vitr, [&](auto& v) {
+                    if (overwrite)
+                        v.rshares = 0;
+                    v.rshares = std::max(v.rshares + delta, share_type(0));
+                });
+            }
         }
 
         void database::clear_witness_votes(const account_object &a) {
@@ -6072,7 +6082,7 @@ namespace golos { namespace chain {
                 const auto &vidx = get_index<witness_vote_index>().indices().get<by_account_witness>();
                 auto wit_itr = vidx.lower_bound(boost::make_tuple(a.id, witness_id_type()));
                 while (wit_itr != vidx.end() && wit_itr->account == a.id) {
-                    adjust_witness_vote(get(wit_itr->witness), a.witness_vote_weight());
+                    adjust_witness_vote(a, get(wit_itr->witness), a.witness_vote_weight(), true);
                     ++wit_itr;
                 }
             }
@@ -6103,7 +6113,7 @@ namespace golos { namespace chain {
 
                 auto wit_itr = vidx.lower_bound(std::make_tuple(a.id, witness_id_type()));
                 while (wit_itr != vidx.end() && wit_itr->account == a.id) {
-                    adjust_witness_vote(get(wit_itr->witness), weight);
+                    adjust_witness_vote(a, get(wit_itr->witness), weight, true);
                     ++wit_itr;
                 }
             }
