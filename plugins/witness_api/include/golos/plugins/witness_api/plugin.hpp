@@ -26,7 +26,9 @@
 #include <appbase/application.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/witness_api/api_objects/feed_history_api_object.hpp>
+#include <golos/plugins/witness_api/api_objects/witness_vote_api_object.hpp>
 #include <golos/api/witness_api_object.hpp>
+#include <golos/chain/witness_objects.hpp>
 
 #include <golos/chain/database.hpp>
 
@@ -41,6 +43,7 @@ using namespace chain;
 using namespace golos::protocol;
 using namespace golos::api;
 using plugins::json_rpc::msg_pack;
+using witness_vote_map = std::map<std::string, std::vector<witness_vote_api_object>>;
 
 
 DEFINE_API_ARGS(get_current_median_history_price, msg_pack, price)
@@ -50,6 +53,7 @@ DEFINE_API_ARGS(get_active_witnesses,             msg_pack, std::vector<account_
 DEFINE_API_ARGS(get_witness_schedule,             msg_pack, golos::chain::witness_schedule_object)
 DEFINE_API_ARGS(get_witnesses,                    msg_pack, std::vector<optional<witness_api_object> >)
 DEFINE_API_ARGS(get_witness_by_account,           msg_pack, optional<witness_api_object>)
+DEFINE_API_ARGS(get_witness_votes,                msg_pack, witness_vote_map)
 DEFINE_API_ARGS(get_witnesses_by_vote,            msg_pack, std::vector<witness_api_object>)
 DEFINE_API_ARGS(get_witness_count,                msg_pack, uint64_t)
 DEFINE_API_ARGS(lookup_witness_accounts,          msg_pack, std::set<account_name_type>)
@@ -91,6 +95,7 @@ public:
         (get_witness_schedule)
         (get_witnesses)
         (get_witness_by_account)
+        (get_witness_votes)
         (get_witnesses_by_vote)
         (get_witness_count)
         (lookup_witness_accounts)

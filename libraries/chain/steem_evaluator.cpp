@@ -1465,12 +1465,14 @@ namespace golos { namespace chain {
                         _db.create<witness_vote_object>([&](witness_vote_object &v) {
                             v.witness = witness.id;
                             v.account = voter.id;
+                            v.rshares = witness_vote_weight;
                         });
                         _db.adjust_witness_vote(witness, new_delta);
                     } else {
                         _db.create<witness_vote_object>([&](witness_vote_object &v) {
                             v.witness = witness.id;
                             v.account = voter.id;
+                            v.rshares = witness_vote_weight;
                         });
 
                         if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
@@ -1485,6 +1487,7 @@ namespace golos { namespace chain {
                     _db.create<witness_vote_object>([&](witness_vote_object &v) {
                         v.witness = witness.id;
                         v.account = voter.id;
+                        v.rshares = witness_vote_weight;
                     });
                     _db.modify(witness, [&](witness_object &w) {
                         w.votes += witness_vote_weight;
