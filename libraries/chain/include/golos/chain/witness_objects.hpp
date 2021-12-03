@@ -135,7 +135,6 @@ namespace golos { namespace chain {
 
         witness_id_type witness;
         account_id_type account;
-        share_type rshares;
     };
 
     class witness_schedule_object
@@ -207,50 +206,32 @@ namespace golos { namespace chain {
 
     struct by_account_witness;
     struct by_witness_account;
-    struct by_witness_votes;
 
     using witness_vote_index = multi_index_container <
         witness_vote_object,
         indexed_by<
-            ordered_unique<tag<by_id>,
-                member<witness_vote_object, witness_vote_id_type, &witness_vote_object::id>
-            >,
-            ordered_unique<tag<by_account_witness>,
+            ordered_unique<
+                tag<by_id>,
+                member<witness_vote_object, witness_vote_id_type, &witness_vote_object::id>>,
+            ordered_unique<
+                tag<by_account_witness>,
                 composite_key<
                     witness_vote_object,
                     member<witness_vote_object, account_id_type, &witness_vote_object::account>,
-                    member<witness_vote_object, witness_id_type, &witness_vote_object::witness>
-                >,
+                    member<witness_vote_object, witness_id_type, &witness_vote_object::witness>>,
                 composite_key_compare<
                     std::less<account_id_type>,
-                    std::less<witness_id_type>
-                >
-            >,
-            ordered_unique<tag<by_witness_account>,
+                    std::less<witness_id_type>>>,
+            ordered_unique<
+                tag<by_witness_account>,
                 composite_key<
                     witness_vote_object,
                     member<witness_vote_object, witness_id_type, &witness_vote_object::witness>,
-                    member<witness_vote_object, account_id_type, &witness_vote_object::account>
-                >,
+                    member<witness_vote_object, account_id_type, &witness_vote_object::account>>,
                 composite_key_compare<
                     std::less<witness_id_type>,
-                    std::less<account_id_type>
-                >
-            >,
-            ordered_unique<tag<by_witness_votes>,
-                composite_key<
-                    witness_vote_object,
-                    member<witness_vote_object, witness_id_type, &witness_vote_object::witness>,
-                    member<witness_vote_object, share_type, &witness_vote_object::rshares>,
-                    member<witness_vote_object, account_id_type, &witness_vote_object::account>
-                >,
-                composite_key_compare<
-                    std::less<witness_id_type>,
-                    std::greater<share_type>,
-                    std::less<account_id_type>
-                >
-            >
-        >, allocator<witness_vote_object>>;
+                    std::less<account_id_type>>>>,
+        allocator<witness_vote_object>>;
 
     using witness_schedule_index = multi_index_container <
         witness_schedule_object,
