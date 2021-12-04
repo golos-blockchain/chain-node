@@ -1466,7 +1466,7 @@ namespace golos { namespace chain {
                             v.witness = witness.id;
                             v.account = voter.id;
                         });
-                        _db.adjust_witness_vote(witness, new_delta);
+                        _db.adjust_witness_vote(voter, witness, new_delta);
                     } else {
                         _db.create<witness_vote_object>([&](witness_vote_object &v) {
                             v.witness = witness.id;
@@ -1474,7 +1474,7 @@ namespace golos { namespace chain {
                         });
 
                         if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
-                            _db.adjust_witness_vote(witness, witness_vote_weight);
+                            _db.adjust_witness_vote(voter, witness, witness_vote_weight);
                         } else {
                             _db.adjust_proxied_witness_votes(voter, witness_vote_weight);
                         }
@@ -1485,6 +1485,7 @@ namespace golos { namespace chain {
                     _db.create<witness_vote_object>([&](witness_vote_object &v) {
                         v.witness = witness.id;
                         v.account = voter.id;
+                        v.rshares = witness_vote_weight;
                     });
                     _db.modify(witness, [&](witness_object &w) {
                         w.votes += witness_vote_weight;
@@ -1505,9 +1506,9 @@ namespace golos { namespace chain {
                         auto old_delta = witness_vote_weight / voter.witnesses_voted_for;
                         auto new_delta = witness_vote_weight / std::max(uint16_t(voter.witnesses_voted_for-1), uint16_t(1));
                         _db.adjust_witness_votes(voter, -old_delta + new_delta);
-                        _db.adjust_witness_vote(witness, -new_delta);
+                        _db.adjust_witness_vote(voter, witness, -new_delta);
                     } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_3)) {
-                        _db.adjust_witness_vote(witness, -witness_vote_weight);
+                        _db.adjust_witness_vote(voter, witness, -witness_vote_weight);
                     } else {
                         _db.adjust_proxied_witness_votes(voter, -witness_vote_weight);
                     }

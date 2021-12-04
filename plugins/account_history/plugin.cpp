@@ -87,7 +87,7 @@ if (options.count(name)) { \
 
         void operator()(const donate_operation& op) const {
             donate_meta meta;
-            const auto& to = db.get_account(op.to);
+            const auto& to = db.get_account(op.to.size() ? op.to : op.from);
             if (to.referrer_account != account_name_type()) {
                 meta.referrer = to.referrer_account;
                 meta.referrer_interest = asset(

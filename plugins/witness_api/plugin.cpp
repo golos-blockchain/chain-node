@@ -19,6 +19,7 @@ public:
     std::vector<account_name_type> get_miner_queue() const;
     std::vector<optional<witness_api_object>> get_witnesses(const std::vector<witness_object::id_type> &witness_ids) const;
     fc::optional<witness_api_object> get_witness_by_account(std::string account_name) const;
+    witness_vote_map get_witness_votes(const std::set<witness_object::id_type>& witness_ids, uint32_t limit, uint32_t offset, asset min_rshares_to_show) const;
     std::vector<witness_api_object> get_witnesses_by_vote(std::string from, uint32_t limit) const;
     uint64_t get_witness_count() const;
     std::set<account_name_type> lookup_witness_accounts(const std::string &lower_bound_name, uint32_t limit) const;
@@ -128,6 +129,57 @@ fc::optional<witness_api_object> plugin::witness_plugin_impl::get_witness_by_acc
         return witness_api_object(*itr, database);
     }
     return {};
+}
+
+DEFINE_API(plugin, get_witness_votes) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (std::set<witness_object::id_type>, witness_ids)
+        (uint32_t, limit)
+        (uint32_t, offset)
+        (asset, min_rshares_to_show, asset(0, VESTS_SYMBOL))
+    );
+    return my->database.with_weak_read_lock([&]() {
+        return my->get_witness_votes(witness_ids, limit, offset, min_rshares_to_show);
+    });
+}
+
+witness_vote_map plugin::witness_plugin_impl::get_witness_votes(const std::set<witness_object::id_type>& witness_ids, uint32_t limit, uint32_t offset, asset min_rshares_to_show) const {
+    GOLOS_CHECK_LIMIT_PARAM(witness_ids.size(), 100);
+    GOLOS_CHECK_LIMIT_PARAM(limit, 50);
+    GOLOS_CHECK_PARAM(min_rshares_to_show, {
+        GOLOS_CHECK_VALUE(min_rshares_to_show.symbol == STEEM_SYMBOL || min_rshares_to_show.symbol == VESTS_SYMBOL,
+            "min_rshares_to_show must be in GOLOS or GESTS");
+        GOLOS_CHECK_VALUE(min_rshares_to_show.amount >= 0,
+            "min_rshares_to_show cannot be negative");
+    });
+
+    share_type min_rshares = 0;
+    if (min_rshares_to_show.symbol == VESTS_SYMBOL) {
+        min_rshares = min_rshares_to_show.amount.value;
+    } else {
+        const auto& dgp = database.get_dynamic_global_properties();
+        min_rshares = (min_rshares_to_show * dgp.get_vesting_share_price()).amount.value;
+    }
+
+    witness_vote_map res;
+    const auto& idx = database.get_index<witness_vote_index, by_witness_votes>();
+    auto verify = [&](auto& itr, auto wid) {
+        return itr->witness == wid && itr->rshares >= min_rshares;
+    };
+    for (const auto& wid : witness_ids) {
+        auto str = std::to_string(wid._id);
+        if (offset > 200) {
+            res[str] = {};
+            continue;
+        }
+        auto itr = idx.lower_bound(wid);
+        for (uint32_t i = 0; itr != idx.end() && verify(itr, wid) && i < offset; ++itr, ++i) {
+        }
+        for (; itr != idx.end() && verify(itr, wid) && res[str].size() < limit; ++itr) {
+            res[str].emplace_back(*itr, database);
+        }
+    }
+    return {res};
 }
 
 DEFINE_API(plugin, get_witnesses_by_vote) {

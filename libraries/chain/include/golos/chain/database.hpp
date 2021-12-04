@@ -482,7 +482,7 @@ namespace golos { namespace chain {
             void adjust_witness_votes(const account_object &a, share_type delta);
 
             /** this updates the vote of a single witness as a result of a vote being added or removed*/
-            void adjust_witness_vote(const witness_object &obj, share_type delta);
+            void adjust_witness_vote(const account_object& a, const witness_object& obj, share_type delta, bool overwrite = false);
 
             /** clears all vote records for a particular account but does not update the
              * witness vote totals.  Vote totals should be updated first via a call to
