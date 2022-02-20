@@ -59,6 +59,10 @@ namespace golos { namespace chain {
             o.duration = op.duration;
             o.vote_end_time = o.created + fc::seconds(op.duration);
         });
+
+        _db.modify(post, [&](auto& o) {
+            o.has_worker_request = true;
+        });
     }
 
     void worker_request_delete_evaluator::do_apply(const worker_request_delete_operation& op) {
@@ -69,6 +73,10 @@ namespace golos { namespace chain {
 
         CHECK_REQUEST_STATE(wro.state < REQUEST_STATE::payment_complete, "Request already closed");
         CHECK_REQUEST_STATE(wro.state < REQUEST_STATE::payment, "Request paying, cannot delete");
+
+        _db.modify(post, [&](auto& o) {
+            o.has_worker_request = false;
+        });
 
         _db.close_worker_request(wro, worker_request_state::closed_by_author);
     }

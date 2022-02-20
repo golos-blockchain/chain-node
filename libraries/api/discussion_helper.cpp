@@ -120,6 +120,7 @@ namespace golos { namespace api {
         d.auction_window_size = o.auction_window_size;
         d.curation_rewards_percent = o.curation_rewards_percent;
         d.min_golos_power_to_curate = o.min_golos_power_to_curate;
+        d.has_worker_request = o.has_worker_request;
 
         for (auto& route : o.beneficiaries) {
             d.beneficiaries.push_back(route);
