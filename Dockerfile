@@ -1,4 +1,4 @@
-FROM phusion/baseimage:0.9.19
+FROM phusion/baseimage:0.9.19 as builder
 
 ARG TYPE=Release
 
@@ -101,6 +101,9 @@ RUN \
         /var/cache/* \
         /usr/include \
         /usr/local/include
+
+FROM phusion/baseimage:0.9.19 as production
+COPY --from=builder /usr/local /usr/local
 
 ADD share/golosd/golosdctl /usr/local/bin/golosdctl
 RUN chmod +x /usr/local/bin/golosdctl
