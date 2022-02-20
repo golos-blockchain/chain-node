@@ -1,4 +1,4 @@
-FROM phusion/baseimage:0.9.19
+FROM phusion/baseimage:0.9.19 as builder
 
 ARG TYPE=Release
 
@@ -102,6 +102,9 @@ RUN \
     # prepare cache directory
     mkdir /var/cache/golosd && \
     chown golosd:golosd -R /var/cache/golosd
+
+FROM phusion/baseimage:0.9.19 as production
+COPY --from=builder /usr/local /usr/local
 
 ADD share/golosd/golosdctl /usr/local/bin/golosdctl
 RUN chmod +x /usr/local/bin/golosdctl
