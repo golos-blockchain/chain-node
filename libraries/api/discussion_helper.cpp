@@ -120,6 +120,7 @@ namespace golos { namespace api {
         d.auction_window_size = o.auction_window_size;
         d.curation_rewards_percent = o.curation_rewards_percent;
         d.min_golos_power_to_curate = o.min_golos_power_to_curate;
+        d.has_worker_request = o.has_worker_request;
 
         for (auto& route : o.beneficiaries) {
             d.beneficiaries.push_back(route);
@@ -272,7 +273,7 @@ namespace golos { namespace api {
             r2 *= pot.amount.value;
             r2 /= total_r2;
 
-            const share_type reward_tokens = std::min(share_type(r2), d.max_accepted_payout.amount);
+            const share_type reward_tokens = std::min(share_type(r2), db.to_steem(d.max_accepted_payout).amount);
 
             share_type curation_tokens = reward_tokens * d.curation_rewards_percent / STEEMIT_100_PERCENT;
 

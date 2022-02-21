@@ -83,6 +83,8 @@ namespace golos { namespace api {
         uint16_t curation_rewards_percent = 0;
         asset min_golos_power_to_curate = asset(0, STEEM_SYMBOL);
 
+        bool has_worker_request = false;
+
         vector< protocol::beneficiary_route_type > beneficiaries;
     };
 
@@ -98,6 +100,8 @@ FC_REFLECT(
     (mode)(curation_reward_curve)(auction_window_reward_destination)
     (auction_window_size)(auction_window_weight)(votes_in_auction_window_weight)
     (root_comment)(root_title)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)
-    (allow_curation_rewards)(curation_rewards_percent)(min_golos_power_to_curate)(beneficiaries))
+    (allow_curation_rewards)(curation_rewards_percent)(min_golos_power_to_curate)
+    (has_worker_request)
+    (beneficiaries))
 
 #endif //GOLOS_COMMENT_API_OBJ_H
