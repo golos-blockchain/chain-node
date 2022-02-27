@@ -19,7 +19,7 @@ namespace golos { namespace plugins { namespace elastic_search {
 using boost::locale::conv::utf_to_utf;
 
 #ifdef STEEMIT_BUILD_TESTNET
-    #define ELASTIC_WRITE_EACH_N_OP 1
+    #define ELASTIC_WRITE_EACH_N_OP 3
 #else
     #define ELASTIC_WRITE_EACH_N_OP 100
 #endif
@@ -72,7 +72,7 @@ public:
         return headers;
     }
 
-    bool find_in_es(const std::string& id, optional<variant_object>& res) {
+    bool find_in_es(const std::string& id, variant_object& res) {
         auto headers = get_es_headers();
         auto reply0 = conn.request("GET", url + "/blog/post/" + id + "?pretty", "", headers);
         auto reply_body = std::string(reply0.body.data(), reply0.body.size());
@@ -83,7 +83,22 @@ public:
                 return true;
             }
         }
-        res = optional<variant_object>();
+        res = variant_object();
+        return false;
+    }
+
+    bool find_post(const std::string& id, fc::mutable_variant_object& found, bool& from_buffer) {
+        auto found_buf = buffer.find(id);
+        variant_object found_es;
+        from_buffer = false;
+        if (found_buf != buffer.end()) {
+            from_buffer = true;
+            found = found_buf->second;
+            return true;
+        } else if (find_in_es(id, found_es)) {
+            found = fc::mutable_variant_object(found_es);
+            return true;
+        }
         return false;
     }
 
@@ -94,34 +109,28 @@ public:
             return;
         }
 
+        fc::mutable_variant_object doc;
+        bool from_buffer = false;
+        bool exists = find_post(id, doc, from_buffer);
+        std::string base_body = doc["body"].as_string();
+
         std::string body = op.body;
         try {
             diff_match_patch<std::wstring> dmp;
             auto patch = dmp.patch_fromText(utf8_to_wstring(body));
-            if (patch.size()) {
-                std::string base_body;
-                auto found = buffer.find(id);
-                optional<variant_object> found2;
-                if (found != buffer.end()) {
-                    base_body = found->second["body"].as_string();
-                } else if (find_in_es(id, found2)) {
-                    base_body = (*found2)["body"].as_string();
-                }
-                if (base_body.size()) {
-                    auto result = dmp.patch_apply(patch, utf8_to_wstring(base_body));
-                    auto patched_body = wstring_to_utf8(result.first);
-                    if(!fc::is_utf8(patched_body)) {
-                        body = fc::prune_invalid_utf8(patched_body);
-                    } else {
-                        body = patched_body;
-                    }
+            if (patch.size() && base_body.size()) {
+                auto result = dmp.patch_apply(patch, utf8_to_wstring(base_body));
+                auto patched_body = wstring_to_utf8(result.first);
+                if(!fc::is_utf8(patched_body)) {
+                    body = fc::prune_invalid_utf8(patched_body);
+                } else {
+                    body = patched_body;
                 }
             }
         } catch ( ... ) {
         }
 
         const auto& cmt = _db.get_comment(op.author, op.permlink);
-        fc::mutable_variant_object doc;
 
         doc["id"] = cmt.id;
         doc["created"] = _db.head_block_time();
@@ -150,14 +159,19 @@ public:
         doc["tags"] = golos::plugins::tags::get_metadata(op.json_metadata, TAGS_NUMBER, TAG_MAX_LENGTH).tags;
         doc["json_metadata"] = op.json_metadata;
 
-        doc["total_votes"] = uint32_t(0);
-        doc["net_rshares"] = share_type(0);
-        doc["donates"] = asset(0, STEEM_SYMBOL);
-        doc["donates_uia"] = share_type();
+        if (!exists) {
+            doc["net_votes"] = int32_t(0);
+            doc["total_votes"] = uint32_t(0);
+            doc["net_rshares"] = share_type(0);
+            doc["donates"] = asset(0, STEEM_SYMBOL);
+            doc["donates_uia"] = share_type();
+        }
+
+        doc["author_reputation"] = std::string(_db.get_account_reputation(op.author));
 
         buffer[id] = std::move(doc);
-        ++op_num;
 
+        ++op_num;
         if (op_num % ELASTIC_WRITE_EACH_N_OP != 0) {
             return;
         }
@@ -166,34 +180,30 @@ public:
     }
 
     result_type operator()(const vote_operation& op) {
+#ifndef STEEMIT_BUILD_TESTNET
         if (_db.head_block_num() < 35000000) { // Speed up replay
             return;
         }
+#endif
         if (_db.is_account_vote(op)) {
             return;
         }
 
         auto id = std::string(op.author) + "." + op.permlink;
-        auto found = buffer.find(id);
-        optional<variant_object> found_es;
 
-        fc::mutable_variant_object doc_es;
-        fc::mutable_variant_object* doc = &doc_es;
-        if (found != buffer.end()) {
-            doc = &found->second;
-        } else if (find_in_es(id, found_es)) {
-            doc_es = fc::mutable_variant_object(*found_es);
-        }
-        auto& o = *doc;
+        fc::mutable_variant_object doc;
+        bool from_buffer = false;
+        find_post(id, doc, from_buffer);
 
         const auto& cmt = _db.get_comment(op.author, op.permlink);
 
-        o["total_votes"] = cmt.total_votes;
-        o["net_rshares"] = cmt.net_rshares;
+        doc["total_votes"] = cmt.total_votes;
+        doc["net_votes"] = cmt.net_votes;
+        doc["net_rshares"] = cmt.net_rshares;
 
-        if (!!found_es) {
-            buffer[id] = std::move(o);
-        }
+        doc["author_reputation"] = std::string(_db.get_account_reputation(op.author));
+
+        buffer[id] = std::move(doc);
 
         ++op_num;
         if (op_num % ELASTIC_WRITE_EACH_N_OP != 0) {
@@ -214,31 +224,24 @@ public:
             const auto* comment = _db.find_comment(author, permlink);
             if (comment) {
                 auto id = author_str + "." + permlink;
-                auto found = buffer.find(id);
-                optional<variant_object> found_es;
 
-                fc::mutable_variant_object doc_es;
-                fc::mutable_variant_object* doc = &doc_es;
-                if (found != buffer.end()) {
-                    doc = &found->second;
-                } else if (find_in_es(id, found_es)) {
-                    doc_es = fc::mutable_variant_object(*found_es);
-                }
-                auto& o = *doc;
+                fc::mutable_variant_object doc;
+                bool from_buffer = false;
+                find_post(id, doc, from_buffer);
 
                 if (op.amount.symbol == STEEM_SYMBOL) {
-                    auto donates = o["donates"].as<asset>();
+                    auto donates = doc["donates"].as<asset>();
                     donates += op.amount;
-                    o["donates"] = donates;
+                    doc["donates"] = donates;
                 } else {
-                    auto donates_uia = o["donates_uia"].as<share_type>();
+                    auto donates_uia = doc["donates_uia"].as<share_type>();
                     donates_uia += (op.amount.amount / op.amount.precision());
-                    o["donates_uia"] = donates_uia;
+                    doc["donates_uia"] = donates_uia;
                 }
 
-                if (!!found_es) {
-                    buffer[id] = std::move(o);
-                }
+                doc["author_reputation"] = std::string(_db.get_account_reputation(author_str));
+
+                buffer[id] = std::move(doc);
             }
         } catch (...) {}
 
