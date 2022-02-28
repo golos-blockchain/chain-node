@@ -111,20 +111,23 @@ public:
 
         fc::mutable_variant_object doc;
         bool from_buffer = false;
-        bool exists = find_post(id, doc, from_buffer);
-        std::string base_body = doc["body"].as_string();
+        bool exists = false;
 
         std::string body = op.body;
         try {
             diff_match_patch<std::wstring> dmp;
             auto patch = dmp.patch_fromText(utf8_to_wstring(body));
-            if (patch.size() && base_body.size()) {
-                auto result = dmp.patch_apply(patch, utf8_to_wstring(base_body));
-                auto patched_body = wstring_to_utf8(result.first);
-                if(!fc::is_utf8(patched_body)) {
-                    body = fc::prune_invalid_utf8(patched_body);
-                } else {
-                    body = patched_body;
+            if (patch.size()) {
+                exists = find_post(id, doc, from_buffer);
+                std::string base_body = doc["body"].as_string();
+                if (base_body.size()) {
+                    auto result = dmp.patch_apply(patch, utf8_to_wstring(base_body));
+                    auto patched_body = wstring_to_utf8(result.first);
+                    if(!fc::is_utf8(patched_body)) {
+                        body = fc::prune_invalid_utf8(patched_body);
+                    } else {
+                        body = patched_body;
+                    }
                 }
             }
         } catch ( ... ) {
@@ -161,7 +164,6 @@ public:
 
         if (!exists) {
             doc["net_votes"] = int32_t(0);
-            doc["total_votes"] = uint32_t(0);
             doc["net_rshares"] = share_type(0);
             doc["donates"] = asset(0, STEEM_SYMBOL);
             doc["donates_uia"] = share_type();
@@ -181,7 +183,7 @@ public:
 
     result_type operator()(const vote_operation& op) {
 #ifndef STEEMIT_BUILD_TESTNET
-        if (_db.head_block_num() < 35000000) { // Speed up replay
+        if (_db.head_block_num() < 45000000) { // Speed up replay
             return;
         }
 #endif
@@ -197,7 +199,6 @@ public:
 
         const auto& cmt = _db.get_comment(op.author, op.permlink);
 
-        doc["total_votes"] = cmt.total_votes;
         doc["net_votes"] = cmt.net_votes;
         doc["net_rshares"] = cmt.net_rshares;
 
