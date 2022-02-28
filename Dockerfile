@@ -1,4 +1,4 @@
-FROM phusion/baseimage:0.9.19 as builder
+FROM phusion/baseimage:0.11 as builder
 
 ARG TYPE=Release
 
@@ -63,11 +63,10 @@ RUN \
         cmake \
         doxygen \
         dpkg-dev \
-        git \
         libboost-all-dev \
         libc6-dev \
         libexpat1-dev \
-        libgcc-5-dev \
+        libgcc-7-dev \
         libhwloc-dev \
         libibverbs-dev \
         libicu-dev \
@@ -80,7 +79,7 @@ RUN \
         libreadline-dev \
         libreadline6-dev \
         libssl-dev \
-        libstdc++-5-dev \
+        libstdc++-7-dev \
         libtinfo-dev \
         libtool \
         linux-libc-dev \
@@ -102,7 +101,7 @@ RUN \
         /usr/include \
         /usr/local/include
 
-FROM phusion/baseimage:0.9.19 as production
+FROM phusion/baseimage:0.11 as production
 COPY --from=builder /usr/local /usr/local
 
 ADD share/golosd/golosdctl /usr/local/bin/golosdctl
