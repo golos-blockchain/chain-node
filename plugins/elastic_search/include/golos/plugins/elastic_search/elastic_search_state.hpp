@@ -111,14 +111,13 @@ public:
 
         fc::mutable_variant_object doc;
         bool from_buffer = false;
-        bool exists = false;
 
         std::string body = op.body;
         try {
             diff_match_patch<std::wstring> dmp;
             auto patch = dmp.patch_fromText(utf8_to_wstring(body));
             if (patch.size()) {
-                exists = find_post(id, doc, from_buffer);
+                find_post(id, doc, from_buffer);
                 std::string base_body = doc["body"].as_string();
                 if (base_body.size()) {
                     auto result = dmp.patch_apply(patch, utf8_to_wstring(base_body));
@@ -151,7 +150,8 @@ public:
             const auto& root_cmt = _db.get<comment_object, by_id>(cmt.root_comment);
             doc["category"] = root_cmt.parent_permlink;
             doc["root_author"] = root_cmt.author;
-            doc["root_permlink"] = to_string(root_cmt.permlink);
+            auto root_permlink = to_string(root_cmt.permlink);
+            doc["root_permlink"] = root_permlink;
             const auto* root_cnt = appbase::app().get_plugin<golos::plugins::social_network::social_network>().find_comment_content(root_cmt.id);
             doc["root_title"] = root_cnt ? to_string(root_cnt->title) : "";
         }
@@ -161,13 +161,6 @@ public:
         doc["body"] = body;
         doc["tags"] = golos::plugins::tags::get_metadata(op.json_metadata, TAGS_NUMBER, TAG_MAX_LENGTH).tags;
         doc["json_metadata"] = op.json_metadata;
-
-        if (!exists) {
-            doc["net_votes"] = int32_t(0);
-            doc["net_rshares"] = share_type(0);
-            doc["donates"] = asset(0, STEEM_SYMBOL);
-            doc["donates_uia"] = share_type();
-        }
 
         doc["author_reputation"] = std::string(_db.get_account_reputation(op.author));
 
@@ -181,26 +174,28 @@ public:
         write_buffer();
     }
 
-    result_type operator()(const vote_operation& op) {
+    result_type operator()(const comment_reward_operation& op) {
 #ifndef STEEMIT_BUILD_TESTNET
-        if (_db.head_block_num() < 45000000) { // Speed up replay
+        if (_db.head_block_num() < 35000000) { // Speed up replay
             return;
         }
 #endif
-        if (_db.is_account_vote(op)) {
-            return;
-        }
 
         auto id = std::string(op.author) + "." + op.permlink;
 
         fc::mutable_variant_object doc;
         bool from_buffer = false;
-        find_post(id, doc, from_buffer);
+        bool exists = find_post(id, doc, from_buffer);
+
+        if (!exists) {
+            return;
+        }
 
         const auto& cmt = _db.get_comment(op.author, op.permlink);
 
         doc["net_votes"] = cmt.net_votes;
         doc["net_rshares"] = cmt.net_rshares;
+        doc["children"] = cmt.children;
 
         doc["author_reputation"] = std::string(_db.get_account_reputation(op.author));
 
@@ -231,12 +226,18 @@ public:
                 find_post(id, doc, from_buffer);
 
                 if (op.amount.symbol == STEEM_SYMBOL) {
-                    auto donates = doc["donates"].as<asset>();
-                    donates += op.amount;
+                    auto donates = op.amount;
+                    auto itr = doc.find("donates");
+                    if (itr != doc.end()) {
+                        donates += itr->value().as<asset>();
+                    }
                     doc["donates"] = donates;
                 } else {
-                    auto donates_uia = doc["donates_uia"].as<share_type>();
-                    donates_uia += (op.amount.amount / op.amount.precision());
+                    auto donates_uia = (op.amount.amount / op.amount.precision());
+                    auto itr = doc.find("donates_uia");
+                    if (itr != doc.end()) {
+                        donates_uia += itr->value().as<share_type>();
+                    }
                     doc["donates_uia"] = donates_uia;
                 }
 
