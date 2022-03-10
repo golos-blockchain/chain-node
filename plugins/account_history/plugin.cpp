@@ -149,7 +149,7 @@ if (options.count(name)) { \
             history_operations result;
             const auto& idx = db.get_index<account_history_index>().indices().get<by_account>();
             auto itr = idx.lower_bound(std::make_tuple(account, from));
-            auto end = idx.upper_bound(std::make_tuple(account, std::max(int64_t(0), int64_t(itr->sequence) - limit)));
+            auto end = idx.upper_bound(std::make_tuple(account, std::max(int64_t(0), int64_t(itr->sequence) - limit + 1)));
             for (; itr != end; ++itr) {
                 result[itr->sequence] = db.get(itr->op);
                 result[itr->sequence].json_metadata = to_string(itr->json_metadata);
@@ -245,7 +245,7 @@ if (options.count(name)) { \
             }
 
             history_operations result;
-            while (!itrs.empty() && result.size() <= limit) {
+            while (!itrs.empty() && result.size() < limit) {
                 auto itr = itrs.top().itr;
                 itrs.pop();
                 result[itr->sequence] = db.get(itr->op);
