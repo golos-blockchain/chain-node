@@ -11,12 +11,13 @@ namespace golos {
             using chainbase::object;
             using chainbase::object_id;
             using chainbase::allocator;
-            using chainbase::shared_vector;
             using golos::chain::comment_object;
             using golos::chain::by_id;
             using golos::chain::comment_vote_index;
             using golos::chain::by_comment_voter;
             using golos::chain::shared_string;
+
+            namespace bip = boost::interprocess;
 
 #ifndef FOLLOW_SPACE_ID
 #define FOLLOW_SPACE_ID 8
@@ -53,14 +54,14 @@ namespace golos {
 
                 template<typename Constructor, typename Allocator>
                 feed_object(Constructor &&c, allocator<Allocator> a)
-                        :reblogged_by(a.get_segment_manager()) {
+                        :reblogged_by(a) {
                     c(*this);
                 }
 
                 id_type id;
 
                 account_name_type account;
-                shared_vector<account_name_type> reblogged_by;
+                bip::vector<account_name_type, allocator<account_name_type>> reblogged_by;
                 account_name_type first_reblogged_by;
                 time_point_sec first_reblogged_on;
                 comment_object::id_type comment;
@@ -233,7 +234,7 @@ FC_REFLECT((golos::plugins::follow::follow_object), (id)(follower)(following)(wh
 CHAINBASE_SET_INDEX_TYPE(golos::plugins::follow::follow_object, golos::plugins::follow::follow_index)
 
 FC_REFLECT((golos::plugins::follow::feed_object),
-           (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id))
+           (id)(account)(first_reblogged_by)(first_reblogged_on)(comment)(reblogs)(account_feed_id))
 CHAINBASE_SET_INDEX_TYPE(golos::plugins::follow::feed_object, golos::plugins::follow::feed_index)
 
 FC_REFLECT((golos::plugins::follow::blog_object), (id)(account)(comment)(reblogged_on)(blog_feed_id))
