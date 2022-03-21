@@ -239,12 +239,15 @@ namespace golos {
                             auto feed_itr = comment_idx.find(boost::make_tuple(c.id, itr->follower));
 
                             if (feed_itr != comment_idx.end()) {
+                                auto pos = std::find(feed_itr->reblogged_by.begin(), feed_itr->reblogged_by.end(), o.account);
+                                if (pos == feed_itr->reblogged_by.end()) {
+                                    continue;
+                                }
                                 if (feed_itr->reblogs <= 1) {
                                     db().remove(*feed_itr);
                                 } else {
                                     db().modify(*feed_itr, [&](feed_object& f) {
-                                        f.reblogged_by.erase(std::remove(f.reblogged_by.begin(), f.reblogged_by.end(),
-                                            o.account));
+                                        f.reblogged_by.erase(pos);
                                         f.reblogs--;
                                     });
                                 }

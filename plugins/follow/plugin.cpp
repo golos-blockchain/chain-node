@@ -197,7 +197,7 @@ namespace golos {
                                     const auto& old_feed_idx = _db.get_index<feed_index, by_old_feed>();
                                     auto old_feed = old_feed_idx.lower_bound(itr->follower);
 
-                                    while (old_feed->account == itr->follower &&
+                                    while (old_feed != old_feed_idx.end() && old_feed->account == itr->follower &&
                                            next_id - old_feed->account_feed_id > _plugin.max_feed_size()) {
                                         _db.remove(*old_feed);
                                         old_feed = old_feed_idx.lower_bound(itr->follower);
