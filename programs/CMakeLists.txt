@@ -1,6 +1,7 @@
 add_subdirectory(build_helpers)
 add_subdirectory(cli_wallet)
 add_subdirectory(golosd)
+add_subdirectory(historian)
 #add_subdirectory( delayed_node )
 add_subdirectory(js_operation_serializer)
 add_subdirectory(meter)
