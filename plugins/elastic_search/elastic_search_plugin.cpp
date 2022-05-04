@@ -10,9 +10,10 @@ using golos::protocol::signed_block;
 
 class elastic_search_plugin::elastic_search_plugin_impl final {
 public:
-    elastic_search_plugin_impl(const std::string& url, const std::string& login, const std::string& password)
+    elastic_search_plugin_impl(const std::string& url, const std::string& login, const std::string& password,
+        uint16_t versions_depth, fc::time_point_sec skip_comments_before)
             : _db(appbase::app().get_plugin<golos::plugins::chain::plugin>().db()),
-            writer(url, login, password, _db) {
+            writer(url, login, password, _db, versions_depth, skip_comments_before) {
     }
 
     ~elastic_search_plugin_impl() {
@@ -47,6 +48,12 @@ void elastic_search_plugin::set_program_options(bpo::options_description& cli, b
     ) (
         "elastic-search-password", bpo::value<string>(),
         "Elastic Search Password"
+    ) (
+        "elastic-search-versions-depth", bpo::value<uint16_t>()->default_value(10),
+        "Count of post/comment versions stored"
+    ) (
+        "elastic-search-skip-comments-before", bpo::value<string>()->default_value("2019-01-01T00:00:00"),
+        "Do not track version history (excl. first version) for comments/posts before this date. Saves disk space"
     );
 }
 
@@ -59,8 +66,17 @@ void elastic_search_plugin::plugin_initialize(const bpo::variables_map &options)
 
         auto login = options.at("elastic-search-login").as<std::string>();
         auto password = options.at("elastic-search-password").as<std::string>();
+        auto versions_depth = options.at("elastic-search-versions-depth").as<uint16_t>();
+        auto skip_comments_before = options.at("elastic-search-skip-comments-before").as<std::string>();
 
-        my = std::make_unique<elastic_search_plugin::elastic_search_plugin_impl>(uri_str, login, password);
+        time_point_sec skb;
+        try {
+            skb = time_point_sec::from_iso_string(skip_comments_before);
+        } catch (...) {
+            elog("Cannot parse elastic-search-skip-comments-before - use proper format, example: 2019-01-01T00:00:00");
+        }
+
+        my = std::make_unique<elastic_search_plugin::elastic_search_plugin_impl>(uri_str, login, password, versions_depth, skb);
 
         my->_db.post_apply_operation.connect([&](const operation_notification& note) {
             my->on_operation(note);

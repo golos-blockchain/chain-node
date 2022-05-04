@@ -53,10 +53,11 @@ namespace golos { namespace api {
 } } // golos::api
 
 FC_REFLECT_DERIVED( (golos::api::discussion), ((golos::api::comment_api_object)),
-        (url)(pending_author_payout_value)(pending_author_payout_in_golos)
-        (pending_author_payout_gbg_value)(pending_author_payout_gests_value)(pending_author_payout_golos_value)
-        (pending_benefactor_payout_value)(pending_benefactor_payout_gests_value)
-        (pending_curator_payout_value)(pending_curator_payout_gests_value)
-        (pending_payout_value)(total_pending_payout_value)(active_votes)(active_votes_count)(replies)
-        (author_reputation)(promoted)(body_length)(reblogged_by)(first_reblogged_by)(first_reblogged_on)
-        (reblog_author)(reblog_title)(reblog_body)(reblog_json_metadata)(reblog_entries)(last_reply))
+    (url)(pending_author_payout_value)(pending_author_payout_in_golos)
+    (pending_author_payout_gbg_value)(pending_author_payout_gests_value)(pending_author_payout_golos_value)
+    (pending_benefactor_payout_value)(pending_benefactor_payout_gests_value)
+    (pending_curator_payout_value)(pending_curator_payout_gests_value)
+    (pending_payout_value)(total_pending_payout_value)(active_votes)(active_votes_count)(replies)
+    (author_reputation)(promoted)(body_length)(reblogged_by)(first_reblogged_by)(first_reblogged_on)
+    (reblog_author)(reblog_title)(reblog_body)(reblog_json_metadata)(reblog_entries)(last_reply)
+)

@@ -305,6 +305,9 @@ namespace golos { namespace plugins { namespace social_network {
                 }
                 if (set_last_update) {
                     clu.last_update = active;
+                    if (clu.num_changes < UINT16_MAX) {
+                        ++clu.num_changes;
+                    }
                 }
                 if (last_reply != comment_id_type()) {
                     clu.last_reply = last_reply;
@@ -321,6 +324,7 @@ namespace golos { namespace plugins { namespace social_network {
                 if (set_last_update) {
                     clu.last_update = active;
                 }
+                clu.num_changes = 0;
                 clu.last_reply = last_reply;
             });
             return false;
@@ -1351,6 +1355,7 @@ namespace golos { namespace plugins { namespace social_network {
                 con.active = last_update->active;
                 con.last_update = last_update->last_update;
                 con.last_reply_id = last_update->last_reply;
+                con.num_changes = last_update->num_changes;
             } else {
                 con.active = time_point_sec::min();
                 con.last_update = time_point_sec::min();
