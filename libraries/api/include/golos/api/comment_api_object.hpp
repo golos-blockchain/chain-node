@@ -28,6 +28,7 @@ namespace golos { namespace api {
         fc::optional<time_point_sec> last_update;
         time_point_sec created;
         fc::optional<time_point_sec> active;
+        fc::optional<uint16_t> num_changes;
         time_point_sec last_payout;
         comment_object::id_type last_reply_id; // not reflected
 
@@ -93,7 +94,7 @@ namespace golos { namespace api {
 FC_REFLECT(
     (golos::api::comment_api_object),
     (id)(author)(permlink)(parent_author)(parent_permlink)(category)(title)(body)(json_metadata)(last_update)
-    (created)(active)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)
+    (created)(active)(num_changes)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)
     (vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)(total_vote_weight)
     (reward_weight)(donates)(donates_uia)(total_payout_value)(beneficiary_payout_value)(beneficiary_gests_payout_value)(curator_payout_value)(curator_gests_payout_value)
     (author_rewards)(author_payout_in_golos)(author_gbg_payout_value)(author_golos_payout_value)(author_gests_payout_value)(net_votes)

@@ -17,12 +17,16 @@ namespace golos { namespace plugins { namespace elastic_search {
 #define TAG_MAX_LENGTH 512
 
 using boost::locale::conv::utf_to_utf;
+using golos::plugins::social_network::comment_last_update_index;
+using golos::plugins::social_network::by_comment;
 
 #ifdef STEEMIT_BUILD_TESTNET
     #define ELASTIC_WRITE_EACH_N_OP 3
 #else
     #define ELASTIC_WRITE_EACH_N_OP 100
 #endif
+
+using es_buffer_type = std::map<std::string, fc::mutable_variant_object>;
 
 class elastic_search_state_writer {
 public:
@@ -32,12 +36,17 @@ public:
     std::string login;
     std::string password;
     database& _db;
+    uint16_t versions_depth;
+    fc::time_point_sec skip_comments_before;
     fc::http::connection conn;
-    std::map<std::string, fc::mutable_variant_object> buffer;
+    es_buffer_type buffer;
+    es_buffer_type buffer_versions;
     int op_num = 0;
 
-    elastic_search_state_writer(const std::string& url, const std::string& login, const std::string& password, database& db)
-            : url(url), login(login), password(password), _db(db) {
+    elastic_search_state_writer(const std::string& url, const std::string& login, const std::string& password, database& db,
+            uint16_t versions_depth, fc::time_point_sec skip_comments_before)
+            : url(url), login(login), password(password), _db(db),
+                versions_depth(versions_depth), skip_comments_before(skip_comments_before) {
         auto fc_url = fc::url(url);
         auto host_port = *fc_url.host() + (fc_url.port() ? ":" + std::to_string(*fc_url.port()) : "");
         auto ep = fc::ip::endpoint::from_string(host_port);
@@ -47,6 +56,10 @@ public:
     template<class T>
     result_type operator()(const T& o) {
 
+    }
+
+    std::string make_id(std::string author, const std::string& permlink) const {
+        return author + "." + permlink;
     }
 
     std::wstring utf8_to_wstring(const std::string& str) const {
@@ -102,40 +115,110 @@ public:
         return false;
     }
 
+    void save_version(const comment_operation& op, const comment_object& cmt, const fc::mutable_variant_object* prevPtr, fc::time_point_sec now) {
+        if (_db.has_index<comment_last_update_index>()) {
+            const auto& clu_idx = _db.get_index<comment_last_update_index, by_comment>();
+            auto clu_itr = clu_idx.find(cmt.id);
+            if (clu_itr != clu_idx.end() && clu_itr->num_changes > 0 && clu_itr->num_changes <= versions_depth) {
+                auto id = make_id(op.author, op.permlink);
+                auto v = clu_itr->num_changes;
+                auto vid = id + "," + std::to_string(v);
+
+                fc::mutable_variant_object prev_doc;
+                bool from_buffer;
+                if (prevPtr == nullptr || !prevPtr->size()) {
+                    bool found = find_post(id, prev_doc, from_buffer);
+                    if (found) {
+                        prevPtr = &prev_doc;
+                    } else { // post not exists because of some mistake in elastic node maintenance
+                        prevPtr = nullptr;
+                    }
+                }
+
+                if (prevPtr) {
+                    fc::mutable_variant_object doc;
+                    const auto& prev = *prevPtr;
+                    auto itr = prev.find("body_patch");
+                    if (itr != prev.end()) {
+                        doc["is_patch"] = true;
+                        doc["body"] = itr->value();
+                    } else {
+                        doc["body"] = prev["body"];
+                    }
+                    auto lu_itr = prev.find("last_update");
+                    if (lu_itr != prev.end()) {
+                        doc["time"] = lu_itr->value();
+                    } else {
+                        doc["time"] = cmt.created; 
+                    }
+                    doc["v"] = v;
+                    doc["post"] = id;
+
+                    buffer_versions[vid] = std::move(doc);
+                }
+            }
+        } else {
+            wlog("no comment_last_update_index (no social_network plugin or comment-last-update-depth in config is 0), so we will not save comment/post versions");
+        }
+    }
+
+    bool just_created(const comment_object& cmt) {
+        if (_db.has_index<comment_last_update_index>()) {
+            const auto& clu_idx = _db.get_index<comment_last_update_index, by_comment>();
+            auto clu_itr = clu_idx.find(cmt.id);
+            if (clu_itr != clu_idx.end()) {
+                return !clu_itr->num_changes;
+            }
+        }
+        return false;
+    }
+
     result_type operator()(const comment_operation& op) {
-        auto id = std::string(op.author) + "." + op.permlink;
+        auto id = make_id(op.author, op.permlink);
 
         if (!op.body.size()) {
             return;
         }
 
+        const auto& cmt = _db.get_comment(op.author, op.permlink);
+
+        const auto now = _db.head_block_time();
+
         fc::mutable_variant_object doc;
         bool from_buffer = false;
 
+        bool has_patch = false;
         std::string body = op.body;
         try {
             diff_match_patch<std::wstring> dmp;
             auto patch = dmp.patch_fromText(utf8_to_wstring(body));
             if (patch.size()) {
                 find_post(id, doc, from_buffer);
-                std::string base_body = doc["body"].as_string();
-                if (base_body.size()) {
-                    auto result = dmp.patch_apply(patch, utf8_to_wstring(base_body));
-                    auto patched_body = wstring_to_utf8(result.first);
-                    if(!fc::is_utf8(patched_body)) {
-                        body = fc::prune_invalid_utf8(patched_body);
-                    } else {
-                        body = patched_body;
-                    }
+
+                std::string base_body;
+                if (!just_created(cmt) && doc.size()) {
+                    base_body = doc["body"].as_string();
+                }
+                auto result = dmp.patch_apply(patch, utf8_to_wstring(base_body));
+                auto patched_body = wstring_to_utf8(result.first);
+                if(!fc::is_utf8(patched_body)) {
+                    body = fc::prune_invalid_utf8(patched_body);
+                } else {
+                    body = patched_body;
+                }
+                if (now >= skip_comments_before) {
+                    has_patch = true;
                 }
             }
         } catch ( ... ) {
         }
 
-        const auto& cmt = _db.get_comment(op.author, op.permlink);
+        if (now >= skip_comments_before) {
+            save_version(op, cmt, &doc, now);
+        }
 
         doc["id"] = cmt.id;
-        doc["created"] = _db.head_block_time();
+        doc["created"] = now;
         doc["author"] = op.author;
         doc["permlink"] = op.permlink;
         doc["parent_author"] = op.parent_author;
@@ -164,6 +247,13 @@ public:
 
         doc["author_reputation"] = std::string(_db.get_account_reputation(op.author));
 
+        if (has_patch) {
+            doc["body_patch"] = op.body;
+        }
+        if (now >= skip_comments_before) {
+            doc["last_update"] = now;
+        }
+
         buffer[id] = std::move(doc);
 
         ++op_num;
@@ -171,7 +261,7 @@ public:
             return;
         }
 
-        write_buffer();
+        write_buffers();
     }
 
     result_type operator()(const comment_reward_operation& op) {
@@ -181,7 +271,7 @@ public:
         }
 #endif
 
-        auto id = std::string(op.author) + "." + op.permlink;
+        auto id = make_id(op.author, op.permlink);
 
         fc::mutable_variant_object doc;
         bool from_buffer = false;
@@ -206,7 +296,7 @@ public:
             return;
         }
 
-        write_buffer();
+        write_buffers();
     }
 
     result_type operator()(const donate_operation& op) {
@@ -219,7 +309,7 @@ public:
 
             const auto* comment = _db.find_comment(author, permlink);
             if (comment) {
-                auto id = author_str + "." + permlink;
+                auto id = make_id(author_str, permlink);
 
                 fc::mutable_variant_object doc;
                 bool from_buffer = false;
@@ -252,26 +342,30 @@ public:
             return;
         }
 
-        write_buffer();
+        write_buffers();
     }
 
-    void write_buffer() {
-        op_num = 0;
-
+    void _write_buffer(const std::string& _index, const std::string& _type, es_buffer_type& buf, bool auto_increment = false) {
         std::string bulk;
-        for (auto& obj : buffer) {
+        for (auto& obj : buf) {
             fc::mutable_variant_object idx;
-            idx["_index"] = "blog";
-            idx["_type"] = "post";
-            idx["_id"] = obj.first;
+            idx["_index"] = _index;
+            idx["_type"] = _type;
+            if (!auto_increment) {
+                idx["_id"] = obj.first;
+            }
             fc::mutable_variant_object idx2;
             idx2["index"] = idx;
             bulk += fc::json::to_string(idx2) + "\r\n";
             bulk += fc::json::to_string(obj.second) + "\r\n";
         }
-        buffer.clear();
+        buf.clear();
 
-        auto bulk_url = url + "/blog/_bulk";
+        if (bulk.empty()) {
+            return;
+        }
+
+        auto bulk_url = url + "/" + _index + "/_bulk";
 
         auto headers = get_es_headers();
         //headers.emplace_back("Content-Type", "application/json"); // already set - hardcoded
@@ -280,6 +374,13 @@ public:
         if (reply.status != fc::http::reply::status_code::OK && reply.status != fc::http::reply::status_code::RecordCreated) {
             wlog("status: " + std::to_string(reply.status) + ", " + reply_body);
         }
+    }
+
+    void write_buffers() {
+        op_num = 0;
+
+        _write_buffer("blog", "post", buffer);
+        _write_buffer("blog_versions", "version", buffer_versions);
     }
 };
 
