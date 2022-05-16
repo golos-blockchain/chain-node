@@ -12,6 +12,7 @@
 #include <golos/plugins/database_api/state.hpp>
 #include <golos/plugins/database_api/api_objects/owner_authority_history_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/account_recovery_request_api_object.hpp>
+#include <golos/plugins/database_api/api_objects/account_recovery_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/proposal_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/asset_api_object.hpp>
@@ -95,6 +96,7 @@ DEFINE_API_ARGS(lookup_accounts,                  msg_pack, std::set<std::string
 DEFINE_API_ARGS(get_account_count,                msg_pack, uint64_t)
 DEFINE_API_ARGS(get_owner_history,                msg_pack, std::vector<owner_authority_history_api_object>)
 DEFINE_API_ARGS(get_recovery_request,             msg_pack, optional<account_recovery_request_api_object>)
+DEFINE_API_ARGS(get_recovery_info,             msg_pack, account_recovery_api_object)
 DEFINE_API_ARGS(get_escrow,                       msg_pack, optional<escrow_api_object>)
 DEFINE_API_ARGS(get_withdraw_routes,              msg_pack, std::vector<withdraw_route>)
 DEFINE_API_ARGS(get_account_bandwidth,            msg_pack, optional<account_bandwidth_api_object>)
@@ -246,6 +248,8 @@ public:
         (get_owner_history)
 
         (get_recovery_request)
+
+        (get_recovery_info)
 
         (get_escrow)
 

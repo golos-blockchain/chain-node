@@ -94,6 +94,7 @@ public:
     std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names) const;
     std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit) const;
     uint64_t get_account_count() const;
+    optional<account_recovery_request_api_object> get_recovery_request(account_name_type account) const;
 
     // Authority / validation
     std::set<public_key_type> get_required_signatures(const signed_transaction &trx, const flat_set<public_key_type> &available_keys) const;
@@ -462,14 +463,77 @@ DEFINE_API(plugin, get_recovery_request) {
         (account_name_type, account)
     );
     return my->database().with_weak_read_lock([&]() {
-        optional<account_recovery_request_api_object> result;
+        return my->get_recovery_request(account);
+    });
+}
 
-        const auto &rec_idx = my->database().get_index<account_recovery_request_index>().indices().get<
-                by_account>();
-        auto req = rec_idx.find(account);
+optional<account_recovery_request_api_object> plugin::api_impl::get_recovery_request(account_name_type account) const {
+    optional<account_recovery_request_api_object> result;
 
-        if (req != rec_idx.end()) {
-            result = account_recovery_request_api_object(*req);
+    const auto &rec_idx = database().get_index<account_recovery_request_index, by_account>();
+    auto req = rec_idx.find(account);
+
+    if (req != rec_idx.end()) {
+        result = account_recovery_request_api_object(*req);
+    }
+
+    return result;
+}
+
+DEFINE_API(plugin, get_recovery_info) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (account_recovery_query, query)
+    );
+
+    GOLOS_CHECK_LIMIT_PARAM(query.accounts.size(), 3);
+
+    return my->database().with_weak_read_lock([&]() {
+        account_recovery_api_object result;
+
+        const auto& crar_idx = my->database().get_index<change_recovery_account_request_index, by_account>();
+
+        auto now = my->database().head_block_time();
+
+        for (const auto& acc : query.accounts) {
+            const auto* account = my->database().find_account(acc);
+            if (!account) {
+                continue;
+            }
+
+            account_recovery_info ari;
+            ari.head_block_time = now;
+
+            if (query.fill.count(account_recovery_fill::change_partner)) {
+                auto crar_itr = crar_idx.find(acc);
+                if (crar_itr != crar_idx.end()) {
+                    ari.change_partner_request = *crar_itr;
+                }
+                ari.recovery_account = account->recovery_account;
+            }
+
+            if (query.fill.count(account_recovery_fill::recovery)) {
+                ari.recovery_request = my->get_recovery_request(acc);
+
+                ari.recovery_account = account->recovery_account;
+                ari.last_account_recovery = account->last_account_recovery;
+
+                const auto& auth = my->database().get_authority(acc);
+                ari.owner_authority = authority(auth.owner);
+                ari.last_owner_update = auth.last_owner_update;
+                ari.recovered_owner = ari.last_owner_update != fc::time_point_sec::min() && ari.last_owner_update == ari.last_account_recovery;
+
+                ari.next_owner_update_possible = auth.last_owner_update + STEEMIT_OWNER_UPDATE_LIMIT;
+                ari.can_update_owner_now = (*ari.next_owner_update_possible <= now);
+
+                auto meta = my->database().find<account_metadata_object, by_account>(acc);
+                if (meta != nullptr) {
+                    ari.json_metadata = golos::chain::to_string(meta->json_metadata);
+                } else {
+                    ari.json_metadata = "";
+                }
+            }
+
+            result[acc] = ari;
         }
 
         return result;
