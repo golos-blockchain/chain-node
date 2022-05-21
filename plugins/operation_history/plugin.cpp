@@ -4,6 +4,7 @@
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/protocol/exceptions.hpp>
 #include <golos/chain/operation_notification.hpp>
+#include <golos/api/operation_history_extender.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -17,6 +18,7 @@ namespace golos { namespace plugins { namespace operation_history {
 
     using namespace golos::protocol;
     using namespace golos::chain;
+    using golos::api::operation_history_extender;
 
     struct operation_visitor {
         operation_visitor(
@@ -39,6 +41,10 @@ namespace golos { namespace plugins { namespace operation_history {
             if (start_block <= database.head_block_num()) {
                 note.stored_in_db = true;
 
+                operation opv;
+                operation_history_extender extender(database, opv);
+                bool extended = note.op.visit(extender);
+
                 database.create<operation_object>([&](operation_object& obj) {
                     note.db_id = obj.id._id;
 
@@ -49,10 +55,19 @@ namespace golos { namespace plugins { namespace operation_history {
                     obj.virtual_op = note.virtual_op;
                     obj.timestamp = database.head_block_time();
 
-                    const auto size = fc::raw::pack_size(note.op);
+                    size_t size = 0;
+                    if (extended) {
+                        size = fc::raw::pack_size(opv);
+                    } else {
+                        size = fc::raw::pack_size(note.op);
+                    }
                     obj.serialized_op.resize(size);
                     fc::datastream<char*> ds(obj.serialized_op.data(), size);
-                    fc::raw::pack(ds, note.op);
+                    if (extended) {
+                        fc::raw::pack(ds, opv);
+                    } else {
+                        fc::raw::pack(ds, note.op);
+                    }
                 });
             }
         }

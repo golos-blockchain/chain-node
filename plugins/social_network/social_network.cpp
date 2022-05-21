@@ -315,30 +315,33 @@ namespace golos { namespace plugins { namespace social_network {
             });
             return true;
         } else {
-            db.create<comment_last_update_object>([&](auto& clu) {
-                clu.comment = comment.id;
-                clu.author = comment.author;
-                clu.parent_author = comment.parent_author;
-                clu.parent_permlink = comment.parent_permlink;
-                clu.active = active;
-                if (set_last_update) {
-                    clu.last_update = active;
-                }
-                clu.num_changes = 0;
-                clu.last_reply = last_reply;
-            });
+            const auto* extras = db.find_extras(comment.author, comment.hashlink);
+            if (extras) {
+                db.create<comment_last_update_object>([&](auto& clu) {
+                    clu.comment = comment.id;
+                    clu.author = comment.author;
+                    clu.parent_author = comment.parent_author;
+                    clu.parent_permlink = extras->parent_permlink;
+                    clu.active = active;
+                    if (set_last_update) {
+                        clu.last_update = active;
+                    }
+                    clu.num_changes = 0;
+                    clu.last_reply = last_reply;
+                });
+            }
             return false;
         }
     }
 
     void social_network::impl::activate_parent_comments(const comment_object& comment) const {
         if (db.has_hardfork(STEEMIT_HARDFORK_0_6__80) && comment.parent_author != STEEMIT_ROOT_POST_PARENT) {
-            auto parent = &db.get_comment(comment.parent_author, comment.parent_permlink);
+            auto parent = &db.get_comment(comment.parent_author, comment.parent_hashlink);
             auto now = db.head_block_time();
             while (parent) {
                 set_comment_update(*parent, now, false, true, comment.id);
                 if (parent->parent_author != STEEMIT_ROOT_POST_PARENT) {
-                    parent = &db.get_comment(parent->parent_author, parent->parent_permlink);
+                    parent = &db.get_comment(parent->parent_author, parent->parent_hashlink);
                 } else {
                     parent = nullptr;
                 }
@@ -361,7 +364,7 @@ namespace golos { namespace plugins { namespace social_network {
         }
 
         void operator()(const delete_comment_operation& o) const {
-            const auto* comment = db.find_comment(o.author, o.permlink);
+            const auto* comment = db.find_comment_by_perm(o.author, o.permlink);
             if (comment == nullptr) {
                 return;
             }
@@ -415,7 +418,7 @@ namespace golos { namespace plugins { namespace social_network {
         } /// ignore all other ops
 
         void operator()(const golos::protocol::comment_operation& o) const {
-            const auto* comment = db.find_comment(o.author, o.permlink);
+            const auto* comment = db.find_comment_by_perm(o.author, o.permlink);
             if (nullptr == comment) {
                 return;
             }
@@ -494,7 +497,7 @@ namespace golos { namespace plugins { namespace social_network {
                 return;
             }
 
-            const auto* comment = db.find_comment(op.author, op.permlink);
+            const auto* comment = db.find_comment_by_perm(op.author, op.permlink);
             if (comment == nullptr) {
                 return;
             }
@@ -522,7 +525,7 @@ namespace golos { namespace plugins { namespace social_network {
                 return;
             }
 
-            const auto& comment = db.get_comment(op.author, op.permlink);
+            const auto& comment = db.get_comment(op.author, op.hashlink);
 
             const auto& cprops = db.get_dynamic_global_properties();
             auto vesting_sp = cprops.get_vesting_share_price();
@@ -633,7 +636,7 @@ namespace golos { namespace plugins { namespace social_network {
                     return;
                 }
 
-                const auto* comment = db.find_comment(author, permlink);
+                const auto* comment = db.find_comment_by_perm(author, permlink);
                 if (comment) {
                     const auto content = impl.find_comment_content(comment->id);
                     if (content) {
@@ -918,14 +921,16 @@ namespace golos { namespace plugins { namespace social_network {
         const std::set<account_name_type>& filter_authors,
         bool filter_negative_rep_authors
     ) const {
+        auto hashlink = db.make_hashlink(permlink);
+
         discussion_helper helper_no_rep(db, fill_promoted, fill_comment_info, false);
 
         account_name_type acc_name = account_name_type(author);
-        const auto& by_permlink_idx = db.get_index<comment_index>().indices().get<by_parent>();
-        auto itr = by_permlink_idx.find(std::make_tuple(acc_name, permlink));
-        for (; itr != by_permlink_idx.end() &&
+        const auto& by_hashlink_idx = db.get_index<comment_index, by_parent>();
+        auto itr = by_hashlink_idx.find(std::make_tuple(acc_name, hashlink));
+        for (; itr != by_hashlink_idx.end() &&
             itr->parent_author == author &&
-            to_string(itr->parent_permlink) == permlink;
+            itr->parent_hashlink == hashlink;
             ++itr
         ) {
             if (filter_ids.count(itr->id) || filter_authors.count(itr->author)) {
@@ -946,16 +951,17 @@ namespace golos { namespace plugins { namespace social_network {
         const std::set<comment_object::id_type>& filter_ids,
         const std::set<account_name_type>& filter_authors
     ) const {
+        auto hashlink = db.make_hashlink(permlink);
         account_name_type acc_name = account_name_type(author);
-        const auto& by_permlink_idx = db.get_index<comment_index, by_parent>();
-        auto itr = by_permlink_idx.upper_bound(std::make_tuple(acc_name, permlink, INT64_MAX));
-        auto ritr = by_permlink_idx.rbegin();
-        if (itr != by_permlink_idx.end()) {
+        const auto& by_hashlink_idx = db.get_index<comment_index, by_parent>();
+        auto itr = by_hashlink_idx.upper_bound(std::make_tuple(acc_name, hashlink, INT64_MAX));
+        auto ritr = by_hashlink_idx.rbegin();
+        if (itr != by_hashlink_idx.end()) {
             ritr = boost::make_reverse_iterator(itr);
         }
-        for (; ritr != by_permlink_idx.rend() &&
+        for (; ritr != by_hashlink_idx.rend() &&
             ritr->parent_author == author &&
-            to_string(ritr->parent_permlink) == permlink;
+            ritr->parent_hashlink == hashlink;
             ++ritr
         ) {
             if (filter_ids.count(ritr->id) || filter_authors.count(ritr->author)) {
@@ -1005,12 +1011,18 @@ namespace golos { namespace plugins { namespace social_network {
                     continue;
                 }
 
-                const auto* vo = db.find(itr->comment);
-                if (nullptr == vo) {
+                const auto* com = db.find(itr->comment);
+                if (!com) {
                     continue;
                 }
+
+                const auto* extras = db.find_extras(com->author, com->hashlink);
+                if (!extras) {
+                    continue;
+                }
+
                 account_vote avote;
-                avote.authorperm = vo->author + "/" + to_string(vo->permlink);
+                avote.authorperm = com->author + "/" + to_string(extras->permlink);
                 //avote.weight = itr->weight; // TODO:
                 avote.rshares = itr->rshares;
                 avote.percent = itr->vote_percent;
@@ -1022,10 +1034,9 @@ namespace golos { namespace plugins { namespace social_network {
     }
 
     discussion social_network::impl::get_content(const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset) const {
-        const auto& by_permlink_idx = db.get_index<comment_index>().indices().get<by_permlink>();
-        auto itr = by_permlink_idx.find(std::make_tuple(author, permlink));
-        if (itr != by_permlink_idx.end()) {
-            return get_discussion(*itr, limit, offset);
+        const auto* comment = db.find_comment_by_perm(author, permlink);
+        if (comment) {
+            return get_discussion(*comment, limit, offset);
         }
         return helper->create_discussion(author);
     }
@@ -1111,7 +1122,7 @@ namespace golos { namespace plugins { namespace social_network {
         const auto* parent_author = &start_parent_author;
 
         if (start_permlink.size()) {
-            const auto& comment = db.find_comment(start_parent_author, start_permlink);
+            const auto& comment = db.find_comment_by_perm(start_parent_author, start_permlink);
             if (!comment) {
                 return result;
             }
@@ -1252,12 +1263,19 @@ namespace golos { namespace plugins { namespace social_network {
                     if (!reached_start) {
                         if (from != 0 && i == from) {
                             reached_start = true;
-                        } else if (cmt.author == start_author && to_string(cmt.permlink) == start_permlink) {
-                            reached_start = true;
                         } else {
-                            ++i;
-                            ++itr;
-                            continue;
+                            if (cmt.author != start_author) {
+                                ++i;
+                                ++itr;
+                                continue;
+                            }
+                            const auto* extras = db.find_extras(cmt.author, cmt.hashlink);
+                            if (!extras || to_string(extras->permlink) != start_permlink) {
+                                ++i;
+                                ++itr;
+                                continue;
+                            }
+                            reached_start = true;
                         }
                     }
 

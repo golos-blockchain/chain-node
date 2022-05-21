@@ -93,9 +93,7 @@ namespace golos { namespace api {
     void discussion_helper::impl::fill_comment_api_object(const comment_object& o, comment_api_object& d) const {
         d.id = o.id;
         d.parent_author = o.parent_author;
-        d.parent_permlink = to_string(o.parent_permlink);
         d.author = o.author;
-        d.permlink = to_string(o.permlink);
         d.created = o.created;
         d.last_payout = o.last_payout;
         d.depth = o.depth;
@@ -111,7 +109,7 @@ namespace golos { namespace api {
         d.net_votes = o.net_votes;
         d.mode = o.mode;
         d.root_comment = o.root_comment;
-        d.max_accepted_payout = o.max_accepted_payout;
+        d.max_accepted_payout = asset(o.max_accepted_payout, SBD_SYMBOL);
         d.percent_steem_dollars = o.percent_steem_dollars;
         d.allow_replies = o.allow_replies;
         d.allow_votes = o.allow_votes;
@@ -119,7 +117,7 @@ namespace golos { namespace api {
         d.auction_window_reward_destination = o.auction_window_reward_destination;
         d.auction_window_size = o.auction_window_size;
         d.curation_rewards_percent = o.curation_rewards_percent;
-        d.min_golos_power_to_curate = o.min_golos_power_to_curate;
+        d.min_golos_power_to_curate = asset(o.min_golos_power_to_curate, STEEM_SYMBOL);
         d.has_worker_request = o.has_worker_request;
 
         for (auto& route : o.beneficiaries) {
@@ -130,10 +128,23 @@ namespace golos { namespace api {
             fill_comment_info_(database(), o, d);
         }
 
-        if (o.parent_author == STEEMIT_ROOT_POST_PARENT) {
-            d.category = to_string(o.parent_permlink);
-        } else {
-            d.category = to_string(database().get<comment_object, by_id>(o.root_comment).parent_permlink);
+        const auto* extras = database().find_extras(o.author, o.hashlink);
+        if (extras) {
+            d.permlink = to_string(extras->permlink);
+            d.parent_permlink = to_string(extras->parent_permlink);
+            if (o.parent_author == STEEMIT_ROOT_POST_PARENT) {
+                d.category = to_string(extras->parent_permlink);
+                d.root_author = d.author;
+                d.root_permlink = d.permlink;
+            } else {
+                const auto& root = database().get<comment_object, by_id>(o.root_comment);
+                const auto* root_extras = database().find_extras(root.author, root.hashlink);
+                if (root_extras) {
+                    d.category = to_string(root_extras->parent_permlink);
+                    d.root_author = root.author;
+                    d.root_permlink = to_string(root_extras->permlink);
+                }
+            }
         }
     }
 
@@ -188,7 +199,7 @@ namespace golos { namespace api {
     std::vector<vote_state> discussion_helper::impl::select_active_votes(
         const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset
     ) const {
-        const auto& comment = database_.get_comment(author, permlink);
+        const auto& comment = database_.get_comment_by_perm(author, permlink);
         comment_curation_info c{database_, comment, true};
 
         return select_active_votes(c, limit, offset);
@@ -325,11 +336,9 @@ namespace golos { namespace api {
 //
 // set_url
     void discussion_helper::impl::set_url(discussion& d) const {
-        comment_object cm = database().get<comment_object, by_id>(d.root_comment);
+        d.url = "/" + d.category + "/@" + d.root_author + "/" + d.root_permlink;
 
-        d.url = "/" + d.category + "/@" + std::string(cm.author) + "/" + to_string(cm.permlink);
-
-        if (cm.id != d.id) {
+        if (d.root_comment != d.id) {
             d.url += "#@" + d.author + "/" + d.permlink;
         }
     }

@@ -101,7 +101,7 @@ struct operation_process {
     }
 
     void operator()(const comment_operation &op) const {
-        auto &comment = _db.get_comment(op.author, op.permlink);
+        auto &comment = _db.get_comment_by_perm(op.author, op.permlink);
 
         if (comment.created == _db.head_block_time()) {
             if (comment.parent_author.length()) {
@@ -123,7 +123,7 @@ struct operation_process {
             return;
         }
         const auto &cv_idx = _db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
-        auto &comment = _db.get_comment(op.author, op.permlink);
+        auto &comment = _db.get_comment_by_perm(op.author, op.permlink);
         auto &voter = _db.get_account(op.voter);
         auto itr = cv_idx.find(boost::make_tuple(comment.id, voter.id));
 
@@ -239,7 +239,7 @@ void plugin::plugin_impl::pre_operation(const operation_notification &o) {
     if (o.op.which() == operation::tag<delete_comment_operation>::value) {
 
         delete_comment_operation op = o.op.get<delete_comment_operation>();
-        auto comment = db.get_comment(op.author, op.permlink);
+        auto comment = db.get_comment_by_perm(op.author, op.permlink);
 
         if (comment.parent_author.length()) {
             stat_sender->current_bucket.replies_deleted++;

@@ -113,37 +113,37 @@ public:
     }
 
     auto operator()(const author_reward_operation& op) -> result_type {
-        auto& b = write_op_header("author_rewards", COMMENT_ID(op));
+        auto& b = write_op_header("author_rewards");
 
         fc::raw::pack(b, op.author);
-        fc::raw::pack(b, op.permlink);
+        fc::raw::pack(b, op.hashlink);
         fc::raw::pack(b, op.sbd_and_steem_in_golos);
         fc::raw::pack(b, op.vesting_payout_in_golos);
         fc::raw::pack(b, _block.timestamp);
     }
 
     auto operator()(const comment_benefactor_reward_operation& op) -> result_type {
-        auto& b = write_op_header("benefactor_rewards", COMMENT_ID(op));
+        auto& b = write_op_header("benefactor_rewards");
 
         fc::raw::pack(b, op.benefactor);
         fc::raw::pack(b, op.author);
-        fc::raw::pack(b, op.permlink);
+        fc::raw::pack(b, op.hashlink);
         fc::raw::pack(b, op.reward_in_golos);
         fc::raw::pack(b, _block.timestamp);
     }
 
     auto operator()(const curation_reward_operation& op) -> result_type {
-        auto& b = write_op_header("curation_rewards", std::string(op.comment_author) + "/" + op.comment_permlink);
+        auto& b = write_op_header("curation_rewards");
 
         fc::raw::pack(b, op.curator);
         fc::raw::pack(b, op.reward_in_golos);
         fc::raw::pack(b, op.comment_author);
-        fc::raw::pack(b, op.comment_permlink);
+        fc::raw::pack(b, op.comment_hashlink);
         fc::raw::pack(b, _block.timestamp);
     }
 
     auto operator()(const total_comment_reward_operation& op) -> result_type {
-        auto& b = write_op_header("total_comment_rewards", COMMENT_ID(op));
+        auto& b = write_op_header("total_comment_rewards");
 
         fc::raw::pack(b, op);
     }

@@ -180,7 +180,7 @@ public:
             return;
         }
 
-        const auto& cmt = _db.get_comment(op.author, op.permlink);
+        const auto& cmt = _db.get_comment_by_perm(op.author, op.permlink);
 
         const auto now = _db.head_block_time();
 
@@ -231,10 +231,14 @@ public:
             doc["root_title"] = op.title;
         } else {
             const auto& root_cmt = _db.get<comment_object, by_id>(cmt.root_comment);
-            doc["category"] = root_cmt.parent_permlink;
             doc["root_author"] = root_cmt.author;
-            auto root_permlink = to_string(root_cmt.permlink);
-            doc["root_permlink"] = root_permlink;
+
+            const auto* root_extras = _db.find_extras(root_cmt.author, root_cmt.hashlink);
+            if (root_extras) {
+                doc["category"] = root_extras->parent_permlink;
+                doc["root_permlink"] = root_extras->permlink;
+            }
+
             const auto* root_cnt = appbase::app().get_plugin<golos::plugins::social_network::social_network>().find_comment_content(root_cmt.id);
             doc["root_title"] = root_cnt ? to_string(root_cnt->title) : "";
         }
@@ -270,8 +274,14 @@ public:
             return;
         }
 #endif
+        const auto& cmt = _db.get_comment(op.author, op.hashlink);
+        const auto* extras = _db.find_extras(op.author, op.hashlink);
 
-        auto id = make_id(op.author, op.permlink);
+        if (!extras) {
+            return;
+        }
+
+        auto id = make_id(op.author, to_string(extras->permlink));
 
         fc::mutable_variant_object doc;
         bool from_buffer = false;
@@ -280,8 +290,6 @@ public:
         if (!exists) {
             return;
         }
-
-        const auto& cmt = _db.get_comment(op.author, op.permlink);
 
         doc["net_votes"] = cmt.net_votes;
         doc["net_rshares"] = cmt.net_rshares;
@@ -307,7 +315,7 @@ public:
             if (!is_valid_account_name(author_str)) return;
             auto author = account_name_type(author_str);
 
-            const auto* comment = _db.find_comment(author, permlink);
+            const auto* comment = _db.find_comment_by_perm(author, permlink);
             if (comment) {
                 auto id = make_id(author_str, permlink);
 

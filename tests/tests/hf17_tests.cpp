@@ -93,7 +93,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto& alice_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& alice_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             comment_op.author = "bob";
 
@@ -103,7 +103,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto& bob_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& bob_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             vote_op.voter = "bob";
             vote_op.author = "alice";
@@ -183,7 +183,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto& sam_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& sam_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             vote_op.voter = "alice";
             vote_op.author = "sam";
@@ -237,7 +237,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto& alice_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& alice_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             comment_op.author = "bob";
 
@@ -247,7 +247,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             db->push_transaction(tx, 0);
             generate_block();
 
-            const auto& bob_comment = db->get_comment(comment_op.author, comment_op.permlink);
+            const auto& bob_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             validate_database();
 

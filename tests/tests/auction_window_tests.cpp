@@ -138,7 +138,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
             generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
+            auto& alice_post = db->get_comment_by_perm(comment.author, comment.permlink);
             generate_voters(20);
 
             BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
@@ -216,7 +216,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
             generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
+            auto& alice_post = db->get_comment_by_perm(comment.author, comment.permlink);
             generate_voters(voters_count);
 
             BOOST_TEST_MESSAGE("Create votes.");
@@ -292,7 +292,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
             generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
+            auto& alice_post = db->get_comment_by_perm(comment.author, comment.permlink);
             generate_voters(voters_count);
 
             BOOST_TEST_MESSAGE("Create votes.");
@@ -368,7 +368,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
             generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
+            auto& alice_post = db->get_comment_by_perm(comment.author, comment.permlink);
             generate_voters(voters_count);
 
             BOOST_TEST_MESSAGE("Create votes.");
@@ -445,7 +445,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
             generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
+            auto& alice_post = db->get_comment_by_perm(comment.author, comment.permlink);
             generate_voters(voters_count);
 
             BOOST_TEST_MESSAGE("Create votes.");
@@ -521,7 +521,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
             generate_block();
-            auto& alice_post = db->get_comment(comment.author, comment.permlink);
+            auto& alice_post = db->get_comment_by_perm(comment.author, comment.permlink);
             generate_voters(voters_count);
 
             BOOST_TEST_MESSAGE("Create votes.");

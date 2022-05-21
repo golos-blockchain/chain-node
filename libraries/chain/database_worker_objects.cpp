@@ -11,7 +11,7 @@ namespace golos { namespace chain {
         return get<worker_request_object, by_post>(post);
     } catch (const std::out_of_range &e) {
         const auto& comment = get_comment(post);
-        GOLOS_THROW_MISSING_OBJECT("worker_request_object", fc::mutable_variant_object()("account",comment.author)("permlink",comment.permlink));
+        GOLOS_THROW_MISSING_OBJECT("worker_request_object", fc::mutable_variant_object()("account",comment.author)("hashlink",comment.hashlink));
     } FC_CAPTURE_AND_RETHROW((post)) }
 
     const worker_request_object* database::find_worker_request(const comment_id_type& post) const {
@@ -60,7 +60,7 @@ namespace golos { namespace chain {
     }
 
     void database::send_worker_state(const comment_object& post, worker_request_state closed_state) {
-        push_virtual_operation(worker_state_operation(post.author, to_string(post.permlink), closed_state));
+        push_virtual_operation(worker_state_operation(post.author, post.hashlink, closed_state));
     }
 
     void database::process_worker_votes() {
@@ -147,7 +147,7 @@ namespace golos { namespace chain {
                 vest_reward = create_vesting(worker, payment);
             else
                 adjust_balance(worker, payment);
-            push_virtual_operation(worker_reward_operation(wro.worker, post.author, to_string(post.permlink), payment, vest_reward));
+            push_virtual_operation(worker_reward_operation(wro.worker, post.author, post.hashlink, payment, vest_reward));
             modify(wro, [&](auto& o) {
                 o.remaining_payment -= payment;
                 if (o.remaining_payment.amount <= 0) {

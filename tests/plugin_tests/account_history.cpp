@@ -118,19 +118,19 @@ BOOST_AUTO_TEST_CASE(account_history_filter) {
 
     auto q = account_history_query();
     BOOST_TEST_MESSAGE("--- Test non-filtered history");
-    auto alice_all = get_history("alice", -1, 10, q);
+    auto alice_all = get_history("alice", -1, 11, q);
     check_ops(alice_all, INITIAL_OPS "|vote");
 
-    auto bob_all = get_history("bob", -1, 10, q);
+    auto bob_all = get_history("bob", -1, 11, q);
     check_ops(bob_all, INITIAL_OPS "|comment|vote|vote|vote|delete_comment");
 
-    auto sam_all = get_history("sam", -1, 10, q);
+    auto sam_all = get_history("sam", -1, 11, q);
     check_ops(sam_all, INITIAL_OPS "|vote");
 
-    auto dave_all = get_history("dave", -1, 10, q);
+    auto dave_all = get_history("dave", -1, 11, q);
     check_ops(dave_all, "account_create");
 
-    auto cf_all = get_history("cyberfounder", -1, 10, q);
+    auto cf_all = get_history("cyberfounder", -1, 11, q);
     BOOST_CHECK_EQUAL(11, cf_all.size());
     check_ops(cf_all, "account_create|account_create|account_create|transfer|transfer|transfer|"
         "producer_reward|producer_reward|producer_reward|account_create|producer_reward");
@@ -165,11 +165,11 @@ BOOST_AUTO_TEST_CASE(account_history_filter) {
     generate_blocks(3);
     q.select_ops = op_names({"REAL", "producer_reward"});
     q.filter_ops = op_names({"account_create", "transfer"});
-    auto cf_ops = get_history("cyberfounder", -1, 6, q);
+    auto cf_ops = get_history("cyberfounder", -1, 7, q);
     check_ops(cf_ops, "producer_reward|producer_reward|producer_reward|producer_reward|producer_reward|producer_reward|producer_reward");
     for (const auto& i: cf_ops) {
         uint32_t page2 = i.first;
-        auto cf_ops2 = get_history("cyberfounder", page2, std::min(page2, uint32_t(6)), q);
+        auto cf_ops2 = get_history("cyberfounder", page2, std::min(page2, uint32_t(7)), q);
         check_ops(cf_ops2, "producer_reward|custom|producer_reward|transfer_to_vesting|producer_reward");
         break;
     }

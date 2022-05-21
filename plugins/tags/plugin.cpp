@@ -128,7 +128,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void tags_plugin::impl::fill_discussion(discussion& d, const discussion_query& query) const {
-        helper->fill_discussion(d, database_.get_comment(d.author, d.permlink),  query.vote_limit, query.vote_offset);
+        helper->fill_discussion(d, database_.get_comment_by_perm(d.author, d.permlink),  query.vote_limit, query.vote_offset);
 
         d.body_length = static_cast<uint32_t>(d.body.size());
         if (query.truncate_body) {
@@ -274,7 +274,7 @@ namespace golos { namespace plugins { namespace tags {
             if (!query.start_permlink.valid()) {
                 return false;
             }
-            auto* comment = database().find_comment(*query.start_author, *query.start_permlink);
+            auto* comment = database().find_comment_by_perm(*query.start_author, *query.start_permlink);
             if (!comment) {
                 return false;
             }
@@ -294,7 +294,7 @@ namespace golos { namespace plugins { namespace tags {
             if (!query.parent_permlink) {
                 return false;
             }
-            auto* comment = database().find_comment(*query.parent_author, *query.parent_permlink);
+            auto* comment = database().find_comment_by_perm(*query.parent_author, *query.parent_permlink);
             if (comment) {
                 return false;
             }
@@ -362,7 +362,7 @@ namespace golos { namespace plugins { namespace tags {
                 }
 
                 if ((query.parent_author && *query.parent_author != comment->parent_author) ||
-                    (query.parent_permlink && *query.parent_permlink != to_string(comment->parent_permlink))
+                    (query.parent_permlink && db.make_hashlink(*query.parent_permlink) != comment->parent_hashlink)
                 ) {
                     continue;
                 }
@@ -628,8 +628,8 @@ namespace golos { namespace plugins { namespace tags {
             }
 
             if (!!query.start_permlink) {
-                const auto &lidx = db.get_index<comment_index>().indices().get<by_permlink>();
-                auto litr = lidx.find(std::make_tuple(*query.start_author, *query.start_permlink));
+                const auto &lidx = db.get_index<comment_index, by_hashlink>();
+                auto litr = lidx.find(std::make_tuple(*query.start_author, db.make_hashlink(*query.start_permlink)));
                 if (litr == lidx.end()) {
                     return result;
                 }
@@ -945,7 +945,7 @@ namespace golos { namespace plugins { namespace tags {
 
                 auto itr = clu_idx.lower_bound(std::make_tuple(author, before_date));
                 if (start_permlink.size()) {
-                    const auto comment = db.find_comment(author, start_permlink);
+                    const auto comment = db.find_comment_by_perm(author, start_permlink);
                     if (comment == nullptr) {
                         return result;
                     }

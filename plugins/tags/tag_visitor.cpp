@@ -177,7 +177,7 @@ namespace golos { namespace plugins { namespace tags {
 
         comment_object::id_type parent;
         if (comment.parent_author.size()) {
-            parent = db_.get_comment(comment.parent_author, comment.parent_permlink).id;
+            parent = db_.get_comment(comment.parent_author, comment.parent_hashlink).id;
         }
 
         auto com_date = get_comment_last_update(comment);
@@ -237,9 +237,9 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void operation_visitor::create_update_tags(
-        const account_name_type& author, const std::string& permlink
+        const account_name_type& author, const hashlink_type& hashlink
     ) const { try {
-        const auto& comment = db_.get_comment(author, permlink);
+        const auto& comment = db_.get_comment(author, hashlink);
         auto hot = calculate_hot(comment.net_rshares, comment.created);
         auto trending = calculate_trending(comment.net_rshares, comment.created);
         const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
@@ -292,8 +292,8 @@ namespace golos { namespace plugins { namespace tags {
         }
     } FC_CAPTURE_LOG_AND_RETHROW(()) }
 
-    void operation_visitor::update_tags(const account_name_type& author, const std::string& permlink) const {
-        const auto& comment = db_.get_comment(author, permlink);
+    void operation_visitor::update_tags(const account_name_type& author, const hashlink_type& hashlink) const {
+        const auto& comment = db_.get_comment(author, hashlink);
         auto hot = calculate_hot(comment.net_rshares, comment.created);
         auto trending = calculate_trending(comment.net_rshares, comment.created);
         const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
@@ -304,13 +304,13 @@ namespace golos { namespace plugins { namespace tags {
         }
 
         if (comment.parent_author.size()) {
-            update_tags(comment.parent_author, to_string(comment.parent_permlink));
+            update_tags(comment.parent_author, comment.parent_hashlink);
         }
     }
 
-    void operation_visitor::remove_tags(const account_name_type& author, const std::string& permlink) const {
-        const auto& comment = db_.get_comment(author, permlink);
-        const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
+    void operation_visitor::remove_tags(const account_name_type& author, const hashlink_type& hashlink) const {
+        const auto& comment = db_.get_comment(author, hashlink);
+        const auto& comment_idx = db_.get_index<tag_index, by_comment>();
         std::vector<const tag_object*> remove_queue;
 
         remove_queue.reserve(10);
@@ -325,7 +325,7 @@ namespace golos { namespace plugins { namespace tags {
         }
 
         if (comment.parent_author.size()) {
-            update_tags(comment.parent_author, to_string(comment.parent_permlink));
+            update_tags(comment.parent_author, comment.parent_hashlink);
         }
     }
 
@@ -339,7 +339,7 @@ namespace golos { namespace plugins { namespace tags {
                 auto acnt = part[0].substr(1);
                 auto perm = part[1];
 
-                auto c = db_.find_comment(acnt, perm);
+                auto c = db_.find_comment_by_perm(acnt, perm);
                 if (c && c->parent_author.size() == 0) {
                     const auto& comment_idx = db_.get_index<tag_index>().indices().get<by_comment>();
                     auto citr = comment_idx.lower_bound(c->id);
@@ -367,7 +367,7 @@ namespace golos { namespace plugins { namespace tags {
             if (is_valid_account_name(author_str)) {
                 auto author = account_name_type(author_str);
 
-                comment = db_.find_comment(author, permlink);
+                comment = db_.find_comment_by_perm(author, permlink);
             }
         } catch (...) {}
         if (comment != nullptr) {
@@ -397,9 +397,9 @@ namespace golos { namespace plugins { namespace tags {
 
     void operation_visitor::operator()(const comment_reward_operation& op) const {
         // only update existing tags
-        update_tags(op.author, op.permlink);
+        update_tags(op.author, op.hashlink);
 
-        const auto& comment = db_.get_comment(op.author, op.permlink);
+        const auto& comment = db_.get_comment(op.author, op.hashlink);
         const auto& author = db_.get_account(op.author).id;
 
         auto meta = get_metadata(db_, comment, tags_number_, tag_max_length_);
@@ -432,11 +432,11 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void operation_visitor::operator()(const comment_operation& op) const {
-        const auto& comment = db_.get_comment(op.author, op.permlink);
+        const auto& comment = db_.get_comment_by_perm(op.author, op.permlink);
 
         if (db_.calculate_discussion_payout_time(comment) != fc::time_point_sec::maximum()) {
             // in a cashout window
-            create_update_tags(op.author, op.permlink);
+            create_update_tags(op.author, comment.hashlink);
         }
     }
 
@@ -444,19 +444,20 @@ namespace golos { namespace plugins { namespace tags {
         if (db_.is_account_vote(op)) {
             return;
         }
+        auto hashlink = db_.make_hashlink(op.permlink);
         // only update existing tags
-        update_tags(op.author, op.permlink);
+        update_tags(op.author, hashlink);
     }
 
     void operation_visitor::operator()(const comment_payout_update_operation& op) const {
-        const auto& comment = db_.get_comment(op.author, op.permlink);
+        const auto& comment = db_.get_comment(op.author, op.hashlink);
         const auto cashout_time = db_.calculate_discussion_payout_time(comment);
 
         if (cashout_time != fc::time_point_sec::maximum()) {
-            update_tags(op.author, op.permlink);
+            update_tags(op.author, op.hashlink);
         } else {
             // it can be the end of a cashout window
-            remove_tags(op.author, op.permlink);
+            remove_tags(op.author, op.hashlink);
         }
     }
 

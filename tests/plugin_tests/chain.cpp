@@ -98,14 +98,14 @@ BOOST_AUTO_TEST_CASE(clear_votes_default) {
 
     BOOST_TEST_MESSAGE("--- go to 1 block before cashout and check 9 votes stored");
     generate_blocks(interval - 1);
-    const auto& post = db->get_comment("alice", std::string("post"));
+    const auto& post = db->get_comment_by_perm("alice", std::string("post"));
     BOOST_CHECK(post.mode != golos::chain::archived);
     BOOST_CHECK_EQUAL(9, count_stored_votes());
 
     BOOST_TEST_MESSAGE("--- go to cashout block and check 9 votes stored");
     generate_blocks(1);
     {
-        const auto& post = db->get_comment("alice", std::string("post"));
+        const auto& post = db->get_comment_by_perm("alice", std::string("post"));
         BOOST_CHECK_EQUAL(post.mode, golos::chain::archived);
     }
     BOOST_CHECK_EQUAL(9, count_stored_votes());
@@ -132,14 +132,14 @@ BOOST_AUTO_TEST_CASE(clear_votes_before_block) {
 
     BOOST_TEST_MESSAGE("--- go to 1 block before cashout and check 9 votes stored");
     generate_blocks(interval - 1);
-    const auto& post = db->get_comment("alice", std::string("post"));
+    const auto& post = db->get_comment_by_perm("alice", std::string("post"));
     BOOST_CHECK(post.mode != golos::chain::archived);
     BOOST_CHECK_EQUAL(9, count_stored_votes());
 
     BOOST_TEST_MESSAGE("--- go to cashout block and check votes removed");
     generate_blocks(1);
     {
-        const auto& post = db->get_comment("alice", std::string("post"));
+        const auto& post = db->get_comment_by_perm("alice", std::string("post"));
         BOOST_CHECK_EQUAL(post.mode, golos::chain::archived);
     }
     BOOST_CHECK_EQUAL(0, count_stored_votes());
@@ -179,14 +179,14 @@ BOOST_AUTO_TEST_CASE(clear_votes_before_cashout_block) {
 
     BOOST_TEST_MESSAGE("--- go to 1 block before cashout and check 9 votes stored");
     generate_blocks(interval - 1);
-    const auto& post = db->get_comment("alice", std::string("post"));
+    const auto& post = db->get_comment_by_perm("alice", std::string("post"));
     BOOST_CHECK(post.mode != golos::chain::archived);
     BOOST_CHECK_EQUAL(9, count_stored_votes());
 
     BOOST_TEST_MESSAGE("--- go to cashout block and check 9 votes still stored");
     generate_blocks(1);
     {
-        const auto& post = db->get_comment("alice", std::string("post"));
+        const auto& post = db->get_comment_by_perm("alice", std::string("post"));
         BOOST_CHECK_EQUAL(post.mode, golos::chain::archived);
     }
     BOOST_CHECK_EQUAL(9, count_stored_votes());
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(clear_votes_older_n_larger_cashout) {
 
     BOOST_TEST_MESSAGE("--- go to 1 block before cashout and check 9 votes stored");
     generate_blocks(interval - 1);
-    const auto& post = db->get_comment("alice", std::string("post"));
+    const auto& post = db->get_comment_by_perm("alice", std::string("post"));
     BOOST_CHECK(post.mode != golos::chain::archived);
     BOOST_CHECK_EQUAL(9, count_stored_votes());
 
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE(clear_votes_older_n_larger_cashout) {
     generate_blocks(1);
     BOOST_CHECK_EQUAL(9, count_stored_votes());
     {
-        const auto& post = db->get_comment("alice", std::string("post"));
+        const auto& post = db->get_comment_by_perm("alice", std::string("post"));
         BOOST_CHECK_EQUAL(post.mode, golos::chain::archived);
     }
 
@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(clear_votes_older_n_smaller_cashout) {
 
     BOOST_TEST_MESSAGE("--- go to 1 block before cashout and check 10 votes stored");
     generate_blocks(interval - 1);
-    const auto& post = db->get_comment("alice", std::string("post"));
+    const auto& post = db->get_comment_by_perm("alice", std::string("post"));
     BOOST_CHECK(post.mode != golos::chain::archived);
     BOOST_CHECK_EQUAL(10, count_stored_votes());
 
@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_CASE(clear_votes_older_n_smaller_cashout) {
     generate_blocks(1);
     BOOST_CHECK_EQUAL(1, count_stored_votes());
     {
-        const auto& post = db->get_comment("alice", std::string("post"));
+        const auto& post = db->get_comment_by_perm("alice", std::string("post"));
         BOOST_CHECK_EQUAL(post.mode, golos::chain::archived);
     }
 

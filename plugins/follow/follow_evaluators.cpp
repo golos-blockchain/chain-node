@@ -130,7 +130,7 @@ namespace golos {
 
             void reblog_evaluator::do_apply(const reblog_operation& o) {
                 try {
-                    const auto& c = db().get_comment(o.author, o.permlink);
+                    const auto& c = db().get_comment_by_perm(o.author, o.permlink);
                     GOLOS_CHECK_LOGIC(c.parent_author.size() == 0, 
                             logic_errors::only_top_level_posts_reblogged,
                             "Only top level posts can be reblogged");
@@ -209,7 +209,7 @@ namespace golos {
 
             void delete_reblog_evaluator::do_apply(const delete_reblog_operation& o) {
                 try {
-                    const auto& c = db().get_comment(o.author, o.permlink);
+                    const auto& c = db().get_comment_by_perm(o.author, o.permlink);
 
                     // Deleting blog object
 

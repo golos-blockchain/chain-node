@@ -67,6 +67,8 @@ namespace golos { namespace api {
         comment_mode mode = not_set;
 
         comment_object::id_type root_comment;
+        account_name_type root_author; // Not reflected - used only to construct url
+        std::string root_permlink;     //
 
         protocol::curation_curve curation_reward_curve = protocol::curation_curve::detect;
         auction_window_reward_destination_type auction_window_reward_destination = protocol::to_reward_fund;

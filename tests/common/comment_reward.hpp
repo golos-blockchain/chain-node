@@ -229,7 +229,7 @@ namespace golos { namespace chain {
             const account_name_type& author,
             const std::string& permlink
         ) {
-            auto comment = db.find_comment(author, permlink);
+            auto comment = db.find_comment_by_perm(author, permlink);
             BOOST_REQUIRE(comment != nullptr);
             return *comment;
         }

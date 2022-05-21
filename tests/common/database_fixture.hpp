@@ -396,7 +396,6 @@ namespace golos { namespace chain {
 
         using namespace golos::protocol;
 
-        fc::variant_object make_comment_id(const std::string& author, const std::string& permlink);
         fc::variant_object make_limit_order_id(const std::string& author, uint32_t orderid);
         fc::variant_object make_convert_request_id(const std::string& account, uint32_t requestid);
         fc::variant_object make_escrow_id(const string& name, uint32_t escrow_id);
@@ -443,6 +442,8 @@ namespace golos { namespace chain {
             }
 
             virtual ~database_fixture();
+
+            fc::variant_object make_comment_id(const std::string& author, const std::string& permlink);
 
             static fc::ecc::private_key generate_private_key(string seed);
 

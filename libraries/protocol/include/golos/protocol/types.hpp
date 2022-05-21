@@ -215,6 +215,8 @@ namespace golos {
 
             friend bool operator!=(const extended_private_key_type &p1, const extended_private_key_type &p2);
         };
+
+        using hashlink_type = uint64_t;
     }
 }  // golos::protocol
 

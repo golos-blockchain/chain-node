@@ -569,12 +569,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
-            const comment_object &alice_comment = db->get_comment("alice", string("lorem"));
+            const comment_object &alice_comment = db->get_comment_by_perm("alice", string("lorem"));
             const comment_content_object& alice_content = sn_plugin->get_comment_content(alice_comment.id);
 
             BOOST_CHECK_EQUAL(alice_comment.author, op.author);
-            BOOST_CHECK_EQUAL(to_string(alice_comment.permlink), op.permlink);
-            BOOST_CHECK_EQUAL(to_string(alice_comment.parent_permlink), op.parent_permlink);
+            BOOST_CHECK_EQUAL(alice_comment.hashlink, db->make_hashlink(op.permlink));
+            BOOST_CHECK_EQUAL(alice_comment.parent_hashlink, db->make_hashlink(op.parent_permlink));
 
             auto alice_clu_itr = clu_idx.find(alice_comment.id);
             BOOST_CHECK(alice_clu_itr != clu_idx.end());
@@ -615,12 +615,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(bob_private_key, db->get_chain_id());
             BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
-            const comment_object &bob_comment = db->get_comment("bob", string("ipsum"));
+            const comment_object &bob_comment = db->get_comment_by_perm("bob", string("ipsum"));
 
             BOOST_CHECK_EQUAL(bob_comment.author, op.author);
-            BOOST_CHECK_EQUAL(to_string(bob_comment.permlink), op.permlink);
+            BOOST_CHECK_EQUAL(bob_comment.hashlink, db->make_hashlink(op.permlink));
             BOOST_CHECK_EQUAL(bob_comment.parent_author, op.parent_author);
-            BOOST_CHECK_EQUAL(to_string(bob_comment.parent_permlink), op.parent_permlink);
+            BOOST_CHECK_EQUAL(bob_comment.parent_hashlink, db->make_hashlink(op.parent_permlink));
 
             auto bob_clu_itr = clu_idx.find(bob_comment.id);
             BOOST_CHECK(bob_clu_itr != clu_idx.end());
@@ -646,12 +646,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             tx.sign(sam_private_key, db->get_chain_id());
             BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
-            const comment_object &sam_comment = db->get_comment("sam", string("dolor"));
+            const comment_object &sam_comment = db->get_comment_by_perm("sam", string("dolor"));
 
             BOOST_CHECK_EQUAL(sam_comment.author, op.author);
-            BOOST_CHECK_EQUAL(to_string(sam_comment.permlink), op.permlink);
+            BOOST_CHECK_EQUAL(sam_comment.hashlink, db->make_hashlink(op.permlink));
             BOOST_CHECK_EQUAL(sam_comment.parent_author, op.parent_author);
-            BOOST_CHECK_EQUAL(to_string(sam_comment.parent_permlink), op.parent_permlink);
+            BOOST_CHECK_EQUAL(sam_comment.parent_hashlink, db->make_hashlink(op.parent_permlink));
 
             auto sam_clu_itr = clu_idx.find(sam_comment.id);
             BOOST_CHECK(sam_clu_itr != clu_idx.end());
@@ -667,9 +667,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             generate_blocks(60 * 5 / STEEMIT_BLOCK_INTERVAL + 1);
 
             BOOST_TEST_MESSAGE("--- Test modifying a comment");
-            const auto &mod_sam_comment = db->get_comment("sam", string("dolor"));
-            const auto &mod_bob_comment = db->get_comment("bob", string("ipsum"));
-            const auto &mod_alice_comment = db->get_comment("alice", string("lorem"));
+            const auto &mod_sam_comment = db->get_comment_by_perm("sam", string("dolor"));
+            const auto &mod_bob_comment = db->get_comment_by_perm("bob", string("ipsum"));
+            const auto &mod_alice_comment = db->get_comment_by_perm("alice", string("lorem"));
             fc::time_point_sec created = mod_sam_comment.created;
 
             db->modify(mod_sam_comment, [&](comment_object &com) {
@@ -701,9 +701,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
             BOOST_CHECK_EQUAL(mod_sam_comment.author, op.author);
-            BOOST_CHECK_EQUAL(to_string(mod_sam_comment.permlink), op.permlink);
+            BOOST_CHECK_EQUAL(mod_sam_comment.hashlink, db->make_hashlink(op.permlink));
             BOOST_CHECK_EQUAL(mod_sam_comment.parent_author, op.parent_author);
-            BOOST_CHECK_EQUAL(to_string(mod_sam_comment.parent_permlink), op.parent_permlink);
+            BOOST_CHECK_EQUAL(mod_sam_comment.parent_hashlink, db->make_hashlink(op.parent_permlink));
 
             auto mod_sam_clu_itr = clu_idx.find(mod_sam_comment.id);
             BOOST_CHECK(mod_sam_clu_itr != clu_idx.end());
@@ -893,7 +893,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
                 BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
-                auto &alice_comment = db->get_comment("alice", string("foo"));
+                auto &alice_comment = db->get_comment_by_perm("alice", string("foo"));
                 auto itr = vote_idx.find(std::make_tuple(alice_comment.id, alice.id));
                 int64_t max_vote_denom =
                         (STEEMIT_VOTE_REGENERATION_PER_DAY *
@@ -939,7 +939,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 tx.sign(alice_private_key, db->get_chain_id());
                 BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
-                const auto &bob_comment = db->get_comment("bob", string("foo"));
+                const auto &bob_comment = db->get_comment_by_perm("bob", string("foo"));
                 itr = vote_idx.find(std::make_tuple(bob_comment.id, alice.id));
 
                 BOOST_CHECK_EQUAL(db->get_account("alice").voting_power,
@@ -959,12 +959,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 BOOST_TEST_MESSAGE("--- Test payout time extension on vote");
 
                 old_voting_power = db->get_account("bob").voting_power;
-                auto old_abs_rshares = db->get_comment("alice", string("foo")).abs_rshares.value;
+                auto old_abs_rshares = db->get_comment_by_perm("alice", string("foo")).abs_rshares.value;
 
                 generate_blocks(db->head_block_time() + fc::seconds((STEEMIT_CASHOUT_WINDOW_SECONDS / 2)), true);
 
                 const auto &new_bob = db->get_account("bob");
-                const auto &new_alice_comment = db->get_comment("alice", string("foo"));
+                const auto &new_alice_comment = db->get_comment_by_perm("alice", string("foo"));
 
                 op.weight = STEEMIT_100_PERCENT;
                 op.voter = "bob";
@@ -995,7 +995,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 BOOST_TEST_MESSAGE("--- Test negative vote");
 
                 const auto &new_sam = db->get_account("sam");
-                const auto &new_bob_comment = db->get_comment("bob", string("foo"));
+                const auto &new_bob_comment = db->get_comment_by_perm("bob", string("foo"));
 
                 old_abs_rshares = new_bob_comment.abs_rshares.value;
 
@@ -1049,7 +1049,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 tx.sign(sam_private_key, db->get_chain_id());
                 BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
-                auto old_rshares2 = db->get_comment("alice", string("foo")).children_rshares2;
+                auto old_rshares2 = db->get_comment_by_perm("alice", string("foo")).children_rshares2;
 
                 op.weight = STEEMIT_100_PERCENT;
                 op.voter = "alice";
@@ -1066,11 +1066,11 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                          used_power) / STEEMIT_100_PERCENT).to_uint64();
 
                 BOOST_CHECK_EQUAL(
-                        db->get_comment("alice", string("foo")).children_rshares2,
-                        db->get_comment("sam", string("foo")).children_rshares2 + old_rshares2);
+                        db->get_comment_by_perm("alice", string("foo")).children_rshares2,
+                        db->get_comment_by_perm("sam", string("foo")).children_rshares2 + old_rshares2);
                 BOOST_CHECK_EQUAL(
-                        db->get_comment("alice", string( "foo" )).cashout_time,
-                        db->get_comment("alice", string( "foo" )).created + STEEMIT_CASHOUT_WINDOW_SECONDS);
+                        db->get_comment_by_perm("alice", string( "foo" )).cashout_time,
+                        db->get_comment_by_perm("alice", string( "foo" )).created + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
                 validate_database();
 
@@ -6404,7 +6404,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                     CHECK_ERROR(logic_exception, logic_exception::voter_declined_voting_rights)));
 
             db->get<comment_vote_object, by_comment_voter>(
-                boost::make_tuple(db->get_comment("alice", string("test")).id, db->get_account("alice").id)
+                boost::make_tuple(db->get_comment_by_perm("alice", string("test")).id, db->get_account("alice").id)
             );
 
             vote.weight = 0;
@@ -7022,7 +7022,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, vote_op));
             generate_blocks(1);
 
-            auto& alice_comment = db->get_comment("alice", string("foo"));
+            auto& alice_comment = db->get_comment_by_perm("alice", string("foo"));
             const auto& vote_idx = db->get_index<comment_vote_index>().indices().get<by_comment_voter>();
             auto itr = vote_idx.find(std::make_tuple(alice_comment.id, bob_acc.id));
             auto rshares = bob_acc.effective_vesting_shares().amount.value *
@@ -7239,9 +7239,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             auto old_vdo_gests = vdo_itr->vesting_shares;
 
             tx.set_expiration(db->head_block_time() + STEEMIT_BLOCK_INTERVAL);
-            generate_blocks(db->get_comment("alice", string("test")).cashout_time - STEEMIT_BLOCK_INTERVAL, true);
+            generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time - STEEMIT_BLOCK_INTERVAL, true);
 
-            auto& alice_comment = db->get_comment("alice", string("test"));
+            auto& alice_comment = db->get_comment_by_perm("alice", string("test"));
 
             comment_fund total_comment_fund(*db);
             comment_reward alice_comment_reward(*db, total_comment_fund, alice_comment);
@@ -7654,7 +7654,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             db->push_transaction(tx, 0);
             generate_blocks(1);
 
-            const auto& testref_com = db->get_comment("testref", string("foo"));
+            const auto& testref_com = db->get_comment_by_perm("testref", string("foo"));
             const auto& referrer_find = std::find_if(testref_com.beneficiaries.begin(),
                     testref_com.beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
                 return benef.account == testref_acc.referrer_account;
@@ -7769,7 +7769,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             db->push_transaction(tx, 0);
             generate_blocks(1);
 
-            const auto& testref_com2 = db->get_comment("testref", string("foo2"));
+            const auto& testref_com2 = db->get_comment_by_perm("testref", string("foo2"));
             const auto& referrer_find2 = std::find_if(testref_com2.beneficiaries.begin(),
                     testref_com2.beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
                 return benef.account == testref_acc.referrer_account; // Using account before break
@@ -7847,7 +7847,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             db->push_transaction(tx, 0);
             generate_blocks(1);
 
-            const auto& testref_com = db->get_comment("testref", string("foo3"));
+            const auto& testref_com = db->get_comment_by_perm("testref", string("foo3"));
             const auto& referrer_find = std::find_if(testref_com.beneficiaries.begin(),
                     testref_com.beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
                 return benef.account == testref_acc.referrer_account; // Using account before break

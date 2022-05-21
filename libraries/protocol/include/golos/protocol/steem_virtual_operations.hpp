@@ -13,13 +13,14 @@ namespace golos { namespace protocol {
             author_reward_operation() {
             }
 
-            author_reward_operation(const account_name_type &a, const string &p, const asset &s, const asset &st, const asset &v, const asset &sst, const asset &vg)
-                    : author(a), permlink(p), sbd_payout(s), steem_payout(st),
+            author_reward_operation(const account_name_type &a, const hashlink_type &h, const asset &s, const asset &st, const asset &v, const asset &sst, const asset &vg)
+                    : author(a), hashlink(h), sbd_payout(s), steem_payout(st),
                       vesting_payout(v), sbd_and_steem_in_golos(sst), vesting_payout_in_golos(vg) {
             }
 
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
             asset sbd_payout;
             asset steem_payout;
             asset vesting_payout;
@@ -32,15 +33,16 @@ namespace golos { namespace protocol {
             curation_reward_operation() {
             }
 
-            curation_reward_operation(const string &c, const asset &r, const string &a, const string &p, const asset &rg)
+            curation_reward_operation(const string &c, const asset &r, const string &a, const hashlink_type &h, const asset &rg)
                     : curator(c), reward(r), comment_author(a),
-                      comment_permlink(p), reward_in_golos(rg) {
+                      comment_hashlink(h), reward_in_golos(rg) {
             }
 
             account_name_type curator;
             asset reward;
             account_name_type comment_author;
-            string comment_permlink;
+            hashlink_type comment_hashlink;
+            std::string comment_permlink;
             asset reward_in_golos; // not reflected
         };
 
@@ -48,13 +50,14 @@ namespace golos { namespace protocol {
             auction_window_reward_operation() {
             }
 
-            auction_window_reward_operation(const asset &r, const string &a, const string &p)
-                    : reward(r), comment_author(a), comment_permlink(p) {
+            auction_window_reward_operation(const asset &r, const string &a, const hashlink_type &h)
+                    : reward(r), comment_author(a), comment_hashlink(h) {
             }
 
             asset reward;
             account_name_type comment_author;
-            string comment_permlink;
+            hashlink_type comment_hashlink;
+            std::string comment_permlink;
         };
 
 
@@ -62,12 +65,13 @@ namespace golos { namespace protocol {
             comment_reward_operation() {
             }
 
-            comment_reward_operation(const account_name_type &a, const string &pl, const asset &p)
-                    : author(a), permlink(pl), payout(p) {
+            comment_reward_operation(const account_name_type &a, const hashlink_type &hl, const asset &p)
+                    : author(a), hashlink(hl), payout(p) {
             }
 
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
             asset payout;
         };
 
@@ -188,25 +192,27 @@ namespace golos { namespace protocol {
             comment_payout_update_operation() {
             }
 
-            comment_payout_update_operation(const account_name_type &a, const string &p)
-                    : author(a), permlink(p) {
+            comment_payout_update_operation(const account_name_type &a, const hashlink_type &h)
+                    : author(a), hashlink(h) {
             }
 
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
         };
 
         struct comment_benefactor_reward_operation : public virtual_operation {
             comment_benefactor_reward_operation() {
             }
 
-            comment_benefactor_reward_operation(const account_name_type &b, const account_name_type &a, const string &p, const asset &r, const asset& rig)
-                    : benefactor(b), author(a), permlink(p), reward(r), reward_in_golos(rig) {
+            comment_benefactor_reward_operation(const account_name_type &b, const account_name_type &a, const hashlink_type &h, const asset &r, const asset& rig)
+                    : benefactor(b), author(a), hashlink(h), reward(r), reward_in_golos(rig) {
             }
 
             account_name_type benefactor;
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
             asset reward;
             asset reward_in_golos; // not reflected
         };
@@ -249,12 +255,13 @@ namespace golos { namespace protocol {
             total_comment_reward_operation() {
             }
 
-            total_comment_reward_operation(const account_name_type& a, const string &p, const asset& ar, const asset& br, const asset& cr, int64_t nr)
-                    : author(a), permlink(p), author_reward(ar), benefactor_reward(br), curator_reward(cr), net_rshares(nr) {
+            total_comment_reward_operation(const account_name_type& a, const hashlink_type &h, const asset& ar, const asset& br, const asset& cr, int64_t nr)
+                    : author(a), hashlink(h), author_reward(ar), benefactor_reward(br), curator_reward(cr), net_rshares(nr) {
             }
 
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
             asset author_reward;
             asset benefactor_reward;
             asset curator_reward;
@@ -264,13 +271,14 @@ namespace golos { namespace protocol {
         struct worker_reward_operation : public virtual_operation {
             worker_reward_operation() {
             }
-            worker_reward_operation(const account_name_type& w, const account_name_type& wra, const string& wrp, const asset& r, const asset& vr)
-                    : worker(w), worker_request_author(wra), worker_request_permlink(wrp), reward(r), reward_in_vests_if_vest(vr) {
+            worker_reward_operation(const account_name_type& w, const account_name_type& wra, const hashlink_type& wrh, const asset& r, const asset& vr)
+                    : worker(w), worker_request_author(wra), worker_request_hashlink(wrh), reward(r), reward_in_vests_if_vest(vr) {
             }
 
             account_name_type worker;
             account_name_type worker_request_author;
-            string worker_request_permlink;
+            hashlink_type worker_request_hashlink;
+            std::string worker_request_permlink;
             asset reward;
             asset reward_in_vests_if_vest;
         };
@@ -278,12 +286,13 @@ namespace golos { namespace protocol {
         struct worker_state_operation : public virtual_operation {
             worker_state_operation() {
             }
-            worker_state_operation(const account_name_type& a, const string& p, const worker_request_state& s)
-                    : author(a), permlink(p), state(s) {
+            worker_state_operation(const account_name_type& a, const hashlink_type& h, const worker_request_state& s)
+                    : author(a), hashlink(h), state(s) {
             }
 
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
             worker_request_state state;
         };
 
@@ -323,18 +332,20 @@ namespace golos { namespace protocol {
             }
 
             comment_feed_operation(const account_name_type& f,
-                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp)
+                const account_name_type& a, const hashlink_type& h, const account_name_type& pa, const hashlink_type& ph)
                     : follower(f),
-                    author(a), permlink(p), parent_author(pa), parent_permlink(pp) {
+                    author(a), hashlink(h), parent_author(pa), parent_hashlink(ph) {
             }
 
             account_name_type follower;
 
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
 
             account_name_type parent_author;
-            string parent_permlink;
+            hashlink_type parent_hashlink;
+            std::string parent_permlink;
         };
 
         // available only in event_plugin and account_history
@@ -376,14 +387,16 @@ namespace golos { namespace protocol {
             }
 
             comment_reply_operation(
-                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp)
-                    : author(a), permlink(p), parent_author(pa), parent_permlink(pp) {
+                const account_name_type& a, const hashlink_type& h, const account_name_type& pa, const hashlink_type& ph)
+                    : author(a), hashlink(h), parent_author(pa), parent_hashlink(ph) {
             }
 
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
             account_name_type parent_author;
-            string parent_permlink;
+            hashlink_type parent_hashlink;
+            std::string parent_permlink;
         };
 
         // available only in event_plugin and account_history
@@ -392,15 +405,17 @@ namespace golos { namespace protocol {
             }
 
             comment_mention_operation(const account_name_type& m,
-                const account_name_type& a, const string& p, const account_name_type& pa, const string& pp)
-                    : mentioned(m), author(a), permlink(p), parent_author(pa), parent_permlink(pp) {
+                const account_name_type& a, const hashlink_type& h, const account_name_type& pa, const hashlink_type& ph)
+                    : mentioned(m), author(a), hashlink(h), parent_author(pa), parent_hashlink(ph) {
             }
 
             account_name_type mentioned;
             account_name_type author;
-            string permlink;
+            hashlink_type hashlink;
+            std::string permlink;
             account_name_type parent_author;
-            string parent_permlink;
+            hashlink_type parent_hashlink;
+            std::string parent_permlink;
         };
 
         struct accumulative_remainder_operation : public virtual_operation {
@@ -439,10 +454,10 @@ namespace golos { namespace protocol {
         };
 } } //golos::protocol
 
-FC_REFLECT((golos::protocol::author_reward_operation), (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
-FC_REFLECT((golos::protocol::curation_reward_operation), (curator)(reward)(comment_author)(comment_permlink))
-FC_REFLECT((golos::protocol::auction_window_reward_operation), (reward)(comment_author)(comment_permlink))
-FC_REFLECT((golos::protocol::comment_reward_operation), (author)(permlink)(payout))
+FC_REFLECT((golos::protocol::author_reward_operation), (author)(hashlink)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
+FC_REFLECT((golos::protocol::curation_reward_operation), (curator)(reward)(comment_author)(comment_hashlink)(comment_permlink))
+FC_REFLECT((golos::protocol::auction_window_reward_operation), (reward)(comment_author)(comment_hashlink)(comment_permlink))
+FC_REFLECT((golos::protocol::comment_reward_operation), (author)(hashlink)(permlink)(payout))
 FC_REFLECT((golos::protocol::fill_convert_request_operation), (owner)(requestid)(amount_in)(amount_out)(fee_in))
 FC_REFLECT((golos::protocol::liquidity_reward_operation), (owner)(payout))
 FC_REFLECT((golos::protocol::interest_operation), (owner)(interest))
@@ -451,20 +466,20 @@ FC_REFLECT((golos::protocol::shutdown_witness_operation), (owner))
 FC_REFLECT((golos::protocol::fill_order_operation), (current_owner)(current_orderid)(current_pays)(current_trade_fee)(current_trade_fee_receiver)(open_owner)(open_orderid)(open_pays)(open_trade_fee)(open_trade_fee_receiver))
 FC_REFLECT((golos::protocol::fill_transfer_from_savings_operation), (from)(to)(amount)(request_id)(memo))
 FC_REFLECT((golos::protocol::hardfork_operation), (hardfork_id))
-FC_REFLECT((golos::protocol::comment_payout_update_operation), (author)(permlink))
-FC_REFLECT((golos::protocol::comment_benefactor_reward_operation), (benefactor)(author)(permlink)(reward))
+FC_REFLECT((golos::protocol::comment_payout_update_operation), (author)(hashlink)(permlink))
+FC_REFLECT((golos::protocol::comment_benefactor_reward_operation), (benefactor)(author)(hashlink)(permlink)(reward))
 FC_REFLECT((golos::protocol::return_vesting_delegation_operation), (account)(vesting_shares))
 FC_REFLECT((golos::protocol::producer_reward_operation), (producer)(vesting_shares))
 FC_REFLECT((golos::protocol::delegation_reward_operation), (delegator)(delegatee)(payout_strategy)(vesting_shares))
-FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
-FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_author)(worker_request_permlink)(reward)(reward_in_vests_if_vest))
-FC_REFLECT((golos::protocol::worker_state_operation), (author)(permlink)(state))
+FC_REFLECT((golos::protocol::total_comment_reward_operation), (author)(hashlink)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
+FC_REFLECT((golos::protocol::worker_reward_operation), (worker)(worker_request_author)(worker_request_hashlink)(worker_request_permlink)(reward)(reward_in_vests_if_vest))
+FC_REFLECT((golos::protocol::worker_state_operation), (author)(hashlink)(permlink)(state))
 FC_REFLECT((golos::protocol::convert_sbd_debt_operation), (owner)(sbd_amount)(steem_amount)(savings_sbd_amount)(savings_steem_amount))
 FC_REFLECT((golos::protocol::internal_transfer_operation), (from)(to)(amount)(memo))
-FC_REFLECT((golos::protocol::comment_feed_operation), (follower)(author)(permlink)(parent_author)(parent_permlink))
+FC_REFLECT((golos::protocol::comment_feed_operation), (follower)(author)(hashlink)(permlink)(parent_author)(parent_hashlink)(parent_permlink))
 FC_REFLECT((golos::protocol::account_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
 FC_REFLECT((golos::protocol::minus_reputation_operation), (voter)(author)(reputation_before)(reputation_after)(vote_weight))
-FC_REFLECT((golos::protocol::comment_reply_operation), (author)(permlink)(parent_author)(parent_permlink))
-FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(permlink)(parent_author)(parent_permlink))
+FC_REFLECT((golos::protocol::comment_reply_operation), (author)(hashlink)(permlink)(parent_author)(parent_hashlink)(parent_permlink))
+FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(hashlink)(permlink)(parent_author)(parent_hashlink)(parent_permlink))
 FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
 FC_REFLECT((golos::protocol::authority_updated_operation), (account)(owner)(active)(posting)(memo_key))

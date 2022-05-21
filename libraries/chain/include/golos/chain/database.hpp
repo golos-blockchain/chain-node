@@ -135,6 +135,9 @@ namespace golos { namespace chain {
             void set_store_evaluator_events(bool store_evaluator_events);
             bool store_evaluator_events() const;
 
+            void set_store_comment_extras(bool store_comment_extras);
+            bool store_comment_extras() const;
+
             void set_clear_old_worker_votes(bool clear_old_worker_votes);
 
             /**
@@ -196,15 +199,27 @@ namespace golos { namespace chain {
             const worker_request_object& get_worker_request(const comment_id_type& post) const;
             const worker_request_object* find_worker_request(const comment_id_type& post) const;
 
-            const comment_object &get_comment(const account_name_type &author, const shared_string &permlink) const;
+            const hashlink_type make_hashlink_shstr(const shared_string& permlink) const;
 
-            const comment_object *find_comment(const account_name_type &author, const shared_string &permlink) const;
+            const hashlink_type make_hashlink(const std::string& permlink) const;
 
-            const comment_object &get_comment(const account_name_type &author, const string &permlink) const;
+            const comment_object &get_comment(const account_name_type& author, hashlink_type hashlink) const;
 
-            const comment_object *find_comment(const account_name_type &author, const string &permlink) const;
+            const comment_object *find_comment(const account_name_type& author, hashlink_type hashlink) const;
+
+            const comment_object &get_comment_by_perm(const account_name_type &author, const shared_string &permlink) const;
+
+            const comment_object *find_comment_by_perm(const account_name_type &author, const shared_string &permlink) const;
+
+            const comment_object &get_comment_by_perm(const account_name_type &author, const string &permlink) const;
+
+            const comment_object *find_comment_by_perm(const account_name_type &author, const string &permlink) const;
 
             const comment_object &get_comment(const comment_id_type &comment) const;
+
+            const comment_extras_object* find_extras(const account_name_type& author, hashlink_type hashlink) const;
+
+            const comment_extras_object& get_extras(const account_name_type& author, hashlink_type hashlink) const;
 
             const escrow_object &get_escrow(const account_name_type &name, uint32_t escrow_id) const;
 
@@ -755,6 +770,8 @@ namespace golos { namespace chain {
             bool _store_memo_in_savings_withdraws = true;
 
             bool _store_evaluator_events = true;
+
+            bool _store_comment_extras = true;
 
             bool _clear_old_worker_votes = false;
 
