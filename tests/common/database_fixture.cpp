@@ -138,11 +138,6 @@ namespace golos { namespace chain {
         using golos::plugins::json_rpc::msg_pack;
 
 
-        fc::variant_object make_comment_id(const std::string& author, const std::string& permlink) {
-            auto res = fc::mutable_variant_object()("account",author)("permlink",permlink);
-            return fc::variant_object(res);
-        }
-
         fc::variant_object make_limit_order_id(const std::string& author, uint32_t orderid) {
             auto res = fc::mutable_variant_object()("account",author)("order_id",orderid);
             return fc::variant_object(res);
@@ -329,6 +324,11 @@ namespace golos { namespace chain {
             return _added_ops;
         } FC_LOG_AND_RETHROW(); }
 
+        fc::variant_object database_fixture::make_comment_id(const std::string& author, const std::string& permlink) {
+            auto hashlink = db->make_hashlink(permlink);
+            auto res = fc::mutable_variant_object()("account",author)("hashlink",hashlink);
+            return fc::variant_object(res);
+        }
 
         fc::ecc::private_key database_fixture::generate_private_key(string seed) {
             return fc::ecc::private_key::regenerate(fc::sha256::hash(seed));
@@ -508,7 +508,7 @@ namespace golos { namespace chain {
                 trx.operations.clear();
                 trx.signatures.clear();
 
-                return db->get_comment(author, permlink);
+                return db->get_comment_by_perm(author, permlink);
             }
             FC_CAPTURE_AND_RETHROW((author)(permlink))
         }

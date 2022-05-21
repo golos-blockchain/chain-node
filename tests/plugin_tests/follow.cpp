@@ -23,7 +23,6 @@ using golos::protocol::public_key_type;
 using golos::protocol::signed_transaction;
 using golos::protocol::custom_binary_operation;
 using golos::chain::account_id_type;
-using golos::chain::make_comment_id;
 
 using golos::chain::account_name_set;
 

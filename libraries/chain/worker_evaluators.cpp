@@ -12,7 +12,7 @@ namespace golos { namespace chain {
     void worker_request_evaluator::do_apply(const worker_request_operation& op) {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_request_operation");
 
-        const auto& post = _db.get_comment(op.author, op.permlink);
+        const auto& post = _db.get_comment_by_perm(op.author, op.permlink);
 
         const auto* wro = _db.find_worker_request(post.id);
 
@@ -68,7 +68,7 @@ namespace golos { namespace chain {
     void worker_request_delete_evaluator::do_apply(const worker_request_delete_operation& op) {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_22__8, "worker_request_delete_operation");
 
-        const auto& post = _db.get_comment(op.author, op.permlink);
+        const auto& post = _db.get_comment_by_perm(op.author, op.permlink);
         const auto& wro = _db.get_worker_request(post.id);
 
         CHECK_REQUEST_STATE(wro.state < REQUEST_STATE::payment_complete, "Request already closed");
@@ -86,7 +86,7 @@ namespace golos { namespace chain {
 
         GOLOS_CHECK_BALANCE(_db, _db.get_account(op.voter), EFFECTIVE_VESTING, asset(1, VESTS_SYMBOL));
 
-        const auto& post = _db.get_comment(op.author, op.permlink);
+        const auto& post = _db.get_comment_by_perm(op.author, op.permlink);
         const auto& wro = _db.get_worker_request(post.id);
 
         CHECK_REQUEST_STATE(wro.state < REQUEST_STATE::payment_complete, "Request closed, cannot vote");

@@ -50,16 +50,18 @@ namespace golos {
 
             template<typename Constructor, typename Allocator>
             comment_object(Constructor &&c, allocator <Allocator> a)
-                    :parent_permlink(a), permlink(a), beneficiaries(a) {
+                    : beneficiaries(a) {
                 c(*this);
             }
 
             id_type id;
 
             account_name_type parent_author;
-            shared_string parent_permlink;
+            hashlink_type parent_hashlink;
             account_name_type author;
-            shared_string permlink;
+            hashlink_type hashlink;
+
+            uint16_t parent_permlink_size; // Need because of bug with strcmp_equal in comment_evaluator
 
             time_point_sec created;
             time_point_sec last_payout;
@@ -99,18 +101,36 @@ namespace golos {
             auction_window_reward_destination_type auction_window_reward_destination = protocol::to_author;
             uint16_t auction_window_size = STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
 
-            asset max_accepted_payout = asset(1000000000, SBD_SYMBOL);       /// SBD value of the maximum payout this post will receive
+            share_type max_accepted_payout = 1000000000; /// GBG value of the maximum payout this post will receive
             uint16_t percent_steem_dollars = STEEMIT_100_PERCENT; /// the percent of Golos Dollars to key, unkept amounts will be received as Golos Power
             bool allow_replies = true;      /// allows a post to disable replies.
             bool allow_votes = true;      /// allows a post to receive votes;
             bool allow_curation_rewards = true;
             uint16_t curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
-            asset min_golos_power_to_curate = asset(0, STEEM_SYMBOL);
+            share_type min_golos_power_to_curate = 0; /// GOLOS value
             bool has_worker_request = false;
 
             bip::vector <protocol::beneficiary_route_type, allocator<protocol::beneficiary_route_type>> beneficiaries;
         };
 
+        class comment_extras_object
+                : public object<comment_extras_object_type, comment_extras_object> {
+        public:
+            comment_extras_object() = delete;
+
+            template<typename Constructor, typename Allocator>
+            comment_extras_object(Constructor &&c, allocator <Allocator> a)
+                    : permlink(a), parent_permlink(a) {
+                c(*this);
+            }
+
+            id_type id;
+
+            account_name_type author;
+            hashlink_type hashlink;
+            shared_string permlink;
+            shared_string parent_permlink;
+        };
 
         struct delegator_vote_interest_rate {
             delegator_vote_interest_rate() = default;
@@ -187,7 +207,7 @@ namespace golos {
 
 
         struct by_cashout_time; /// cashout_time
-        struct by_permlink; /// author, perm
+        struct by_hashlink;
         struct by_root;
         struct by_parent;
 
@@ -204,35 +224,53 @@ namespace golos {
                         composite_key<comment_object,
                         member <comment_object, time_point_sec, &comment_object::cashout_time>,
                         member<comment_object, comment_id_type, &comment_object::id>>>,
-                ordered_unique <
-                    tag<by_permlink>, /// used by consensus to find posts referenced in ops
+                ordered_unique<
+                    tag<by_hashlink>,
                         composite_key<comment_object,
-                        member <comment_object, account_name_type, &comment_object::author>,
-                        member<comment_object, shared_string, &comment_object::permlink>>,
-                    composite_key_compare <std::less<account_name_type>, strcmp_less>>,
+                        member<comment_object, account_name_type, &comment_object::author>,
+                        member<comment_object, hashlink_type, &comment_object::hashlink>>,
+                    composite_key_compare <std::less<account_name_type>, std::less<hashlink_type>>>,
                 ordered_unique <
                     tag<by_root>,
                         composite_key<comment_object,
                         member <comment_object, comment_id_type, &comment_object::root_comment>,
                         member<comment_object, comment_id_type, &comment_object::id>>>,
                 ordered_unique <
-                    tag<by_parent>, /// used by consensus to find posts referenced in ops
+                    tag<by_parent>,
                         composite_key<comment_object,
                         member <comment_object, account_name_type, &comment_object::parent_author>,
-                        member<comment_object, shared_string, &comment_object::parent_permlink>,
+                        member<comment_object, hashlink_type, &comment_object::hashlink>,
                         member<comment_object, comment_id_type, &comment_object::id>>,
-                    composite_key_compare <std::less<account_name_type>, strcmp_less, std::less<comment_id_type>> >
+                    composite_key_compare <std::less<account_name_type>, std::less<hashlink_type>, std::less<comment_id_type>> >
             >,
             allocator <comment_object>
         >
         comment_index;
 
+        using comment_extras_index = multi_index_container<
+            comment_extras_object,
+            indexed_by<
+                ordered_unique <tag<by_id>,
+                    member<comment_extras_object, comment_extras_object::id_type, &comment_extras_object::id>
+                >,
+                ordered_unique<tag<by_hashlink>, composite_key<comment_extras_object,
+                    member<comment_extras_object, account_name_type, &comment_extras_object::author>,
+                    member<comment_extras_object, hashlink_type, &comment_extras_object::hashlink>
+                >, composite_key_compare<
+                    std::less<account_name_type>,
+                    std::less<hashlink_type>
+                >>
+            >,
+            allocator<comment_extras_object>
+        >;
     }
 } // golos::chain
 
 FC_REFLECT_ENUM(golos::chain::comment_mode, (not_set)(first_payout)(second_payout)(archived))
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_object, golos::chain::comment_index)
+
+CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_extras_object, golos::chain::comment_extras_index)
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_vote_object, golos::chain::comment_vote_index)
 

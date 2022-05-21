@@ -96,7 +96,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             BOOST_TEST_MESSAGE("Generate blocks up until first payout");
 
             auto& gpo = db->get_dynamic_global_properties();
-            auto& bob_comment = db->get_comment("bob", string("test"));
+            auto& bob_comment = db->get_comment_by_perm("bob", string("test"));
             auto& bob_account = db->get_account("bob");
 
             generate_blocks(bob_comment.cashout_time - STEEMIT_BLOCK_INTERVAL, true);
@@ -281,13 +281,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("Generating more blocks...");
 
-            generate_blocks(db->get_comment("bob", string("test")).cashout_time - STEEMIT_BLOCK_INTERVAL, true);
+            generate_blocks(db->get_comment_by_perm("bob", string("test")).cashout_time - STEEMIT_BLOCK_INTERVAL, true);
 
             BOOST_TEST_MESSAGE("Check comments have not been paid out.");
 
             const auto& vote_idx = db->get_index<comment_vote_index>().indices().get<by_comment_voter>();
-            auto& alice_comment = db->get_comment("alice", string("test"));
-            auto& bob_comment = db->get_comment("bob", string("test"));
+            auto& alice_comment = db->get_comment_by_perm("alice", string("test"));
+            auto& bob_comment = db->get_comment_by_perm("bob", string("test"));
             auto& alice_account = db->get_account("alice");
             auto& bob_account = db->get_account("bob");
             auto& sam_account = db->get_account("sam");
@@ -424,8 +424,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("Generating  blocks...");
 
-            auto& alice_comment1 = db->get_comment("alice", string("test1"));
-            auto& bob_comment1 = db->get_comment("bob", string("test1"));
+            auto& alice_comment1 = db->get_comment_by_perm("alice", string("test1"));
+            auto& bob_comment1 = db->get_comment_by_perm("bob", string("test1"));
 
             generate_blocks(bob_comment1.cashout_time - STEEMIT_BLOCK_INTERVAL, true);
 
@@ -564,14 +564,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             db->push_transaction(tx, 0);
 
             tx.set_expiration(db->head_block_time() + STEEMIT_BLOCK_INTERVAL);
-            generate_blocks(db->get_comment("alice", string("test")).cashout_time - STEEMIT_BLOCK_INTERVAL, true);
+            generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time - STEEMIT_BLOCK_INTERVAL, true);
 
             auto& gpo = db->get_dynamic_global_properties();
 
-            auto& alice_comment = db->get_comment("alice", string("test"));
-            auto& bob_comment = db->get_comment("bob", string("test"));
-            auto& dave_comment = db->get_comment("dave", string("test"));
-            auto& sam_comment = db->get_comment("sam", string("test"));
+            auto& alice_comment = db->get_comment_by_perm("alice", string("test"));
+            auto& bob_comment = db->get_comment_by_perm("bob", string("test"));
+            auto& dave_comment = db->get_comment_by_perm("dave", string("test"));
+            auto& sam_comment = db->get_comment_by_perm("sam", string("test"));
 
             auto& alice_account = db->get_account("alice");
             auto& bob_account = db->get_account("bob");
@@ -775,7 +775,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             auto& gpo = db->get_dynamic_global_properties();
 
-            auto& alice_comment = db->get_comment("alice", string("test"));
+            auto& alice_comment = db->get_comment_by_perm("alice", string("test"));
             auto& alice_account = db->get_account("alice");
             auto& bob_account = db->get_account("bob");
             auto& sam_account = db->get_account("sam");
@@ -1226,13 +1226,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             vote.weight = STEEMIT_100_PERCENT;
             BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vote));
 
-            generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
+            generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time, true);
 
             BOOST_REQUIRE(db->has_index<golos::plugins::social_network::comment_reward_index>());
 
             const auto& cr_idx = db->get_index<golos::plugins::social_network::comment_reward_index>().indices().get<golos::plugins::social_network::by_comment>();
 
-            auto alice_cr_itr = cr_idx.find(db->get_comment("alice", string("test")).id);
+            auto alice_cr_itr = cr_idx.find(db->get_comment_by_perm("alice", string("test")).id);
             BOOST_REQUIRE(alice_cr_itr != cr_idx.end());
 
             BOOST_TEST_MESSAGE("--- Transferring worker sbd payout to alice");
@@ -1675,7 +1675,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
+            generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time, true);
 
             BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
             vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
@@ -1882,7 +1882,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
+            generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time, true);
 
             BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
             vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
@@ -2546,7 +2546,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             ).average_bandwidth;
 
             BOOST_REQUIRE(bandwidth == alice_post_bandwidth);
-            BOOST_REQUIRE(db->get_comment("alice", string("test1")).reward_weight == STEEMIT_100_PERCENT);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test1")).reward_weight == STEEMIT_100_PERCENT);
 
             tx.operations.clear();
             tx.signatures.clear();
@@ -2571,7 +2571,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
                 boost::make_tuple("alice", bandwidth_type::post)).average_bandwidth;
 
             BOOST_REQUIRE(bandwidth == alice_post_bandwidth);
-            BOOST_REQUIRE(db->get_comment("alice", string("test2")).reward_weight == STEEMIT_100_PERCENT);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test2")).reward_weight == STEEMIT_100_PERCENT);
 
             generate_blocks(
                 db->head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds(STEEMIT_BLOCK_INTERVAL),
@@ -2596,7 +2596,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
                 boost::make_tuple("alice", bandwidth_type::post)).average_bandwidth;
 
             BOOST_REQUIRE(bandwidth == alice_post_bandwidth);
-            BOOST_REQUIRE(db->get_comment("alice", string("test3")).reward_weight == STEEMIT_100_PERCENT);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test3")).reward_weight == STEEMIT_100_PERCENT);
 
             generate_blocks(
                 db->head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds(STEEMIT_BLOCK_INTERVAL),
@@ -2622,7 +2622,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
                 boost::make_tuple("alice", bandwidth_type::post)).average_bandwidth;
 
             BOOST_REQUIRE(bandwidth == alice_post_bandwidth);
-            BOOST_REQUIRE(db->get_comment("alice", string("test4")).reward_weight == STEEMIT_100_PERCENT);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test4")).reward_weight == STEEMIT_100_PERCENT);
 
             generate_blocks(
                 db->head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds(STEEMIT_BLOCK_INTERVAL),
@@ -2651,7 +2651,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
                 boost::make_tuple("alice", bandwidth_type::post)).average_bandwidth;
 
             BOOST_REQUIRE(bandwidth == alice_post_bandwidth);
-            BOOST_REQUIRE(db->get_comment("alice", string("test5")).reward_weight == reward_weight);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test5")).reward_weight == reward_weight);
         }
         FC_LOG_AND_RETHROW()
     }
@@ -2710,14 +2710,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(bob_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).last_payout == fc::time_point_sec::min());
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).cashout_time != fc::time_point_sec::min());
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).cashout_time != fc::time_point_sec::maximum());
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).last_payout == fc::time_point_sec::min());
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).cashout_time != fc::time_point_sec::min());
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).cashout_time != fc::time_point_sec::maximum());
 
-            generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
+            generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time, true);
 
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).last_payout == db->head_block_time());
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).cashout_time == fc::time_point_sec::maximum());
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).last_payout == db->head_block_time());
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).cashout_time == fc::time_point_sec::maximum());
 
             vote.voter = "sam";
 
@@ -2729,9 +2729,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(sam_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).cashout_time == fc::time_point_sec::maximum());
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).net_rshares.value == 0);
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).abs_rshares.value == 0);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).cashout_time == fc::time_point_sec::maximum());
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).net_rshares.value == 0);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).abs_rshares.value == 0);
 
             vote.voter = "bob";
             vote.weight = STEEMIT_100_PERCENT * -1;
@@ -2744,9 +2744,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(bob_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).cashout_time == fc::time_point_sec::maximum());
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).net_rshares.value == 0);
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).abs_rshares.value == 0);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).cashout_time == fc::time_point_sec::maximum());
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).net_rshares.value == 0);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).abs_rshares.value == 0);
 
             vote.voter = "dave";
             vote.weight = 0;
@@ -2759,9 +2759,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(dave_private_key, db->get_chain_id());
 
             db->push_transaction(tx, 0);
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).cashout_time == fc::time_point_sec::maximum());
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).net_rshares.value == 0);
-            BOOST_REQUIRE(db->get_comment("alice", string("test")).abs_rshares.value == 0);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).cashout_time == fc::time_point_sec::maximum());
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).net_rshares.value == 0);
+            BOOST_REQUIRE(db->get_comment_by_perm("alice", string("test")).abs_rshares.value == 0);
 
             comment.body = "test4";
 
@@ -2827,7 +2827,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             BOOST_TEST_MESSAGE("Generating blocks up to comment payout");
 
             generate_blocks(fc::time_point_sec(
-                db->get_comment(comment.author, comment.permlink).cashout_time.sec_since_epoch() -
+                db->get_comment_by_perm(comment.author, comment.permlink).cashout_time.sec_since_epoch() -
                 2 * STEEMIT_BLOCK_INTERVAL));
 
             auto &gpo = db->get_dynamic_global_properties();
@@ -2947,7 +2947,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            generate_blocks(db->get_comment("alice", string("test")).cashout_time, true);
+            generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time, true);
 
             BOOST_TEST_MESSAGE("Setting SBD percent to greater than 10% market cap.");
 

@@ -61,9 +61,9 @@ namespace golos { namespace plugins { namespace tags {
         double calculate_trending(const share_type& score, const time_point_sec& created) const;
 
         /** finds tags that have been added or removed or updated */
-        void create_update_tags(const account_name_type& author, const std::string& permlink) const;
-        void update_tags(const account_name_type& author, const std::string& permlink) const;
-        void remove_tags(const account_name_type& author, const std::string& permlink) const;
+        void create_update_tags(const account_name_type& author, const hashlink_type& hashlink) const;
+        void update_tags(const account_name_type& author, const hashlink_type& hashlink) const;
+        void remove_tags(const account_name_type& author, const hashlink_type& hashlink) const;
 
         void operator()(const comment_operation& op) const;
 

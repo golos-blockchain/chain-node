@@ -51,7 +51,7 @@ namespace golos {
 
                 void operator()(const delete_comment_operation& op) const {
                     try {
-                        const auto* comment = _db.find_comment(op.author, op.permlink);
+                        const auto* comment = _db.find_comment_by_perm(op.author, op.permlink);
 
                         if (comment == nullptr) {
                             return;
@@ -118,7 +118,11 @@ namespace golos {
                     } FC_CAPTURE_AND_RETHROW()
                 }
 
-                void process_mentions(const comment_operation& op) const {
+                void init_parent_hash(hashlink_type& parent_hashlink, const comment_operation& op) const {
+                    if (!parent_hashlink) parent_hashlink = _db.make_hashlink(op.parent_permlink);
+                }
+
+                void process_mentions(const comment_operation& op, hashlink_type hashlink, hashlink_type& parent_hashlink) const {
                     const auto& idx = _db.get_index<follow_index, by_following_follower>();
                     
                     auto max_mentions = _plugin.max_mentions_count();
@@ -139,8 +143,9 @@ namespace golos {
                                     && _db.find_account(mentioned)) {
                                 auto itr = idx.find(std::make_tuple(op.author, mentioned));
                                 if (itr == idx.end() || !(itr->what & (1 << ignore))) {
+                                    init_parent_hash(parent_hashlink, op);
                                     _db.push_event(comment_mention_operation(mentioned,
-                                            op.author, op.permlink, op.parent_author, op.parent_permlink));
+                                            op.author, hashlink, op.parent_author, parent_hashlink));
                                 }
                             }
                         }
@@ -150,21 +155,26 @@ namespace golos {
 
                 void operator()(const comment_operation& op) const {
                     try {
-                        const auto& c = _db.get_comment(op.author, op.permlink);
+                        auto hashlink = _db.make_hashlink(op.permlink);
+
+                        const auto& c = _db.get_comment(op.author, hashlink);
 
                         if (c.created != _db.head_block_time()) {
                             return;
                         }
 
-                        process_mentions(op);
+                        hashlink_type parent_hashlink = 0;
+
+                        process_mentions(op, hashlink, parent_hashlink);
 
                         const auto& idx = _db.get_index<follow_index, by_following_follower>();
 
                         if (op.parent_author.size() && op.parent_author != op.author) {
                             auto itr = idx.find(std::make_tuple(op.author, op.parent_author));
                             if (itr == idx.end() || !(itr->what & (1 << ignore))) {
+                                init_parent_hash(parent_hashlink, op);
                                 _db.push_event(comment_reply_operation(
-                                            op.author, op.permlink, op.parent_author, op.parent_permlink));
+                                            op.author, hashlink, op.parent_author, parent_hashlink));
                             }
                         }
 
@@ -191,8 +201,9 @@ namespace golos {
                                         f.account_feed_id = next_id;
                                     });
 
+                                    init_parent_hash(parent_hashlink, op);
                                     _db.push_event(comment_feed_operation(itr->follower,
-                                        op.author, op.permlink, op.parent_author, op.parent_permlink));
+                                        op.author, hashlink, op.parent_author, parent_hashlink));
 
                                     const auto& old_feed_idx = _db.get_index<feed_index, by_old_feed>();
                                     auto old_feed = old_feed_idx.lower_bound(itr->follower);
@@ -524,10 +535,12 @@ namespace golos {
 
                 for (; itr != feed_idx.end() && itr->account == account && result.size() < limit; ++itr) {
                     const auto& comment = db.get(itr->comment);
-                    if (category_matches_masks(to_string(comment.parent_permlink), filter_tag_masks)) continue;
+                    const auto* extras = db.find_extras(comment.author, comment.hashlink);
+                    if (!extras) continue;
+                    if (category_matches_masks(to_string(extras->parent_permlink), filter_tag_masks)) continue;
                     feed_entry entry;
                     entry.author = comment.author;
-                    entry.permlink = to_string(comment.permlink);
+                    entry.permlink = to_string(extras->permlink);
                     entry.entry_id = itr->account_feed_id;
                     if (itr->first_reblogged_by != account_name_type()) {
                         entry.reblog_by.reserve(itr->reblogged_by.size());
@@ -617,10 +630,12 @@ namespace golos {
 
                 for (; itr != blog_idx.end() && itr->account == account && result.size() < limit; ++itr) {
                     const auto& comment = db.get(itr->comment);
-                    if (category_matches_masks(to_string(comment.parent_permlink), filter_tag_masks)) continue;
+                    const auto* extras = db.find_extras(comment.author, comment.hashlink);
+                    if (!extras) continue;
+                    if (category_matches_masks(to_string(extras->parent_permlink), filter_tag_masks)) continue;
                     blog_entry entry;
                     entry.author = comment.author;
-                    entry.permlink = to_string(comment.permlink);
+                    entry.permlink = to_string(extras->permlink);
                     entry.blog = account;
                     entry.reblog_on = itr->reblogged_on;
                     entry.entry_id = itr->blog_feed_id;
@@ -696,7 +711,7 @@ namespace golos {
             ) {
                 auto& db = database();
                 std::vector<account_name_type> result;
-                const auto& post = db.get_comment(author, permlink);
+                const auto& post = db.get_comment_by_perm(author, permlink);
                 const auto& blog_idx = db.get_index<blog_index, by_comment>();
                 auto itr = blog_idx.lower_bound(post.id);
                 while (itr != blog_idx.end() && itr->comment == post.id && result.size() < 2000) {

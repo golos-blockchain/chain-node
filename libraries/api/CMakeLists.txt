@@ -11,6 +11,7 @@ list(APPEND CURRENT_TARGET_HEADERS
     include/golos/api/account_vote.hpp
     include/golos/api/discussion_helper.hpp
     include/golos/api/block_objects.hpp
+    include/golos/api/operation_history_extender.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES

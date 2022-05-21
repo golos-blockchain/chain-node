@@ -65,6 +65,7 @@ namespace golos { namespace plugins { namespace chain {
         bool store_asset_metadata = true;
         bool store_memo_in_savings_withdraws = true;
         bool store_evaluator_events = false;
+        bool store_comment_extras = true;
 
         boost::asio::deadline_timer transit_timer;
 
@@ -323,6 +324,9 @@ namespace golos { namespace plugins { namespace chain {
                 "store-asset-metadata", bpo::value<bool>()->default_value(true),
                 "store metadata for all assets"
             ) (
+                "store-comment-extras", bpo::value<bool>()->default_value(true),
+                "store comment extras (permlinks)"
+            ) (
                 "serialize-state", bpo::value<std::string>(),
                 "The location of the file to serialize state to (abs path or relative to application data dir). "
                 "If set then app will exit after serialization."
@@ -462,6 +466,8 @@ namespace golos { namespace plugins { namespace chain {
 
         my->store_evaluator_events = options.at("store-evaluator-events").as<bool>();
 
+        my->store_comment_extras = options.at("store-comment-extras").as<bool>();
+
         my->clear_old_worker_votes = options.at("clear-old-worker-votes").as<bool>();
     }
 
@@ -499,6 +505,8 @@ namespace golos { namespace plugins { namespace chain {
         my->db.set_store_memo_in_savings_withdraws(my->store_memo_in_savings_withdraws);
 
         my->db.set_store_evaluator_events(my->store_evaluator_events);
+
+        my->db.set_store_comment_extras(my->store_comment_extras);
 
         my->db.set_clear_old_worker_votes(my->clear_old_worker_votes);
 

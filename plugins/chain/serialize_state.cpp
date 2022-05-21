@@ -13,7 +13,6 @@
 namespace golos { namespace custom_pack {
 
 enum str_type {
-    permlink,
     meta,
     other,
     _size
@@ -75,9 +74,9 @@ template<typename S>
 void pack(S& s, const golos::chain::comment_object& c) {
     fc::raw::pack(s, c.id);
     fc::raw::pack(s, c.parent_author);
-    fc::raw::pack(s, c.parent_permlink);
+    fc::raw::pack(s, c.parent_hashlink);
     fc::raw::pack(s, c.author);
-    fc::raw::pack(s, c.permlink);
+    fc::raw::pack(s, c.hashlink);
     fc::raw::pack(s, unsigned_int(c.depth));
     fc::raw::pack(s, unsigned_int(c.children));
     fc::raw::pack(s, uint8_t(c.mode));
@@ -98,7 +97,7 @@ void pack(S& s, const golos::chain::comment_object& c) {
         fc::raw::pack(s, c.curation_reward_curve);
         fc::raw::pack(s, c.auction_window_reward_destination);
         fc::raw::pack(s, c.auction_window_size);
-        fc::raw::pack(s, c.max_accepted_payout);
+        fc::raw::pack(s, golos::protocol::asset(c.max_accepted_payout, SBD_SYMBOL));
         fc::raw::pack(s, c.percent_steem_dollars);
         fc::raw::pack(s, c.allow_replies);
         fc::raw::pack(s, c.allow_votes);
@@ -291,9 +290,6 @@ void plugin::state_serializer::serialize(golos::chain::database &db_, const bfs:
         // STORE(transaction_index);                    // not needed
         // STORE(block_summary_index);                  // not needed
         STORE(witness_schedule_index);
-        custom_pack::_current_str_type = custom_pack::permlink;
-        STORE_REMAP(comment_index, REMAP_LAMBDA1(root_comment, post_ids), &post_ids);
-        serialize_vote_table(db_, out, REMAP_LAMBDA2(voter, account_ids, comment, post_ids));
         custom_pack::_current_str_type = custom_pack::other;
         STORE_REMAP(witness_vote_index, REMAP_LAMBDA2(witness, witness_ids, account, account_ids));
         STORE(limit_order_index);
@@ -347,7 +343,6 @@ void plugin::state_serializer::serialize(golos::chain::database &db_, const bfs:
         };
 
         store_map_table('A', custom_pack::_accs_stats);
-        store_map_table('P', custom_pack::_stats[custom_pack::permlink]);
 
         wlog("Map SHA256 hash: ${h}", ("h", om.hash().str()));
         om.close();

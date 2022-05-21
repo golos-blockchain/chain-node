@@ -66,13 +66,6 @@ namespace golos { namespace chain {
             }
         }
 
-        struct strcmp_equal {
-            bool operator()(const shared_string &a, const string &b) {
-                return a.size() == b.size() ||
-                       std::strcmp(a.c_str(), b.c_str()) == 0;
-            }
-        };
-
         void store_account_json_metadata(
             database& db, const account_name_type& account, const string& json_metadata, bool skip_empty = false
         ) {
@@ -460,7 +453,8 @@ namespace golos { namespace chain {
                         "Operation cannot be processed because account is currently challenged.");
             }
 
-            const auto &comment = _db.get_comment(o.author, o.permlink);
+            auto hashlink = _db.make_hashlink(o.permlink);
+            const auto &comment = _db.get_comment(o.author, hashlink);
 
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__8)
                 && comment.parent_author == STEEMIT_ROOT_POST_PARENT) {
@@ -496,19 +490,25 @@ namespace golos { namespace chain {
             /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_6__80) &&
                 comment.parent_author != STEEMIT_ROOT_POST_PARENT) {
-                auto parent = &_db.get_comment(comment.parent_author, comment.parent_permlink);
+                auto parent = &_db.get_comment(comment.parent_author, comment.parent_hashlink);
                 while (parent) {
                     _db.modify(*parent, [&](comment_object &p) {
                         p.children--;
                     });
                     if (parent->parent_author != STEEMIT_ROOT_POST_PARENT) {
-                        parent = &_db.get_comment(parent->parent_author, parent->parent_permlink);
+                        parent = &_db.get_comment(parent->parent_author, parent->parent_hashlink);
                     } else
                     {
                         parent = nullptr;
                     }
                 }
             }
+
+            auto* extras = _db.find_extras(o.author, hashlink);
+            if (extras) {
+                _db.remove(*extras);
+            }
+
             _db.remove(comment);
         }
 
@@ -630,8 +630,9 @@ namespace golos { namespace chain {
             }
 
 
-            const auto &comment = _db.get_comment(o.author, o.permlink);
-            if (!o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout) {
+            const auto &comment = _db.get_comment_by_perm(o.author, o.permlink);
+            auto max_accepted_payout = asset(comment.max_accepted_payout, SBD_SYMBOL);
+            if (!o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < max_accepted_payout) {
                 GOLOS_CHECK_LOGIC(comment.abs_rshares == 0,
                         logic_exception::comment_options_requires_no_rshares,
                         "One of the included comment options requires the comment to have no rshares allocated to it.");
@@ -643,7 +644,7 @@ namespace golos { namespace chain {
             GOLOS_CHECK_LOGIC(comment.allow_votes >= o.allow_votes,
                     logic_exception::voting_cannot_be_reenabled,
                     "Voting cannot be re-enabled.");
-            GOLOS_CHECK_LOGIC(comment.max_accepted_payout >= o.max_accepted_payout,
+            GOLOS_CHECK_LOGIC(max_accepted_payout >= o.max_accepted_payout,
                     logic_exception::comment_cannot_accept_greater_payout,
                     "A comment cannot accept a greater payout.");
             GOLOS_CHECK_LOGIC(comment.percent_steem_dollars >= o.percent_steem_dollars,
@@ -651,7 +652,7 @@ namespace golos { namespace chain {
                     "A comment cannot accept a greater percent SBD.");
 
             _db.modify(comment, [&](comment_object& c) {
-                c.max_accepted_payout = o.max_accepted_payout;
+                c.max_accepted_payout = o.max_accepted_payout.amount;
                 c.percent_steem_dollars = o.percent_steem_dollars;
                 c.allow_votes = o.allow_votes;
                 c.allow_curation_rewards = o.allow_curation_rewards;
@@ -873,8 +874,8 @@ namespace golos { namespace chain {
 
                 const auto& mprops = _db.get_witness_schedule_object().median_props;
 
-                const auto &by_permlink_idx = _db.get_index<comment_index>().indices().get<by_permlink>();
-                auto itr = by_permlink_idx.find(boost::make_tuple(o.author, o.permlink));
+                auto hashlink = _db.make_hashlink(o.permlink);
+                const auto* comment = _db.find_comment(o.author, hashlink);
 
                 const auto &auth = _db.get_account(o.author); /// prove it exists
 
@@ -888,7 +889,7 @@ namespace golos { namespace chain {
 
                 const comment_object *parent = nullptr;
                 if (o.parent_author != STEEMIT_ROOT_POST_PARENT) {
-                    parent = &_db.get_comment(o.parent_author, o.parent_permlink);
+                    parent = &_db.get_comment_by_perm(o.parent_author, o.parent_permlink);
                     auto max_depth = STEEMIT_MAX_COMMENT_DEPTH;
                     if (!_db.has_hardfork(STEEMIT_HARDFORK_0_17__430)) {
                         max_depth = STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17;
@@ -902,7 +903,7 @@ namespace golos { namespace chain {
                 }
                 auto now = _db.head_block_time();
 
-                if (itr == by_permlink_idx.end()) {
+                if (!comment) {
                     if (o.parent_author != STEEMIT_ROOT_POST_PARENT) {
                         GOLOS_CHECK_LOGIC(_db.get(parent->root_comment).allow_replies,
                                 logic_exception::replies_are_not_allowed,
@@ -948,19 +949,20 @@ namespace golos { namespace chain {
                         }
 
                         if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
-                            com.min_golos_power_to_curate = mprops.min_golos_power_to_curate;
+                            com.min_golos_power_to_curate = mprops.min_golos_power_to_curate.amount;
                         }
 
                         com.author = o.author;
-                        from_string(com.permlink, o.permlink);
+                        com.hashlink = hashlink;
                         com.created = _db.head_block_time();
                         com.last_payout = fc::time_point_sec::min();
                         com.max_cashout_time = fc::time_point_sec::maximum();
                         com.reward_weight = reward_weight;
+                        com.parent_permlink_size = o.parent_permlink.size();
 
                         if (o.parent_author == STEEMIT_ROOT_POST_PARENT) {
                             com.parent_author = "";
-                            from_string(com.parent_permlink, o.parent_permlink);
+                            com.parent_hashlink = _db.make_hashlink(o.parent_permlink);
                             com.root_comment = com.id;
                             com.cashout_time = _db.has_hardfork(STEEMIT_HARDFORK_0_12__177)
                                                ?
@@ -969,7 +971,7 @@ namespace golos { namespace chain {
                                                fc::time_point_sec::maximum();
                         } else {
                             com.parent_author = parent->author;
-                            com.parent_permlink = parent->permlink;
+                            com.parent_hashlink = parent->hashlink;
                             com.depth = parent->depth + 1;
                             com.root_comment = parent->root_comment;
                             com.cashout_time = fc::time_point_sec::maximum();
@@ -989,6 +991,15 @@ namespace golos { namespace chain {
                         }
                     });
 
+                    if (_db.store_comment_extras()) {
+                        _db.create<comment_extras_object>([&](auto& ceo) {
+                            ceo.author = o.author;
+                            ceo.hashlink = hashlink;
+                            from_string(ceo.permlink, o.permlink);
+                            from_string(ceo.parent_permlink, o.parent_permlink);
+                        });
+                    }
+
                     if (referrer_to_delete) {
                         _db.modify(auth, [&](account_object& a) {
                             a.referrer_account = account_name_type();
@@ -1003,7 +1014,7 @@ namespace golos { namespace chain {
                             p.children++;
                         });
                         if (parent->parent_author != STEEMIT_ROOT_POST_PARENT) {
-                            parent = &_db.get_comment(parent->parent_author, parent->parent_permlink);
+                            parent = &_db.get_comment(parent->parent_author, parent->parent_hashlink);
                         } else
                         {
                             parent = nullptr;
@@ -1012,14 +1023,16 @@ namespace golos { namespace chain {
 
                 } else {
                     // start edit case
-                    const auto& comment = *itr;
-                    _db.modify(comment, [&](comment_object& com) {
-                        strcmp_equal equal;
-
+                    _db.modify(*comment, [&](comment_object& com) {
                         GOLOS_CHECK_LOGIC(com.parent_author == (parent ? o.parent_author : account_name_type()),
                                 logic_exception::parent_of_comment_cannot_change,
                                 "The parent of a comment cannot change.");
-                        GOLOS_CHECK_LOGIC(equal(com.parent_permlink, o.parent_permlink),
+
+                        // Presaving old bug
+                        bool strcmp_equal = com.parent_permlink_size == o.parent_permlink.size();
+                        strcmp_equal = strcmp_equal || com.hashlink == _db.make_hashlink(o.parent_permlink);
+
+                        GOLOS_CHECK_LOGIC(strcmp_equal,
                                 logic_exception::parent_perlink_of_comment_cannot_change,
                                 "The parent permlink of a comment cannot change.");
 
@@ -1526,9 +1539,9 @@ namespace golos { namespace chain {
 
         void vote_evaluator::do_apply(const vote_operation& op) {
             try {
-                const auto* comment = _db.find_comment(op.author, op.permlink);
+                const auto* comment = _db.find_comment_by_perm(op.author, op.permlink);
                 if (!comment && (!_db.has_hardfork(STEEMIT_HARDFORK_0_26__164) || op.permlink.size())) {
-                    _db.get_comment(op.author, op.permlink);
+                    _db.get_comment_by_perm(op.author, op.permlink);
                 }
 
                 const auto& voter = _db.get_account(op.voter);

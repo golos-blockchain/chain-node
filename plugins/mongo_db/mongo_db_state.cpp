@@ -82,7 +82,7 @@ namespace mongo_db {
             format_value(body, "created", comment.created);
             format_value(body, "depth", comment.depth);
             format_value(body, "last_payout", comment.last_payout);
-            format_value(body, "max_accepted_payout", comment.max_accepted_payout);
+            format_value(body, "max_accepted_payout", asset(comment.max_accepted_payout, SBD_SYMBOL));
             format_value(body, "max_cashout_time", comment.max_cashout_time);
             format_value(body, "net_rshares", comment.net_rshares);
             format_value(body, "net_votes", comment.net_votes);

@@ -26,7 +26,7 @@ struct post_operation_visitor {
     }
 
     result_type operator()(const worker_request_operation& o) const {
-        const auto& post = _db.get_comment(o.author, o.permlink);
+        const auto& post = _db.get_comment_by_perm(o.author, o.permlink);
 
         const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);
@@ -49,7 +49,7 @@ struct post_operation_visitor {
     }
 
     result_type operator()(const worker_request_delete_operation& o) const {
-        const auto& post = _db.get_comment(o.author, o.permlink);
+        const auto& post = _db.get_comment_by_perm(o.author, o.permlink);
 
         const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);
@@ -67,7 +67,7 @@ struct post_operation_visitor {
             return;
         }
 
-        const auto& post = _db.get_comment(op.author, op.permlink);
+        const auto& post = _db.get_comment_by_perm(op.author, op.permlink);
 
         const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wtmo_itr = wtmo_idx.find(post.id);
@@ -79,7 +79,7 @@ struct post_operation_visitor {
     }
 
     result_type operator()(const worker_request_vote_operation& op) const {
-        const auto& post = _db.get_comment(op.author, op.permlink);
+        const auto& post = _db.get_comment_by_perm(op.author, op.permlink);
 
         const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wrmo_itr = wrmo_idx.find(post.id);
@@ -110,7 +110,7 @@ struct post_operation_visitor {
     }
 
     result_type operator()(const worker_reward_operation& op) const {
-        const auto& post = _db.get_comment(op.worker_request_author, op.worker_request_permlink);
+        const auto& post = _db.get_comment(op.worker_request_author, op.worker_request_hashlink);
 
         const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wrmo_itr = wrmo_idx.find(post.id);
@@ -126,7 +126,7 @@ struct post_operation_visitor {
             return;
         }
 
-        const auto& post = _db.get_comment(op.author, op.permlink);
+        const auto& post = _db.get_comment(op.author, op.hashlink);
 
         const auto& wrmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
         auto wrmo_itr = wrmo_idx.find(post.id);
@@ -225,7 +225,7 @@ void worker_api_plugin::worker_api_plugin_impl::select_postbased_results_ordered
         }
 
         if (query.has_start()) {
-            const auto* start_post = _db.find_comment(*query.start_author, *query.start_permlink);
+            const auto* start_post = _db.find_comment_by_perm(*query.start_author, *query.start_permlink);
             if (!start_post) {
                 return;
             }
@@ -320,7 +320,7 @@ DEFINE_API(worker_api_plugin, get_worker_request_votes) {
     std::vector<worker_request_vote_object> result;
     result.reserve(limit);
     my->_db.with_weak_read_lock([&]() {
-        const auto& post = my->_db.get_comment(author, permlink);
+        const auto& post = my->_db.get_comment_by_perm(author, permlink);
         my->_db.get_worker_request(post.id); // check it exists
 
         const auto& idx = my->_db.get_index<worker_request_vote_index, by_request_rshares>();

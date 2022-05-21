@@ -3,11 +3,13 @@
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/protocol/block.hpp>
 #include <golos/protocol/exceptions.hpp>
+#include <golos/api/operation_history_extender.hpp>
 #include <golos/chain/operation_notification.hpp>
 
 namespace golos { namespace plugins { namespace event_plugin {
 
 using golos::protocol::signed_block;
+using golos::api::operation_history_extender;
 
 class event_plugin::event_plugin_impl final {
 public:
@@ -25,6 +27,10 @@ public:
         if (_db.head_block_num() < start_block)
             return;
 
+        operation opv;
+        operation_history_extender extender(_db, opv);
+        bool extended = note.op.visit(extender);
+
         _db.create<op_note_object>([&](auto& o) {
             o.trx_id = note.trx_id;
             o.block = note.block;
@@ -33,10 +39,19 @@ public:
             o.virtual_op = note.virtual_op;
             o.timestamp = _db.head_block_time();
 
-            const auto size = fc::raw::pack_size(note.op);
+            size_t size = 0;
+            if (extended) {
+                size = fc::raw::pack_size(opv);
+            } else {
+                size = fc::raw::pack_size(note.op);
+            }
             o.serialized_op.resize(size);
             fc::datastream<char*> ds(o.serialized_op.data(), size);
-            fc::raw::pack(ds, note.op);
+            if (extended) {
+                fc::raw::pack(ds, opv);
+            } else {
+                fc::raw::pack(ds, note.op);
+            }
         });
     }
 

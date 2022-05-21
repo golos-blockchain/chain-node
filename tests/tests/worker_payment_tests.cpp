@@ -142,18 +142,18 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     upvote_request("dave", "dave-request", STEEMIT_100_PERCENT);
     upvote_request("frad", "frad-request", STEEMIT_100_PERCENT);
 
-    generate_blocks(db->get_comment("bob", string("bob-request")).created
+    generate_blocks(db->get_comment_by_perm("bob", string("bob-request")).created
         + wtop.duration, true);
 
     BOOST_TEST_MESSAGE("-- Checking bob and carol requests approved");
 
     {
-        const auto& wro = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
+        const auto& wro = db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
     }
     {
-        const auto& wro = db->get_worker_request(db->get_comment("carol", string("carol-request")).id);
+        const auto& wro = db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
     }
@@ -164,12 +164,12 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
 
     BOOST_CHECK_EQUAL(db->get_balance("bob", SBD_SYMBOL), ASSET_GBG(60));
     {
-        const auto& wro = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
+        const auto& wro = db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
     }
     BOOST_CHECK_EQUAL(db->get_balance("carol", SBD_SYMBOL), ASSET_GBG(60));
     {
-        const auto& wro = db->get_worker_request(db->get_comment("carol", string("carol-request")).id);
+        const auto& wro = db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
     }
 }
@@ -227,18 +227,18 @@ BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
     upvote_request("bob", "bob-request", STEEMIT_100_PERCENT);
     upvote_request("carol", "carol-request", STEEMIT_100_PERCENT);
 
-    generate_blocks(db->get_comment("bob", string("bob-request")).created
+    generate_blocks(db->get_comment_by_perm("bob", string("bob-request")).created
         + wtop.duration, true);
 
     BOOST_TEST_MESSAGE("-- Checking bob and carol requests approved");
 
     {
-        const auto& wro = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
+        const auto& wro = db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
     }
     {
-        const auto& wro = db->get_worker_request(db->get_comment("carol", string("carol-request")).id);
+        const auto& wro = db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
     }
@@ -254,12 +254,12 @@ BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
 
     BOOST_CHECK_EQUAL(db->get_balance("bob", STEEM_SYMBOL), ASSET_GOLOS(6));
     {
-        const auto& wro = db->get_worker_request(db->get_comment("bob", string("bob-request")).id);
+        const auto& wro = db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
     }
     BOOST_CHECK_EQUAL(db->get_balance("carol", STEEM_SYMBOL).amount, 0);
     {
-        const auto& wro = db->get_worker_request(db->get_comment("carol", string("carol-request")).id);
+        const auto& wro = db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
     }
 }

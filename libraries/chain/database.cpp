@@ -389,6 +389,14 @@ namespace golos { namespace chain {
             return _store_evaluator_events;
         }
 
+        void database::set_store_comment_extras(bool store_comment_extras) {
+            _store_comment_extras = store_comment_extras;
+        }
+
+        bool database::store_comment_extras() const {
+            return _store_comment_extras;
+        }
+
         void database::set_skip_virtual_ops() {
             _skip_virtual_ops = true;
         }
@@ -654,28 +662,44 @@ namespace golos { namespace chain {
             return acc->reputation;
         }
 
-        const comment_object &database::get_comment(const account_name_type &author, const shared_string &permlink) const {
+        const hashlink_type database::make_hashlink_shstr(const shared_string& permlink) const {
+            return fc::hash64(permlink.c_str(), permlink.size());
+        }
+
+        const hashlink_type database::make_hashlink(const std::string& permlink) const {
+            return fc::hash64(permlink.c_str(), permlink.size());
+        }
+
+        const comment_object& database::get_comment(const account_name_type &author, hashlink_type hashlink) const {
             try {
-                return get<comment_object, by_permlink>(boost::make_tuple(author, permlink));
+                return get<comment_object, by_hashlink>(boost::make_tuple(author, hashlink));
             } catch(const std::out_of_range &e) {
-                GOLOS_THROW_MISSING_OBJECT("comment", fc::mutable_variant_object()("account", author)("permlink", permlink));
-            } FC_CAPTURE_AND_RETHROW((author)(permlink))
+                GOLOS_THROW_MISSING_OBJECT("comment", fc::mutable_variant_object()("account", author)("hashlink", hashlink));
+            } FC_CAPTURE_AND_RETHROW((author)(hashlink))
         }
 
-        const comment_object *database::find_comment(const account_name_type &author, const shared_string &permlink) const {
-            return find<comment_object, by_permlink>(boost::make_tuple(author, permlink));
+        const comment_object* database::find_comment(const account_name_type &author, hashlink_type hashlink) const {
+            return find<comment_object, by_hashlink>(boost::make_tuple(author, hashlink));
         }
 
-        const comment_object &database::get_comment(const account_name_type &author, const string &permlink) const {
-            try {
-                return get<comment_object, by_permlink>(boost::make_tuple(author, permlink));
-            } catch(const std::out_of_range &e) {
-                GOLOS_THROW_MISSING_OBJECT("comment", fc::mutable_variant_object()("account", author)("permlink", permlink));
-            } FC_CAPTURE_AND_RETHROW((author)(permlink))
+        const comment_object &database::get_comment_by_perm(const account_name_type &author, const shared_string &permlink) const {
+            auto hashlink = make_hashlink_shstr(permlink);
+            return get_comment(author, hashlink);
         }
 
-        const comment_object *database::find_comment(const account_name_type &author, const string &permlink) const {
-            return find<comment_object, by_permlink>(boost::make_tuple(author, permlink));
+        const comment_object *database::find_comment_by_perm(const account_name_type &author, const shared_string &permlink) const {
+            auto hashlink = make_hashlink_shstr(permlink);
+            return find_comment(author, hashlink);
+        }
+
+        const comment_object &database::get_comment_by_perm(const account_name_type &author, const string &permlink) const {
+            auto hashlink = make_hashlink(permlink);
+            return get_comment(author, hashlink);
+        }
+
+        const comment_object *database::find_comment_by_perm(const account_name_type &author, const string &permlink) const {
+            auto hashlink = make_hashlink(permlink);
+            return find_comment(author, hashlink);
         }
 
         const comment_object &database::get_comment(const comment_id_type &comment_id) const {
@@ -684,6 +708,18 @@ namespace golos { namespace chain {
             } catch(const std::out_of_range &e) {
                 GOLOS_THROW_MISSING_OBJECT("comment", comment_id);
             } FC_CAPTURE_AND_RETHROW((comment_id))
+        }
+
+        const comment_extras_object& database::get_extras(const account_name_type& author, hashlink_type hashlink) const {
+            try {
+                return get<comment_extras_object, by_hashlink>(boost::make_tuple(author, hashlink));
+            } catch(const std::out_of_range &e) {
+                GOLOS_THROW_MISSING_OBJECT("comment_extras", fc::mutable_variant_object()("author", author)("hashlink", hashlink));
+            } FC_CAPTURE_AND_RETHROW((author)(hashlink))
+        }
+
+        const comment_extras_object* database::find_extras(const account_name_type& author, hashlink_type hashlink) const {
+            return find<comment_extras_object, by_hashlink>(boost::make_tuple(author, hashlink));
         }
 
         const escrow_object &database::get_escrow(const account_name_type &name, uint32_t escrow_id) const {
@@ -2635,7 +2671,7 @@ namespace golos { namespace chain {
                 comment.children_rshares2 += new_rshares2;
             });
             if (c.depth) {
-                adjust_rshares2(get_comment(c.parent_author, c.parent_permlink), old_rshares2, new_rshares2);
+                adjust_rshares2(get_comment(c.parent_author, c.parent_hashlink), old_rshares2, new_rshares2);
             } else {
                 const auto &cprops = get_dynamic_global_properties();
                 modify(cprops, [&](dynamic_global_property_object &p) {
@@ -2859,7 +2895,7 @@ namespace golos { namespace chain {
 
             auto voter_reward = create_vesting(voter, asset(voter_claim, STEEM_SYMBOL));
 
-            push_virtual_operation(curation_reward_operation(voter.name, voter_reward, c.comment.author, to_string(c.comment.permlink), asset(voter_claim, STEEM_SYMBOL)));
+            push_virtual_operation(curation_reward_operation(voter.name, voter_reward, c.comment.author, c.comment.hashlink, asset(voter_claim, STEEM_SYMBOL)));
 
             modify(voter, [&](auto& a) {
                 a.curation_rewards += voter_claim;
@@ -2932,7 +2968,7 @@ namespace golos { namespace chain {
                 }
                 // Case: auction window destination is reward fund or there are not curator which can get the auw reward
                 else if (c.comment.auction_window_reward_destination != protocol::to_author && unclaimed_rewards > 0) {
-                    push_virtual_operation(auction_window_reward_operation(asset(unclaimed_rewards, STEEM_SYMBOL), c.comment.author, to_string(c.comment.permlink)));
+                    push_virtual_operation(auction_window_reward_operation(asset(unclaimed_rewards, STEEM_SYMBOL), c.comment.author, c.comment.hashlink));
                     modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
                         props.total_reward_fund_steem += asset(unclaimed_rewards, STEEM_SYMBOL);
                     });
@@ -2951,7 +2987,7 @@ namespace golos { namespace chain {
                          claim_rshare_reward(
                              comment.net_rshares,
                              comment.reward_weight,
-                             to_steem(comment.max_accepted_payout)));
+                             to_steem(asset(comment.max_accepted_payout, SBD_SYMBOL))));
 
                     asset total_payout;
                     if (reward_tokens > 0) {
@@ -2974,7 +3010,7 @@ namespace golos { namespace chain {
                             auto vest_created = create_vesting(get_account(b.account), benefactor_tokens);
                             push_virtual_operation(
                                 comment_benefactor_reward_operation(
-                                    b.account, comment.author, to_string(comment.permlink), vest_created, asset(benefactor_tokens, STEEM_SYMBOL)));
+                                    b.account, comment.author, comment.hashlink, vest_created, asset(benefactor_tokens, STEEM_SYMBOL)));
                             modify(get_account(b.account), [&](account_object& a) {
                                 a.benefaction_rewards += benefactor_tokens;
                             });
@@ -3000,8 +3036,8 @@ namespace golos { namespace chain {
                         total_payout = to_sbd(asset(reward_tokens.to_uint64(), STEEM_SYMBOL));
                         total_payout -= sbd_side_payout.first;
 
-                        push_virtual_operation(author_reward_operation(comment.author, to_string(comment.permlink), sbd_payout.first, sbd_payout.second, vest_created, asset(sbd_steem, STEEM_SYMBOL), asset(vesting_steem, STEEM_SYMBOL)));
-                        push_virtual_operation(comment_reward_operation(comment.author, to_string(comment.permlink), total_payout));
+                        push_virtual_operation(author_reward_operation(comment.author, comment.hashlink, sbd_payout.first, sbd_payout.second, vest_created, asset(sbd_steem, STEEM_SYMBOL), asset(vesting_steem, STEEM_SYMBOL)));
+                        push_virtual_operation(comment_reward_operation(comment.author, comment.hashlink, total_payout));
 
                         modify(get_account(comment.author), [&](account_object &a) {
                             a.posting_rewards += author_tokens;
@@ -3010,7 +3046,7 @@ namespace golos { namespace chain {
                         auto author_golos = asset(author_tokens, STEEM_SYMBOL);
                         auto benefactor_golos = asset(total_beneficiary, STEEM_SYMBOL);
                         auto curator_golos = asset(total_curator, STEEM_SYMBOL);
-                        push_virtual_operation(total_comment_reward_operation(comment.author, to_string(comment.permlink), author_golos, benefactor_golos, curator_golos, comment.net_rshares.value));
+                        push_virtual_operation(total_comment_reward_operation(comment.author, comment.hashlink, author_golos, benefactor_golos, curator_golos, comment.net_rshares.value));
                     }
 
                     fc::uint128_t old_rshares2 = calculate_vshares(comment.net_rshares.value);
@@ -3050,7 +3086,7 @@ namespace golos { namespace chain {
                     c.last_payout = head_block_time();
                 });
 
-                push_virtual_operation(comment_payout_update_operation(comment.author, to_string(comment.permlink)));
+                push_virtual_operation(comment_payout_update_operation(comment.author, comment.hashlink));
 
                 if (comment.mode == archived) {
                     const auto& vote_idx = get_index<comment_vote_index>().indices().get<by_comment_voter>();
@@ -3849,6 +3885,7 @@ namespace golos { namespace chain {
             add_core_index<block_summary_index>(*this);
             add_core_index<witness_schedule_index>(*this);
             add_core_index<comment_index>(*this);
+            add_core_index<comment_extras_index>(*this);
             add_core_index<comment_vote_index>(*this);
             add_core_index<witness_vote_index>(*this);
             add_core_index<limit_order_index>(*this);
@@ -4388,6 +4425,15 @@ namespace golos { namespace chain {
                             ("witness", witness)("next_block.witness", next_block.witness)("hardfork_state", hardfork_state)
                     );
                 }
+
+                /*auto now0 = fc::time_point::now();
+
+                for (int i = 0; i < 1000000; ++i) {
+                    make_hashlink("dfkkdhdd-ggdgdgddg-hhhh-fkkdhdd-ggdgdgddg-hhhh-fkkdhdd-ggdgdgddg-hhhh-gggggggggggg-fftftfttfttfftftftdddrddffffsfssssfssfsfssfsfssssssssssssssssssssssssssssssssssssssssss");
+                }
+
+                auto msecs = (fc::time_point::now() - now0).count() / 1000;
+                std::cout << "EL" << msecs << std::endl;*/
 
                 for (const auto &trx : next_block.transactions) {
                     /* We do not need to push the undo state for each transaction
@@ -6039,14 +6085,14 @@ namespace golos { namespace chain {
             for (auto itr = cidx.begin(); itr != cidx.end(); ++itr) {
                 if (itr->parent_author != STEEMIT_ROOT_POST_PARENT) {
 
-                    const comment_object *parent = &get_comment(itr->parent_author, itr->parent_permlink);
+                    const comment_object *parent = &get_comment(itr->parent_author, itr->parent_hashlink);
                     while (parent) {
                         modify(*parent, [&](comment_object &c) {
                             c.children++;
                         });
 
                         if (parent->parent_author != STEEMIT_ROOT_POST_PARENT) {
-                            parent = &get_comment(parent->parent_author, parent->parent_permlink);
+                            parent = &get_comment(parent->parent_author, parent->parent_hashlink);
                         } else {
                             parent = nullptr;
                         }

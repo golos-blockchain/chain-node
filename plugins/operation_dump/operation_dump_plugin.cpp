@@ -39,7 +39,7 @@ struct post_operation_clarifier {
             return;
         }
 
-        const auto& comment = _db.get_comment(op.author, op.permlink);
+        const auto& comment = _db.get_comment_by_perm(op.author, op.permlink);
         const auto& vote_idx = _db.get_index<comment_vote_index, by_comment_voter>();
         auto vote_itr = vote_idx.find(std::make_tuple(comment.id, _db.get_account(op.voter).id));
 
@@ -47,7 +47,7 @@ struct post_operation_clarifier {
     }
 
     result_type operator()(const delete_comment_operation& op) const {
-        auto not_deleted = (_db.find_comment(op.author, op.permlink) != nullptr);
+        auto not_deleted = (_db.find_comment_by_perm(op.author, op.permlink) != nullptr);
 
         add_clarification(_plugin.not_deleted_comments, not_deleted);
     }
