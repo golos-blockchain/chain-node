@@ -4427,15 +4427,6 @@ namespace golos { namespace chain {
                     );
                 }
 
-                /*auto now0 = fc::time_point::now();
-
-                for (int i = 0; i < 1000000; ++i) {
-                    make_hashlink("dfkkdhdd-ggdgdgddg-hhhh-fkkdhdd-ggdgdgddg-hhhh-fkkdhdd-ggdgdgddg-hhhh-gggggggggggg-fftftfttfttfftftftdddrddffffsfssssfssfsfssfsfssssssssssssssssssssssssssssssssssssssssss");
-                }
-
-                auto msecs = (fc::time_point::now() - now0).count() / 1000;
-                std::cout << "EL" << msecs << std::endl;*/
-
                 for (const auto &trx : next_block.transactions) {
                     /* We do not need to push the undo state for each transaction
                      * because they either all apply and are valid or the

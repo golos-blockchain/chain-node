@@ -239,7 +239,7 @@ namespace golos {
                     tag<by_parent>,
                         composite_key<comment_object,
                         member <comment_object, account_name_type, &comment_object::parent_author>,
-                        member<comment_object, hashlink_type, &comment_object::hashlink>,
+                        member<comment_object, hashlink_type, &comment_object::parent_hashlink>,
                         member<comment_object, comment_id_type, &comment_object::id>>,
                     composite_key_compare <std::less<account_name_type>, std::less<hashlink_type>, std::less<comment_id_type>> >
             >,
