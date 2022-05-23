@@ -10,6 +10,7 @@
 #include <golos/chain/database.hpp>
 #include <golos/chain/database_exceptions.hpp>
 #include <golos/chain/db_with.hpp>
+#include <golos/chain/hf_actions.hpp>
 #include <golos/chain/evaluator_registry.hpp>
 #include <golos/chain/index.hpp>
 #include <golos/chain/snapshot_state.hpp>
@@ -5570,6 +5571,8 @@ namespace golos { namespace chain {
                 elog("HARDFORK ${hf} at block ${b}", ("hf", hardfork)("b", head_block_num()));
             }
 
+            hf_actions hf_act(*this);
+
             switch (hardfork) {
                 case STEEMIT_HARDFORK_0_1:
                     perform_vesting_share_split(10000);
@@ -5741,32 +5744,7 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_21:
                     break;
                 case STEEMIT_HARDFORK_0_22: {
-#ifdef STEEMIT_BUILD_TESTNET
-                    create<account_object>([&](auto& a) {
-                        a.name = STEEMIT_WORKER_POOL_ACCOUNT;
-                    });
-                    if (store_metadata_for_account(STEEMIT_WORKER_POOL_ACCOUNT)) {
-                        create<account_metadata_object>([&](auto& m) {
-                            m.account = STEEMIT_WORKER_POOL_ACCOUNT;
-                        });
-                    }
-                    create<account_authority_object>([&](auto& auth) {
-                        auth.account = STEEMIT_WORKER_POOL_ACCOUNT;
-                        auth.owner.weight_threshold = 1;
-                        auth.active.weight_threshold = 1;
-                    });
-#else
-                    const auto& workers_pool = get_account(STEEMIT_WORKER_POOL_ACCOUNT);
-                    authority empty_owner;
-                    empty_owner.weight_threshold = 1;
-                    update_owner_authority(workers_pool, empty_owner);
-                    modify(get_authority(workers_pool.name), [&](auto& o) {
-                        o.active = authority();
-                        o.active.weight_threshold = 1;
-                        o.posting = authority();
-                        o.posting.weight_threshold = 1;
-                    });
-#endif
+                    hf_act.create_worker_pool();
                     retally_witness_votes_hf22();
                     check_witness_idleness(false);
                     } break;
@@ -5798,70 +5776,10 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_25:
                     break;
                 case STEEMIT_HARDFORK_0_26:
-                    {
-#ifdef STEEMIT_BUILD_TESTNET
-                        // adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
-                        modify(get_authority(get_account("cyberfounder").name), [&](account_authority_object &auth) {
-                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
-                        });
-
-                        create<account_object>([&](auto& acc) {
-                            acc.name = "cyberfounder100";
-                            acc.memo_key = public_key_type(STEEMIT_INIT_PUBLIC_KEY);
-                        });
-                        create<account_authority_object>([&](auto& auth) {
-                            auth.account = "cyberfounder100";
-                            auth.active = authority(1, public_key_type(STEEMIT_INIT_PUBLIC_KEY), 1);
-                            auth.owner = auth.active;
-                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
-                        });
-#endif
-                        update_witness_windows_sec_to_min();
-                    }
+                    update_witness_windows_sec_to_min();
                     break;
                 case STEEMIT_HARDFORK_0_27:
-                    {
-#ifdef STEEMIT_BUILD_LIVETEST
-                        //active and signing_key, also memo_key
-                        //"brain_priv_key": "MORMO OGREISH SPUNKY DOMIC KOUZA MERGER CUSPED CIRCA COCKILY URUCURI GLOWER PYLORUS UNSTOW LINDO VISTAL ACEPHAL",
-                        //"wif_priv_key": "5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw",
-                        //"pub_key": "GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"
-
-                        //posting:
-                        //private 5K1aJ8JayUA7c2Ptg9Y2DetKxSvXGXa5GCcvYeHtn1Xh3v4egPS
-                        //public GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A
-
-                        for (const auto &account : get_index<account_index>().indices()) {
-                            update_owner_authority(account, authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1));
-
-                            modify(get_authority(account.name), [&](account_authority_object &auth) {
-                                auth.active = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
-                                auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
-                            });
-
-                            modify(account, [&](account_object &acc) {
-                                acc.memo_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
-                            });
-                        }
-                        
-                        const auto &witness_idx = get_index<witness_index>().indices();
-                        for (auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr) {
-                            modify(*itr, [&](witness_object &w) {
-                                w.signing_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
-                            });
-                        }
-#endif
-#ifdef STEEMIT_BUILD_TESTNET
-                        create<account_object>([&](auto& a) {
-                            a.name = STEEMIT_OAUTH_ACCOUNT;
-                        });
-                        create<account_authority_object>([&](auto& auth) {
-                            auth.account = STEEMIT_OAUTH_ACCOUNT;
-                            auth.active = authority(1, public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3"), 1);
-                            auth.posting = authority(1, public_key_type("GLS6d6aNegWyZrgocLY2qvtqd2sgTqtYMHaGuriwBzqwc48SSNe5A"), 1);
-                        });
-#endif
-                    }
+                    hf_act.prepare_for_tests();
                     break;
                 default:
                     break;

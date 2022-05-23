@@ -361,13 +361,11 @@ namespace golos { namespace chain {
             const auto &account_auth = _db.get_authority(o.account);
 
             if (o.owner) {
-#ifndef STEEMIT_BUILD_TESTNET
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_11))
                     GOLOS_CHECK_BANDWIDTH(_db.head_block_time(),
                             account_auth.last_owner_update + STEEMIT_OWNER_UPDATE_LIMIT,
                             bandwidth_exception::change_owner_authority_bandwidth,
                             "Owner authority can only be updated once an hour.");
-#endif
 
                 if ((_db.has_hardfork(STEEMIT_HARDFORK_0_15__465) ||
                      _db.is_producing())) // TODO: Add HF 15
