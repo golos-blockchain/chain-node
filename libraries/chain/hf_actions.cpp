@@ -6,35 +6,40 @@ namespace golos { namespace chain {
 
 void hf_actions::prepare_for_tests() {
 #ifdef STEEMIT_BUILD_LIVETEST
-    //Password: P5JZjQT6GWQ5B7mBmcpYQKCuPBwGy1S5RcyUbJiL53eNTU8d1RNa
-    //Posting: 5JFLL8mFftgnPwhBjZ5jFzkwMamit8i7qcCbLs3h866EeCzjmcY
-    //Active: 5Jez5D9jyZmUf7LBBMnK2KDgzAQJ1TcBtLyTWdTvkZwTkPjq7de
-    //Owner: 5KL7LgHzk3upN2x5kbJTKyt2om5jtoCyGEVTzYZrSk529CYZXGi
-    //Memo: 5KJH8ubH3Pi7eVdmvbUaegJKkZ2SskMwzd2e4VPtLmZ51dgf2xK
+    //Password (of @lex): P5Jw6xSsoDhFtrNp1CGAWyzhVez6dFuxCQ9dn4QC7aZZW9R3WmUq
+    //Posting: 5HwQScueMZdELZpjVBD4gm6xhiKiMqGx18g4WtQ6wVr4nBdSxY5
+    //Active: 5K67PNheLkmxkgJ5UjvR8Nyt3GVPoLEN1dMZjFuNETzrNyMecPG
+    //Owner: 5KD45zFh5WNFaW8mZTSx4eicy8FzwEmm5psNKH7GLg5bVQwUw6s
+    //Memo: 5Kek6zP5vQmDRXXNBtZkxUtoMT3iW1xEYXcifkA2UHb2VT5UD7P
 
     for (const auto &account : _db.get_index<account_index>().indices()) {
-        _db.update_owner_authority(account, authority(1, public_key_type("GLS6ec8WydkchNKpdRdu5NwCN6tJ9BU3zjaLK8d9R7pE4sZFGSPJq"), 1));
+        _db.update_owner_authority(account, authority(1, public_key_type("GLS5GfkCE2HQwcE6Gs8pDXvp2PJtF4dwqG8Af9rhn9LKNrJ6PKPMF"), 1));
 
         _db.modify(_db.get_authority(account.name), [&](account_authority_object &auth) {
-            auth.posting = authority(1, public_key_type("GLS63N7CWwDWw6zgfeZZTugB3S1k9Z4vEv945JWx3e69rW3q4dH6A"), 1);
-            auth.active = authority(1, public_key_type("GLS65EokmijFAKniwRBRTgnnTos2Qe5Cbxa2Qc9QQgmfkqooERo8D"), 1);
+            auth.posting = authority(1, public_key_type("GLS8hnaAj3ufXbfFBKqGNhyGvW78EQN5rpeqfcDD2d2tQyhd2dEDb"), 1);
+            auth.active = authority(1, public_key_type("GLS8EAm8DhD8tjX3N87RVAvw1o8uzSQkRJ3Tcn4dgmybHwnsyvThb"), 1);
         });
 
         _db.modify(account, [&](account_object &acc) {
-            acc.memo_key = public_key_type("GLS6abTB9JACr2XqVixYrakusKjUvZPZENgnz9kdAdKwVowMWiN2o");
+            acc.memo_key = public_key_type("GLS5Zwv6MSYx9agm2GaH3XmWCQT317TR7nBXgos1TV56ziErocqa3");
         });
     }
-    
+
+    _db.modify(_db.get_account(STEEMIT_NOTIFY_ACCOUNT), [&](auto& a) {
+        // 5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw
+        a.memo_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
+    });
+
     const auto &witness_idx = _db.get_index<witness_index>().indices();
     for (auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr) {
         _db.modify(*itr, [&](witness_object &w) {
-            w.signing_key = public_key_type("GLS65EokmijFAKniwRBRTgnnTos2Qe5Cbxa2Qc9QQgmfkqooERo8D");
+            w.signing_key = public_key_type("GLS8EAm8DhD8tjX3N87RVAvw1o8uzSQkRJ3Tcn4dgmybHwnsyvThb");
         });
     }
 #endif
 #ifdef STEEMIT_BUILD_TESTNET
-#define COMMON_POSTING public_key_type("GLS63N7CWwDWw6zgfeZZTugB3S1k9Z4vEv945JWx3e69rW3q4dH6A")
-#define COMMON_ACTIVE public_key_type("GLS65EokmijFAKniwRBRTgnnTos2Qe5Cbxa2Qc9QQgmfkqooERo8D")
+#define COMMON_POSTING public_key_type("GLS8hnaAj3ufXbfFBKqGNhyGvW78EQN5rpeqfcDD2d2tQyhd2dEDb")
+#define COMMON_ACTIVE public_key_type("GLS8EAm8DhD8tjX3N87RVAvw1o8uzSQkRJ3Tcn4dgmybHwnsyvThb")
 
     // adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
 

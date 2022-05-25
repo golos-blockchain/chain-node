@@ -624,6 +624,10 @@
 #define STEEMIT_ROOT_POST_PARENT                (account_name_type())
 /// Represents the current worker pool (stored on its balances)
 #define STEEMIT_WORKER_POOL_ACCOUNT             "workers"
+// Respresents the Golos Signer account which is using in authority to sign operations
+#define STEEMIT_OAUTH_ACCOUNT                   "oauth"
+// Represents the account which is used to automatically send Golos Messenger technical notifications to users
+#define STEEMIT_NOTIFY_ACCOUNT                  "notify"
 ///@}
 
 #include <golos/protocol/config_old.hpp>
