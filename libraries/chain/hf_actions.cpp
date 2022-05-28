@@ -101,6 +101,37 @@ void hf_actions::create_worker_pool() {
 #endif
 }
 
+void hf_actions::create_registrator_account() {
+#ifdef STEEMIT_BUILD_TESTNET
+    _db.create<account_object>([&](auto& a) {
+        a.name = STEEMIT_REGISTRATOR_ACCOUNT;
+    });
+    if (_db.store_metadata_for_account(STEEMIT_REGISTRATOR_ACCOUNT)) {
+        _db.create<account_metadata_object>([&](auto& m) {
+            m.account = STEEMIT_REGISTRATOR_ACCOUNT;
+        });
+    }
+    _db.create<account_authority_object>([&](auto& auth) {
+        auth.account = STEEMIT_REGISTRATOR_ACCOUNT;
+        auth.owner.weight_threshold = 1;
+        auth.active.weight_threshold = 1;
+    });
+#else
+    const auto& acc = _db.get_account(STEEMIT_REGISTRATOR_ACCOUNT);
+    modify(acc, [&](auto& acnt) {
+        acnt.recovery_account = account_name_type();
+    });
+    _db.modify(_db.get_authority(acc.name), [&](auto& o) {
+        o.active = authority();
+        o.active.weight_threshold = 1;
+        o.owner = authority();
+        o.owner.weight_threshold = 1;
+        o.posting = authority();
+        o.posting.weight_threshold = 1;
+    });
+#endif
+}
+
 hf_actions::hf_actions(database& db) : _db(db) {
 }
 

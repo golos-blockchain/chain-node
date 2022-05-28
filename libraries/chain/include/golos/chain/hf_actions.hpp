@@ -8,6 +8,7 @@ public:
 
     void prepare_for_tests();
     void create_worker_pool();
+    void create_registrator_account();
 private:
     template<typename FillAuth, typename FillAccount>
     void create_test_account(account_name_type acc, FillAuth&& fillAuth, FillAccount&& fillAcc);

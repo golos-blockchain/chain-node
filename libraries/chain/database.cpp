@@ -5770,6 +5770,7 @@ namespace golos { namespace chain {
                     update_witness_windows_sec_to_min();
                     break;
                 case STEEMIT_HARDFORK_0_27:
+                    hf_act.create_registrator_account();
                     hf_act.prepare_for_tests();
                     break;
                 default:

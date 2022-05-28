@@ -301,6 +301,7 @@
 #define STEEMIT_IRREVERSIBLE_THRESHOLD          (75 * STEEMIT_1_PERCENT)
 
 #define STEEMIT_OAUTH_ACCOUNT                   "oauth"
+#define STEEMIT_REGISTRATOR_ACCOUNT             "newacc"
 #define STEEMIT_NOTIFY_ACCOUNT                  "notify"
 
 #else // IS LIVE STEEM NETWORK
@@ -626,6 +627,8 @@
 #define STEEMIT_WORKER_POOL_ACCOUNT             "workers"
 // Respresents the Golos Signer account which is using in authority to sign operations
 #define STEEMIT_OAUTH_ACCOUNT                   "oauth"
+// Represents the account which is used to register accounts using transfer
+#define STEEMIT_REGISTRATOR_ACCOUNT             "newacc"
 // Represents the account which is used to automatically send Golos Messenger technical notifications to users
 #define STEEMIT_NOTIFY_ACCOUNT                  "notify"
 ///@}

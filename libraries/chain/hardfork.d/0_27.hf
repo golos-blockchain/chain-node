@@ -1,6 +1,8 @@
 #ifndef STEEMIT_HARDFORK_0_27
 #define STEEMIT_HARDFORK_0_27 27
 
+#define STEEMIT_HARDFORK_0_27__199 (STEEMIT_HARDFORK_0_27) // Registering with "newacc" (transfer)
+
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_27_TIME  1640021898 // 20 dec 2021 20:00:00 MSK
 #else

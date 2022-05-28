@@ -8,6 +8,7 @@
 #include <golos/protocol/validate_helper.hpp>
 #include <fc/io/json.hpp>
 #include <graphene/utilities/key_conversion.hpp>
+#include <boost/algorithm/string.hpp>
 
 
 namespace golos { namespace chain {
@@ -1232,18 +1233,71 @@ namespace golos { namespace chain {
             const auto &from_account = _db.get_account(o.from);
             const auto &to_account = _db.get_account(o.to);
 
+            const auto now = _db.head_block_time();
+
             if (from_account.active_challenged) {
                 _db.modify(from_account, [&](account_object &a) {
                     a.active_challenged = false;
-                    a.last_active_proved = _db.head_block_time();
+                    a.last_active_proved = now;
+                });
+            }
+
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+
+            account_name_type reg_acc;
+            public_key_type pub_key;
+
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__199) && o.to == STEEMIT_REGISTRATOR_ACCOUNT) {
+                std::vector<std::string> parts;
+                parts.reserve(2);
+                boost::split(parts, o.memo, boost::is_any_of(":"));
+
+                GOLOS_CHECK_OP_PARAM(o, memo, {
+                    GOLOS_CHECK_VALUE(parts.size() == 2, "Memo for newacc should have format like theaccname:GLSPUBLICKEY");
+
+                    validate_account_name(parts[0]);
+                    reg_acc = parts[0];
+                    GOLOS_CHECK_OBJECT_MISSING(_db, account, reg_acc);
+
+                    pub_key = public_key_type(parts[1]);
+                });
+
+                GOLOS_CHECK_OP_PARAM(o, amount, {
+                    GOLOS_CHECK_ASSET_GE(o.amount, GOLOS, median_props.account_creation_fee.amount);
                 });
             }
 
             GOLOS_CHECK_OP_PARAM(o, amount, {
                 GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, o.amount);
                 _db.adjust_balance(from_account, -o.amount);
-                _db.adjust_balance(to_account, o.amount);
+                if (reg_acc == account_name_type()) {
+                    _db.adjust_balance(to_account, o.amount);
+                }
             });
+
+            if (reg_acc != account_name_type()) {
+                const auto& new_account = _db.create<account_object>([&](auto& acc) {
+                    acc.name = reg_acc;
+                    acc.memo_key = pub_key;
+                    acc.created = now;
+                    acc.last_vote_time = now;
+                    acc.last_active_operation = now;
+                    acc.last_claim = now;
+                    acc.mined = false;
+                    acc.recovery_account = STEEMIT_REGISTRATOR_ACCOUNT;
+                });
+                store_account_json_metadata(_db, reg_acc, "{}");
+
+                _db.create<account_authority_object>([&](auto& auth) {
+                    auth.account = reg_acc;
+                    auth.owner = authority(1, pub_key, 1);
+                    auth.active = authority(1, pub_key, 1);
+                    auth.posting = authority(1, pub_key, 1);
+                    auth.last_owner_update = fc::time_point_sec::min();
+                });
+
+                _db.create_vesting(new_account, o.amount);
+            }
         }
 
         void transfer_to_vesting_evaluator::do_apply(const transfer_to_vesting_operation &o) {
