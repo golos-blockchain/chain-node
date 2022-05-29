@@ -107,13 +107,26 @@ namespace golos { namespace chain {
             return elapsed;
         }
 
+        asset distribute_account_fee(database& _db, const asset& fee) {
+            asset to_workers(0, STEEM_SYMBOL);
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_27__200)) {
+                return to_workers;
+            }
+            to_workers.amount = fee.amount.value;
+            if (to_workers.amount > 0) {
+                _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), to_workers);
+            }
+            return to_workers;
+        }
+
         void account_create_evaluator::do_apply(const account_create_operation &o) {
             const auto& creator = _db.get_account(o.creator);
 
             GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, o.fee);
 
+            const auto& median_props = _db.get_witness_schedule_object().median_props;
+
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
-                const auto& median_props = _db.get_witness_schedule_object().median_props;
                 auto min_fee = median_props.account_creation_fee;
                 GOLOS_CHECK_OP_PARAM(o, fee,
                     GOLOS_CHECK_VALUE(o.fee >= min_fee,
@@ -169,7 +182,10 @@ namespace golos { namespace chain {
             });
 
             if (o.fee.amount > 0) {
-                _db.create_vesting(new_account, o.fee);
+                auto vest = o.fee - distribute_account_fee(_db, median_props.account_creation_fee);
+                if (vest.amount > 0) {
+                    _db.create_vesting(new_account, vest);
+                }
             }
         }
 
@@ -278,7 +294,10 @@ namespace golos { namespace chain {
                 });
             }
             if (o.fee.amount > 0) {
-                _db.create_vesting(new_account, o.fee);
+                auto vest = o.fee - distribute_account_fee(_db, min_golos);
+                if (vest.amount > 0) {
+                    _db.create_vesting(new_account, vest);
+                }
             }
 
             for (auto& e : o.extensions) {
@@ -310,6 +329,13 @@ namespace golos { namespace chain {
 
             const auto& median_props = _db.get_witness_schedule_object().median_props;
 
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__200)) {
+                GOLOS_CHECK_OP_PARAM(op, invite_secret, {
+                    GOLOS_CHECK_VALUE(inv.balance >= median_props.min_invite_balance,
+                        "Insufficient invite balance for registration: ${r} required, ${p} provided.", ("r", median_props.min_invite_balance)("p", inv.balance));
+                });
+            }
+
             const auto& new_account = _db.create<account_object>([&](account_object& acc) {
                 acc.name = op.new_account_name;
                 acc.memo_key = op.memo_key;
@@ -336,7 +362,11 @@ namespace golos { namespace chain {
                 auth.last_owner_update = fc::time_point_sec::min();
             });
 
-            _db.create_vesting(new_account, inv.balance);
+            auto vest = inv.balance - distribute_account_fee(_db,
+                median_props.min_invite_balance);
+            if (vest.amount > 0) {
+                _db.create_vesting(new_account, vest);
+            }
             _db.remove(inv);
         }
 
@@ -1296,7 +1326,10 @@ namespace golos { namespace chain {
                     auth.last_owner_update = fc::time_point_sec::min();
                 });
 
-                _db.create_vesting(new_account, o.amount);
+                auto vest = o.amount - distribute_account_fee(_db, median_props.account_creation_fee);
+                if (vest.amount > 0) {
+                    _db.create_vesting(new_account, vest);
+                }
             }
         }
 

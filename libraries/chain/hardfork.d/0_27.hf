@@ -2,6 +2,7 @@
 #define STEEMIT_HARDFORK_0_27 27
 
 #define STEEMIT_HARDFORK_0_27__199 (STEEMIT_HARDFORK_0_27) // Registering with "newacc" (transfer)
+#define STEEMIT_HARDFORK_0_27__200 (STEEMIT_HARDFORK_0_27) // Account creation fee workers percent
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_27_TIME  1640021898 // 20 dec 2021 20:00:00 MSK

@@ -160,6 +160,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.json_metadata = "{\"foo\":\"bar\"}";
 
             BOOST_TEST_MESSAGE("--- Test normal account creation");
+            auto workers_start = db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance;
+
             tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             tx.operations.push_back(op);
             tx.sign(init_account_priv_key, db->get_chain_id());
@@ -189,7 +191,11 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             }
 
             /// because init_witness has created vesting shares and blocks have been produced, 100 STEEM is worth less than 100 vesting shares due to rounding
-            BOOST_CHECK_EQUAL(acct.vesting_shares.amount.value, (op.fee * (vest_shares / vests)).amount.value);
+            auto fee = op.fee;
+            auto to_workers = db->get_witness_schedule_object().median_props.account_creation_fee;
+            fee -= to_workers;
+            BOOST_CHECK_EQUAL(acct.vesting_shares.amount.value, (fee * (vest_shares / vests)).amount.value);
+            BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, workers_start + to_workers);
             BOOST_CHECK_EQUAL(acct.vesting_withdraw_rate.amount.value, ASSET("0.000000 GOLOS").amount.value);
             BOOST_CHECK_EQUAL(acct.proxied_vsf_votes_total().value, 0);
             BOOST_CHECK_EQUAL((init_starting_balance - ASSET("0.100 GOLOS")).amount.value, init.balance.amount.value);
@@ -208,7 +214,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             BOOST_CHECK_EQUAL(acct.created, db->head_block_time());
             BOOST_CHECK_EQUAL(acct.balance.amount.value, ASSET("0.000 GOLOS ").amount.value);
             BOOST_CHECK_EQUAL(acct.sbd_balance.amount.value, ASSET("0.000 GBG").amount.value);
-            BOOST_CHECK_EQUAL(acct.vesting_shares.amount.value, (op.fee * (vest_shares / vests)).amount.value);
+            BOOST_CHECK_EQUAL(acct.vesting_shares.amount.value, (fee * (vest_shares / vests)).amount.value);
+            BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, workers_start + to_workers);
             BOOST_CHECK_EQUAL(acct.vesting_withdraw_rate.amount.value, ASSET("0.000000 GOLOS").amount.value);
             BOOST_CHECK_EQUAL(acct.proxied_vsf_votes_total().value, 0);
             BOOST_CHECK_EQUAL((init_starting_balance - ASSET("0.100 GOLOS")).amount.value, init.balance.amount.value);
@@ -8111,7 +8118,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             BOOST_TEST_MESSAGE("-- validating that operation");
             BOOST_CHECK_NO_THROW(op.validate());
             BOOST_TEST_MESSAGE("-- voting");
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
             generate_block();
 
             BOOST_TEST_MESSAGE("-- Checking that alice still has 0 reputation");
