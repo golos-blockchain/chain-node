@@ -118,7 +118,7 @@ void hf_actions::create_registrator_account() {
     });
 #else
     const auto& acc = _db.get_account(STEEMIT_REGISTRATOR_ACCOUNT);
-    modify(acc, [&](auto& acnt) {
+    _db.modify(acc, [&](auto& acnt) {
         acnt.recovery_account = account_name_type();
     });
     _db.modify(_db.get_authority(acc.name), [&](auto& o) {
