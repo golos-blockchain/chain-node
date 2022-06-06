@@ -12,6 +12,7 @@
 #include <golos/protocol/types.hpp>
 #include <golos/protocol/config.hpp>
 #include <golos/protocol/exceptions.hpp>
+#include <golos/protocol/donate_targets.hpp>
 
 #include <diff_match_patch.h>
 #include <boost/algorithm/string.hpp>
@@ -622,32 +623,39 @@ namespace golos { namespace plugins { namespace social_network {
             });
 
             try {
-                auto author_str = op.memo.target["author"].as_string();
-                auto permlink = op.memo.target["permlink"].as_string();
+                auto bd = get_blog_donate(op);
+                if (bd) {
+                    if (bd->wrong) {
+                        db.modify(ddo, [&](auto& don) {
+                            don.wrong = true;
+                        });
+                    } else {
+                        const auto* comment = db.find_comment_by_perm(bd->author, bd->permlink);
+                        if (comment) {
+                            const auto content = impl.find_comment_content(comment->id);
+                            if (content) {
+                                db.modify(*content, [&](auto& con) {
+                                    if (op.amount.symbol == STEEM_SYMBOL) {
+                                        con.donates += op.amount;
+                                    } else {
+                                        con.donates_uia += (op.amount.amount / op.amount.precision());
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    return;
+                }
+            } catch (...) {
+                return;
+            }
 
-                if (!is_valid_account_name(author_str)) return;
-                auto author = account_name_type(author_str);
-
-                auto wrong = op.to != author || op.from == op.to;
-                if (wrong) {
+            try {
+                auto md = get_message_donate(op);
+                if (md && md->wrong) {
                     db.modify(ddo, [&](auto& don) {
                         don.wrong = true;
                     });
-                    return;
-                }
-
-                const auto* comment = db.find_comment_by_perm(author, permlink);
-                if (comment) {
-                    const auto content = impl.find_comment_content(comment->id);
-                    if (content) {
-                        db.modify(*content, [&](auto& con) {
-                            if (op.amount.symbol == STEEM_SYMBOL) {
-                                con.donates += op.amount;
-                            } else {
-                                con.donates_uia += (op.amount.amount / op.amount.precision());
-                            }
-                        });
-                    }
                 }
             } catch (...) {}
         }
