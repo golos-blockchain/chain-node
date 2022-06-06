@@ -60,11 +60,20 @@ namespace golos { namespace chain {
                 _is_generating = p;
             }
 
+            bool is_reindexing() const {
+                return _is_reindexing;
+            }
+
+            void set_reindexing(bool p) {
+                _is_reindexing = p;
+            }
+
             bool is_transit_enabled() const;
 
             bool _is_producing = false;
             bool _is_generating = false;
             bool _is_testing = false;           ///< set for tests to avoid low free memory spam
+            bool _is_reindexing = false;
             bool _log_hardforks = true;
             uint32_t _fixed_irreversible_block_num = UINT32_MAX;
 

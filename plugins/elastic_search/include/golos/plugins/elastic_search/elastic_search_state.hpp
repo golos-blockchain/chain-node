@@ -20,11 +20,7 @@ using boost::locale::conv::utf_to_utf;
 using golos::plugins::social_network::comment_last_update_index;
 using golos::plugins::social_network::by_comment;
 
-#ifdef STEEMIT_BUILD_TESTNET
-    #define ELASTIC_WRITE_EACH_N_OP 3
-#else
-    #define ELASTIC_WRITE_EACH_N_OP 100
-#endif
+#define ELASTIC_WRITE_EACH_N_OP_REPLAYING 100
 
 using es_buffer_type = std::map<std::string, fc::mutable_variant_object>;
 
@@ -260,11 +256,6 @@ public:
 
         buffer[id] = std::move(doc);
 
-        ++op_num;
-        if (op_num % ELASTIC_WRITE_EACH_N_OP != 0) {
-            return;
-        }
-
         write_buffers();
     }
 
@@ -298,11 +289,6 @@ public:
         doc["author_reputation"] = std::string(_db.get_account_reputation(op.author));
 
         buffer[id] = std::move(doc);
-
-        ++op_num;
-        if (op_num % ELASTIC_WRITE_EACH_N_OP != 0) {
-            return;
-        }
 
         write_buffers();
     }
@@ -345,11 +331,6 @@ public:
             }
         } catch (...) {}
 
-        ++op_num;
-        if (op_num % ELASTIC_WRITE_EACH_N_OP != 0) {
-            return;
-        }
-
         write_buffers();
     }
 
@@ -385,6 +366,11 @@ public:
     }
 
     void write_buffers() {
+        ++op_num;
+        if (_db.is_reindexing() && op_num % ELASTIC_WRITE_EACH_N_OP_REPLAYING != 0) {
+            return;
+        }
+
         op_num = 0;
 
         _write_buffer("blog", "post", buffer);
