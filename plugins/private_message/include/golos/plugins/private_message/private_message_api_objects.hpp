@@ -1,5 +1,6 @@
 #pragma once
 
+#include <golos/protocol/asset.hpp>
 #include <golos/protocol/base.hpp>
 
 #include <golos/plugins/private_message/private_message_operations.hpp>
@@ -20,7 +21,8 @@ namespace golos { namespace plugins { namespace private_message {
             encrypted_message(o.encrypted_message.begin(), o.encrypted_message.end()),
             create_date(std::max(o.inbox_create_date, o.outbox_create_date)),
             receive_date(o.receive_date),
-            read_date(o.read_date), remove_date(o.remove_date) {
+            read_date(o.read_date), remove_date(o.remove_date),
+            donates(o.donates), donates_uia(o.donates_uia) {
         }
 
         message_api_object() = default;
@@ -37,6 +39,9 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec receive_date;
         time_point_sec read_date;
         time_point_sec remove_date;
+
+        asset donates = asset(0, STEEM_SYMBOL);
+        share_type donates_uia = 0;
     };
 
     struct settings_api_object final {
@@ -142,7 +147,9 @@ namespace golos { namespace plugins { namespace private_message {
 FC_REFLECT(
     (golos::plugins::private_message::message_api_object),
     (from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)
-    (create_date)(receive_date)(read_date)(remove_date))
+    (create_date)(receive_date)(read_date)(remove_date)
+    (donates)(donates_uia)
+)
 
 FC_REFLECT(
     (golos::plugins::private_message::settings_api_object),

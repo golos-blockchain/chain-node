@@ -4,6 +4,7 @@
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <appbase/application.hpp>
+#include <golos/protocol/donate_targets.hpp>
 
 #include <golos/chain/index.hpp>
 #include <golos/chain/custom_operation_interpreter.hpp>
@@ -64,6 +65,27 @@ namespace golos { namespace plugins { namespace private_message {
                     pco.is_hidden = true;
                 });
             }
+        }
+
+        result_type operator()(const donate_operation& op) const {
+            try {
+                auto md = get_message_donate(op);
+                if (!md || md->wrong) {
+                    return;
+                }
+
+                auto& id_idx = _db.get_index<message_index, by_nonce>();
+                auto id_itr = id_idx.find(std::make_tuple(md->from, md->to, md->nonce));
+                if (id_itr != id_idx.end()) {
+                    _db.modify(*id_itr, [&](auto& o) {
+                        if (op.amount.symbol == STEEM_SYMBOL) {
+                            o.donates += op.amount;
+                        } else {
+                            o.donates_uia += (op.amount.amount / op.amount.precision());
+                        }
+                    });
+                }
+            } catch (...) {}
         }
     };
 

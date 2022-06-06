@@ -23,6 +23,7 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
         include/golos/protocol/types.hpp
         include/golos/protocol/version.hpp
         include/golos/protocol/reward_curve.hpp
+        include/golos/protocol/donate_targets.hpp
         )
 
 list(APPEND ${CURRENT_TARGET}_SOURCES
@@ -39,6 +40,7 @@ list(APPEND ${CURRENT_TARGET}_SOURCES
         transaction.cpp
         types.cpp
         version.cpp
+        donate_targets.cpp
         )
 
 if(BUILD_SHARED_LIBRARIES)
