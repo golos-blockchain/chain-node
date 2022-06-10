@@ -1773,6 +1773,9 @@ namespace golos { namespace chain {
                         const auto& vdo_idx = _db.get_index<vesting_delegation_index, by_received>();
                         auto vdo_itr = vdo_idx.lower_bound(voter.name);
                         for (; vdo_itr != vdo_idx.end() && vdo_itr->delegatee == voter.name; ++vdo_itr) {
+                            if (vdo_itr->is_emission) {
+                                continue;
+                            }
                             delegator_vote_interest_rate dvir;
                             dvir.account = vdo_itr->delegator;
                             if (_db.head_block_num() < GOLOS_BUG1074_BLOCK && !_db.has_hardfork(STEEMIT_HARDFORK_0_20__1074)) {
@@ -2834,6 +2837,7 @@ namespace {
 template <typename CreateVdo, typename ValidateWithVdo, typename Operation>
 void delegate_vesting_shares(
     database& _db, const chain_properties& median_props, const Operation& op,
+    bool is_emission,
     CreateVdo&& create_vdo, ValidateWithVdo&& validate_with_vdo
 ) {
     const auto& delegator = _db.get_account(op.delegator);
@@ -2867,7 +2871,8 @@ void delegate_vesting_shares(
     });
 
     if (increasing) {
-        auto delegated = delegator.delegated_vesting_shares;
+        auto delegated = delegator.delegated_vesting_shares +
+            delegator.emission_delegated_vesting_shares;
         GOLOS_CHECK_BALANCE(_db, delegator, AVAILABLE_VESTING, delta);
         auto elapsed_seconds = (now - delegator.last_vote_time).to_seconds();
         auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) / STEEMIT_VOTE_REGENERATION_SECONDS;
@@ -2894,7 +2899,7 @@ void delegate_vesting_shares(
             });
         }
         _db.modify(delegator, [&](account_object& a) {
-            a.delegated_vesting_shares += delta;
+            a.delegate_vs(delta, is_emission);
         });
     } else {
         GOLOS_CHECK_OP_PARAM(op, vesting_shares, {
@@ -2907,11 +2912,12 @@ void delegate_vesting_shares(
             o.delegator = op.delegator;
             o.vesting_shares = -delta;
             o.expiration = std::max(now + STEEMIT_CASHOUT_WINDOW_SECONDS, delegation->min_delegation_time);
+            o.is_emission = is_emission;
         });
     }
 
     _db.modify(delegatee, [&](account_object& a) {
-        a.received_vesting_shares += delta;
+        a.receive_vs(delta, is_emission);
     });
     if (delegation) {
         if (op.vesting_shares.amount > 0) {
@@ -2927,7 +2933,8 @@ void delegate_vesting_shares(
         void delegate_vesting_shares_evaluator::do_apply(const delegate_vesting_shares_operation& op) {
             const auto& median_props = _db.get_witness_schedule_object().median_props;
 
-            delegate_vesting_shares(_db, median_props, op, [&](auto&){}, [&](auto&){});
+            delegate_vesting_shares(_db, median_props, op, false,
+                [&](auto&){}, [&](auto&){});
         }
 
         void break_free_referral_evaluator::do_apply(const break_free_referral_operation& op) {
@@ -2952,16 +2959,45 @@ void delegate_vesting_shares(
             });
         }
 
+        struct delegate_vesting_shares_extension_visitor {
+            delegate_vesting_shares_extension_visitor(bool& is_emission, database& db)
+                    : _is_emission(is_emission), _db(db) {
+            }
+
+            using result_type = void;
+
+            bool& _is_emission;
+            database& _db;
+
+            void operator()(const interest_direction& id) const {
+                ASSERT_REQ_HF(STEEMIT_HARDFORK_0_27__202, "interest_direction");
+                _is_emission = true;
+            }
+        };
+
         void delegate_vesting_shares_with_interest_evaluator::do_apply(const delegate_vesting_shares_with_interest_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_19__756, "delegate_vesting_shares_with_interest_operation");
 
             const auto& median_props = _db.get_witness_schedule_object().median_props;
 
-            GOLOS_CHECK_LIMIT_PARAM(op.interest_rate, median_props.max_delegated_vesting_interest_rate);
+            bool is_emission = false;
+            for (auto& e : op.extensions) {
+                delegate_vesting_shares_extension_visitor visitor(is_emission, _db);
+                e.visit(visitor);
+            }
 
-            delegate_vesting_shares(_db, median_props, op, [&](auto& o) {
+            if (is_emission) {
+                GOLOS_CHECK_PARAM(op.interest_rate,
+                    GOLOS_CHECK_VALUE(op.interest_rate == STEEMIT_100_PERCENT, "interest_rate should be 10000 for emission interest"));
+            } else {
+                GOLOS_CHECK_LIMIT_PARAM(op.interest_rate, median_props.max_delegated_vesting_interest_rate);
+            }
+
+            delegate_vesting_shares(_db, median_props, op, is_emission,
+                [&](auto& o) {
                 o.interest_rate = op.interest_rate;
                 o.payout_strategy = op.payout_strategy;
+                o.is_emission = is_emission;
             }, [&](auto& o) {
                 GOLOS_CHECK_LOGIC(o.interest_rate == op.interest_rate,
                     logic_exception::cannot_change_delegator_interest_rate,
@@ -2986,13 +3022,14 @@ void delegate_vesting_shares(
             auto now = _db.head_block_time();
 
             _db.modify(delegatee, [&](account_object& a) {
-                a.received_vesting_shares -= delegation->vesting_shares;
+                a.receive_vs(-delegation->vesting_shares, delegation->payout_strategy);
             });
 
             _db.create<vesting_delegation_expiration_object>([&](vesting_delegation_expiration_object& o) {
                 o.delegator = op.delegator;
                 o.vesting_shares = delegation->vesting_shares;
                 o.expiration = std::max(now + STEEMIT_CASHOUT_WINDOW_SECONDS, delegation->min_delegation_time);
+                o.is_emission = delegation->is_emission;
             });
 
             _db.remove(*delegation);
@@ -3000,6 +3037,10 @@ void delegate_vesting_shares(
 
         void claim_evaluator::do_apply(const claim_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "claim_operation");
+
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__202)) {
+                FC_THROW_EXCEPTION(golos::unsupported_operation, "claim is deprecated");
+            }
 
             const auto& from_account = _db.get_account(op.from);
             const auto& to_account = op.to.size() ? _db.get_account(op.to)

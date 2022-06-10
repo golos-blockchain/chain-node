@@ -82,6 +82,8 @@ struct account_api_object {
     asset vesting_shares;
     asset delegated_vesting_shares;
     asset received_vesting_shares;
+    asset emission_delegated_vesting_shares;
+    asset emission_received_vesting_shares;
     asset vesting_withdraw_rate;
     time_point_sec next_vesting_withdrawal;
     share_type withdrawn;
@@ -131,6 +133,7 @@ FC_REFLECT((golos::api::account_api_object),
     (market_sbd_balance)
     (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)
     (savings_withdraw_requests)(vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
+    (emission_delegated_vesting_shares)(emission_received_vesting_shares)
     (vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
     (benefaction_rewards)(curation_rewards)(delegation_rewards)(posting_rewards)(proxied_vsf_votes)(witnesses_voted_for)
     (average_bandwidth)(average_market_bandwidth)(average_custom_json_bandwidth)(lifetime_bandwidth)(lifetime_market_bandwidth)(lifetime_custom_json_bandwidth)

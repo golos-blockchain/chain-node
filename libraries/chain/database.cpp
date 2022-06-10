@@ -1861,10 +1861,10 @@ namespace golos { namespace chain {
                 auto vdo_itr = vdo_idx.lower_bound(itr->name);
                 while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == itr->name) {
                     modify(*itr, [&](auto& a) {
-                        a.delegated_vesting_shares -= vdo_itr->vesting_shares;
+                        a.delegate_vs(-vdo_itr->vesting_shares, vdo_itr->is_emission);
                     });
                     modify(get_account(vdo_itr->delegatee), [&](auto& a) {
-                        a.received_vesting_shares -= vdo_itr->vesting_shares;
+                        a.receive_vs(-vdo_itr->vesting_shares, vdo_itr->is_emission);
                     });
                     push_virtual_operation(return_vesting_delegation_operation(vdo_itr->delegator, vdo_itr->vesting_shares));
 
@@ -1900,6 +1900,7 @@ namespace golos { namespace chain {
             if (head_block_num() % GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL != 0) return;
 
             if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
+            if (has_hardfork(STEEMIT_HARDFORK_0_27__202)) return;
 
             const auto now = head_block_time();
             const auto& median_props = get_witness_schedule_object().median_props;
@@ -3280,15 +3281,21 @@ namespace golos { namespace chain {
             const auto& props = get_dynamic_global_properties();
             if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) return;
 
+            bool has_hf27 = has_hardfork(STEEMIT_HARDFORK_0_27__202);
+
             auto distributed_sum = asset(0, STEEM_SYMBOL);
 
-            const auto& acc_idx = get_index<account_index, by_vesting_shares>();
+            const auto& acc_idx = get_index<account_index, by_emission>();
             auto acc_itr = acc_idx.upper_bound(asset(0, VESTS_SYMBOL));
             for (; acc_itr != acc_idx.end(); acc_itr++) {
                 const auto& acc = *acc_itr;
                 auto stake = asset((uint128_t(props.accumulative_balance.amount.value) * acc.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
                 modify(acc, [&](auto& a) {
-                    a.accumulative_balance += stake;
+                    if (has_hf27) {
+                        a.tip_balance += stake;
+                    } else {
+                        a.accumulative_balance += stake;
+                    }
                 });
                 distributed_sum += stake;
             }
@@ -3301,6 +3308,21 @@ namespace golos { namespace chain {
 
             if (_accumulative_remainder.amount.value) {
                 push_virtual_operation(accumulative_remainder_operation(_accumulative_remainder));
+            }
+        }
+
+        void database::auto_claim_accumulatives() {
+            if (!has_hardfork(STEEMIT_HARDFORK_0_27__202)) return;
+
+            const auto& acc_idx = get_index<account_index, by_accumulative>();
+            auto acc_itr = acc_idx.begin();
+            auto i = 0;
+            for (; acc_itr != acc_idx.end() && acc_itr->accumulative_balance.amount != 0 && i < 100;
+                acc_itr++, ++i) {
+                modify(*acc_itr, [&](auto& acnt) {
+                    acnt.tip_balance += acnt.accumulative_balance;
+                    acnt.accumulative_balance.amount = 0;
+                });
             }
         }
 
@@ -4467,6 +4489,7 @@ namespace golos { namespace chain {
                 clear_null_account_balance();
                 process_funds();
                 process_accumulative_distributions();
+                auto_claim_accumulatives();
                 process_conversions();
                 process_sbd_debt_conversions();
                 process_comment_cashout();
@@ -5235,7 +5258,7 @@ namespace golos { namespace chain {
             auto itr = delegations_by_exp.begin();
             while (itr != delegations_by_exp.end() && itr->expiration < now) {
                 modify(get_account(itr->delegator), [&](account_object& a) {
-                    a.delegated_vesting_shares -= itr->vesting_shares;
+                    a.delegate_vs(-itr->vesting_shares, itr->is_emission);
                 });
                 push_virtual_operation(return_vesting_delegation_operation(itr->delegator, itr->vesting_shares));
                 remove(*itr);
@@ -5830,6 +5853,7 @@ namespace golos { namespace chain {
                     total_supply += itr->accumulative_balance;
                     total_supply += itr->balance;
                     total_supply += itr->savings_balance;
+                    total_supply += itr->tip_balance;
                     total_sbd += itr->sbd_balance;
                     total_sbd += itr->savings_sbd_balance;
                     total_vesting += itr->vesting_shares;

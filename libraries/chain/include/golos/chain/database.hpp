@@ -548,6 +548,8 @@ namespace golos { namespace chain {
 
             void process_accumulative_distributions();
 
+            void auto_claim_accumulatives();
+
             void process_conversions();
 
             void process_sbd_debt_conversions();

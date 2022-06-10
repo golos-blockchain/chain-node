@@ -707,10 +707,7 @@ namespace golos { namespace chain {
         }
 
         void database_fixture::validate_database(void) {
-            try {
-                db->validate_invariants();
-            }
-            FC_LOG_AND_RETHROW();
+            GOLOS_CHECK_NO_THROW(db->validate_invariants());
         }
 
         namespace test {

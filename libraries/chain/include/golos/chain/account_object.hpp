@@ -100,6 +100,8 @@ public:
     asset vesting_shares = asset(0, VESTS_SYMBOL); ///< total vesting shares held by this account, controls its voting power
     asset delegated_vesting_shares = asset(0, VESTS_SYMBOL); ///<
     asset received_vesting_shares = asset(0, VESTS_SYMBOL); ///<
+    asset emission_delegated_vesting_shares = asset(0, VESTS_SYMBOL); ///<
+    asset emission_received_vesting_shares = asset(0, VESTS_SYMBOL); ///<
 
     asset vesting_withdraw_rate = asset(0, VESTS_SYMBOL); ///< at the time this is updated it can be at most vesting_shares/104
     time_point_sec next_vesting_withdrawal = fc::time_point_sec::maximum(); ///< after every withdrawal this is incremented by 1 week
@@ -138,13 +140,39 @@ public:
 
     /// vesting shares used in voting and bandwidth calculation
     asset effective_vesting_shares() const {
-        return vesting_shares - delegated_vesting_shares + received_vesting_shares;
+        return vesting_shares
+            - delegated_vesting_shares - emission_delegated_vesting_shares
+            + received_vesting_shares + emission_received_vesting_shares;
     }
 
     /// vesting shares, which can be used for delegation (incl. create account) and withdraw operations
     asset available_vesting_shares(bool consider_withdrawal = false) const {
-        auto have = vesting_shares - delegated_vesting_shares;
+        auto have = vesting_shares
+            - delegated_vesting_shares - emission_delegated_vesting_shares;
         return consider_withdrawal ? have - asset(to_withdraw - withdrawn, VESTS_SYMBOL) : have;
+    }
+
+    /// vesting shares used in tip balance emission distribution
+    asset emission_vesting_shares() const {
+        return vesting_shares
+            - emission_delegated_vesting_shares
+            + emission_received_vesting_shares;
+    }
+
+    void delegate_vs(const asset& delta, bool is_emission) {
+        if (is_emission) {
+            emission_delegated_vesting_shares += delta;
+        } else {
+            delegated_vesting_shares += delta;
+        }
+    }
+
+    void receive_vs(const asset& delta, bool is_emission) {
+        if (is_emission) {
+            emission_received_vesting_shares += delta;
+        } else {
+            received_vesting_shares += delta;
+        }
     }
 };
 
@@ -220,6 +248,7 @@ public:
     asset vesting_shares;
     uint16_t interest_rate = 0;
     protocol::delegator_payout_strategy payout_strategy = protocol::to_delegator;
+    bool is_emission = false;
     time_point_sec min_delegation_time;
 };
 
@@ -237,6 +266,7 @@ public:
     account_name_type delegator;
     asset vesting_shares;
     time_point_sec expiration;
+    bool is_emission = false;
 };
 
 class owner_authority_history_object
@@ -337,6 +367,8 @@ struct by_last_active_operation;
 struct by_last_claim;
 struct by_vesting_shares;
 struct by_sbd;
+struct by_accumulative;
+struct by_emission;
 
 /**
  * @ingroup object_index
@@ -379,7 +411,16 @@ typedef multi_index_container<
                         std::less<asset>,
                         std::less<asset>>>,
                 ordered_non_unique<tag<by_vesting_shares>,
-                        member<account_object, asset, &account_object::vesting_shares>>>,
+                    member<account_object, asset, &account_object::vesting_shares>
+                >,
+                ordered_non_unique<tag<by_accumulative>,
+                    member<account_object, asset, &account_object::accumulative_balance>,
+                    std::greater<asset>
+                >,
+                ordered_non_unique<tag<by_emission>,
+                    const_mem_fun<account_object, asset, &account_object::emission_vesting_shares>
+                >
+            >,
     allocator<account_object>
 >
 account_index;
@@ -629,6 +670,7 @@ FC_REFLECT((golos::chain::account_object),
     (market_sbd_balance)
     (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
     (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
+    (emission_delegated_vesting_shares)(emission_received_vesting_shares)
     (vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
     (benefaction_rewards)
     (curation_rewards)
@@ -654,10 +696,12 @@ CHAINBASE_SET_INDEX_TYPE(golos::chain::account_bandwidth_object, golos::chain::a
 FC_REFLECT((golos::chain::account_metadata_object), (id)(account)(json_metadata))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_metadata_object, golos::chain::account_metadata_index)
 
-FC_REFLECT((golos::chain::vesting_delegation_object), (id)(delegator)(delegatee)(vesting_shares)(interest_rate)(min_delegation_time))
+FC_REFLECT((golos::chain::vesting_delegation_object), (id)(delegator)(delegatee)(vesting_shares)(interest_rate)(min_delegation_time)(is_emission))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::vesting_delegation_object, golos::chain::vesting_delegation_index)
 
-FC_REFLECT((golos::chain::vesting_delegation_expiration_object), (id)(delegator)(vesting_shares)(expiration))
+FC_REFLECT((golos::chain::vesting_delegation_expiration_object),
+    (id)(delegator)(vesting_shares)(expiration)(is_emission)
+)
 CHAINBASE_SET_INDEX_TYPE(golos::chain::vesting_delegation_expiration_object, golos::chain::vesting_delegation_expiration_index)
 
 FC_REFLECT((golos::chain::owner_authority_history_object),

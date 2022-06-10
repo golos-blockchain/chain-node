@@ -1584,14 +1584,25 @@ namespace golos { namespace protocol {
             _size
         };
 
+        struct interest_direction {
+            bool is_emission;
+        };
+
+        using delegate_vesting_shares_extension = static_variant<
+            interest_direction
+        >;
+
+        using delegate_vesting_shares_extensions_type = flat_set<delegate_vesting_shares_extension>;
+
         class delegate_vesting_shares_with_interest_operation : public base_operation {
         public:
             account_name_type delegator;    ///< The account delegating vesting shares
             account_name_type delegatee;    ///< The account receiving vesting shares
             asset vesting_shares;           ///< The amount of vesting shares delegated
             uint16_t interest_rate = STEEMIT_DEFAULT_DELEGATED_VESTING_INTEREST_RATE; ///< The interest rate wanted by delegator
+            // NOT REFLECTED DUE AN OLD BUG:
             delegator_payout_strategy payout_strategy = to_delegator; ///< The strategy of delegator vesting payouts
-            extensions_type extensions;     ///< Extensions. Not currently used.
+            delegate_vesting_shares_extensions_type extensions;     ///< Extensions.
 
             void validate() const;
             void get_required_active_authorities(flat_set<account_name_type>& a) const {
@@ -1967,6 +1978,10 @@ FC_REFLECT((golos::protocol::chain_properties_update_operation), (owner)(props))
 FC_REFLECT((golos::protocol::break_free_referral_operation), (referral)(extensions));
 
 FC_REFLECT_ENUM(golos::protocol::delegator_payout_strategy, (to_delegator)(to_delegated_vesting)(_size))
+FC_REFLECT((golos::protocol::interest_direction),
+    (is_emission)
+)
+FC_REFLECT_TYPENAME((golos::protocol::delegate_vesting_shares_extension));
 FC_REFLECT((golos::protocol::delegate_vesting_shares_with_interest_operation), (delegator)(delegatee)(vesting_shares)(interest_rate)(extensions));
 FC_REFLECT((golos::protocol::reject_vesting_shares_delegation_operation), (delegator)(delegatee)(extensions));
 FC_REFLECT((golos::protocol::transit_to_cyberway_operation), (owner)(vote_to_transit));

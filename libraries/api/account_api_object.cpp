@@ -33,6 +33,7 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         delegation_rewards(a.delegation_rewards), posting_rewards(a.posting_rewards),
         vesting_shares(a.vesting_shares),
         delegated_vesting_shares(a.delegated_vesting_shares), received_vesting_shares(a.received_vesting_shares),
+        emission_delegated_vesting_shares(a.emission_delegated_vesting_shares), emission_received_vesting_shares(a.emission_received_vesting_shares),
         vesting_withdraw_rate(a.vesting_withdraw_rate), next_vesting_withdrawal(a.next_vesting_withdrawal),
         withdrawn(a.withdrawn), to_withdraw(a.to_withdraw), withdraw_routes(a.withdraw_routes),
         witnesses_voted_for(a.witnesses_voted_for),
@@ -90,7 +91,9 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
     last_active_operation = a.last_active_operation;
     last_claim = a.last_claim;
 
-    if (db.has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
+    if (db.has_hardfork(STEEMIT_HARDFORK_0_27__202)) {
+        claim_expiration = time_point_sec::maximum();
+    } else if (db.has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
         auto now = db.head_block_time().sec_since_epoch();
         auto now_block = db.head_block_num();
 
