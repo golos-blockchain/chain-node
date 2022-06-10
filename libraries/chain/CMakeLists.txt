@@ -26,6 +26,7 @@ if(BUILD_SHARED_LIBRARIES)
             shared_authority.cpp
             #        transaction_object.cpp
             block_log.cpp
+            freezing_utils.cpp
             hf_actions.cpp
             evaluator.cpp
             proposal_object.cpp
@@ -46,6 +47,7 @@ if(BUILD_SHARED_LIBRARIES)
             include/golos/chain/database.hpp
             include/golos/chain/database_exceptions.hpp
             include/golos/chain/db_with.hpp
+            include/golos/chain/freezing_utils.hpp
             include/golos/chain/hf_actions.hpp
             include/golos/chain/evaluator.hpp
             include/golos/chain/evaluator_registry.hpp
@@ -84,6 +86,7 @@ else()
             shared_authority.cpp
             #        transaction_object.cpp
             block_log.cpp
+            freezing_utils.cpp
             hf_actions.cpp
             evaluator.cpp
             proposal_object.cpp
@@ -104,6 +107,7 @@ else()
             include/golos/chain/database.hpp
             include/golos/chain/database_exceptions.hpp
             include/golos/chain/db_with.hpp
+            include/golos/chain/freezing_utils.hpp
             include/golos/chain/hf_actions.hpp
             include/golos/chain/evaluator.hpp
             include/golos/chain/evaluator_registry.hpp

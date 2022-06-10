@@ -9,12 +9,25 @@
 namespace golos { namespace api {
 
 using golos::chain::account_object;
+using golos::chain::account_freeze_object;
 using protocol::asset;
 using protocol::share_type;
 using protocol::authority;
 using protocol::account_name_type;
 using protocol::public_key_type;
 
+struct account_freeze_api_object {
+    account_freeze_api_object(const account_freeze_object& afo);
+
+    account_freeze_api_object();
+
+    authority owner;
+    authority active;
+    authority posting;
+    public_key_type memo_key;
+    uint32_t hardfork;
+    time_point_sec frozen;
+};
 
 struct account_api_object {
     account_api_object(const account_object&, const golos::chain::database&);
@@ -119,10 +132,17 @@ struct account_api_object {
     time_point_sec last_active_operation = time_point_sec::min();
     time_point_sec last_claim = time_point_sec::min();
     time_point_sec claim_expiration = time_point_sec::min();
+
+    uint32_t proved_hf = 0;
+    bool frozen = false;
+    fc::optional<account_freeze_api_object> freeze;
 };
 
 } } // golos::api
 
+FC_REFLECT((golos::api::account_freeze_api_object),
+    (owner)(active)(posting)(memo_key)(hardfork)(frozen)
+)
 
 FC_REFLECT((golos::api::account_api_object),
     (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
@@ -141,6 +161,8 @@ FC_REFLECT((golos::api::account_api_object),
     (last_comment)(last_post)(post_bandwidth)
     (witness_votes)(reputation)(posts_capacity)(comments_capacity)(voting_capacity)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
-    (last_active_operation)(last_claim)(claim_expiration))
+    (last_active_operation)(last_claim)(claim_expiration)
+    (proved_hf)(frozen)(freeze)
+)
 
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP

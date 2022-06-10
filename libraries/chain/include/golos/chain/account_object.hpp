@@ -125,6 +125,9 @@ public:
     time_point_sec last_active_operation;
     time_point_sec last_claim;
 
+    uint32_t proved_hf = 0;
+    bool frozen = false;
+
     /// This function should be used only when the account votes for a witness directly
     share_type witness_vote_weight() const {
         return std::accumulate(proxied_vsf_votes.begin(),
@@ -196,6 +199,31 @@ public:
     shared_authority posting; ///< used for voting and posting
 
     time_point_sec last_owner_update;
+};
+
+class account_freeze_object
+        : public object<account_freeze_object_type, account_freeze_object> {
+public:
+    account_freeze_object() = delete;
+
+    template<typename Constructor, typename Allocator>
+    account_freeze_object(Constructor &&c, allocator<Allocator> a)
+            : owner(shared_authority::allocator_type(a.get_segment_manager())),
+            active(shared_authority::allocator_type(a.get_segment_manager())),
+            posting(shared_authority::allocator_type(a.get_segment_manager())) {
+        c(*this);
+    }
+
+    id_type id;
+
+    account_name_type account;
+
+    shared_authority owner;
+    shared_authority active;
+    shared_authority posting;
+    public_key_type memo_key;
+    uint32_t hardfork;
+    time_point_sec frozen;
 };
 
 class account_bandwidth_object
@@ -369,6 +397,7 @@ struct by_vesting_shares;
 struct by_sbd;
 struct by_accumulative;
 struct by_emission;
+struct by_proved;
 
 /**
  * @ingroup object_index
@@ -419,7 +448,14 @@ typedef multi_index_container<
                 >,
                 ordered_non_unique<tag<by_emission>,
                     const_mem_fun<account_object, asset, &account_object::emission_vesting_shares>
-                >
+                >,
+                ordered_non_unique<tag<by_proved>, composite_key<account_object,
+                    member<account_object, bool, &account_object::frozen>,
+                    member<account_object, uint32_t, &account_object::proved_hf>
+                >, composite_key_compare<
+                    std::less<bool>,
+                    std::less<uint32_t>
+                >>
             >,
     allocator<account_object>
 >
@@ -487,6 +523,19 @@ composite_key_compare <std::greater<time_point_sec>, std::less<account_authority
 allocator<account_authority_object>
 >
 account_authority_index;
+
+using account_freeze_index = multi_index_container<
+    account_freeze_object,
+    indexed_by<
+        ordered_unique<tag<by_id>,
+            member<account_freeze_object, account_freeze_id_type, &account_freeze_object::id>
+        >,
+        ordered_unique<tag<by_account>, 
+            member<account_freeze_object, account_name_type, &account_freeze_object::account>
+        >
+    >, allocator<account_freeze_object>
+>;
+
 
 
 struct by_account_bandwidth_type;
@@ -679,8 +728,8 @@ FC_REFLECT((golos::chain::account_object),
     (proxied_vsf_votes)(witnesses_voted_for)
     (last_comment)(last_post)(last_posting_action)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
-    (last_active_operation)
-    (last_claim)
+    (last_active_operation)(last_claim)
+    (proved_hf)(frozen)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_object, golos::chain::account_index)
 
@@ -688,6 +737,8 @@ FC_REFLECT((golos::chain::account_authority_object),
         (id)(account)(owner)(active)(posting)(last_owner_update)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_authority_object, golos::chain::account_authority_index)
+
+CHAINBASE_SET_INDEX_TYPE(golos::chain::account_freeze_object, golos::chain::account_freeze_index)
 
 FC_REFLECT((golos::chain::account_bandwidth_object),
         (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update))

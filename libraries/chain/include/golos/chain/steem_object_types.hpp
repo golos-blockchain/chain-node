@@ -46,6 +46,7 @@ namespace golos { namespace chain {
             dynamic_global_property_object_type,
             account_object_type,
             account_authority_object_type,
+            account_freeze_object_type,
             account_bandwidth_object_type,
             witness_object_type,
             transaction_object_type,
@@ -85,6 +86,7 @@ namespace golos { namespace chain {
         class dynamic_global_property_object;
         class account_object;
         class account_authority_object;
+        class account_freeze_object;
         class account_bandwidth_object;
         class witness_object;
         class transaction_object;
@@ -123,6 +125,7 @@ namespace golos { namespace chain {
         typedef object_id<dynamic_global_property_object> dynamic_global_property_id_type;
         typedef object_id<account_object> account_id_type;
         typedef object_id<account_authority_object> account_authority_id_type;
+        typedef object_id<account_freeze_object> account_freeze_id_type;
         typedef object_id<account_bandwidth_object> account_bandwidth_id_type;
         typedef object_id<witness_object> witness_id_type;
         typedef object_id<transaction_object> transaction_object_id_type;
@@ -232,6 +235,7 @@ FC_REFLECT_ENUM(golos::chain::object_type,
         (dynamic_global_property_object_type)
                 (account_object_type)
                 (account_authority_object_type)
+                (account_freeze_object_type)
                 (account_bandwidth_object_type)
                 (witness_object_type)
                 (transaction_object_type)

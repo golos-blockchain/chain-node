@@ -10,6 +10,7 @@
 #include <golos/chain/database.hpp>
 #include <golos/chain/database_exceptions.hpp>
 #include <golos/chain/db_with.hpp>
+#include <golos/chain/freezing_utils.hpp>
 #include <golos/chain/hf_actions.hpp>
 #include <golos/chain/evaluator_registry.hpp>
 #include <golos/chain/index.hpp>
@@ -3801,6 +3802,46 @@ namespace golos { namespace chain {
             }
         }
 
+        void database::process_account_freezing() {
+            if (!has_hardfork(STEEMIT_HARDFORK_0_27__203)) return;
+
+            freezing_utils fru(*this);
+
+            auto now = head_block_time();
+
+            wlog("Freezing");
+
+            const auto& idx = get_index<account_index, by_proved>();
+            auto itr = idx.begin();
+            auto i = 0;
+            for (; itr != idx.end() && !itr->frozen && itr->proved_hf < fru.hardfork && i < 100; ++itr, ++i) {
+                bool inactive = fru.is_inactive(*itr);
+
+                modify(*itr, [&](auto& a) {
+                    a.proved_hf = fru.hardfork;
+                    a.frozen = inactive;
+                });
+
+                if (!inactive) continue;
+                freezed++;
+
+                auto& auth = get_authority(itr->name);
+                create<account_freeze_object>([&](auto& r) {
+                    r.account = itr->name;
+                    r.owner = auth.owner;
+                    r.active = auth.active;
+                    r.posting = auth.posting;
+                    r.memo_key = itr->memo_key;
+                    r.frozen = now;
+                    r.hardfork = fru.hardfork;
+                });
+                clear_authority(*itr);
+            }
+
+            wlog("Freezed");
+            wlog(std::to_string(freezed));
+        }
+
         time_point_sec database::head_block_time() const {
             return get_dynamic_global_properties().time;
         }
@@ -3906,6 +3947,7 @@ namespace golos { namespace chain {
             add_core_index<dynamic_global_property_index>(*this);
             add_core_index<account_index>(*this);
             add_core_index<account_authority_index>(*this);
+            add_core_index<account_freeze_index>(*this);
             add_core_index<account_bandwidth_index>(*this);
             add_core_index<witness_index>(*this);
             add_core_index<transaction_index>(*this);
@@ -4508,6 +4550,8 @@ namespace golos { namespace chain {
                 process_decline_voting_rights();
 
                 process_hardforks();
+
+                process_account_freezing();
 
                 // notify observers that the block has been applied
                 notify_applied_block(next_block);

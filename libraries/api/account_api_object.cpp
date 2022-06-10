@@ -9,6 +9,17 @@ using golos::chain::account_authority_object;
 using golos::chain::account_metadata_object;
 using golos::chain::bandwidth_type;
 
+account_freeze_api_object::account_freeze_api_object(const account_freeze_object& afo) {
+    owner = authority(afo.owner);
+    active = authority(afo.active);
+    posting = authority(afo.posting);
+    memo_key = afo.memo_key;
+    frozen = afo.frozen;
+    hardfork = afo.hardfork;
+}
+
+account_freeze_api_object::account_freeze_api_object() = default;
+
 account_api_object::account_api_object(const account_object& a, const golos::chain::database& db)
     :   id(a.id), name(a.name), memo_key(a.memo_key), proxy(a.proxy),
         last_account_update(a.last_account_update), created(a.created), mined(a.mined),
@@ -37,7 +48,7 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         vesting_withdraw_rate(a.vesting_withdraw_rate), next_vesting_withdrawal(a.next_vesting_withdrawal),
         withdrawn(a.withdrawn), to_withdraw(a.to_withdraw), withdraw_routes(a.withdraw_routes),
         witnesses_voted_for(a.witnesses_voted_for),
-        last_comment(a.last_comment), last_post(a.last_post) {
+        last_comment(a.last_comment), last_post(a.last_post), proved_hf(a.proved_hf), frozen(a.frozen) {
     size_t n = a.proxied_vsf_votes.size();
     proxied_vsf_votes.reserve(n);
     for (size_t i = 0; i < n; i++) {
@@ -111,6 +122,11 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
     }
 
     reputation = a.reputation;
+
+    auto fr = db.find<account_freeze_object, by_account>(name);
+    if (fr != nullptr) {
+        freeze = account_freeze_api_object(*fr);
+    }
 }
 
 account_api_object::account_api_object() = default;

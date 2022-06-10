@@ -42,6 +42,8 @@ namespace golos { namespace chain {
 
             ~database();
 
+            int freezed = 0;
+
             using chainbase::database::remove;
 
             bool is_producing() const {
@@ -561,6 +563,8 @@ namespace golos { namespace chain {
             void expire_escrow_ratification();
 
             void process_decline_voting_rights();
+
+            void process_account_freezing();
 
             void update_median_feed();
 

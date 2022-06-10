@@ -2,6 +2,7 @@
 #include <golos/chain/database.hpp>
 #include <golos/chain/reputation_manager.hpp>
 #include <golos/chain/custom_operation_interpreter.hpp>
+#include <golos/chain/freezing_utils.hpp>
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/block_summary_object.hpp>
 #include <golos/chain/worker_objects.hpp>
@@ -1276,8 +1277,11 @@ namespace golos { namespace chain {
 
             account_name_type reg_acc;
             public_key_type pub_key;
+            bool unfreezing = false;
 
-            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__199) && o.to == STEEMIT_REGISTRATOR_ACCOUNT) {
+            auto hf27 = _db.has_hardfork(STEEMIT_HARDFORK_0_27__199);
+
+            if (hf27 && o.to == STEEMIT_REGISTRATOR_ACCOUNT) {
                 std::vector<std::string> parts;
                 parts.reserve(2);
                 boost::split(parts, o.memo, boost::is_any_of(":"));
@@ -1295,16 +1299,31 @@ namespace golos { namespace chain {
                 GOLOS_CHECK_OP_PARAM(o, amount, {
                     GOLOS_CHECK_ASSET_GE(o.amount, GOLOS, median_props.account_creation_fee.amount);
                 });
+            } else if (hf27 && to_account.frozen && o.amount.symbol == STEEM_SYMBOL) {
+                unfreezing = true;
             }
 
             GOLOS_CHECK_OP_PARAM(o, amount, {
                 GOLOS_CHECK_BALANCE(_db, from_account, MAIN_BALANCE, o.amount);
-                _db.adjust_balance(from_account, -o.amount);
-                if (reg_acc == account_name_type()) {
-                    _db.adjust_balance(to_account, o.amount);
-                }
             });
 
+            _db.adjust_balance(from_account, -o.amount);
+            if (unfreezing) {
+                auto amount = o.amount;
+                if (amount >= median_props.account_creation_fee) {
+                    freezing_utils fru(_db);
+                    fru.unfreeze(to_account);
+
+                    _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), median_props.account_creation_fee);
+                    amount -= median_props.account_creation_fee;
+                }
+                if (amount.amount > 0) {
+                    _db.adjust_balance(to_account, amount);
+                }
+            } else if (reg_acc == account_name_type()) {
+                _db.adjust_balance(to_account, o.amount);
+            }
+            
             if (reg_acc != account_name_type()) {
                 const auto& new_account = _db.create<account_object>([&](auto& acc) {
                     acc.name = reg_acc;
