@@ -42,7 +42,9 @@ namespace golos { namespace chain {
 
             ~database();
 
-            int freezed = 0;
+#ifdef STEEMIT_BUILD_TESTNET
+            bool _test_freezing = false;
+#endif
 
             using chainbase::database::remove;
 

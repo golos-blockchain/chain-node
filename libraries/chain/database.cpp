@@ -1851,17 +1851,15 @@ namespace golos { namespace chain {
 
             auto min_vs = 30000000000;
 
-            const auto& idx = get_index<account_index, by_last_active_operation>();
-            auto itr = idx.lower_bound(old_time);
-            for (; itr != idx.end(); ++itr) {
-                if (!itr->vesting_shares.amount.value || itr->to_withdraw.value) continue;
+            auto process_acc = [&](auto& acc) {
+                if (!acc.vesting_shares.amount.value || acc.to_withdraw.value) return;
 
-                auto acc_vs = itr->effective_vesting_shares().amount.value;
-                if (has_hf23 && acc_vs < 30000000) continue;
+                auto acc_vs = acc.effective_vesting_shares().amount.value;
+                if (has_hf23 && acc_vs < 30000000) return;
 
-                auto vdo_itr = vdo_idx.lower_bound(itr->name);
-                while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == itr->name) {
-                    modify(*itr, [&](auto& a) {
+                auto vdo_itr = vdo_idx.lower_bound(acc.name);
+                while (vdo_itr != vdo_idx.end() && vdo_itr->delegator == acc.name) {
+                    modify(acc, [&](auto& a) {
                         a.delegate_vs(-vdo_itr->vesting_shares, vdo_itr->is_emission);
                     });
                     modify(get_account(vdo_itr->delegatee), [&](auto& a) {
@@ -1874,13 +1872,13 @@ namespace golos { namespace chain {
                     remove(current);
                 }
 
-                auto to_withdraw = itr->vesting_shares.amount.value;
+                auto to_withdraw = acc.vesting_shares.amount.value;
                 if (has_hf25) {
                     to_withdraw = acc_vs - min_vs;
-                    if (to_withdraw <= 0) continue;
-                    to_withdraw = std::min(to_withdraw, itr->vesting_shares.amount.value);
+                    if (to_withdraw <= 0) return;
+                    to_withdraw = std::min(to_withdraw, acc.vesting_shares.amount.value);
                 }
-                modify(*itr, [&](auto& a) {
+                modify(acc, [&](auto& a) {
                     if (has_hf26) {
                         a.vesting_withdraw_rate = asset(to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL);
                     } else if (has_hf23) {
@@ -1894,6 +1892,21 @@ namespace golos { namespace chain {
                     a.to_withdraw = to_withdraw;
                     a.withdrawn = 0;
                 });
+            };
+
+            if (has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                const auto& idx = get_index<account_index, by_proved>();
+                auto itr = idx.begin();
+                for (; itr != idx.end() && !itr->frozen; ++itr) {
+                    if (itr->last_active_operation > old_time) continue;
+                    process_acc(*itr);
+                }
+            } else {
+                const auto& idx = get_index<account_index, by_last_active_operation>();
+                auto itr = idx.lower_bound(old_time);
+                for (; itr != idx.end(); ++itr) {
+                    process_acc(*itr);
+                }
             }
         }
 
@@ -3280,17 +3293,18 @@ namespace golos { namespace chain {
             if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
 
             const auto& props = get_dynamic_global_properties();
-            if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) return;
 
             bool has_hf27 = has_hardfork(STEEMIT_HARDFORK_0_27__202);
+            if (has_hf27) {
+                if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL != 0) return;
+            } else {
+                if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL_HF26 != 0) return;
+            }
 
             auto distributed_sum = asset(0, STEEM_SYMBOL);
 
-            const auto& acc_idx = get_index<account_index, by_emission>();
-            auto acc_itr = acc_idx.upper_bound(asset(0, VESTS_SYMBOL));
-            for (; acc_itr != acc_idx.end(); acc_itr++) {
-                const auto& acc = *acc_itr;
-                auto stake = asset((uint128_t(props.accumulative_balance.amount.value) * acc.vesting_shares.amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
+            auto process_acc = [&](const auto& acc) {
+                auto stake = asset((uint128_t(props.accumulative_balance.amount.value) * acc.emission_vesting_shares().amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
                 modify(acc, [&](auto& a) {
                     if (has_hf27) {
                         a.tip_balance += stake;
@@ -3299,6 +3313,21 @@ namespace golos { namespace chain {
                     }
                 });
                 distributed_sum += stake;
+            };
+
+            if (!has_hf27) {
+                const auto& acc_idx = get_index<account_index, by_vesting_shares>();
+                auto acc_itr = acc_idx.upper_bound(asset(0, VESTS_SYMBOL));
+                for (; acc_itr != acc_idx.end(); acc_itr++) {
+                    process_acc(*acc_itr);
+                }
+            } else {
+                const auto& acc_idx = get_index<account_index, by_proved>();
+                auto acc_itr = acc_idx.begin();
+                for (; acc_itr != acc_idx.end() && !acc_itr->frozen; acc_itr++) {
+                    if (acc_itr->emission_vesting_shares().amount == 0) continue;
+                    process_acc(*acc_itr);
+                }
             }
 
             _accumulative_remainder += (props.accumulative_balance - distributed_sum);
@@ -3319,8 +3348,10 @@ namespace golos { namespace chain {
             auto acc_itr = acc_idx.begin();
             auto i = 0;
             for (; acc_itr != acc_idx.end() && acc_itr->accumulative_balance.amount != 0 && i < 100;
-                acc_itr++, ++i) {
-                modify(*acc_itr, [&](auto& acnt) {
+                ++i) {
+                const auto& acc = *acc_itr;
+                ++acc_itr;
+                modify(acc, [&](auto& acnt) {
                     acnt.tip_balance += acnt.accumulative_balance;
                     acnt.accumulative_balance.amount = 0;
                 });
@@ -3563,14 +3594,12 @@ namespace golos { namespace chain {
             asset net_sbd(0, SBD_SYMBOL);
             asset net_steem(0, STEEM_SYMBOL);
 
-            for (const auto& acc : get_index<account_index>().indices()) {
-                if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) continue;
-
+            auto process_acc = [&](auto& acc) {
                 auto sbd = asset(
                     (uint128_t(acc.sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
                 auto savings_sbd = asset(
                     (uint128_t(acc.savings_sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
-                if (!sbd.amount.value && !savings_sbd.amount.value) continue;
+                if (!sbd.amount.value && !savings_sbd.amount.value) return;
 
                 asset steem(0, STEEM_SYMBOL);
                 if (sbd.amount.value) {
@@ -3591,6 +3620,21 @@ namespace golos { namespace chain {
                 }
 
                 push_virtual_operation(convert_sbd_debt_operation(acc.name, sbd, steem, savings_sbd, savings_steem));
+            };
+
+            if (has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                const auto& idx = get_index<account_index, by_sbd>();
+                for (auto itr = idx.begin(); itr != idx.end(); ) {
+                    const auto& acc = *itr;
+                    if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) break;
+                    ++itr;
+                    process_acc(acc);
+                }
+            } else {
+                for (const auto& acc : get_index<account_index>().indices()) {
+                    if (acc.sbd_balance.amount.value || acc.savings_sbd_balance.amount.value)
+                        process_acc(acc);
+                }
             }
 
             const auto& escrows = get_index<escrow_index>().indices();
@@ -3806,40 +3850,49 @@ namespace golos { namespace chain {
             if (!has_hardfork(STEEMIT_HARDFORK_0_27__203)) return;
 
             freezing_utils fru(*this);
+            if (fru.hf_long_ago) {
+                wlog("Not freezing - hf is long ago");
+                return;
+            }
 
             auto now = head_block_time();
-
-            wlog("Freezing");
 
             const auto& idx = get_index<account_index, by_proved>();
             auto itr = idx.begin();
             auto i = 0;
-            for (; itr != idx.end() && !itr->frozen && itr->proved_hf < fru.hardfork && i < 100; ++itr, ++i) {
-                bool inactive = fru.is_inactive(*itr);
+            for (; itr != idx.end() && !itr->frozen && itr->proved_hf < fru.hardfork && i < 100; ++i) {
+                const auto& acc = *itr;
+                ++itr;
 
-                modify(*itr, [&](auto& a) {
+                bool inactive = fru.is_inactive(acc);
+
+                modify(acc, [&](auto& a) {
                     a.proved_hf = fru.hardfork;
                     a.frozen = inactive;
                 });
 
                 if (!inactive) continue;
-                freezed++;
 
-                auto& auth = get_authority(itr->name);
+                auto& auth = get_authority(acc.name);
                 create<account_freeze_object>([&](auto& r) {
-                    r.account = itr->name;
+                    r.account = acc.name;
                     r.owner = auth.owner;
                     r.active = auth.active;
                     r.posting = auth.posting;
-                    r.memo_key = itr->memo_key;
                     r.frozen = now;
                     r.hardfork = fru.hardfork;
                 });
-                clear_authority(*itr);
-            }
 
-            wlog("Freezed");
-            wlog(std::to_string(freezed));
+                modify(auth, [&](auto& auth) {
+                    auth.posting = authority();
+                    auth.active = authority();
+                    auth.owner = authority();
+
+                    auth.posting.weight_threshold = 1;
+                    auth.active.weight_threshold = 1;
+                    auth.owner.weight_threshold = 1;
+                });
+            }
         }
 
         time_point_sec database::head_block_time() const {
@@ -5858,6 +5911,9 @@ namespace golos { namespace chain {
                 hfp.current_hardfork_version = _hardfork_versions[hardfork];
                 FC_ASSERT(hfp.processed_hardforks[hfp.last_hardfork] ==
                           _hardfork_times[hfp.last_hardfork], "Hardfork processing failed sanity check...");
+                if (hardfork == STEEMIT_HARDFORK_0_27) {
+                    hfp.hf27_applied_block = head_block_num();
+                }
             });
 
             push_virtual_operation(hardfork_operation(hardfork), true);

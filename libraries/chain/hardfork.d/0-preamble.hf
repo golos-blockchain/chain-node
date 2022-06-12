@@ -31,6 +31,7 @@ namespace golos {
             protocol::hardfork_version current_hardfork_version;
             protocol::hardfork_version next_hardfork;
             fc::time_point_sec next_hardfork_time;
+            uint32_t hf27_applied_block = 0; // Internal, not reflected
         };
 
         typedef multi_index_container <

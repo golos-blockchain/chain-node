@@ -14,6 +14,7 @@ public:
 
     database& _db;
     uint32_t hardfork;
+    bool hf_long_ago = false;
 };
 
 }} // golos::chain

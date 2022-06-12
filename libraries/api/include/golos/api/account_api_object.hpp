@@ -24,7 +24,6 @@ struct account_freeze_api_object {
     authority owner;
     authority active;
     authority posting;
-    public_key_type memo_key;
     uint32_t hardfork;
     time_point_sec frozen;
 };
@@ -141,7 +140,7 @@ struct account_api_object {
 } } // golos::api
 
 FC_REFLECT((golos::api::account_freeze_api_object),
-    (owner)(active)(posting)(memo_key)(hardfork)(frozen)
+    (owner)(active)(posting)(hardfork)(frozen)
 )
 
 FC_REFLECT((golos::api::account_api_object),

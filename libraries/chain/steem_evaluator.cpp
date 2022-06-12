@@ -171,6 +171,10 @@ namespace golos { namespace chain {
                 } else {
                     acc.recovery_account = o.creator;
                 }
+
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                    acc.proved_hf = _db.get_hardfork_property_object().last_hardfork;
+                }
             });
             store_account_json_metadata(_db, o.new_account_name, o.json_metadata);
 
@@ -276,6 +280,10 @@ namespace golos { namespace chain {
                 acc.mined = false;
                 acc.recovery_account = o.creator;
                 acc.received_vesting_shares = o.delegation;
+
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                    acc.proved_hf = _db.get_hardfork_property_object().last_hardfork;
+                }
             });
             store_account_json_metadata(_db, o.new_account_name, o.json_metadata);
 
@@ -351,6 +359,10 @@ namespace golos { namespace chain {
                     acc.referrer_interest_rate = median_props.max_referral_interest_rate;
                     acc.referral_end_date = now + median_props.max_referral_term_sec;
                     acc.referral_break_fee = median_props.max_referral_break_fee;
+                }
+
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                    acc.proved_hf = _db.get_hardfork_property_object().last_hardfork;
                 }
             });
             store_account_json_metadata(_db, op.new_account_name, op.json_metadata);
@@ -1334,6 +1346,10 @@ namespace golos { namespace chain {
                     acc.last_claim = now;
                     acc.mined = false;
                     acc.recovery_account = STEEMIT_REGISTRATOR_ACCOUNT;
+
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                        acc.proved_hf = _db.get_hardfork_property_object().last_hardfork;
+                    }
                 });
                 store_account_json_metadata(_db, reg_acc, "{}");
 
@@ -2124,6 +2140,10 @@ namespace golos { namespace chain {
                     acc.last_active_operation = dgp.time;
                     acc.last_claim = dgp.time;
 
+                    if (db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                        acc.proved_hf = db.get_hardfork_property_object().last_hardfork;
+                    }
+
                     if (!db.has_hardfork(STEEMIT_HARDFORK_0_11__169)) {
                         acc.recovery_account = STEEMIT_INIT_MINER_NAME;
                     } else {
@@ -2271,6 +2291,10 @@ namespace golos { namespace chain {
                     acc.last_active_operation = dgp.time;
                     acc.last_claim = dgp.time;
                     acc.recovery_account = ""; /// highest voted witness at time of recovery
+
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                        acc.proved_hf = _db.get_hardfork_property_object().last_hardfork;
+                    }
                 });
                 store_account_json_metadata(db, worker_account, "");
 
@@ -3021,7 +3045,7 @@ void delegate_vesting_shares(
                 GOLOS_CHECK_LOGIC(o.interest_rate == op.interest_rate,
                     logic_exception::cannot_change_delegator_interest_rate,
                     "Cannot change interest rate of already created delegation");
-                GOLOS_CHECK_LOGIC(o.payout_strategy == op.payout_strategy,
+                GOLOS_CHECK_LOGIC(o.is_emission == is_emission && o.payout_strategy == op.payout_strategy,
                     logic_exception::cannot_change_delegator_payout_strategy,
                     "Cannot change payout strategy of already created delegation");
             });

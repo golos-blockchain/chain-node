@@ -13,7 +13,6 @@ account_freeze_api_object::account_freeze_api_object(const account_freeze_object
     owner = authority(afo.owner);
     active = authority(afo.active);
     posting = authority(afo.posting);
-    memo_key = afo.memo_key;
     frozen = afo.frozen;
     hardfork = afo.hardfork;
 }

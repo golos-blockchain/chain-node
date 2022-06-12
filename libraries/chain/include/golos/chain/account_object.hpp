@@ -221,7 +221,6 @@ public:
     shared_authority owner;
     shared_authority active;
     shared_authority posting;
-    public_key_type memo_key;
     uint32_t hardfork;
     time_point_sec frozen;
 };
@@ -396,7 +395,6 @@ struct by_last_claim;
 struct by_vesting_shares;
 struct by_sbd;
 struct by_accumulative;
-struct by_emission;
 struct by_proved;
 
 /**
@@ -437,17 +435,14 @@ typedef multi_index_container<
                         member<account_object, asset, &account_object::sbd_balance>,
                         member<account_object, asset, &account_object::savings_sbd_balance>>,
                     composite_key_compare<
-                        std::less<asset>,
-                        std::less<asset>>>,
+                        std::greater<asset>,
+                        std::greater<asset>>>,
                 ordered_non_unique<tag<by_vesting_shares>,
                     member<account_object, asset, &account_object::vesting_shares>
                 >,
                 ordered_non_unique<tag<by_accumulative>,
                     member<account_object, asset, &account_object::accumulative_balance>,
                     std::greater<asset>
-                >,
-                ordered_non_unique<tag<by_emission>,
-                    const_mem_fun<account_object, asset, &account_object::emission_vesting_shares>
                 >,
                 ordered_non_unique<tag<by_proved>, composite_key<account_object,
                     member<account_object, bool, &account_object::frozen>,

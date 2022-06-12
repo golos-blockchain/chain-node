@@ -7050,6 +7050,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             generate_block();
             ACTORS((sam)(dave))
+            BOOST_TEST_MESSAGE(db->head_block_time().to_iso_string());
             generate_block();
             vest("sam", ASSET_GOLOS(1000));
             generate_block();
