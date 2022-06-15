@@ -3851,7 +3851,6 @@ namespace golos { namespace chain {
 
             freezing_utils fru(*this);
             if (fru.hf_long_ago) {
-                wlog("Not freezing - hf is long ago");
                 return;
             }
 
