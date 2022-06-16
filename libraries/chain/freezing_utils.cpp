@@ -46,7 +46,7 @@ bool freezing_utils::is_system_account(account_name_type name) {
     return system_accounts.find(name) != system_accounts.end();
 }
 
-void freezing_utils::unfreeze(const account_object& acc) {
+void freezing_utils::unfreeze(const account_object& acc, const asset& fee) {
     auto& fr = _db.get<account_freeze_object, by_account>(acc.name);
     _db.modify(acc, [&](auto& acc) {
         acc.frozen = false;
@@ -59,6 +59,8 @@ void freezing_utils::unfreeze(const account_object& acc) {
         auth.owner = fr.owner;
     });
     _db.remove(fr);
+    account_freeze_operation event(acc.name, false, fee);
+    _db.push_event(event);
 }
 
 }} // golos::chain

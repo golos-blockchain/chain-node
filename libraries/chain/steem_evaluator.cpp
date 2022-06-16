@@ -1321,13 +1321,14 @@ namespace golos { namespace chain {
 
             _db.adjust_balance(from_account, -o.amount);
             if (unfreezing) {
+                auto unfreeze_fee = median_props.account_creation_fee;
                 auto amount = o.amount;
-                if (amount >= median_props.account_creation_fee) {
+                if (amount >= unfreeze_fee) {
                     freezing_utils fru(_db);
-                    fru.unfreeze(to_account);
+                    fru.unfreeze(to_account, unfreeze_fee);
 
-                    _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), median_props.account_creation_fee);
-                    amount -= median_props.account_creation_fee;
+                    _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), unfreeze_fee);
+                    amount -= unfreeze_fee;
                 }
                 if (amount.amount > 0) {
                     _db.adjust_balance(to_account, amount);

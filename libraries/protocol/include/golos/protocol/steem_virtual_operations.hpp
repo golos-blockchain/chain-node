@@ -452,6 +452,19 @@ namespace golos { namespace protocol {
             optional<updated_authority> posting;
             optional<updated_key> memo_key;
         };
+
+        struct account_freeze_operation : public virtual_operation {
+            account_freeze_operation() {
+            }
+
+            account_freeze_operation(const account_name_type& a, bool f, const asset& uf)
+                    : account(a), frozen(f), unfreeze_fee(uf) {
+            }
+
+            account_name_type account;
+            bool frozen;
+            asset unfreeze_fee;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(hashlink)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -483,3 +496,4 @@ FC_REFLECT((golos::protocol::comment_reply_operation), (author)(hashlink)(permli
 FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(hashlink)(permlink)(parent_author)(parent_hashlink)(parent_permlink))
 FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
 FC_REFLECT((golos::protocol::authority_updated_operation), (account)(owner)(active)(posting)(memo_key))
+FC_REFLECT((golos::protocol::account_freeze_operation), (account)(frozen)(unfreeze_fee))

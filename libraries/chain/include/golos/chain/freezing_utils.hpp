@@ -10,7 +10,7 @@ public:
 
     bool is_system_account(account_name_type name);
 
-    void unfreeze(const account_object& acc);
+    void unfreeze(const account_object& acc, const asset& fee);
 
     database& _db;
     uint32_t hardfork;
