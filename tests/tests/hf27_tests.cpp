@@ -240,11 +240,9 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Marking them as inactive");
 
-        for (const auto& acc : db->get_index<account_index>().indices()) {
-            db->modify(acc, [&](auto& acc) {
-                acc.created = fc::time_point_sec::from_iso_string("2022-05-09T00:00:00");
-            });
-        }
+        db->modify(db->get_account("cyberfounder"), [&](auto& acc) {
+            acc.recovery_account = "gc-regfund";
+        });
 
         generate_block();
 
@@ -272,18 +270,36 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
         }
 
         // 4 are system ones
-        BOOST_CHECK_EQUAL(accs_now + 4 - accs_after, 95);
+        BOOST_CHECK_EQUAL(accs_now + 5 - accs_after, 95);
 
-        generate_block();
-        generate_block();
-        generate_block();
-        generate_block();
-        generate_block();
+        generate_blocks(38);
 
         itr = idx.begin();
         for (; itr != idx.end(); ++itr) {
             BOOST_CHECK_EQUAL(itr->proved_hf, 27);
         }
+
+        BOOST_TEST_MESSAGE("-- Check setting recovery account");
+
+        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").recovery_account, "gc-regfund");
+
+        validate_database();
+
+        generate_block(1);
+
+        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").recovery_account, "recovery");
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Checking recovery accounts are not fixing after HF27 long-ago interval");
+
+        db->modify(db->get_account("cyberfounder"), [&](auto& acc) {
+            acc.recovery_account = "gc-regfund";
+        });
+
+        generate_block(1);
+
+        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").recovery_account, "gc-regfund");
 
         validate_database();
     } FC_LOG_AND_RETHROW() }

@@ -566,6 +566,8 @@ namespace golos { namespace chain {
 
             void process_decline_voting_rights();
 
+            void fix_recovery_accounts();
+
             void process_account_freezing();
 
             void update_median_feed();

@@ -12,7 +12,10 @@ namespace golos { namespace chain {
 freezing_utils::freezing_utils(database& db) : _db(db) {
     const auto& hpo = _db.get_hardfork_property_object();
     hardfork = hpo.last_hardfork;
-    if (_db.head_block_num() - hpo.hf27_applied_block > FORCE_FREEZE_STOP) {
+    auto now = _db.head_block_num();
+    if (now - hpo.hf27_applied_block == FORCE_FREEZE_STOP) {
+        hf_ago_ended_now = true;
+    } else if (now - hpo.hf27_applied_block > FORCE_FREEZE_STOP) {
         hf_long_ago = true;
     }
 }

@@ -304,6 +304,7 @@
 #define STEEMIT_OAUTH_ACCOUNT                   "oauth"
 #define STEEMIT_REGISTRATOR_ACCOUNT             "newacc"
 #define STEEMIT_NOTIFY_ACCOUNT                  "notify"
+#define STEEMIT_RECOVERY_ACCOUNT                "recovery"
 
 #else // IS LIVE STEEM NETWORK
 
@@ -633,6 +634,8 @@
 #define STEEMIT_REGISTRATOR_ACCOUNT             "newacc"
 // Represents the account which is used to automatically send Golos Messenger technical notifications to users
 #define STEEMIT_NOTIFY_ACCOUNT                  "notify"
+// Represents the account which is used to recover accounts who haven't correct recovery_account at HF 27 time
+#define STEEMIT_RECOVERY_ACCOUNT                "recovery"
 ///@}
 
 #include <golos/protocol/config_old.hpp>

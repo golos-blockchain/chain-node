@@ -3846,6 +3846,18 @@ namespace golos { namespace chain {
             }
         }
 
+        void database::fix_recovery_accounts() {
+            const auto& idx = get_index<account_index, by_proved>();
+            auto itr = idx.begin();
+            for (; itr != idx.end() && !itr->frozen; ++itr) {
+                if (itr->recovery_account == "gc-regfund") {
+                    modify(*itr, [&](auto& acc) {
+                        acc.recovery_account = STEEMIT_RECOVERY_ACCOUNT;
+                    });
+                }
+            }
+        }
+
         void database::process_account_freezing() {
             if (!has_hardfork(STEEMIT_HARDFORK_0_27__203)) return;
 
@@ -3891,6 +3903,10 @@ namespace golos { namespace chain {
                     auth.active.weight_threshold = 1;
                     auth.owner.weight_threshold = 1;
                 });
+            }
+
+            if (fru.hf_ago_ended_now) {
+                fix_recovery_accounts();
             }
         }
 

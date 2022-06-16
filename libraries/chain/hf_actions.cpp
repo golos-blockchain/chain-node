@@ -69,6 +69,11 @@ void hf_actions::prepare_for_tests() {
         // 5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw
         a.memo_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
     });
+
+    create_test_account(STEEMIT_RECOVERY_ACCOUNT, [&](auto& posting, auto& active, auto& owner) {
+        posting = COMMON_POSTING;
+        active = COMMON_ACTIVE;
+    });
 #endif
 }
 
