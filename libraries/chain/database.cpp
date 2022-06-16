@@ -3009,8 +3009,22 @@ namespace golos { namespace chain {
                              comment.reward_weight,
                              to_steem(asset(comment.max_accepted_payout, SBD_SYMBOL))));
 
-                    asset total_payout;
+                    const account_object* author = nullptr;
+
+                    bool should_pay = false;
                     if (reward_tokens > 0) {
+                        author = &get_account(comment.author);
+                        if (has_hardfork(STEEMIT_HARDFORK_0_27__204) && author->reputation < 0) {
+                            modify(get_dynamic_global_properties(), [&](dynamic_global_property_object& props) {
+                                props.total_reward_fund_steem += asset(reward_tokens.to_uint64(), STEEM_SYMBOL);
+                            });
+                        } else {
+                            should_pay = true;
+                        }
+                    }
+
+                    asset total_payout;
+                    if (should_pay) {
                         share_type curation_tokens = ((reward_tokens *
                                                       comment.curation_rewards_percent) /
                                                       STEEMIT_100_PERCENT).to_uint64();
@@ -3042,14 +3056,13 @@ namespace golos { namespace chain {
                         auto sbd_steem = (author_tokens * comment.percent_steem_dollars) / (2 * STEEMIT_100_PERCENT);
                         auto vesting_steem = author_tokens - sbd_steem;
 
-                        const auto &author = get_account(comment.author);
-                        auto vest_created = create_vesting(author, vesting_steem);
-                        auto sbd_payout = create_sbd(author, asset(0, STEEM_SYMBOL));
-                        auto sbd_side_payout = create_sbd(author, asset(0, STEEM_SYMBOL));
+                        auto vest_created = create_vesting(*author, vesting_steem);
+                        auto sbd_payout = create_sbd(*author, asset(0, STEEM_SYMBOL));
+                        auto sbd_side_payout = create_sbd(*author, asset(0, STEEM_SYMBOL));
                         if (has_hardfork(STEEMIT_HARDFORK_0_23__84)) {
                             sbd_side_payout = create_sbd(get_account(STEEMIT_WORKER_POOL_ACCOUNT), sbd_steem);
                         } else {
-                            sbd_payout = create_sbd(author, sbd_steem);
+                            sbd_payout = create_sbd(*author, sbd_steem);
                         }
 
                         // stats only.. TODO: Move to plugin...
