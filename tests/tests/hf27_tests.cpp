@@ -304,4 +304,183 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
         validate_database();
     } FC_LOG_AND_RETHROW() }
 
+    BOOST_AUTO_TEST_CASE(comment_negrep_payout) { try {
+        BOOST_TEST_MESSAGE("Testing: comment_negrep_payout");
+
+        signed_transaction tx;
+
+        ACTORS((goodie)(badie)(whale)(curator))
+        generate_block();
+        validate_database();
+
+        vest("goodie", ASSET_GOLOS(1000));
+        vest("badie", ASSET_GOLOS(1000));
+        vest("curator", ASSET_GOLOS(1000));
+        vest("whale", ASSET_GOLOS(10000000));
+
+        validate_database();
+
+        // Need for curator payouts
+        price exchange_rate(ASSET("1.000 GOLOS"), ASSET("1.000 GBG"));
+        set_price_feed(exchange_rate);
+        generate_block();
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Creating two posts");
+
+        comment_create("goodie", goodie_private_key, "test", "", "test", "Hello", "World", "");
+        comment_create("badie", badie_private_key, "test", "", "test", "Hello", "World", "");
+
+        generate_block(); // prevent auction time
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Making badie reputation negative");
+
+        {
+            vote_operation vote;
+            vote.voter = "whale";
+            vote.author = "whale";
+            vote.weight = 10000;
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, whale_private_key, vote));
+
+            BOOST_CHECK_GT(db->get_account_reputation("whale"), 0);
+
+            vote.author = "badie";
+            vote.weight = -10000; 
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, whale_private_key, vote));
+        }
+
+        BOOST_CHECK_LT(db->get_account_reputation("badie"), 0);
+        BOOST_CHECK_EQUAL(db->get_account_reputation("goodie"), 0);
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Curating");
+
+        vote_operation vote;
+        vote.voter = "curator";
+        vote.author = "goodie";
+        vote.permlink = "test";
+        vote.weight = STEEMIT_100_PERCENT; 
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, curator_private_key, vote));
+
+        vote.author = "badie";
+        vote.permlink = "test";
+        vote.weight = STEEMIT_100_PERCENT; 
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, curator_private_key, vote));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Waiting for payout");
+
+        generate_blocks(db->head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS);
+
+        BOOST_CHECK_EQUAL(db->get_comment_by_perm("goodie", string("test")).mode, archived);
+        BOOST_CHECK_EQUAL(db->get_comment_by_perm("badie", string("test")).mode, archived);
+
+        {
+            auto ops = get_last_operations<curation_reward_operation>(10);
+            BOOST_CHECK_EQUAL(ops.size(), 2);
+        }
+
+        {
+            auto ops = get_last_operations<author_reward_operation>(10);
+            BOOST_CHECK_EQUAL(ops.size(), 2);
+        }
+    } FC_LOG_AND_RETHROW() }
+
+    BOOST_AUTO_TEST_CASE(comment_negrep_payout_after_hf27) { try {
+        BOOST_TEST_MESSAGE("Testing: comment_negrep_payout_after_hf27");
+
+        signed_transaction tx;
+
+        ACTORS((goodie)(badie)(whale)(curator))
+        generate_block();
+
+        validate_database();
+
+        vest("goodie", ASSET_GOLOS(1000));
+        vest("badie", ASSET_GOLOS(1000));
+        vest("curator", ASSET_GOLOS(1000));
+        vest("whale", ASSET_GOLOS(10000000));
+
+        validate_database();
+
+        // Need for curator payouts
+        price exchange_rate(ASSET("1.000 GOLOS"), ASSET("1.000 GBG"));
+        set_price_feed(exchange_rate);
+        generate_block();
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Creating two posts");
+
+        comment_create("goodie", goodie_private_key, "test", "", "test", "Hello", "World", "");
+        comment_create("badie", badie_private_key, "test", "", "test", "Hello", "World", "");
+
+        generate_block(); // prevent auction time
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Making badie reputation negative");
+
+        {
+            vote_operation vote;
+            vote.voter = "whale";
+            vote.author = "whale";
+            vote.weight = 10000;
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, whale_private_key, vote));
+
+            BOOST_CHECK_GT(db->get_account_reputation("whale"), 0);
+
+            vote.author = "badie";
+            vote.weight = -10000; 
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, whale_private_key, vote));
+        }
+
+        BOOST_CHECK_LT(db->get_account_reputation("badie"), 0);
+        BOOST_CHECK_EQUAL(db->get_account_reputation("goodie"), 0);
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Curating");
+
+        vote_operation vote;
+        vote.voter = "curator";
+        vote.author = "goodie";
+        vote.permlink = "test";
+        vote.weight = STEEMIT_100_PERCENT; 
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, curator_private_key, vote));
+
+        vote.author = "badie";
+        vote.permlink = "test";
+        vote.weight = STEEMIT_100_PERCENT; 
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, curator_private_key, vote));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Waiting for payout");
+
+        generate_blocks(db->get_comment_by_perm("goodie", string("test")).created + STEEMIT_CASHOUT_WINDOW_SECONDS - STEEMIT_BLOCK_INTERVAL);
+
+        db->set_hardfork(STEEMIT_HARDFORK_0_27);
+
+        generate_block();
+
+        BOOST_CHECK_EQUAL(db->get_comment_by_perm("goodie", string("test")).mode, archived);
+        BOOST_CHECK_EQUAL(db->get_comment_by_perm("badie", string("test")).mode, archived);
+
+        {
+            auto ops = get_last_operations<curation_reward_operation>(10);
+            BOOST_CHECK_EQUAL(ops.size(), 1);
+        }
+
+        {
+            auto ops = get_last_operations<author_reward_operation>(10);
+            BOOST_CHECK_EQUAL(ops.size(), 1);
+        }
+    } FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
