@@ -252,6 +252,8 @@ namespace golos { namespace chain {
 
         void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size) {
             try {
+                set_reindexing(true);
+
                 signal_guard sg;
                 _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
@@ -315,6 +317,8 @@ namespace golos { namespace chain {
                     set_reserved_memory(0);
                     set_revision(head_block_num());
                 });
+
+                set_reindexing(false);
 
                 if (signal_guard::get_is_interrupted()) {
                     sg.restore();

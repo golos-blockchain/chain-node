@@ -1,5 +1,6 @@
 #pragma once
 
+#include <golos/protocol/asset.hpp>
 #include <golos/protocol/base.hpp>
 #include <golos/protocol/types.hpp>
 #include <golos/chain/steem_object_types.hpp>
@@ -49,6 +50,9 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec receive_date;
         time_point_sec read_date;
         time_point_sec remove_date;
+
+        asset donates = asset(0, STEEM_SYMBOL);
+        share_type donates_uia = 0;
     };
 
     using message_id_type = message_object::id_type;
