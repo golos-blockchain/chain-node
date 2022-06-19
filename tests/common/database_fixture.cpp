@@ -604,12 +604,13 @@ namespace golos { namespace chain {
             } FC_CAPTURE_AND_RETHROW((account_name)(amount))
         }
 
+        template<typename Operation>
         void database_fixture::transfer(
                 const string &from,
                 const string &to,
                 const asset &amount) {
             try {
-                transfer_operation op;
+                Operation op;
                 op.from = from;
                 op.to = to;
                 op.amount = amount;
@@ -621,6 +622,9 @@ namespace golos { namespace chain {
                 trx.operations.clear();
             } FC_CAPTURE_AND_RETHROW((from)(to)(amount))
         }
+
+        template void database_fixture::transfer<transfer_operation>(const string &from, const string &to, const asset &amount);
+        template void database_fixture::transfer<transfer_to_savings_operation>(const string &from, const string &to, const asset &amount);
 
         void database_fixture::vest(const string &from, const share_type &amount) {
             try {

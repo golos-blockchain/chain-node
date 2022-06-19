@@ -1679,15 +1679,15 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
             vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
-            transfer(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
+            transfer<transfer_to_savings_operation>(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
 
-            auto start_time = db->get_account("alice").sbd_seconds_last_update;
+            auto start_time = db->get_account("alice").savings_sbd_seconds_last_update;
 
-            auto alice_sbd = db->get_account("alice").sbd_balance;
+            auto alice_sbd = db->get_account("alice").savings_sbd_balance;
 
             generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC), true);
 
-            transfer_operation transfer;
+            transfer_from_savings_operation transfer;
             transfer.to = "bob";
             transfer.from = "alice";
             transfer.amount = ASSET("1.000 GBG");
@@ -1702,7 +1702,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             auto interest_op = get_last_operations(1)[0].get<interest_operation>();
 
             BOOST_REQUIRE(gpo.sbd_interest_rate > 0);
-            BOOST_REQUIRE(uint64_t(db->get_account("alice").sbd_balance.amount.value) ==
+            BOOST_REQUIRE(uint64_t(db->get_account("alice").savings_sbd_balance.amount.value) ==
                           alice_sbd.amount.value -
                           ASSET("1.000 GBG").amount.value +
                           ((((uint128_t(alice_sbd.amount.value) *
@@ -1713,15 +1713,15 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
                            STEEMIT_100_PERCENT).to_uint64());
             BOOST_REQUIRE(interest_op.owner == "alice");
             BOOST_REQUIRE(interest_op.interest.amount.value ==
-                          db->get_account("alice").sbd_balance.amount.value -
+                          db->get_account("alice").savings_sbd_balance.amount.value -
                           (alice_sbd.amount.value -
                            ASSET("1.000 GBG").amount.value));
             validate_database();
 
             BOOST_TEST_MESSAGE("Testing interest under interest period");
 
-            start_time = db->get_account("alice").sbd_seconds_last_update;
-            alice_sbd = db->get_account("alice").sbd_balance;
+            start_time = db->get_account("alice").savings_sbd_seconds_last_update;
+            alice_sbd = db->get_account("alice").savings_sbd_balance;
 
             generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC / 2), true);
 
@@ -1733,14 +1733,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             db->push_transaction(tx, 0);
 
             BOOST_REQUIRE(
-                db->get_account("alice").sbd_balance.amount.value ==
+                db->get_account("alice").savings_sbd_balance.amount.value ==
                 alice_sbd.amount.value - ASSET("1.000 GBG").amount.value);
             validate_database();
 
             auto alice_coindays =
                 uint128_t(alice_sbd.amount.value) * (db->head_block_time() - start_time).to_seconds();
-            alice_sbd = db->get_account("alice").sbd_balance;
-            start_time = db->get_account("alice").sbd_seconds_last_update;
+            alice_sbd = db->get_account("alice").savings_sbd_balance;
+            start_time = db->get_account("alice").savings_sbd_seconds_last_update;
 
             BOOST_TEST_MESSAGE("Testing longer interest period");
 
@@ -1754,7 +1754,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             tx.sign(alice_private_key, db->get_chain_id());
             db->push_transaction(tx, 0);
 
-            BOOST_REQUIRE(uint64_t(db->get_account("alice").sbd_balance.amount.value) ==
+            BOOST_REQUIRE(uint64_t(db->get_account("alice").savings_sbd_balance.amount.value) ==
                           alice_sbd.amount.value -
                           ASSET("1.000 GBG").amount.value +
                           ((((uint128_t(alice_sbd.amount.value) *
@@ -1763,8 +1763,10 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
                             gpo.sbd_interest_rate) /
                            STEEMIT_100_PERCENT).to_uint64());
             validate_database();
+        } catch (fc::exception& e) {
+            edump((e.to_detail_string()));
+            throw;
         }
-        FC_LOG_AND_RETHROW();
     }
 
     BOOST_AUTO_TEST_CASE(limit_sbd_interest_rate) try {

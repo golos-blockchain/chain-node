@@ -582,6 +582,7 @@ namespace golos { namespace chain {
 
             void fund(const string &account_name, const asset &amount);
 
+            template<typename Operation = transfer_operation>
             void transfer(const string &from, const string &to, const asset &amount);
 
             void convert(const string &account_name, const asset &amount);
