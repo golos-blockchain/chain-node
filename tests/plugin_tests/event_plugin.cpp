@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(comment_feed_test) {
         jop.json = fc::json::to_string(fpop);
         jop.required_posting_auths = {"bob"};
 
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, jop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, jop));
     }
 
     BOOST_TEST_MESSAGE("--- Publishing post by alice");
@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(comment_feed_test) {
     cop.title = "Lorem Ipsum";
     cop.body = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
     cop.json_metadata = "{\"foo\":\"bar\"}";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
 
     BOOST_TEST_MESSAGE("--- Generating block to trigger event");
 

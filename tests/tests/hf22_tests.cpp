@@ -64,7 +64,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
             op.account = voter;
             op.witness = witn;
             op.approve = approve;
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, voter_key, op));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, voter_key, op));
         };
 
         BOOST_TEST_MESSAGE("-- w0 = 1/3 + 1/3");
@@ -154,7 +154,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
             op.account = voter;
             op.witness = witn;
             op.approve = approve;
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, voter_key, op));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, voter_key, op));
         };
 
         BOOST_TEST_MESSAGE("-- w0 = 1/3 + 1/3");

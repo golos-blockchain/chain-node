@@ -1061,7 +1061,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
 
         signed_transaction tx;
 
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, custom_operation));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, custom_operation));
 
         BOOST_TEST_MESSAGE("--- Send private message from \"clara\" to \"alice\"");
 
@@ -1086,7 +1086,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
 
         tx.clear();
 
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, clara_private_key, custom_operation));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, clara_private_key, custom_operation));
 
         BOOST_TEST_MESSAGE("--- Delete private messages from \"alice\" to \"bob\"");
 
@@ -1107,7 +1107,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
 
         tx.clear();
 
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, custom_operation));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, custom_operation));
 
         BOOST_TEST_MESSAGE("--- Verify removed messages written by \"alice\" to \"bob\"");
 

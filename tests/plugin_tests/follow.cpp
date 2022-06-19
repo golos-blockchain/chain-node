@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(follow_apply) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
 
     BOOST_TEST_MESSAGE("--- failed when 'blog' & 'ignore' at the same time");
     op.what = {"blog", "ignore"};
@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE(reblog_apply) {
         op.title = "Lorem Ipsum";
         op.body = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
         op.json_metadata = "{\"foo\":\"bar\"}";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
 
         op.author = "alice";
         op.permlink = "foo";
@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE(reblog_apply) {
         op.parent_permlink = "lorem";
         op.title = "Lorem Ipsum";
         op.body = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     }
 
     custom_binary_operation cop;
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(reblog_apply) {
     vec.clear();
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
 
     BOOST_TEST_MESSAGE("--- failed when comment is missing");
     op.permlink = "david";

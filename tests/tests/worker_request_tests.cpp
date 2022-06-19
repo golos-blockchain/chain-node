@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
 
     fund("bob", ASSET_GBG(101));
     const auto& created = db->head_block_time();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     BOOST_CHECK_EQUAL(db->get_balance("bob", SBD_SYMBOL), ASSET_GBG(1));
@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
         op.author = "dave";
         op.permlink = "dave-request";
         op.vest_reward = true;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
         BOOST_CHECK(db->get_worker_request(db->get_comment_by_perm("dave", string("dave-request")).id).vest_reward);
     }
 
@@ -227,14 +227,14 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     op.required_amount_max = ASSET_GOLOS(60000);
     op.duration = fc::days(5).to_seconds();
     const auto& created = db->head_block_time();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Modify required_amount_min and required_amount_max");
 
     op.required_amount_min = ASSET_GBG(123);
     op.required_amount_max = ASSET_GBG(456);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     {
@@ -247,7 +247,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     BOOST_TEST_MESSAGE("-- Modify duration");
 
     op.duration = fc::days(7).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     {
@@ -260,7 +260,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     BOOST_TEST_MESSAGE("-- Change worker");
 
     op.worker = "bob";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     {
@@ -276,20 +276,20 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     fund("carol", ASSET_GBG(100));
     op.author = "carol";
     op.permlink = "carol-request";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
     generate_block();
     worker_request_vote_operation wrvop;
     wrvop.voter = "alice";
     wrvop.author = "carol";
     wrvop.permlink = "carol-request";
     wrvop.vote_percent = -1;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wrvop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wrvop));
     generate_block();
     op.author = "bob";
     op.permlink = "bob-request";
     op.required_amount_min = ASSET_GBG(10);
     op.required_amount_max = ASSET_GBG(10);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Check cannot modify voted request");
@@ -345,7 +345,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     wtop.required_amount_min = ASSET_GOLOS(6000);
     wtop.required_amount_max = ASSET_GOLOS(60000);
     wtop.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Abstaining non-voted request case");
@@ -375,7 +375,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     check_votes(0, 0);
 
     op.vote_percent = 1;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     generate_block();
 
     check_votes(1, 0);
@@ -387,7 +387,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     BOOST_TEST_MESSAGE("-- Downvoting request (after vote)");
 
     op.vote_percent = -1;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     generate_block();
 
     check_votes(0, 1);
@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     BOOST_TEST_MESSAGE("-- Upvoting request (after downvote)");
 
     op.vote_percent = 1;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     generate_block();
 
     check_votes(1, 0);
@@ -407,7 +407,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     BOOST_TEST_MESSAGE("-- Abstaining request (after upvote)");
 
     op.vote_percent = 0;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     generate_block();
 
     check_votes(0, 0);
@@ -415,7 +415,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     BOOST_TEST_MESSAGE("-- Downvoting request (after abstain)");
 
     op.vote_percent =-1;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     generate_block();
 
     check_votes(0, 1);
@@ -423,7 +423,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     BOOST_TEST_MESSAGE("-- Abstaining request (after downvote)");
 
     op.vote_percent = 0;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     generate_block();
 
     check_votes(0, 0);
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     wtop.required_amount_max = ASSET_GOLOS(60);
     wtop.duration = fc::days(5).to_seconds();
     const auto& created = db->head_block_time();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     BOOST_CHECK_EQUAL(db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id).vote_end_time,
         created + wtop.duration);
 
@@ -462,7 +462,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     wtop.author = "carol";
     wtop.permlink = "carol-request";
     wtop.worker = "carol";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
     BOOST_CHECK_EQUAL(db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id).vote_end_time,
         created + wtop.duration);
 
@@ -474,7 +474,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     wtop.author = "dave";
     wtop.permlink = "dave-request";
     wtop.worker = "dave";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
 
     BOOST_TEST_MESSAGE("-- Creating frad request in same block");
 
@@ -484,7 +484,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     wtop.author = "frad";
     wtop.permlink = "frad-request";
     wtop.worker = "frad";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, frad_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, frad_private_key, wtop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Upvoting bob request by alice");
@@ -494,7 +494,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     op.author = "bob";
     op.permlink = "bob-request";
     op.vote_percent = STEEMIT_100_PERCENT;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     BOOST_TEST_MESSAGE("-- Upvoting carol request by enough stake-holders");
 
@@ -503,11 +503,11 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
         op.author = author;
         op.permlink = permlink;
         op.vote_percent = vote_percent;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
         op.voter = "carol";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
         op.voter = "alice";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     };
     upvote_request("carol", "carol-request", STEEMIT_100_PERCENT);
 
@@ -672,7 +672,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
     wtop.required_amount_min = ASSET_GOLOS(6000);
     wtop.required_amount_max = ASSET_GOLOS(60000);
     wtop.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
     {
@@ -690,7 +690,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
 
     BOOST_TEST_MESSAGE("-- Deleting request");
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     {
@@ -700,7 +700,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
 
     BOOST_TEST_MESSAGE("-- Checking can delete post now");
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, dcop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, dcop));
     generate_block();
 
     validate_database();
@@ -730,7 +730,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
         wtop.required_amount_min = ASSET_GOLOS(6000);
         wtop.required_amount_max = ASSET_GOLOS(60000);
         wtop.duration = fc::days(5).to_seconds();
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
         generate_block();
 
         BOOST_TEST_MESSAGE("-- Deleting it");
@@ -738,7 +738,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
         worker_request_delete_operation op;
         op.author = "bob";
         op.permlink = "bob-request";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
         generate_block();
 
         {
@@ -754,7 +754,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
 
     {
         fund("bob", ASSET_GBG(100));
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
         generate_block();
 
         worker_request_vote("alice", alice_private_key, "bob", "bob-request", STEEMIT_100_PERCENT);
@@ -765,7 +765,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
         worker_request_delete_operation op;
         op.author = "bob";
         op.permlink = "bob-request";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
         generate_block();
 
         check_request_closed(db->get_comment_by_perm("bob", string("bob-request")).id,

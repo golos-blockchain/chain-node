@@ -138,130 +138,130 @@ BOOST_FIXTURE_TEST_SUITE(json_rpc, database_fixture)
 
 
             BOOST_TEST_MESSAGE("--- empty request");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "").get_object();
                 check_error_response(response, fc::variant(), JSON_RPC_PARSE_ERROR);
             });
 
             BOOST_TEST_MESSAGE("--- invalid json sctructure");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{]").get_object();
                 check_error_response(response, fc::variant(), JSON_RPC_PARSE_ERROR);
             });
 
             BOOST_TEST_MESSAGE("--- empty array of request");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "[]").get_object();
                 check_error_response(response, fc::variant(), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- empty request object");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{}").get_object();
                 check_error_response(response, fc::variant(), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- invalid 'jsonrpc' field");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"1.2\"}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- invalid type of 'jsonrpc' field");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":[]}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- invalid 'method' field");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"database_api.get_dynamic_global_properties\"}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- invalid type of 'method' field");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":[]}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- missing 'params' field");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\"}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- invalid type of 'params' field");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":1234}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- invalid type of 'args' field");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",{}]}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INVALID_REQUEST);
             });
 
             BOOST_TEST_MESSAGE("--- missing API");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"missing_api\",\"missing_method\"]}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_METHOD_NOT_FOUND);
             });
 
             BOOST_TEST_MESSAGE("--- missing method");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"missing_method\",[]]}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_METHOD_NOT_FOUND);
             });
 
             BOOST_TEST_MESSAGE("--- return UNSUPPORTED_OPERATION when thrown golos::unsupported_operation");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"unsupported_operation\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), SERVER_UNSUPPORTED_OPERATION, "unsupported_operation");
             });
 
             BOOST_TEST_MESSAGE("--- return INVALID_PARAMETER when thrown golos::parameter_exception");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"invalid_parameter\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), SERVER_INVALID_PARAMETER, "invalid_parameter");
             });
 
             BOOST_TEST_MESSAGE("--- return BUSINESS_LOGIC_ERROR when thrown golos::business_exception");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"business_exception\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), SERVER_BUSINESS_LOGIC_ERROR, "business_exception");
             });
 
             BOOST_TEST_MESSAGE("--- return MISSING_AUTHORITY when thrown golos::protocol::tx_missing_authority");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"tx_missing_authority\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), SERVER_MISSING_AUTHORITY, "tx_missing_authority");
             });
 
             BOOST_TEST_MESSAGE("--- return INVALID_OPERATION when thrown golos::protocol::tx_invalid_operation");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"tx_invalid_operation\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), SERVER_INVALID_OPERATION, "tx_invalid_operation");
             });
 
             BOOST_TEST_MESSAGE("--- return INVALID_TRANSACTION when thrown golos::protocol::transaction_exception");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"transaction_exception\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), SERVER_INVALID_TRANSACTION, "transaction_exception");
             });
 
             BOOST_TEST_MESSAGE("--- return INTERNAL_ERROR when thrown golos::golos_exception");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"golos_exception\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), SERVER_INTERNAL_ERROR, "golos_exception");
@@ -269,21 +269,21 @@ BOOST_FIXTURE_TEST_SUITE(json_rpc, database_fixture)
 
 
             BOOST_TEST_MESSAGE("--- return INTERNAL_ERROR when thrown fc::exception");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"fc::exception\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INTERNAL_ERROR);
             });
 
             BOOST_TEST_MESSAGE("--- return INTERNAL_ERROR when thrown std::excption");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"std::exception\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INTERNAL_ERROR);
             });
 
             BOOST_TEST_MESSAGE("--- return INTERNAL_ERROR when thrown unknown exception");
-            BOOST_CHECK_NO_THROW({
+            GOLOS_CHECK_NO_THROW({
                 auto response = call(rpc_plugin, "{\"id\":1, \"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":["
                         "\"testing_api\",\"throw_exception\",[\"...\"]]}").get_object();
                 check_error_response(response, fc::variant(1u), JSON_RPC_INTERNAL_ERROR);

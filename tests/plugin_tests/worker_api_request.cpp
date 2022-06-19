@@ -28,7 +28,7 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
     vop.author = "bob";
     vop.permlink = "bob-request";
     vop.weight = STEEMIT_100_PERCENT;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vop));
     generate_block();
 
     fund("bob", ASSET_GBG(100));
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
     op.required_amount_min = ASSET_GOLOS(6000);
     op.required_amount_max = ASSET_GOLOS(60000);
     op.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Checking metadata creating");
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
     op.required_amount_min = ASSET_GOLOS(6000);
     op.required_amount_max = ASSET_GOLOS(60000);
     op.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     const auto& wto_post = db->get_comment_by_perm("bob", string("bob-request"));
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
 
     op.required_amount_min = ASSET_GBG(6000);
     op.required_amount_max = ASSET_GBG(60000);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
     wtop.required_amount_min = ASSET_GOLOS(6000);
     wtop.required_amount_max = ASSET_GOLOS(60000);
     wtop.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
     const auto& wto_post = db->get_comment_by_perm("bob", string("bob-request"));
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
     vop.author = "bob";
     vop.permlink = "bob-request";
     vop.weight = STEEMIT_100_PERCENT;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vop));
     generate_block();
 
     const auto& wto_post_voted = db->get_comment_by_perm("bob", string("bob-request"));
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     wtop.required_amount_min = ASSET_GOLOS(6000);
     wtop.required_amount_max = ASSET_GOLOS(60000);
     wtop.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
     const auto& wto_post = db->get_comment_by_perm("bob", string("bob-request"));
@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     worker_request_delete_operation op;
     op.author = "bob";
     op.permlink = "bob-request";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Checking worker request metadata object is deleted");
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     BOOST_TEST_MESSAGE("-- Creating request with 1 vote");
 
     fund("bob", ASSET_GBG(100));
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
     worker_request_vote_operation wrvop;
@@ -211,14 +211,14 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     wrvop.author = "bob";
     wrvop.permlink = "bob-request";
     wrvop.vote_percent = 10*STEEMIT_1_PERCENT;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wrvop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wrvop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Deleting it");
 
     op.author = "bob";
     op.permlink = "bob-request";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Checking worker request metadata object exists");
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     wtop.required_amount_min = ASSET_GOLOS(6);
     wtop.required_amount_max = ASSET_GOLOS(60);
     wtop.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Checking upvotes are 0 before approving");
@@ -267,7 +267,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     op.author = "bob";
     op.permlink = "bob-request";
     op.vote_percent = STEEMIT_100_PERCENT;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 1);
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_TEST_MESSAGE("-- Downvoting worker request (after approve)");
 
     op.vote_percent = -STEEMIT_100_PERCENT;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);
@@ -285,7 +285,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_TEST_MESSAGE("-- Abstaining worker request (after disapprove)");
 
     op.vote_percent = 0;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);
@@ -296,7 +296,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_TEST_MESSAGE("-- Downvoting worker request (after abstain)");
 
     op.vote_percent = -STEEMIT_100_PERCENT;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);
@@ -305,7 +305,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_TEST_MESSAGE("-- Upvoting worker request (after disapprove)");
 
     op.vote_percent = STEEMIT_100_PERCENT;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 1);
@@ -314,7 +314,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_TEST_MESSAGE("-- Abstaining worker request (after approve)");
 
     op.vote_percent = 0;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
     wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);

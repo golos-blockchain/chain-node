@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
             top.vote_to_transit = true;
             tx.operations.push_back(top);
             tx.sign(alice_private_key, db->get_chain_id());
-            BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
             BOOST_TEST_MESSAGE("-- same vote to transit");
             tx.clear();
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
             top.vote_to_transit = false;
             tx.operations.push_back(top);
             tx.sign(alice_private_key, db->get_chain_id());
-            BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
         }
         FC_LOG_AND_RETHROW()
     }
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
             op.vote_to_transit = true;
             tx.operations.push_back(op);
             tx.sign(witness_priv_key, db->get_chain_id());
-            BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
             BOOST_TEST_MESSAGE("-- save block to transit");
             generate_block();
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
             op.vote_to_transit = true;
             tx.operations.push_back(op);
             tx.sign(witness_priv_key, db->get_chain_id());
-            BOOST_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
             BOOST_TEST_MESSAGE("-- save block to transit");
             generate_block();

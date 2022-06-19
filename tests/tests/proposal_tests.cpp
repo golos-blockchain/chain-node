@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE(create_proposal) { try {
     cop1.review_period_time = db->head_block_time() + fc::hours(3);
     cop1.proposed_operations.push_back(operation_wrapper(top1));
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop1));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop1));
     generate_blocks(1);
     const auto& p = db->get_proposal(cop1.author, cop1.title);
 
@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
     cop.review_period_time = db->head_block_time() + fc::hours(3);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
     generate_blocks(1);
     const auto& p = db->get_proposal(cop.author, cop.title);
 
@@ -332,14 +332,14 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
     uop3.author = cop.author;
     uop3.title = cop.title;
     uop3.active_approvals_to_add.insert("alice");
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop3));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop3));
     generate_blocks(1);
 
     proposal_update_operation uop4;
     uop4.author = cop.author;
     uop4.title = cop.title;
     uop4.key_approvals_to_add.insert(bob_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop4));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop4));
     generate_blocks(1);
 
     BOOST_CHECK_EQUAL(p.required_active_approvals.size(), 1);
@@ -360,14 +360,14 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
     uop5.author = cop.author;
     uop5.title = cop.title;
     uop5.active_approvals_to_remove.insert("alice");
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop5));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop5));
     generate_blocks(1);
 
     proposal_update_operation uop6;
     uop6.author = cop.author;
     uop6.title = cop.title;
     uop6.key_approvals_to_remove.insert(bob_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop6));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop6));
     generate_blocks(1);
 
     BOOST_CHECK_EQUAL(p.required_active_approvals.size(), 1);
@@ -386,14 +386,14 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
     uop7.author = cop.author;
     uop7.title = cop.title;
     uop7.active_approvals_to_add.insert("alice");
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop7));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop7));
     generate_blocks(1);
 
     proposal_update_operation uop8;
     uop8.author = cop.author;
     uop8.title = cop.title;
     uop8.key_approvals_to_add.insert(bob_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop8));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop8));
     generate_blocks(1);
 
     BOOST_CHECK_EQUAL(p.required_active_approvals.size(), 1);
@@ -414,7 +414,7 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
     uop9.author = cop.author;
     uop9.title = cop.title;
     uop9.key_approvals_to_remove.insert(bob_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop9));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop9));
     generate_blocks(1);
 
     BOOST_CHECK_EQUAL(p.required_active_approvals.size(), 1);
@@ -441,7 +441,7 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
     uop11.author = cop.author;
     uop11.title = cop.title;
     uop11.active_approvals_to_remove.insert("alice");
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop11));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop11));
     generate_blocks(1);
 
     BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
@@ -469,14 +469,14 @@ BOOST_AUTO_TEST_CASE(update_proposal1) { try {
     cop.expiration_time = db->head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
     generate_blocks(1);
 
     proposal_update_operation uop;
     uop.author = cop.author;
     uop.title = cop.title;
     uop.active_approvals_to_add.insert("alice");
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
     generate_blocks(1);
 
     BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
@@ -506,14 +506,14 @@ BOOST_AUTO_TEST_CASE(update_proposal2) { try {
     cop.expiration_time = db->head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
     generate_blocks(1);
 
     proposal_update_operation uop;
     uop.author = cop.author;
     uop.title = cop.title;
     uop.key_approvals_to_add.insert(alice_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
     generate_blocks(1);
 
     BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
@@ -544,23 +544,23 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
     cop.expiration_time = db->head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
     generate_blocks(1);
 
     proposal_update_operation uop;
     uop.author = cop.author;
     uop.title = cop.title;
     uop.key_approvals_to_add.insert(alice_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
     generate_blocks(1);
 
-    BOOST_CHECK_NO_THROW(db->get_proposal(cop.author, cop.title));
+    GOLOS_CHECK_NO_THROW(db->get_proposal(cop.author, cop.title));
 
     const auto& p = db->get_proposal(cop.author, cop.title);
 
     generate_blocks(*p.review_period_time);
 
-    BOOST_CHECK_NO_THROW(db->get_proposal(cop.author, cop.title));
+    GOLOS_CHECK_NO_THROW(db->get_proposal(cop.author, cop.title));
 
     generate_blocks(p.expiration_time);
 
@@ -599,7 +599,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
         account_update_operation op;
         op.account = account;
         op.active = auth;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, account_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, account_private_key, op));
         generate_blocks(1);
     };
 
@@ -671,7 +671,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     cop.memo = "Some memo about transfer";
     cop.expiration_time = db->head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(op));
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, edy_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, edy_private_key, cop));
     generate_blocks(1);
 
     BOOST_REQUIRE_NO_THROW(db->get_proposal(cop.author, cop.title));
@@ -680,7 +680,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     uop.author = cop.author;
     uop.title = cop.title;
     uop.key_approvals_to_add.insert(alice_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
     generate_blocks(1);
 
     const auto& poxx_account = db->get_account("poxx");
@@ -694,7 +694,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     uop1.author = cop.author;
     uop1.title = cop.title;
     uop1.key_approvals_to_add.insert(bob_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop1));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop1));
     generate_blocks(1);
 
     BOOST_REQUIRE_NO_THROW(db->get_proposal(cop.author, cop.title));
@@ -705,7 +705,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     uop2.author = cop.author;
     uop2.title = cop.title;
     uop2.key_approvals_to_add.insert(cindy_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, cindy_private_key, uop2));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, cindy_private_key, uop2));
     generate_blocks(1);
 
     BOOST_REQUIRE_NO_THROW(db->get_proposal(cop.author, cop.title));
@@ -723,7 +723,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     uop4.author = cop.author;
     uop4.title = cop.title;
     uop4.key_approvals_to_add.insert(dan_public_key);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dan_private_key, uop4));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, dan_private_key, uop4));
     generate_blocks(1);
 
     BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
@@ -754,7 +754,7 @@ BOOST_AUTO_TEST_CASE(delete_proposal) { try {
     cop.expiration_time = db->head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
     generate_blocks(1);
 
     BOOST_TEST_MESSAGE("--- Unauthorized trying of delete of proposal");
@@ -773,7 +773,7 @@ BOOST_AUTO_TEST_CASE(delete_proposal) { try {
     dop1.author = cop.author;
     dop1.title = cop.title;
     dop1.requester = "alice";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, dop1));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, dop1));
     generate_blocks(1);
 
     BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));

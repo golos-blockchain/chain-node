@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(worker_fund_transfering) {
     op.from = "alice";
     op.to = "workers";
     op.amount = ASSET_GOLOS(10);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     generate_block();
 
     BOOST_CHECK_EQUAL(db->get_balance("alice", STEEM_SYMBOL), init_balance - op.amount);
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     transfer_op.from = "alice";
     transfer_op.to = "workers";
     transfer_op.amount = ASSET_GBG(1000);
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, transfer_op));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, transfer_op));
     generate_block();
 
     BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance, ASSET_GBG(1000));
@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     wtop.required_amount_min = ASSET_GBG(6);
     wtop.required_amount_max = ASSET_GBG(60);
     wtop.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
 
     BOOST_TEST_MESSAGE("-- Creating carol request in same block");
 
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     wtop.author = "carol";
     wtop.permlink = "carol-request";
     wtop.worker = "carol";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Creating dave request in same block");
@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     wtop.permlink = "dave-request";
     wtop.worker = "dave";
     wtop.duration = fc::days(30).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, wtop));
 
     BOOST_TEST_MESSAGE("-- Creating frad request in same block");
 
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     wtop.author = "frad";
     wtop.permlink = "frad-request";
     wtop.worker = "frad";
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, frad_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, frad_private_key, wtop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Upvoting requests by enough stake-holders");
@@ -131,11 +131,11 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
         op.author = author;
         op.permlink = permlink;
         op.vote_percent = vote_percent;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
         op.voter = "carol";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
         op.voter = "alice";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     };
     upvote_request("bob", "bob-request", STEEMIT_100_PERCENT);
     upvote_request("carol", "carol-request", STEEMIT_100_PERCENT);
@@ -196,7 +196,7 @@ BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
     wtop.required_amount_min = ASSET_GOLOS(6);
     wtop.required_amount_max = ASSET_GOLOS(6);
     wtop.duration = fc::days(5).to_seconds();
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
 
     BOOST_TEST_MESSAGE("-- Creating carol request in same block");
 
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
     wtop.permlink = "carol-request";
     wtop.worker = "carol";
     wtop.vest_reward = true;
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Upvoting requests by enough stake-holders");
@@ -218,11 +218,11 @@ BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
         op.author = author;
         op.permlink = permlink;
         op.vote_percent = vote_percent;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
         op.voter = "carol";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, op));
         op.voter = "alice";
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     };
     upvote_request("bob", "bob-request", STEEMIT_100_PERCENT);
     upvote_request("carol", "carol-request", STEEMIT_100_PERCENT);

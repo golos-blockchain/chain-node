@@ -977,7 +977,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             wv.vesting_shares = withdraw_amount;
 
             signed_transaction tx;
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wv));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, wv));
 
             BOOST_TEST_MESSAGE("Setting up bob destination");
             set_withdraw_vesting_route_operation op_bob;
@@ -993,7 +993,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             op_sam.percent = STEEMIT_1_PERCENT * 30;
             op_sam.auto_vest = false;
 
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op_bob, op_sam));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op_bob, op_sam));
 
             BOOST_TEST_MESSAGE("Setting up first withdraw");
 
@@ -1061,7 +1061,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             op.to_account = "sam";
             op.percent = STEEMIT_1_PERCENT * 50;
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
             generate_blocks(db->get_account("alice").next_vesting_withdrawal, true);
             {
@@ -1217,14 +1217,14 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             comment.body = "bar";
             comment.permlink = "test";
             comment.parent_permlink = "test";
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, comment));
 
             vote_operation vote;
             vote.voter = "alice";
             vote.author = "alice";
             vote.permlink = "test";
             vote.weight = STEEMIT_100_PERCENT;
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vote));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vote));
 
             generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time, true);
 
@@ -1247,7 +1247,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             op.owner = "alice";
             op.amount = asset(2000, SBD_SYMBOL);
             op.requestid = 2;
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
             BOOST_TEST_MESSAGE("--- Generating Blocks up to conversion block");
             generate_blocks(
@@ -1300,7 +1300,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             op.amount = asset(2500, STEEM_SYMBOL);
             op.requestid = 3;
-            BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
 
             BOOST_TEST_MESSAGE("--- Generating Blocks up to conversion block");
 
@@ -1805,7 +1805,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
         transfer_op.amount = asset(1, SBD_SYMBOL);
 
         signed_transaction tx;
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, transfer_op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, transfer_op));
 
         BOOST_TEST_MESSAGE("--- Generate blocks to recalc current median history");
 
@@ -1829,7 +1829,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
         generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_SECONDS_PER_YEAR / 4), true);
 
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, transfer_op));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, transfer_op));
 
         {
             const auto& dynamic_global_properties = db->get_dynamic_global_properties();

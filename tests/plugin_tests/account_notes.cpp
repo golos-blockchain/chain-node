@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(account_notes_validate_size_limits) {
         op.key += "1";
     }
     op.value = "ipsum";
-    BOOST_CHECK_NO_THROW(op.validate());
+    GOLOS_CHECK_NO_THROW(op.validate());
 
     BOOST_TEST_MESSAGE("-- Long key case");
 
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(account_notes_validate_size_limits) {
     for (int i = 0; i < UINT16_MAX; i++) {
         op.value += "1";
     }
-    BOOST_CHECK_NO_THROW(op.validate());
+    GOLOS_CHECK_NO_THROW(op.validate());
 }
 
 BOOST_AUTO_TEST_CASE(account_notes_apply) {
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(account_notes_apply) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
 
     const auto& notes_idx = db->get_index<account_note_index, by_account_key>();
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(account_notes_apply) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
 
     notes_itr = notes_idx.find(std::make_tuple(op.account, op.key));
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(account_notes_size_limits) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
 
     const auto& notes_idx = db->get_index<account_note_index, by_account_key>();
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(account_notes_size_limits) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
 
     notes_itr = notes_idx.find(std::make_tuple(op.account, op.key));
@@ -182,7 +182,7 @@ BOOST_AUTO_TEST_CASE(account_notes_count_limit_delete) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
     generate_block();
 
     BOOST_TEST_MESSAGE("-- Create 10 alice notes");
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE(account_notes_count_limit_delete) {
         vec.push_back(op);
         cop.data = fc::raw::pack(vec);
 
-        BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
         generate_block();
     }
 
@@ -210,7 +210,7 @@ BOOST_AUTO_TEST_CASE(account_notes_count_limit_delete) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
 
     const auto& notes_idx = db->get_index<account_note_index, golos::plugins::account_notes::by_account_key>();
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE(account_notes_count_limit_delete) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
     BOOST_CHECK_EQUAL(notes_idx.count(op.account), 9);
     BOOST_CHECK_EQUAL(stats_itr->note_count, 9);
@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE(account_notes_count_limit_delete) {
     vec.push_back(op);
     cop.data = fc::raw::pack(vec);
 
-    BOOST_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
     BOOST_CHECK_EQUAL(notes_idx.count(op.account), 10);
     BOOST_CHECK_EQUAL(stats_itr->note_count, 10);
