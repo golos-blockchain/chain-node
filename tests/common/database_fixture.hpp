@@ -395,6 +395,7 @@ std::ostream& operator<<(std::ostream& out, const shared_authority& v);
 namespace golos { namespace chain {
 
         using namespace golos::protocol;
+        using fc::ecc::private_key;
 
         fc::variant_object make_limit_order_id(const std::string& author, uint32_t orderid);
         fc::variant_object make_convert_request_id(const std::string& account, uint32_t requestid);
@@ -425,7 +426,7 @@ namespace golos { namespace chain {
             // the reason we use an app is to exercise the indexes of built-in plugins
             chain::database* db;
             signed_transaction trx;
-            fc::ecc::private_key init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
+            private_key init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             string debug_key = golos::utilities::key_to_wif(init_account_priv_key);
             public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
             uint32_t default_skip = 0 | database::skip_undo_history_check | database::skip_authority_check;
@@ -445,7 +446,7 @@ namespace golos { namespace chain {
 
             fc::variant_object make_comment_id(const std::string& author, const std::string& permlink);
 
-            static fc::ecc::private_key generate_private_key(string seed);
+            static private_key generate_private_key(string seed);
 
             template<typename Plugin>
             Plugin* find_plugin() {
@@ -514,7 +515,7 @@ namespace golos { namespace chain {
 
             void generate_block(
                 uint32_t skip = 0,
-                const fc::ecc::private_key& key = STEEMIT_INIT_PRIVATE_KEY,
+                const private_key& key = STEEMIT_INIT_PRIVATE_KEY,
                 int miss_blocks = 0);
 
             /**
@@ -597,7 +598,7 @@ namespace golos { namespace chain {
 
             const asset &get_balance(const string &account_name) const;
 
-            void sign(signed_transaction &trx, const fc::ecc::private_key &key);
+            void sign(signed_transaction &trx, const private_key &key);
 
             vector<operation> get_last_operations(uint32_t ops);
 
@@ -634,17 +635,31 @@ namespace golos { namespace chain {
 
         public:
             template<typename... Ops>
-            void sign_tx_with_ops(signed_transaction& tx, const fc::ecc::private_key& k, Ops... ops) {
+            void sign_tx_with_ops(signed_transaction& tx, std::vector<private_key> keys, Ops... ops) {
                 tx.clear();
                 tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
                 tx_push_ops(tx, ops...);
-                sign(tx, k);
+                for (const auto& key : keys) {
+                    if (key != private_key()) {
+                        sign(tx, key);
+                    }
+                }
             }
 
             template<typename... Ops>
-            void push_tx_with_ops(signed_transaction& tx, const fc::ecc::private_key& k, Ops... ops) {
-                sign_tx_with_ops(tx, k, ops...);
+            void sign_tx_with_ops(signed_transaction& tx, private_key key, Ops... ops) {
+                sign_tx_with_ops(tx, std::vector<private_key>{key}, ops...);
+            }
+
+            template<typename... Ops>
+            void push_tx_with_ops(signed_transaction& tx, std::vector<private_key> keys, Ops... ops) {
+                sign_tx_with_ops(tx, keys, ops...);
                 db->push_transaction(tx, 0);
+            }
+
+            template<typename... Ops>
+            void push_tx_with_ops(signed_transaction& tx, private_key key, Ops... ops) {
+                push_tx_with_ops(tx, std::vector<private_key>{key}, ops...);
             }
         };
 

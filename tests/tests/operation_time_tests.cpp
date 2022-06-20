@@ -56,15 +56,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             com.parent_permlink = "test";
             com.title = "foo";
             com.body = "bar";
-            tx.operations.push_back(com);
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            push_tx_with_ops(tx, bob_private_key, com);
 
             generate_block();
-
-            tx.operations.clear();
-            tx.signatures.clear();
 
             BOOST_TEST_MESSAGE("Voting for comments.");
 
@@ -73,22 +67,19 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             vote.author = "bob";
             vote.permlink = "test";
             vote.weight = STEEMIT_100_PERCENT;
-            tx.operations.push_back(vote);
 
-            vote.voter = "bob";
-            tx.operations.push_back(vote);
+            vote_operation vote2 = vote;
+            vote2.voter = "bob";
 
-            vote.voter = "sam";
-            tx.operations.push_back(vote);
+            vote_operation vote3 = vote;
+            vote3.voter = "sam";
 
-            vote.voter = "dave";
-            tx.operations.push_back(vote);
+            vote_operation vote4 = vote;
+            vote4.voter = "dave";
 
-            tx.sign(alice_private_key, db->get_chain_id());
-            tx.sign(bob_private_key, db->get_chain_id());
-            tx.sign(sam_private_key, db->get_chain_id());
-            tx.sign(dave_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            push_tx_with_ops(tx,
+                {alice_private_key, bob_private_key, sam_private_key, dave_private_key},
+                vote, vote2, vote3, vote4);
 
             generate_block();
 
@@ -123,50 +114,28 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
             bob_vest_shares += bob_comment_reward.vesting_payout() + bob_comment_reward.vote_payout(bob_account);
             BOOST_CHECK_EQUAL(bob_account.vesting_shares, bob_vest_shares);
 
-            tx.operations.clear();
-            tx.signatures.clear();
             vote.voter = "alice";
             vote.author = "bob";
             vote.weight = STEEMIT_100_PERCENT * 2 / 3;
-            tx.operations.push_back(vote);
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            push_tx_with_ops(tx, alice_private_key, vote);
 
-            tx.operations.clear();
-            tx.signatures.clear();
             vote.voter = "dave";
             vote.author = "bob";
             vote.weight = STEEMIT_100_PERCENT * 2 / 3;
-            tx.operations.push_back(vote);
-            tx.sign(dave_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            push_tx_with_ops(tx, dave_private_key, vote);
 
             generate_blocks(db->head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC);
 
-            tx.operations.clear();
-            tx.signatures.clear();
             vote.voter = "bob";
             vote.author = "bob";
             vote.weight = STEEMIT_100_PERCENT * 2 / 3;
-            tx.operations.push_back(vote);
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            push_tx_with_ops(tx, bob_private_key, vote);
 
-            tx.operations.clear();
-            tx.signatures.clear();
             vote.voter = "sam";
-            tx.operations.push_back(vote);
-            tx.sign(sam_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            push_tx_with_ops(tx, sam_private_key, vote);
 
-            tx.operations.clear();
-            tx.signatures.clear();
             vote.voter = "dave";
-            tx.operations.push_back(vote);
-            tx.sign(dave_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            push_tx_with_ops(tx, dave_private_key, vote);
 
             bob_vest_shares = bob_account.vesting_shares;
             bob_sbd_balance = bob_account.sbd_balance;

@@ -2383,37 +2383,25 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             op.proxy = "alice";
 
             signed_transaction tx;
-            tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.operations.push_back(op);
 
             BOOST_TEST_MESSAGE("--- Test failure when no signatures");
-            GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
+            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, private_key(), op),
                 CHECK_ERROR(tx_missing_active_auth, 0));
 
             BOOST_TEST_MESSAGE("--- Test failure when signed by a signature not in the account's authority");
-            tx.sign(bob_post_key, db->get_chain_id());
-            GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
+            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_post_key, op),
                 CHECK_ERROR(tx_missing_active_auth, 0));
 
             BOOST_TEST_MESSAGE("--- Test failure when duplicate signatures");
-            tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            tx.sign(bob_private_key, db->get_chain_id());
-            GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
+            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, {bob_private_key, bob_private_key}, op),
                 CHECK_ERROR(tx_duplicate_sig, 0));
 
             BOOST_TEST_MESSAGE("--- Test failure when signed by an additional signature not in the creator's authority");
-            tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            tx.sign(alice_private_key, db->get_chain_id());
-            GOLOS_CHECK_ERROR_PROPS(db->push_transaction(tx, 0),
+            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, {bob_private_key, alice_private_key}, op),
                 CHECK_ERROR(tx_irrelevant_sig, 0));
 
             BOOST_TEST_MESSAGE("--- Test success with witness signature");
-            tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
 
             BOOST_TEST_MESSAGE("--- Test failure with proxy signature");
             tx.signatures.clear();
@@ -4478,7 +4466,6 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
     BOOST_AUTO_TEST_CASE(change_recovery_account_apply) {
         try {
-            using fc::ecc::private_key;
             BOOST_TEST_MESSAGE("Testing change_recovery_account_operation");
 
             ACTORS((alice)(sam))
@@ -4550,8 +4537,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 CHECK_ERROR(missing_object, "authority", "haxer"));
             GOLOS_CHECK_NO_THROW(change_recovery_account("alice", "sam"));
 
-            fc::ecc::private_key alice_priv1 = fc::ecc::private_key::regenerate(fc::sha256::hash("alice_k1"));
-            fc::ecc::private_key alice_priv2 = fc::ecc::private_key::regenerate(fc::sha256::hash("alice_k2"));
+            private_key alice_priv1 = private_key::regenerate(fc::sha256::hash("alice_k1"));
+            private_key alice_priv2 = private_key::regenerate(fc::sha256::hash("alice_k2"));
             public_key_type alice_pub1 = public_key_type(alice_priv1.get_public_key());
 
             generate_blocks(
