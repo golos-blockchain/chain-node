@@ -579,6 +579,14 @@ namespace golos { namespace chain {
                     const string& parent_permlink
             );
 
+            void make_vote(
+                    const string& voter,
+                    const private_key_type& voter_key,
+                    const string& author,
+                    const string& permlink,
+                    int16_t weight = STEEMIT_100_PERCENT
+            );
+
             void fund(const string &account_name, const share_type &amount = 500000);
 
             void fund(const string &account_name, const asset &amount);

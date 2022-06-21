@@ -3607,12 +3607,21 @@ namespace golos { namespace chain {
             asset net_sbd(0, SBD_SYMBOL);
             asset net_steem(0, STEEM_SYMBOL);
 
-            auto process_acc = [&](auto& acc) {
+            std::set<account_name_type> processed;
+
+            const auto& idx = get_index<account_index, by_sbd>();
+            for (auto itr = idx.begin(); itr != idx.end(); ) {
+                const auto& acc = *itr;
+                if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) break;
+                ++itr;
+
+                if (!processed.insert(acc.name).second) continue;
+
                 auto sbd = asset(
                     (uint128_t(acc.sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
                 auto savings_sbd = asset(
                     (uint128_t(acc.savings_sbd_balance.amount) * median_props.sbd_debt_convert_rate / STEEMIT_100_PERCENT).to_uint64(), SBD_SYMBOL);
-                if (!sbd.amount.value && !savings_sbd.amount.value) return;
+                if (!sbd.amount.value && !savings_sbd.amount.value) continue;
 
                 asset steem(0, STEEM_SYMBOL);
                 if (sbd.amount.value) {
@@ -3633,21 +3642,6 @@ namespace golos { namespace chain {
                 }
 
                 push_virtual_operation(convert_sbd_debt_operation(acc.name, sbd, steem, savings_sbd, savings_steem));
-            };
-
-            if (has_hardfork(STEEMIT_HARDFORK_0_27)) {
-                const auto& idx = get_index<account_index, by_sbd>();
-                for (auto itr = idx.begin(); itr != idx.end(); ) {
-                    const auto& acc = *itr;
-                    if (!acc.sbd_balance.amount.value && !acc.savings_sbd_balance.amount.value) break;
-                    ++itr;
-                    process_acc(acc);
-                }
-            } else {
-                for (const auto& acc : get_index<account_index>().indices()) {
-                    if (acc.sbd_balance.amount.value || acc.savings_sbd_balance.amount.value)
-                        process_acc(acc);
-                }
             }
 
             const auto& escrows = get_index<escrow_index>().indices();

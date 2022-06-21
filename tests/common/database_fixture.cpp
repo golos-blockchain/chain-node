@@ -534,6 +534,26 @@ namespace golos { namespace chain {
             FC_CAPTURE_AND_RETHROW((author)(permlink))
         }
 
+        void database_fixture::make_vote(
+                const string& voter,
+                const private_key_type& voter_key,
+                const string& author,
+                const string& permlink,
+                int16_t weight
+        ) {
+            try {
+                vote_operation vop;
+                vop.voter = voter;
+                vop.author = author;
+                vop.permlink = permlink;
+                vop.weight = weight;
+
+                signed_transaction tx;
+                GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, voter_key, vop));
+            }
+            FC_CAPTURE_AND_RETHROW((voter)(author)(permlink)(weight))
+        }
+
         void database_fixture::fund(
                 const string &account_name,
                 const share_type &amount
