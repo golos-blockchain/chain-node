@@ -304,4 +304,37 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
         throw;
     }}
 
+    BOOST_AUTO_TEST_CASE(hf22_account_idleness) { try {
+        BOOST_TEST_MESSAGE("Testing: hf22_account_idleness");
+
+        resize_shared_mem(1024 * 1024 * 24, STEEMIT_HARDFORK_0_21);
+
+        ACTORS((alice)(bob)(carol))
+        generate_block();
+        vest("alice", ASSET("10.000 GOLOS"));
+        vest("bob", ASSET("10.000 GOLOS"));
+        vest("carol", ASSET("10.000 GOLOS"));
+
+        generate_blocks(db->head_block_time() + fc::days(6*30));
+
+        db->set_hardfork(STEEMIT_HARDFORK_0_22);
+        generate_blocks(db->head_block_time() + fc::days(6*30));
+        validate_database();
+
+        {
+            auto gb = GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL - db->head_block_num() % GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL;
+            generate_blocks(gb);
+        }
+
+        BOOST_CHECK_EQUAL(db->get_account("alice").to_withdraw, db->get_account("alice").vesting_shares.amount);
+        BOOST_CHECK_EQUAL(db->get_account("bob").to_withdraw, db->get_account("bob").vesting_shares.amount);
+        BOOST_CHECK_EQUAL(db->get_account("carol").to_withdraw, db->get_account("carol").vesting_shares.amount);
+
+        validate_database();
+    } catch (fc::exception& e) {
+        edump((e.to_detail_string()));
+        throw;
+    }}
+
+
 BOOST_AUTO_TEST_SUITE_END()
