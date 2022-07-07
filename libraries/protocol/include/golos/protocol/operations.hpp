@@ -89,6 +89,7 @@ namespace golos { namespace protocol {
                 invite_donate_operation,
                 invite_transfer_operation,
                 limit_order_cancel_ex_operation,
+                account_setup_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,

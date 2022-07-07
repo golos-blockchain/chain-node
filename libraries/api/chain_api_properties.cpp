@@ -66,6 +66,11 @@ namespace golos { namespace api {
             negrep_posting_window = src.negrep_posting_window;
             negrep_posting_per_window = src.negrep_posting_per_window;
         }
+        if (db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+            negrep_posting_window = 0;
+            negrep_posting_per_window = 0;
+            unwanted_operation_cost = src.unwanted_operation_cost;
+        }
     }
 
 } } // golos::api

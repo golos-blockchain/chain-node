@@ -111,6 +111,7 @@ namespace mongo_db {
         result_type operator()(const invite_transfer_operation& op);
         result_type operator()(const internal_transfer_operation& op);
         result_type operator()(const limit_order_cancel_ex_operation& op);
+        result_type operator()(const account_setup_operation& op);
     };
 
 }}} // golos::plugins::mongo_db

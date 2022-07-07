@@ -80,7 +80,8 @@ namespace golos { namespace chain {
             invite_object_type,
             asset_object_type,
             account_balance_object_type,
-            event_object_type
+            event_object_type,
+            account_blocking_object_type
         };
 
         class dynamic_global_property_object;
@@ -121,6 +122,7 @@ namespace golos { namespace chain {
         class asset_object;
         class account_balance_object;
         class event_object;
+        class account_blocking_object;
 
         typedef object_id<dynamic_global_property_object> dynamic_global_property_id_type;
         typedef object_id<account_object> account_id_type;
@@ -160,7 +162,8 @@ namespace golos { namespace chain {
         typedef object_id<asset_object> asset_object_id_type;
         typedef object_id<account_balance_object> asset_balance_object_id_type;
         typedef object_id<event_object> event_object_id_type;
-        
+        typedef object_id<account_blocking_object> account_blocking_object_id_type;
+
         enum bandwidth_type {
             post,         ///< Rate limiting posting reward eligibility over time
             forum,        ///< Rate limiting for all forum related actins
@@ -270,6 +273,7 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (asset_object_type)
                 (account_balance_object_type)
                 (event_object_type)
+                (account_blocking_object_type)
 )
 
 FC_REFLECT_TYPENAME((golos::chain::shared_string))

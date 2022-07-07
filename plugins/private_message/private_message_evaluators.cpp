@@ -22,6 +22,8 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         logic_errors::sender_in_ignore_list,
         "Sender is in the ignore list of recipient");
 
+    _db.check_no_blocking(op.to, op.from, false);
+
     GOLOS_CHECK_LOGIC(
         (cfg_itr == cfg_idx.end() || !cfg_itr->ignore_messages_from_unknown_contact) ||
         (contact_itr != contact_idx.end() && contact_itr->type == pinned),

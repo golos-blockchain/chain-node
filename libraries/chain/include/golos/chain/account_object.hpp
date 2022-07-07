@@ -128,6 +128,8 @@ public:
     uint32_t proved_hf = 0;
     bool frozen = false;
 
+    bool do_not_bother = false;
+
     /// This function should be used only when the account votes for a witness directly
     share_type witness_vote_weight() const {
         return std::accumulate(proxied_vsf_votes.begin(),
@@ -386,6 +388,23 @@ public:
     asset_symbol_type symbol() const {
         return balance.symbol;
     }
+};
+
+class account_blocking_object
+        : public object<account_blocking_object_type, account_blocking_object> {
+public:
+    template<typename Constructor, typename Allocator>
+    account_blocking_object(Constructor &&c, allocator<Allocator> a) {
+        c(*this);
+    }
+
+    account_blocking_object() {
+    }
+
+    id_type id;
+
+    account_name_type account;
+    account_name_type blocking;
 };
 
 struct by_name;
@@ -697,6 +716,19 @@ using account_balance_index = multi_index_container<
         >>
     >, allocator<account_balance_object>>;
 
+using account_blocking_index = multi_index_container<
+    account_blocking_object,
+    indexed_by<
+        ordered_unique<tag<by_id>,
+            member<account_blocking_object, account_blocking_object::id_type, &account_blocking_object::id>
+        >,
+        ordered_unique<tag<by_account>, composite_key<account_blocking_object,
+            member<account_blocking_object, account_name_type, &account_blocking_object::account>,
+            member<account_blocking_object, account_name_type, &account_blocking_object::blocking>
+        >>
+    >, allocator<account_blocking_object>>;
+
+
 } } // golos::chain
 
 
@@ -725,6 +757,7 @@ FC_REFLECT((golos::chain::account_object),
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
     (last_active_operation)(last_claim)
     (proved_hf)(frozen)
+    (do_not_bother)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_object, golos::chain::account_index)
 
@@ -774,3 +807,8 @@ FC_REFLECT((golos::chain::account_balance_object),
         (id)(account)(balance)(tip_balance)(market_balance)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_balance_object, golos::chain::account_balance_index)
+
+FC_REFLECT((golos::chain::account_blocking_object),
+        (id)(account)(blocking)
+)
+CHAINBASE_SET_INDEX_TYPE(golos::chain::account_blocking_object, golos::chain::account_blocking_index)

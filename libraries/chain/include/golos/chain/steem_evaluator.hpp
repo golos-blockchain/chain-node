@@ -71,6 +71,7 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(invite_donate)
         DEFINE_EVALUATOR(invite_transfer)
         DEFINE_EVALUATOR(limit_order_cancel_ex)
+        DEFINE_EVALUATOR(account_setup)
 
         class proposal_create_evaluator: public evaluator_impl<proposal_create_evaluator> {
         public:

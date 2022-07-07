@@ -135,6 +135,7 @@ struct account_api_object {
     uint32_t proved_hf = 0;
     bool frozen = false;
     fc::optional<account_freeze_api_object> freeze;
+    bool do_not_bother = false;
 };
 
 } } // golos::api
@@ -161,7 +162,7 @@ FC_REFLECT((golos::api::account_api_object),
     (witness_votes)(reputation)(posts_capacity)(comments_capacity)(voting_capacity)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
     (last_active_operation)(last_claim)(claim_expiration)
-    (proved_hf)(frozen)(freeze)
+    (proved_hf)(frozen)(freeze)(do_not_bother)
 )
 
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP

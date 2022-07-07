@@ -122,9 +122,21 @@ namespace golos {
                     if (!parent_hashlink) parent_hashlink = _db.make_hashlink(op.parent_permlink);
                 }
 
+                int is_blocking(const account_name_type& account, const account_name_type& blocking) const {
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__185)) {
+                        return _db.is_blocking(account, blocking);
+                    } else {
+                        const auto& idx = _db.get_index<follow_index, by_following_follower>();
+                        auto itr = idx.find(std::make_tuple(blocking, account));
+                        if (itr == idx.end() || !(itr->what & (1 << ignore))) {
+                            return 0;
+                        } else {
+                            return 1;
+                        }
+                    }
+                }
+
                 void process_mentions(const comment_operation& op, hashlink_type hashlink, hashlink_type& parent_hashlink) const {
-                    const auto& idx = _db.get_index<follow_index, by_following_follower>();
-                    
                     auto max_mentions = _plugin.max_mentions_count();
 
                     auto body = op.body;
@@ -141,8 +153,7 @@ namespace golos {
                             if (mentioned != op.author && mentioned != op.parent_author
                                     && proceed.insert(mentioned).second
                                     && _db.find_account(mentioned)) {
-                                auto itr = idx.find(std::make_tuple(op.author, mentioned));
-                                if (itr == idx.end() || !(itr->what & (1 << ignore))) {
+                                if (!is_blocking(mentioned, op.author)) {
                                     init_parent_hash(parent_hashlink, op);
                                     _db.push_event(comment_mention_operation(mentioned,
                                             op.author, hashlink, op.parent_author, parent_hashlink));
@@ -170,8 +181,7 @@ namespace golos {
                         const auto& idx = _db.get_index<follow_index, by_following_follower>();
 
                         if (op.parent_author.size() && op.parent_author != op.author) {
-                            auto itr = idx.find(std::make_tuple(op.author, op.parent_author));
-                            if (itr == idx.end() || !(itr->what & (1 << ignore))) {
+                            if (!is_blocking(op.parent_author, op.author)) {
                                 init_parent_hash(parent_hashlink, op);
                                 _db.push_event(comment_reply_operation(
                                             op.author, hashlink, op.parent_author, parent_hashlink));
@@ -231,6 +241,61 @@ namespace golos {
                                 b.comment = c.id;
                                 b.blog_feed_id = next_id;
                             });
+                        }
+                    } FC_LOG_AND_RETHROW()
+                }
+
+                struct account_setting_visitor {
+                    account_setting_visitor(const account_setup_operation& _op, database& db) : op(_op), _db(db) {
+                    }
+
+                    const account_setup_operation& op;
+                    database& _db;
+
+                    using result_type = void;
+
+                    template<typename T>
+                    void operator()(const T&) const {
+                    }
+
+                    bool unfollow(account_name_type follower, account_name_type following) const {
+                        const auto& idx = _db.get_index<follow_index, by_follower_following>();
+                        auto itr = idx.find(std::make_tuple(follower, following));
+                        if (itr != idx.end() && (itr->what & (1 << blog))) {
+                            _db.remove(*itr);
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    void operator()(const account_block_setting& abs) const {
+                        if (!abs.block) {
+                            return;
+                        }
+                        bool blocking_was = unfollow(abs.account, op.account);
+                        bool blocker_was = unfollow(op.account, abs.account);
+                        const auto* blocking = _db.find<follow_count_object, by_account>(abs.account);
+                        if (blocking) {
+                            _db.modify(*blocking, [&](auto& f) {
+                                if (blocking_was) f.following_count--;
+                                if (blocker_was) f.follower_count--;
+                            });
+                        }
+                        const auto* blocker = _db.find<follow_count_object, by_account>(op.account);
+                        if (blocker) {
+                            _db.modify(*blocker, [&](auto& f) {
+                                if (blocking_was) f.follower_count--;
+                                if (blocker_was) f.following_count--;
+                            });
+                        }
+                    }
+                };
+
+                void operator()(const account_setup_operation& op) const {
+                    try {
+                        account_setting_visitor asv(op, _db);
+                        for (auto& s : op.settings) {
+                            s.visit(asv);
                         }
                     } FC_LOG_AND_RETHROW()
                 }

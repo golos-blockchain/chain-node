@@ -98,6 +98,8 @@ namespace golos { namespace wallet {
             fc::optional<uint16_t> vesting_of_remain_percent;
             fc::optional<uint16_t> negrep_posting_window;
             fc::optional<uint16_t> negrep_posting_per_window;
+
+            fc::optional<asset> unwanted_operation_cost;
         };
 
         struct optional_private_box_query {
@@ -1514,6 +1516,10 @@ namespace golos { namespace wallet {
 
             annotated_signed_transaction cancel_orders(string owner, string base, string quote, bool reverse, bool broadcast);
 
+            annotated_signed_transaction block_user(const string& me, const string& user, bool broadcast);
+            annotated_signed_transaction unblock_user(const string& me, const string& user, bool broadcast);
+            annotated_signed_transaction do_not_bother(const string& me, bool do_not_bother, bool broadcast);
+
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1676,6 +1682,10 @@ FC_API( golos::wallet::wallet_api,
                 (transfer_invite)
 
                 (cancel_orders)
+
+                (block_user)
+                (unblock_user)
+                (do_not_bother)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))
@@ -1714,6 +1724,7 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (worker_emission_percent)
     (vesting_of_remain_percent)
     (negrep_posting_window)(negrep_posting_per_window)
+    (unwanted_operation_cost)
 )
 
 FC_REFLECT(

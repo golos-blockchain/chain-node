@@ -373,12 +373,17 @@ namespace golos { namespace wallet {
                         result["min_golos_power_to_curate"] = median_props.min_golos_power_to_curate;
                         result["worker_emission_percent"] = median_props.worker_emission_percent;
                         result["vesting_of_remain_percent"] = median_props.vesting_of_remain_percent;
-                        result["negrep_posting_window"] = median_props.negrep_posting_window;
-                        result["negrep_posting_per_window"] = median_props.negrep_posting_per_window;
+                        if (hf < hardfork_version(0, STEEMIT_HARDFORK_0_27)) {
+                            result["negrep_posting_window"] = median_props.negrep_posting_window;
+                            result["negrep_posting_per_window"] = median_props.negrep_posting_per_window;
+                        }
                     } else if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_22)) {
                         result["worker_reward_percent"] = median_props.worker_reward_percent;
                         result["witness_reward_percent"] = median_props.witness_reward_percent;
                         result["vesting_reward_percent"] = median_props.vesting_reward_percent;
+                    }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_27)) {
+                        result["unwanted_operation_cost"] = median_props.unwanted_operation_cost;
                     }
 
                     return result;
@@ -2305,7 +2310,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             chain_properties_update_operation op;
             chain_api_properties ap;
-            chain_properties_24 p;
+            chain_properties_26 p;
 
             // copy defaults in case of missing witness object
             ap.account_creation_fee = p.account_creation_fee;
@@ -2345,9 +2350,6 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             SET_PROP(p, curation_reward_curve);
             SET_PROP(p, allow_distribute_auction_reward);
             SET_PROP(p, allow_return_auction_reward_to_fund);
-            SET_PROP(p, worker_reward_percent);
-            SET_PROP(p, witness_reward_percent);
-            SET_PROP(p, vesting_reward_percent);
             SET_PROP(p, worker_request_creation_fee);
             SET_PROP(p, worker_request_approve_min_percent);
             SET_PROP(p, sbd_debt_convert_rate);
@@ -2359,21 +2361,24 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             SET_PROP(p, min_invite_balance);
             SET_PROP(p, asset_creation_fee);
             SET_PROP(p, invite_transfer_interval_sec);
+            SET_PROP(p, convert_fee_percent);
+            SET_PROP(p, min_golos_power_to_curate);
+            p.witness_reward_percent = 0;
+            p.worker_reward_percent = 0;
+            p.vesting_reward_percent = 0;
+            SET_PROP(p, worker_emission_percent);
+            SET_PROP(p, vesting_of_remain_percent);
+            SET_PROP(p, negrep_posting_window);
+            SET_PROP(p, negrep_posting_per_window);
             op.props = p;
             auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_26)) {
-                chain_properties_26 p26;
-                p26 = p;
-                SET_PROP(p26, convert_fee_percent);
-                SET_PROP(p26, min_golos_power_to_curate);
-                p26.witness_reward_percent = 0;
-                p26.worker_reward_percent = 0;
-                p26.vesting_reward_percent = 0;
-                SET_PROP(p26, worker_emission_percent);
-                SET_PROP(p26, vesting_of_remain_percent);
-                SET_PROP(p26, negrep_posting_window);
-                SET_PROP(p26, negrep_posting_per_window);
-                op.props = p26;
+            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_27)) {
+                chain_properties_27 p27;
+                p27 = p;
+                SET_PROP(p27, unwanted_operation_cost);
+                p.negrep_posting_window = 0;
+                p.negrep_posting_per_window = 0;
+                op.props = p27;
             }
 #undef SET_PROP
 
@@ -3489,6 +3494,59 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             ptc.quote = quote;
             ptc.reverse = reverse;
             op.extensions.insert(ptc);
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::block_user(const string& me, const string& user, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            account_setup_operation op;
+            op.account = me;
+
+            account_block_setting abs;
+            abs.account = user;
+            abs.block = true;
+            op.settings.insert(abs);
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::unblock_user(const string& me, const string& user, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            account_setup_operation op;
+            op.account = me;
+
+            account_block_setting abs;
+            abs.account = user;
+            abs.block = false;
+            op.settings.insert(abs);
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::do_not_bother(const string& me, bool do_not_bother, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            account_setup_operation op;
+            op.account = me;
+
+            do_not_bother_setting dnbs;
+            dnbs.do_not_bother = do_not_bother;
+            op.settings.insert(dnbs);
 
             signed_transaction tx;
             tx.operations.push_back(op);

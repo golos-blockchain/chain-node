@@ -74,6 +74,8 @@ namespace golos { namespace api {
         fc::optional<asset> min_golos_power_to_curate;
         fc::optional<uint16_t> negrep_posting_window;
         fc::optional<uint16_t> negrep_posting_per_window;
+
+        fc::optional<asset> unwanted_operation_cost;
     };
 
 } } // golos::api
@@ -98,4 +100,5 @@ FC_REFLECT(
     (invite_transfer_interval_sec)
     (convert_fee_percent)(min_golos_power_to_curate)
     (negrep_posting_window)(negrep_posting_per_window)
+    (unwanted_operation_cost)
 )

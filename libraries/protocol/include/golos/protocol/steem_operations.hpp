@@ -909,6 +909,53 @@ namespace golos { namespace protocol {
             chain_properties_26& operator=(const chain_properties_26&) = default;
         };
 
+        struct chain_properties_27 : public chain_properties_26 {
+
+            /**
+             * Percent of fee on GOLOS-GBG conversions.
+             */
+            asset unwanted_operation_cost = GOLOS_DEF_UNWANTED_OPERATION_COST;
+
+            void validate() const;
+
+            chain_properties_27& operator=(const chain_properties_17& src) {
+                chain_properties_26::operator=(src);
+                return *this;
+            }
+
+            chain_properties_27& operator=(const chain_properties_18& src) {
+                chain_properties_26::operator=(src);
+                return *this;
+            }
+
+            chain_properties_27& operator=(const chain_properties_19& src) {
+                chain_properties_26::operator=(src);
+                return *this;
+            }
+
+            chain_properties_27& operator=(const chain_properties_22& src) {
+                chain_properties_26::operator=(src);
+                return *this;
+            }
+
+            chain_properties_27& operator=(const chain_properties_23& src) {
+                chain_properties_26::operator=(src);
+                return *this;
+            }
+
+            chain_properties_27& operator=(const chain_properties_24& src) {
+                chain_properties_26::operator=(src);
+                return *this;
+            }
+
+            chain_properties_27& operator=(const chain_properties_26& src) {
+                chain_properties_26::operator=(src);
+                return *this;
+            }
+
+            chain_properties_27& operator=(const chain_properties_27&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -923,7 +970,8 @@ namespace golos { namespace protocol {
             chain_properties_22,
             chain_properties_23,
             chain_properties_24,
-            chain_properties_26
+            chain_properties_26,
+            chain_properties_27
         >;
 
         /**
@@ -1849,6 +1897,38 @@ namespace golos { namespace protocol {
             }
         };
 
+        struct account_block_setting {
+            account_name_type account;
+            bool block;
+
+            void validate() const;
+        };
+
+        struct do_not_bother_setting {
+            bool do_not_bother;
+
+            void validate() const;
+        };
+
+        using account_setting = static_variant<
+            account_block_setting,
+            do_not_bother_setting
+        >;
+
+        using account_settings_type = flat_set<account_setting>;
+
+        struct account_setup_operation: public base_operation {
+            account_name_type account;
+            account_settings_type settings;
+
+            extensions_type extensions;
+
+            void validate() const;
+            void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+                a.insert(account);
+            }
+        };
+
 } } // golos::protocol
 
 
@@ -1898,6 +1978,10 @@ FC_REFLECT_DERIVED(
     (convert_fee_percent)(min_golos_power_to_curate)
     (worker_emission_percent)(vesting_of_remain_percent)
     (negrep_posting_window)(negrep_posting_per_window)
+)
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_27), ((golos::protocol::chain_properties_26)),
+    (unwanted_operation_cost)
 )
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))
@@ -2005,3 +2089,14 @@ FC_REFLECT((golos::protocol::override_transfer_operation), (creator)(from)(to)(a
 
 FC_REFLECT((golos::protocol::invite_donate_operation), (from)(invite_key)(amount)(memo)(extensions))
 FC_REFLECT((golos::protocol::invite_transfer_operation), (from)(to)(amount)(memo)(extensions))
+
+FC_REFLECT((golos::protocol::account_block_setting),
+    (account)(block)
+)
+FC_REFLECT((golos::protocol::do_not_bother_setting),
+    (do_not_bother)
+)
+FC_REFLECT_TYPENAME((golos::protocol::account_setting));
+FC_REFLECT((golos::protocol::account_setup_operation),
+    (account)(settings)(extensions)
+);

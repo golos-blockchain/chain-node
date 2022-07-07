@@ -62,10 +62,22 @@ namespace golos {
                         }
                     }
 
-                    if (what & (1 << ignore))
+                    bool hf27 = db().has_hardfork(STEEMIT_HARDFORK_0_27);
+
+                    if (what & (1 << ignore)) {
+                        GOLOS_CHECK_VALUE(!hf27,
+                            "Follow ignore list is deprecated now, use account_setup");
                         GOLOS_CHECK_LOGIC(!(what & (1 << blog)),
                                 logic_errors::cannot_follow_and_ignore_simultaneously,
                                 "Cannot follow blog and ignore author at the same time");
+                    }
+
+                    if (what & (1 << blog)) {
+                        GOLOS_CHECK_VALUE(db().is_blocking(o.follower, o.following) != 1,
+                                "You cannot follow because you was blocked user");
+                        GOLOS_CHECK_VALUE(db().is_blocking(o.following, o.follower) != 1,
+                                "You cannot follow because you are blocked by user");
+                    }
 
                     bool was_followed = false;
 

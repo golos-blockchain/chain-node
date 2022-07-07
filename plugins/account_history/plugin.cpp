@@ -649,6 +649,9 @@ if (options.count(name)) { \
 
         void operator()(const invite_transfer_operation& op) {
         }
+
+        void operator()(const account_setup_operation& op) {
+        }
     };
 
     void operation_get_impacted_accounts(const operation& op, impacted_accounts& result) {

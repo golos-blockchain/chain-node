@@ -387,6 +387,11 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_VALUE_LEGE(negrep_posting_window, 1, std::numeric_limits<uint16_t>::max() / 2);
         }
 
+        void chain_properties_27::validate() const {
+            chain_properties_26::validate();
+           GOLOS_CHECK_ASSET_GE(unwanted_operation_cost, GOLOS, 0);
+        }
+
         void witness_update_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
             GOLOS_CHECK_PARAM(url, {
@@ -1000,5 +1005,35 @@ namespace golos { namespace protocol {
                 GOLOS_CHECK_VALUE_MAX_SIZE(memo, STEEMIT_MAX_MEMO_SIZE - 1); //-1 to satisfy <= check (vs <)
                 GOLOS_CHECK_VALUE_UTF8(memo);
             });
+        }
+
+        struct account_setting_validate_visitor {
+            account_setting_validate_visitor() {
+            }
+
+            using result_type = void;
+
+            void operator()(const account_block_setting& abs) const {
+                abs.validate();
+            }
+
+            void operator()(const do_not_bother_setting& dnbs) const {
+                dnbs.validate();
+            }
+        };
+
+        void account_block_setting::validate() const {
+            validate_account_name(account);
+        }
+
+        void do_not_bother_setting::validate() const {
+        }
+
+        void account_setup_operation::validate() const {
+            GOLOS_CHECK_PARAM_ACCOUNT(account);
+
+            for (auto& s : settings) {
+                s.visit(account_setting_validate_visitor());
+            }
         }
 } } // golos::protocol

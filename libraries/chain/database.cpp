@@ -668,6 +668,59 @@ namespace golos { namespace chain {
             return acc->reputation;
         }
 
+        int database::is_blocking(const account_name_type& account, const account_name_type& blocking) const {
+            if (!has_hardfork(STEEMIT_HARDFORK_0_27__185))
+                return 0;
+            auto& idx = get_index<account_blocking_index, by_account>();
+            auto itr = idx.find(std::make_tuple(account, blocking));
+            if (itr != idx.end()) {
+                return 1;
+            } else {
+                auto& acc = get_account(account);
+                if (acc.do_not_bother) {
+                    auto rep = get_account_reputation(blocking);
+                    if (rep < 7800000000000) { // low edge of 60 reputation
+                        return 2;
+                    }
+                }
+            }
+            return 0;
+        }
+
+        void database::check_no_blocking(const account_name_type& account, const account_name_type& blocking, bool can_bypass) {
+            if (!has_hardfork(STEEMIT_HARDFORK_0_27__185))
+                return;
+            int blocked = is_blocking(account, blocking);
+            if (blocked) {
+                if (blocked == 1) {
+                    GOLOS_CHECK_VALUE(can_bypass,
+                        "You are blocked by user, and cannot bypass it with money in that case");
+                } else {
+                    GOLOS_CHECK_VALUE(can_bypass,
+                        "User tells to do not bother their, and you cannot bypass it with money in that case");
+                }
+
+                const auto& median_props = get_witness_schedule_object().median_props;
+                const auto& payer  = get_account(blocking);
+
+                if (blocked == 1) {
+                    GOLOS_CHECK_VALUE(payer.tip_balance >= median_props.unwanted_operation_cost,
+                        "You are blocked by user, so you need at least ${amount} of TIP balance",
+                        ("amount", median_props.unwanted_operation_cost));
+                } else {
+                    GOLOS_CHECK_VALUE(payer.tip_balance >= median_props.unwanted_operation_cost,
+                        "User tells to do not bother their, so you need at least ${amount} of TIP balance",
+                        ("amount", median_props.unwanted_operation_cost));
+                }
+                modify(payer, [&](auto& payer) {
+                    payer.tip_balance -= median_props.unwanted_operation_cost;
+                });
+                modify(get_account(account), [&](auto& account) {
+                    account.tip_balance += median_props.unwanted_operation_cost;
+                });
+            }
+        }
+
         const hashlink_type database::make_hashlink_shstr(const shared_string& permlink) const {
             return fc::hash64(permlink.c_str(), permlink.size());
         }
@@ -1060,8 +1113,26 @@ namespace golos { namespace chain {
         void database::check_negrep_posting_bandwidth(const account_object& acc) {
             auto now = head_block_time();
 
-            if (!has_hardfork(STEEMIT_HARDFORK_0_26__168) || acc.reputation >= 0) {
+            bool hf27 = has_hardfork(STEEMIT_HARDFORK_0_27);
+
+            if (!has_hardfork(STEEMIT_HARDFORK_0_26__168)
+                || acc.reputation >= 0) {
                 modify(acc, [&](auto& a) {
+                    a.last_posting_action = now;
+                });
+                return;
+            }
+
+            if (hf27) {
+                const auto& median_props = get_witness_schedule_object().median_props;
+                GOLOS_CHECK_VALUE(acc.tip_balance >= median_props.unwanted_operation_cost,
+                    "You are have negative reputation, so you need to pay ${amount} of TIP balance",
+                    ("amount", median_props.unwanted_operation_cost));
+                modify(get_account(STEEMIT_NULL_ACCOUNT), [&](auto& a) {
+                    a.tip_balance += median_props.unwanted_operation_cost;
+                });
+                modify(acc, [&](auto& a) {
+                    a.tip_balance -= median_props.unwanted_operation_cost;
                     a.last_posting_action = now;
                 });
                 return;
@@ -2354,7 +2425,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_26 median_props;
+            chain_properties_27 median_props;
 
             auto median = active.size() / 2;
 
@@ -2475,6 +2546,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_26::worker_emission_percent);
             calc_median(&chain_properties_26::vesting_of_remain_percent);
             calc_median_battery(&chain_properties_26::negrep_posting_window, &chain_properties_26::negrep_posting_per_window);
+            calc_median(&chain_properties_27::unwanted_operation_cost);
             
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -4002,6 +4074,7 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<invite_donate_evaluator>();
             _my->_evaluator_registry.register_evaluator<invite_transfer_evaluator>();
             _my->_evaluator_registry.register_evaluator<limit_order_cancel_ex_evaluator>();
+            _my->_evaluator_registry.register_evaluator<account_setup_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -4056,6 +4129,7 @@ namespace golos { namespace chain {
             add_core_index<asset_index>(*this);
             add_core_index<account_balance_index>(*this);
             add_core_index<event_index>(*this);
+            add_core_index<account_blocking_index>(*this);
 
             _plugin_index_signal();
         }

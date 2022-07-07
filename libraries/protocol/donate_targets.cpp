@@ -1,5 +1,3 @@
-#pragma once
-
 #include <golos/protocol/donate_targets.hpp>
 
 namespace golos { namespace protocol {
@@ -31,7 +29,7 @@ fc::optional<message_donate> get_message_donate(const donate_operation& op) {
 
     std::string from_str;
     std::string to_str;
-    uint64_t nonce;
+    uint64_t nonce = 0;
     try {
         from_str = op.memo.target["from"].as_string();
         to_str = op.memo.target["to"].as_string();

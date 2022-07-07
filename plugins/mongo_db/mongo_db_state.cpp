@@ -2031,4 +2031,8 @@ namespace mongo_db {
 
     }
 
+    auto state_writer::operator()(const account_setup_operation& op) -> result_type {
+
+    }
+
 }}}

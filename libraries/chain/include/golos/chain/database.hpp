@@ -205,6 +205,10 @@ namespace golos { namespace chain {
 
             share_type get_account_reputation(const account_name_type& name) const;
 
+            // 0 = not blocked, 1 = blocked, 2 = do not bother
+            int is_blocking(const account_name_type& account, const account_name_type& blocking) const;
+            void check_no_blocking(const account_name_type& account, const account_name_type& blocking, bool can_bypass = true);
+
             const proposal_object& get_proposal(const account_name_type&, const std::string&) const;
             const proposal_object* find_proposal(const account_name_type&, const std::string&) const;
             void        throw_if_exists_proposal(const account_name_type&, const std::string&) const;

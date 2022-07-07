@@ -932,6 +932,9 @@ namespace golos { namespace chain {
                 const comment_object *parent = nullptr;
                 if (o.parent_author != STEEMIT_ROOT_POST_PARENT) {
                     parent = &_db.get_comment_by_perm(o.parent_author, o.parent_permlink);
+
+                    _db.check_no_blocking(o.parent_author, o.author);
+
                     auto max_depth = STEEMIT_MAX_COMMENT_DEPTH;
                     if (!_db.has_hardfork(STEEMIT_HARDFORK_0_17__430)) {
                         max_depth = STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17;
@@ -1059,6 +1062,9 @@ namespace golos { namespace chain {
                             parent = &_db.get_comment(parent->parent_author, parent->parent_hashlink);
                         } else
                         {
+                            if (parent->author != o.parent_author) {
+                                _db.check_no_blocking(parent->author, o.author);
+                            }
                             parent = nullptr;
                         }
                     }
@@ -1275,6 +1281,8 @@ namespace golos { namespace chain {
         void transfer_evaluator::do_apply(const transfer_operation &o) {
             const auto &from_account = _db.get_account(o.from);
             const auto &to_account = _db.get_account(o.to);
+
+            _db.check_no_blocking(o.to, o.from);
 
             const auto now = _db.head_block_time();
 
@@ -3115,6 +3123,8 @@ void delegate_vesting_shares(
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
+            _db.check_no_blocking(op.to, op.from);
+
             GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, op.amount);
 
             const auto& idx = _db.get_index<donate_index, by_app_version>();
@@ -3497,6 +3507,56 @@ void delegate_vesting_shares(
             });
             if (from_invite.balance.amount == 0) {
                 _db.remove(from_invite);
+            }
+        }
+
+        struct account_setting_visitor {
+            account_setting_visitor(const account_object& a, database& db)
+                    : _a(a), _db(db) {
+            }
+
+            using result_type = void;
+
+            const account_object& _a;
+            database& _db;
+
+            void operator()(const account_block_setting& abs) const {
+                GOLOS_CHECK_VALUE(_a.name != abs.account,
+                    "Cannot block yourself");
+                _db.get_account(abs.account);
+                auto& idx = _db.get_index<account_blocking_index, by_account>();
+                auto itr = idx.find(std::make_tuple(_a.name, abs.account));
+                if (itr != idx.end()) {
+                    GOLOS_CHECK_VALUE(!abs.block,
+                        "You are already blocked this person");
+                    _db.remove(*itr);
+                } else {
+                    GOLOS_CHECK_VALUE(abs.block,
+                        "You are already not blocking this person");
+                    _db.create<account_blocking_object>([&](auto& abo) {
+                        abo.account = _a.name;
+                        abo.blocking = abs.account;
+                    });
+                }
+            }
+
+            void operator()(const do_not_bother_setting& dnbs) const {
+                GOLOS_CHECK_VALUE(_a.do_not_bother != dnbs.do_not_bother,
+                    "do_not_bother is same");
+                _db.modify(_a, [&](auto& acc) {
+                    acc.do_not_bother = dnbs.do_not_bother;
+                });
+            }
+        };
+
+        void account_setup_evaluator::do_apply(const account_setup_operation& op) {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_27__185, "account_setup_operation");
+
+            const auto& acc = _db.get_account(op.account);
+
+            for (auto& s : op.settings) {
+                account_setting_visitor visitor(acc, _db);
+                s.visit(visitor);
             }
         }
 
