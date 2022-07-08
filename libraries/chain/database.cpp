@@ -2731,6 +2731,15 @@ namespace golos { namespace chain {
                 total_steem += converted_steem;
             }
 
+            bool hf27 = has_hardfork(STEEMIT_HARDFORK_0_27__207);
+
+            if (hf27 && null_account.tip_balance.amount > 0) {
+                total_steem += null_account.tip_balance;
+                modify(null_account, [&](account_object &a) {
+                    a.tip_balance.amount = 0;
+                });
+            }
+
             if (total_steem.amount > 0) {
                 adjust_supply(-total_steem);
             }
@@ -2745,9 +2754,15 @@ namespace golos { namespace chain {
                 for (; itr != idx.end() && itr->account == null_account.name; ++itr) {
                     modify(get_asset(itr->balance.symbol), [&](auto& a) {
                         a.supply -= itr->balance;
+                        if (hf27) {
+                            a.supply -= itr->tip_balance;
+                        }
                     });
                     modify(*itr, [&](auto& a) {
                         a.balance = asset(0, a.balance.symbol);
+                        if (hf27) {
+                            a.tip_balance = asset(0, a.balance.symbol);
+                        }
                     });
                 }
             }

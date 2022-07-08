@@ -7,6 +7,7 @@
 #define STEEMIT_HARDFORK_0_27__203 (STEEMIT_HARDFORK_0_27) // Account cleaning
 #define STEEMIT_HARDFORK_0_27__204 (STEEMIT_HARDFORK_0_27) // Do not pay for posts by negative reputation authors
 #define STEEMIT_HARDFORK_0_27__185 (STEEMIT_HARDFORK_0_27) // Blacklist and "do not bother" button
+#define STEEMIT_HARDFORK_0_27__207 (STEEMIT_HARDFORK_0_27) // Burning null TIP-balances
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_27_TIME  1655053200 // 12 jun 2022 20:00:00 MSK
