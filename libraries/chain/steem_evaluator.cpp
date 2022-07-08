@@ -3336,6 +3336,13 @@ void delegate_vesting_shares(
                 _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), fee);
             }
 
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                auto max_allowed = asset(INT64_MAX / 10, op.max_supply.symbol);
+                GOLOS_CHECK_VALUE(op.max_supply.amount <= INT64_MAX / 10,
+                    "max_supply cannot be more than ${max_allowed}",
+                        ("max_allowed", max_allowed));
+            }
+
             _db.create<asset_object>([&](auto& a) {
                 a.creator = op.creator;
                 a.max_supply = op.max_supply;
