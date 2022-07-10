@@ -716,6 +716,8 @@ using account_balance_index = multi_index_container<
         >>
     >, allocator<account_balance_object>>;
 
+struct by_blocking;
+
 using account_blocking_index = multi_index_container<
     account_blocking_object,
     indexed_by<
@@ -725,6 +727,10 @@ using account_blocking_index = multi_index_container<
         ordered_unique<tag<by_account>, composite_key<account_blocking_object,
             member<account_blocking_object, account_name_type, &account_blocking_object::account>,
             member<account_blocking_object, account_name_type, &account_blocking_object::blocking>
+        >>,
+        ordered_unique<tag<by_blocking>, composite_key<account_blocking_object,
+            member<account_blocking_object, account_name_type, &account_blocking_object::blocking>,
+            member<account_blocking_object, account_name_type, &account_blocking_object::account>
         >>
     >, allocator<account_blocking_object>>;
 

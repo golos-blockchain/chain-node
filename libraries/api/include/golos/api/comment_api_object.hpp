@@ -67,8 +67,8 @@ namespace golos { namespace api {
         comment_mode mode = not_set;
 
         comment_object::id_type root_comment;
-        account_name_type root_author; // Not reflected - used only to construct url
-        std::string root_permlink;     //
+        account_name_type root_author;
+        std::string root_permlink;     //Not reflected - used only to construct url
 
         protocol::curation_curve curation_reward_curve = protocol::curation_curve::detect;
         auction_window_reward_destination_type auction_window_reward_destination = protocol::to_reward_fund;
@@ -102,7 +102,7 @@ FC_REFLECT(
     (author_rewards)(author_payout_in_golos)(author_gbg_payout_value)(author_golos_payout_value)(author_gests_payout_value)(net_votes)
     (mode)(curation_reward_curve)(auction_window_reward_destination)
     (auction_window_size)(auction_window_weight)(votes_in_auction_window_weight)
-    (root_comment)(root_title)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)
+    (root_comment)(root_title)(root_author)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)
     (allow_curation_rewards)(curation_rewards_percent)(min_golos_power_to_curate)
     (has_worker_request)
     (beneficiaries))

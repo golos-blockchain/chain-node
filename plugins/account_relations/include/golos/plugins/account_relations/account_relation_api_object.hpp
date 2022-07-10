@@ -8,11 +8,12 @@ namespace golos {
             struct account_relation_api_object {
                 account_name_type who;
                 account_name_type whom;
-                bool blocking;
+                bool blocking = false;
 
                 account_relation_api_object(const account_blocking_object& abo) {
                     who = abo.account;
                     whom = abo.blocking;
+                    blocking = true;
                 }
 
                 account_relation_api_object() {

@@ -351,6 +351,10 @@ if (options.count(name)) { \
             insert_dual(op.account);
         }
 
+        void operator()(const unwanted_cost_operation& op) {
+            insert_receiver(op.blocker);
+        }
+
         void operator()(const comment_operation& op) {
             insert_pair(op.author, op.parent_author, op.parent_author.size());
         }

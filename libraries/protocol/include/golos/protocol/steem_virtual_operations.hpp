@@ -465,6 +465,21 @@ namespace golos { namespace protocol {
             bool frozen;
             asset unfreeze_fee;
         };
+
+        struct unwanted_cost_operation : public virtual_operation {
+            unwanted_cost_operation() {
+            }
+
+            unwanted_cost_operation(const account_name_type& br, const account_name_type& bg,
+                        const asset& a, const std::string& t)
+                    : blocker(br), blocking(bg), amount(a), target(t) {
+            }
+
+            account_name_type blocker;
+            account_name_type blocking;
+            asset amount;
+            std::string target;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(hashlink)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -497,3 +512,4 @@ FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(has
 FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
 FC_REFLECT((golos::protocol::authority_updated_operation), (account)(owner)(active)(posting)(memo_key))
 FC_REFLECT((golos::protocol::account_freeze_operation), (account)(frozen)(unfreeze_fee))
+FC_REFLECT((golos::protocol::unwanted_cost_operation), (blocker)(blocking)(amount)(target))

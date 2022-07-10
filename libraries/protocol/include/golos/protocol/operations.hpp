@@ -121,7 +121,8 @@ namespace golos { namespace protocol {
                 comment_mention_operation,
                 accumulative_remainder_operation,
                 authority_updated_operation,
-                account_freeze_operation
+                account_freeze_operation,
+                unwanted_cost_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,
