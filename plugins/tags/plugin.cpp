@@ -128,7 +128,7 @@ namespace golos { namespace plugins { namespace tags {
     }
 
     void tags_plugin::impl::fill_discussion(discussion& d, const discussion_query& query) const {
-        helper->fill_discussion(d, database_.get_comment_by_perm(d.author, d.permlink),  query.vote_limit, query.vote_offset);
+        helper->fill_discussion(d, database_.get_comment_by_perm(d.author, d.permlink),  query.vote_limit, query.vote_offset, query.prefs);
 
         d.body_length = static_cast<uint32_t>(d.body.size());
         if (query.truncate_body) {
@@ -373,6 +373,10 @@ namespace golos { namespace plugins { namespace tags {
                 }
 
                 fill_discussion(d, query);
+                if (!!d.bad && d.bad->to_remove) {
+                    continue;
+                }
+
                 fill(d, *itr);
                 result.push_back(std::move(d));
             }
@@ -418,10 +422,15 @@ namespace golos { namespace plugins { namespace tags {
             }
 
             fill_discussion(d, query);
+
             d.hot = itr->hot;
             d.trending = itr->trending;
 
             if (query.has_start_comment() && !query.is_good_start(d.id) && !order(query.start_comment, d)) {
+                continue;
+            }
+
+            if (!!d.bad && d.bad->to_remove) {
                 continue;
             }
 

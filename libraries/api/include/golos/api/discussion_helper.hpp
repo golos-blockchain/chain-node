@@ -29,11 +29,13 @@ namespace golos { namespace api {
 
         discussion create_discussion(const comment_object& o) const;
 
-        discussion get_discussion(const comment_object& c, uint32_t vote_limit, uint32_t offset) const;
+        discussion get_discussion(const comment_object& c, uint32_t vote_limit, uint32_t offset,
+            opt_prefs prefs = opt_prefs()) const;
 
         comment_api_object create_comment_api_object(const comment_object& o) const;
 
-        void fill_discussion(discussion&, const comment_object&, uint32_t vote_limit, uint32_t offset) const;
+        void fill_discussion(discussion&, const comment_object&, uint32_t vote_limit, uint32_t offset,
+            opt_prefs prefs = opt_prefs()) const;
 
         void fill_comment_api_object(const comment_object& o, comment_api_object& d) const;
 

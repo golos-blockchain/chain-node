@@ -11,6 +11,21 @@ namespace golos { namespace api {
     using namespace golos::protocol;
     using protocol::auction_window_reward_destination_type;
 
+    struct bad_comment {
+        std::set<account_name_type> who_blocked;
+        bool to_remove = false; // Not reflected. Internal
+    };
+
+    struct bad_action {
+        bool remove = false;
+    };
+
+    struct content_prefs {
+        std::map<account_name_type, bad_action> blockers;
+    };
+
+    using opt_prefs = fc::optional<content_prefs>;
+
     struct comment_api_object {
         comment_object::id_type id;
 
@@ -89,9 +104,21 @@ namespace golos { namespace api {
         bool has_worker_request = false;
 
         vector< protocol::beneficiary_route_type > beneficiaries;
+    
+        fc::optional<bad_comment> bad;
     };
 
 } } // golos::api
+
+FC_REFLECT((golos::api::bad_comment),
+    (who_blocked)
+)
+FC_REFLECT((golos::api::bad_action),
+    (remove)
+)
+FC_REFLECT((golos::api::content_prefs),
+    (blockers)
+)
 
 FC_REFLECT(
     (golos::api::comment_api_object),
@@ -105,6 +132,6 @@ FC_REFLECT(
     (root_comment)(root_title)(root_author)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)
     (allow_curation_rewards)(curation_rewards_percent)(min_golos_power_to_curate)
     (has_worker_request)
-    (beneficiaries))
+    (beneficiaries)(bad))
 
 #endif //GOLOS_COMMENT_API_OBJ_H

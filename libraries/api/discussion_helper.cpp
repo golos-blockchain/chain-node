@@ -55,9 +55,9 @@ namespace golos { namespace api {
 
         comment_api_object create_comment_api_object(const comment_object& o) const;
 
-        discussion get_discussion(const comment_object& c, uint32_t vote_limit, uint32_t offset) const;
+        discussion get_discussion(const comment_object& c, uint32_t vote_limit, uint32_t offset, opt_prefs prefs = opt_prefs()) const;
 
-        void fill_discussion(discussion& d, const comment_object& comment, uint32_t vote_limit, uint32_t offset) const;
+        void fill_discussion(discussion& d, const comment_object& comment, uint32_t vote_limit, uint32_t offset, opt_prefs prefs = opt_prefs()) const;
 
         void fill_comment_api_object(const comment_object& o, comment_api_object& d) const;
 
@@ -149,18 +149,18 @@ namespace golos { namespace api {
     }
 
 // get_discussion
-    discussion discussion_helper::impl::get_discussion(const comment_object& comment, uint32_t vote_limit, uint32_t offset) const {
+    discussion discussion_helper::impl::get_discussion(const comment_object& comment, uint32_t vote_limit, uint32_t offset, opt_prefs prefs) const {
         discussion d = create_discussion(comment);
-        fill_discussion(d, comment, vote_limit, offset);
+        fill_discussion(d, comment, vote_limit, offset, prefs);
         return d;
     }
 
-    discussion discussion_helper::get_discussion(const comment_object& c, uint32_t vote_limit, uint32_t offset) const {
-        return pimpl->get_discussion(c, vote_limit, offset);
+    discussion discussion_helper::get_discussion(const comment_object& c, uint32_t vote_limit, uint32_t offset, opt_prefs prefs) const {
+        return pimpl->get_discussion(c, vote_limit, offset, prefs);
     }
 
     void discussion_helper::impl::fill_discussion(
-        discussion& d, const comment_object& comment, uint32_t vote_limit, uint32_t offset
+        discussion& d, const comment_object& comment, uint32_t vote_limit, uint32_t offset, opt_prefs prefs
     ) const {
         set_url(d);
 
@@ -186,12 +186,30 @@ namespace golos { namespace api {
         d.active_votes = select_active_votes(c, vote_limit, offset);
 
         set_pending_payout(d);
+
+        if (!!prefs) {
+            bool to_hide = false;
+            bad_comment bc;
+            for (const auto& pair : prefs->blockers) {
+                bool blocking = database_.is_blocking(pair.first, d.author);
+                if (blocking) {
+                    to_hide = true;
+                    bc.who_blocked.insert(pair.first);
+                    if (pair.second.remove) {
+                        bc.to_remove = true;
+                    }
+                }
+            }
+            if (to_hide) {
+                d.bad = bc;
+            }
+        }
     }
 
     void discussion_helper::fill_discussion(
-        discussion& d, const comment_object& comment, uint32_t vote_limit, uint32_t offset
+        discussion& d, const comment_object& comment, uint32_t vote_limit, uint32_t offset, opt_prefs prefs
     ) const {
-        pimpl->fill_discussion(d, comment, vote_limit, offset);
+        pimpl->fill_discussion(d, comment, vote_limit, offset, prefs);
     }
 //
 

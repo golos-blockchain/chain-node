@@ -23,6 +23,7 @@
 namespace golos { namespace plugins { namespace tags {
     using golos::chain::account_object;
     using golos::chain::comment_object;
+    using golos::api::opt_prefs;
     using golos::api::comment_api_object;
     using golos::api::discussion;
 
@@ -59,6 +60,8 @@ namespace golos { namespace plugins { namespace tags {
         discussion                        parent_comment;
         std::set<account_object::id_type> select_author_ids;
         std::set<account_object::id_type> filter_author_ids;
+
+        opt_prefs prefs;
 
         bool has_tags_selector() const {
             return !select_tags.empty();
@@ -123,6 +126,7 @@ FC_REFLECT((golos::plugins::tags::discussion_query),
         (select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
         (start_author)(start_permlink)(parent_author)
         (parent_permlink)(comments_only)(limit)(select_languages)(filter_languages)
+        (prefs)
 );
 
 #endif //GOLOS_DISCUSSION_QUERY_H
