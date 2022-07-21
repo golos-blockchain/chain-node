@@ -366,7 +366,6 @@ namespace golos { namespace protocol {
 
         void chain_properties_23::validate() const {
             chain_properties_22::validate();
-            GOLOS_CHECK_VALUE_GE(claim_idleness_time, GOLOS_MIN_CLAIM_IDLENESS_TIME);
             GOLOS_CHECK_ASSET_GE(min_invite_balance, GOLOS, GOLOS_MIN_INVITE_BALANCE);
         }
 
@@ -383,8 +382,6 @@ namespace golos { namespace protocol {
 
             GOLOS_CHECK_VALUE_LE(worker_emission_percent, GOLOS_MAX_WORKER_EMISSION_PERCENT);
             GOLOS_CHECK_VALUE_LE(vesting_of_remain_percent, STEEMIT_100_PERCENT);
-
-            GOLOS_CHECK_VALUE_LEGE(negrep_posting_window, 1, std::numeric_limits<uint16_t>::max() / 2);
         }
 
         void chain_properties_27::validate() const {

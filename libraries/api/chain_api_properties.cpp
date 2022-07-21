@@ -69,6 +69,7 @@ namespace golos { namespace api {
         if (db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
             negrep_posting_window = 0;
             negrep_posting_per_window = 0;
+            claim_idleness_time = 0;
             unwanted_operation_cost = src.unwanted_operation_cost;
         }
     }

@@ -361,7 +361,9 @@ namespace golos { namespace wallet {
                         result["account_idleness_time"] = median_props.account_idleness_time;
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_23)) {
-                        result["claim_idleness_time"] = median_props.claim_idleness_time;
+                        if (hf < hardfork_version(0, STEEMIT_HARDFORK_0_27)) {
+                            result["claim_idleness_time"] = median_props.claim_idleness_time;
+                        }
                         result["min_invite_balance"] = median_props.min_invite_balance;
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_24)) {
@@ -2378,6 +2380,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 SET_PROP(p27, unwanted_operation_cost);
                 p.negrep_posting_window = 0;
                 p.negrep_posting_per_window = 0;
+                p.claim_idleness_time = 0;
                 op.props = p27;
             }
 #undef SET_PROP

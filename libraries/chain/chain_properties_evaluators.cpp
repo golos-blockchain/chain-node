@@ -80,23 +80,47 @@ namespace golos { namespace chain {
             _wprops = props;
         }
 
+        void hf23_check(const chain_properties_23& props) const {
+            GOLOS_CHECK_PARAM(props, {
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                    auto claim_idleness_time = props.claim_idleness_time;
+                    GOLOS_CHECK_VALUE_GE(claim_idleness_time, GOLOS_MIN_CLAIM_IDLENESS_TIME);
+                }
+            });
+        }
+
         result_type operator()(const chain_properties_23& props) const {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23, "chain_properties_23");
+            hf23_check(props);
             _wprops = props;
         }
 
         result_type operator()(const chain_properties_24& props) const {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_24, "chain_properties_24");
+            hf23_check(props);
             _wprops = props;
+        }
+
+        void hf26_check(const chain_properties_26& props) const {
+            GOLOS_CHECK_PARAM(props, {
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                    auto negrep_posting_window = props.negrep_posting_window;
+                    GOLOS_CHECK_VALUE_LEGE(negrep_posting_window, 1, std::numeric_limits<uint16_t>::max() / 2);
+                }
+            });
         }
 
         result_type operator()(const chain_properties_26& props) const {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_26, "chain_properties_26");
+            hf23_check(props);
+            hf26_check(props);
             _wprops = props;
         }
 
         result_type operator()(const chain_properties_27& props) const {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_27, "chain_properties_27");
+            hf23_check(props);
+            hf26_check(props);
             _wprops = props;
         }
 
