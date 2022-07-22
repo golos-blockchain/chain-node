@@ -28,7 +28,7 @@ bool freezing_utils::is_inactive(const account_object& acc) {
     switch (hardfork) {
         case STEEMIT_HARDFORK_0_27:
         {
-            auto vesting = 290000000000;
+            auto vesting = 285000000000;
 #ifdef STEEMIT_BUILD_TESTNET
             if (!_db._test_freezing) return false; else vesting = 600000000000;
 #endif

@@ -679,7 +679,7 @@ namespace golos { namespace chain {
                 auto& acc = get_account(account);
                 if (acc.do_not_bother) {
                     auto rep = get_account_reputation(blocking);
-                    if (rep < 7800000000000) { // low edge of 60 reputation
+                    if (rep < 27800000000000) { // low edge of 65 reputation
                         return 2;
                     }
                 }
