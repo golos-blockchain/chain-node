@@ -91,8 +91,8 @@ public:
 
     // Accounts
     std::vector<account_api_object> get_accounts(const std::vector<std::string>& names) const;
-    std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names) const;
-    std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit) const;
+    std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names, bool include_frozen = false) const;
+    std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit, bool include_frozen = false) const;
     uint64_t get_account_count() const;
     optional<account_recovery_request_api_object> get_recovery_request(account_name_type account) const;
 
@@ -378,14 +378,16 @@ std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector
 DEFINE_API(plugin, lookup_account_names) {
     PLUGIN_API_VALIDATE_ARGS(
         (vector<std::string>, account_names)
+        (bool, include_frozen, false)
     );
     return my->database().with_weak_read_lock([&]() {
-        return my->lookup_account_names(account_names);
+        return my->lookup_account_names(account_names, include_frozen);
     });
 }
 
 std::vector<optional<account_api_object>> plugin::api_impl::lookup_account_names(
-    const std::vector<std::string> &account_names
+    const std::vector<std::string> &account_names,
+    bool include_frozen
 ) const {
     std::vector<optional<account_api_object>> result;
     result.reserve(account_names.size());
@@ -393,9 +395,9 @@ std::vector<optional<account_api_object>> plugin::api_impl::lookup_account_names
     for (auto &name : account_names) {
         auto itr = database().find<account_object, by_name>(name);
 
-        if (itr) {
+        if (itr && (include_frozen || !itr->frozen)) {
             result.push_back(account_api_object(*itr, database()));
-        } else {
+        }else {
             result.push_back(optional<account_api_object>());
         }
     }
@@ -407,15 +409,17 @@ DEFINE_API(plugin, lookup_accounts) {
     PLUGIN_API_VALIDATE_ARGS(
         (account_name_type, lower_bound_name)
         (uint32_t,          limit)
+        (bool, include_frozen, false)
     );
     return my->database().with_weak_read_lock([&]() {
-        return my->lookup_accounts(lower_bound_name, limit);
+        return my->lookup_accounts(lower_bound_name, limit, include_frozen);
     });
 }
 
 std::set<std::string> plugin::api_impl::lookup_accounts(
     const std::string &lower_bound_name,
-        uint32_t limit
+    uint32_t limit,
+    bool include_frozen
 ) const {
     GOLOS_CHECK_LIMIT_PARAM(limit, 1000);
     const auto &accounts_by_name = database().get_index<account_index>().indices().get<by_name>();
@@ -423,6 +427,10 @@ std::set<std::string> plugin::api_impl::lookup_accounts(
 
     for (auto itr = accounts_by_name.lower_bound(lower_bound_name);
             limit-- && itr != accounts_by_name.end(); ++itr) {
+        if (!include_frozen && itr->frozen) {
+            ++limit;
+            continue;
+        }
         result.insert(itr->name);
     }
 

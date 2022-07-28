@@ -654,7 +654,30 @@ if (options.count(name)) { \
         void operator()(const invite_transfer_operation& op) {
         }
 
+        struct account_setup_visitor {
+            using result_type = void;
+
+            get_impacted_account_visitor& visitor;
+            const account_setup_operation& op;
+
+            account_setup_visitor(get_impacted_account_visitor& _visitor,
+                const account_setup_operation& _op) : visitor(_visitor), op(_op) {
+            }
+
+            void operator()(const account_block_setting& abs) const {
+                visitor.insert_pair(op.account, abs.account);
+            }
+
+            void operator()(const do_not_bother_setting& dnbs) const {
+                visitor.insert_sender(op.account);
+            }
+        };
+
         void operator()(const account_setup_operation& op) {
+            account_setup_visitor visitor(*this, op);
+            for (auto& s : op.settings) {
+                s.visit(visitor);
+            }
         }
     };
 
