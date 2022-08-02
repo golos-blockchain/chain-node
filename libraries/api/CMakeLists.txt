@@ -9,6 +9,7 @@ list(APPEND CURRENT_TARGET_HEADERS
     include/golos/api/discussion.hpp
     include/golos/api/vote_state.hpp
     include/golos/api/account_vote.hpp
+    include/golos/api/content_utils.hpp
     include/golos/api/discussion_helper.hpp
     include/golos/api/block_objects.hpp
     include/golos/api/operation_history_extender.hpp
@@ -18,6 +19,7 @@ list(APPEND CURRENT_TARGET_SOURCES
     account_api_object.cpp
     discussion_helper.cpp
     chain_api_properties.cpp
+    content_utils.cpp
     witness_api_object.cpp
     dynamic_global_property_api_object.cpp
     block_objects.cpp

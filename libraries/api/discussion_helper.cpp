@@ -1,5 +1,6 @@
 #include <golos/api/discussion_helper.hpp>
 #include <golos/api/comment_api_object.hpp>
+#include <golos/api/content_utils.hpp>
 #include <golos/chain/account_object.hpp>
 #include <golos/chain/steem_objects.hpp>
 #include <golos/chain/curation_info.hpp>
@@ -188,20 +189,9 @@ namespace golos { namespace api {
         set_pending_payout(d);
 
         if (!!prefs) {
-            bool to_hide = false;
-            bad_comment bc;
-            for (const auto& pair : prefs->blockers) {
-                bool blocking = database_.is_blocking(pair.first, d.author);
-                if (blocking) {
-                    to_hide = true;
-                    bc.who_blocked.insert(pair.first);
-                    if (pair.second.remove) {
-                        bc.to_remove = true;
-                    }
-                }
-            }
-            if (to_hide) {
-                d.bad = bc;
+            auto bc = process_content_prefs(prefs, d.author, database_);
+            if (!!bc) {
+                d.bad = *bc;
             }
         }
     }

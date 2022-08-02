@@ -120,7 +120,8 @@ namespace golos { namespace plugins { namespace social_network {
         std::vector<discussion> get_replies_by_last_update(
             account_name_type start_parent_author, std::string start_permlink,
             uint32_t limit, uint32_t vote_limit, uint32_t vote_offset,
-            const std::set<std::string>* filter_tag_masks
+            const std::set<std::string>* filter_tag_masks,
+            const opt_prefs& prefs
         ) const;
 
         categorized_discussions get_all_discussions_by_active(
@@ -1125,7 +1126,8 @@ namespace golos { namespace plugins { namespace social_network {
         uint32_t limit,
         uint32_t vote_limit,
         uint32_t vote_offset,
-        const std::set<std::string>* filter_tag_masks
+        const std::set<std::string>* filter_tag_masks,
+        const opt_prefs& prefs
     ) const {
         std::vector<discussion> result;
 
@@ -1161,7 +1163,10 @@ namespace golos { namespace plugins { namespace social_network {
         for (; itr != clu_idx.end() && result.size() < limit && itr->parent_author == *parent_author; ++itr) {
             auto* comment = db.find<comment_object, by_id>(itr->comment);
             if (comment) {
-                auto dis = get_discussion(*comment, vote_limit, vote_offset);
+                auto dis = get_discussion(*comment, vote_limit, vote_offset, prefs);
+                if (!!dis.bad && dis.bad->to_remove) {
+                    continue;
+                }
                 if (filter_tag_masks) {
                     bool found = false;
                     for (const auto& mask : *filter_tag_masks) {
@@ -1346,11 +1351,12 @@ namespace golos { namespace plugins { namespace social_network {
             (uint32_t, limit)
             (uint32_t, vote_limit, DEFAULT_VOTE_LIMIT)
             (uint32_t, vote_offset, 0)
-            (std::set<std::string>, filter_tag_masks) 
+            (std::set<std::string>, filter_tag_masks)
+            (opt_prefs, prefs, opt_prefs()) 
         );
         GOLOS_CHECK_LIMIT_PARAM(limit, 100);
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit, vote_limit, vote_offset, &filter_tag_masks);
+            return pimpl->get_replies_by_last_update(start_parent_author, start_permlink, limit, vote_limit, vote_offset, &filter_tag_masks, prefs);
         });
     }
 
