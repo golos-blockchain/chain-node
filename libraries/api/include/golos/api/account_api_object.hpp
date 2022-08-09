@@ -28,6 +28,12 @@ struct account_freeze_api_object {
     time_point_sec frozen;
 };
 
+struct account_services {
+    asset post;
+    asset comment;
+    asset vote;
+};
+
 struct account_api_object {
     account_api_object(const account_object&, const golos::chain::database&);
 
@@ -136,12 +142,17 @@ struct account_api_object {
     bool frozen = false;
     fc::optional<account_freeze_api_object> freeze;
     bool do_not_bother = false;
+    account_services services;
 };
 
 } } // golos::api
 
 FC_REFLECT((golos::api::account_freeze_api_object),
     (owner)(active)(posting)(hardfork)(frozen)
+)
+
+FC_REFLECT((golos::api::account_services),
+    (post)(comment)(vote)
 )
 
 FC_REFLECT((golos::api::account_api_object),
@@ -162,7 +173,7 @@ FC_REFLECT((golos::api::account_api_object),
     (witness_votes)(reputation)(posts_capacity)(comments_capacity)(voting_capacity)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
     (last_active_operation)(last_claim)(claim_expiration)
-    (proved_hf)(frozen)(freeze)(do_not_bother)
+    (proved_hf)(frozen)(freeze)(do_not_bother)(services)
 )
 
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP

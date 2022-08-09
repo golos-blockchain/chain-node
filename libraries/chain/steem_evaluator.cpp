@@ -774,6 +774,15 @@ namespace golos { namespace chain {
                 return reward_weight;
             }
 
+            void make_unlimit_fee() const {
+                db.modify(db.get_account(STEEMIT_NULL_ACCOUNT), [&](auto& a) {
+                    a.tip_balance += mprops.unlimit_operation_cost;
+                });
+                db.modify(auth, [&](auto& a) {
+                    a.tip_balance -= mprops.unlimit_operation_cost;
+                });
+            }
+
             void hf22() const {
                 db.check_negrep_posting_bandwidth(auth);
 
@@ -791,12 +800,30 @@ namespace golos { namespace chain {
                         uint16_t(auth.posts_capacity + regenerated_capacity),
                         mprops.posts_window);
 
-                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
-                        bandwidth_exception::post_bandwidth,
-                        "You may only post ${posts_per_window} times in ${posts_window} ${unit}.",
-                        ("posts_per_window", mprops.posts_per_window)
-                        ("posts_window", mprops.posts_window)
-                        ("unit", unit));
+                    if (db.has_hardfork(STEEMIT_HARDFORK_0_27__209)) {
+                        if (current_capacity + 1 <= consumption) {
+                            if (auth.tip_balance < mprops.unlimit_operation_cost) {
+                                // Throws
+                                GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                                    bandwidth_exception::post_bandwidth,
+                                    "You may only post ${posts_per_window} times in ${posts_window} ${unit}, or you need to pay ${amount} of TIP balance",
+                                    ("posts_per_window", mprops.posts_per_window)
+                                    ("posts_window", mprops.posts_window)
+                                    ("unit", unit)
+                                    ("amount", mprops.unlimit_operation_cost)
+                                );
+                            }
+                            make_unlimit_fee();
+                            return;
+                        }
+                    } else {
+                        GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                            bandwidth_exception::post_bandwidth,
+                            "You may only post ${posts_per_window} times in ${posts_window} ${unit}.",
+                            ("posts_per_window", mprops.posts_per_window)
+                            ("posts_window", mprops.posts_window)
+                            ("unit", unit));
+                    }
 
                     db.modify(auth, [&](account_object& a) {
                         a.posts_capacity = current_capacity - consumption;
@@ -815,12 +842,30 @@ namespace golos { namespace chain {
                         uint16_t(auth.comments_capacity + regenerated_capacity),
                         mprops.comments_window);
 
-                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
-                        bandwidth_exception::comment_bandwidth,
-                        "You may only comment ${comments_per_window} times in ${comments_window} ${unit}.",
-                        ("comments_per_window", mprops.comments_per_window)
-                        ("comments_window", mprops.comments_window)
-                        ("unit", unit));
+                    if (db.has_hardfork(STEEMIT_HARDFORK_0_27__209)) {
+                        if (current_capacity + 1 <= consumption) {
+                            if (auth.tip_balance < mprops.unlimit_operation_cost) {
+                                // Throws
+                                GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                                    bandwidth_exception::comment_bandwidth,
+                                    "You may only comment ${comments_per_window} times in ${comments_window} ${unit}, or you need to pay ${amount} of TIP balance",
+                                    ("comments_per_window", mprops.comments_per_window)
+                                    ("comments_window", mprops.comments_window)
+                                    ("unit", unit)
+                                    ("amount", mprops.unlimit_operation_cost)
+                                );
+                            }
+                            make_unlimit_fee();
+                            return;
+                        }
+                    } else {
+                        GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                            bandwidth_exception::comment_bandwidth,
+                            "You may only comment ${comments_per_window} times in ${comments_window} ${unit}.",
+                            ("comments_per_window", mprops.comments_per_window)
+                            ("comments_window", mprops.comments_window)
+                            ("unit", unit));
+                    }
 
                     db.modify(auth, [&](account_object& a) {
                         a.comments_capacity = current_capacity - consumption;
@@ -1727,17 +1772,43 @@ namespace golos { namespace chain {
                     auto regenerated_capacity = std::min(uint32_t(mprops.votes_window), elapsed);
                     auto current_capacity = std::min(uint16_t(voter.voting_capacity + regenerated_capacity), mprops.votes_window);
 
-                    GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
-                        bandwidth_exception::vote_bandwidth,
-                        "Can only vote ${votes_per_window} times in ${votes_window} ${unit}.",
-                        ("votes_per_window", mprops.votes_per_window)
-                        ("votes_window", mprops.votes_window)
-                        ("unit", unit)
-                    );
+                    if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__209)) {
+                        if (current_capacity + 1 <= consumption) {
+                            if (voter.tip_balance < mprops.unlimit_operation_cost) {
+                                // Throws
+                                GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                                    bandwidth_exception::vote_bandwidth,
+                                    "You may only vote ${votes_per_window} times in ${votes_window} ${unit}, or you need to pay ${amount} of TIP balance",
+                                    ("votes_per_window", mprops.votes_per_window)
+                                    ("votes_window", mprops.votes_window)
+                                    ("unit", unit)
+                                    ("amount", mprops.unlimit_operation_cost)
+                                );
+                            }
+                            _db.modify(_db.get_account(STEEMIT_NULL_ACCOUNT), [&](auto& a) {
+                                a.tip_balance += mprops.unlimit_operation_cost;
+                            });
+                            _db.modify(voter, [&](auto& a) {
+                                a.tip_balance -= mprops.unlimit_operation_cost;
+                            });
+                        } else {
+                            _db.modify(voter, [&](auto& a) {
+                                a.voting_capacity = current_capacity - consumption;
+                            });
+                        }
+                    } else {
+                        GOLOS_CHECK_BANDWIDTH(current_capacity + 1, consumption,
+                            bandwidth_exception::vote_bandwidth,
+                            "Can only vote ${votes_per_window} times in ${votes_window} ${unit}.",
+                            ("votes_per_window", mprops.votes_per_window)
+                            ("votes_window", mprops.votes_window)
+                            ("unit", unit)
+                        );
 
-                    _db.modify(voter, [&](auto& a) {
-                        a.voting_capacity = current_capacity - consumption;
-                    });
+                        _db.modify(voter, [&](auto& a) {
+                            a.voting_capacity = current_capacity - consumption;
+                        });
+                    }
                 } else {
                     GOLOS_CHECK_BANDWIDTH(_db.head_block_time(), voter.last_vote_time + STEEMIT_MIN_VOTE_INTERVAL_SEC-1,
                         bandwidth_exception::vote_bandwidth, "Can only vote once every 3 seconds.");

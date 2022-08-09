@@ -386,6 +386,7 @@ namespace golos { namespace wallet {
                     }
                     if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_27)) {
                         result["unwanted_operation_cost"] = median_props.unwanted_operation_cost;
+                        result["unlimit_operation_cost"] = median_props.unlimit_operation_cost;
                     }
 
                     return result;
@@ -2378,6 +2379,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
                 chain_properties_27 p27;
                 p27 = p;
                 SET_PROP(p27, unwanted_operation_cost);
+                SET_PROP(p27, unlimit_operation_cost);
                 p.negrep_posting_window = 0;
                 p.negrep_posting_per_window = 0;
                 p.claim_idleness_time = 0;

@@ -71,6 +71,7 @@ namespace golos { namespace api {
             negrep_posting_per_window = 0;
             claim_idleness_time = 0;
             unwanted_operation_cost = src.unwanted_operation_cost;
+            unlimit_operation_cost = src.unlimit_operation_cost;
         }
     }
 

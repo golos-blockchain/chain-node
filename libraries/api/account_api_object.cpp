@@ -19,6 +19,24 @@ account_freeze_api_object::account_freeze_api_object(const account_freeze_object
 
 account_freeze_api_object::account_freeze_api_object() = default;
 
+asset battery_cost(const time_point_sec& last,
+        const time_point_sec& now,
+        uint16_t window, uint16_t per_window,
+        uint16_t capacity, asset fee) {
+    uint32_t elapsed = (now - last).to_seconds() / 60;
+
+    auto regenerated = std::min(uint32_t(window), elapsed);
+
+    auto current = std::min(uint16_t(capacity + regenerated),
+        window);
+
+    auto consumption = window / per_window;
+    if (current + 1 <= consumption) {
+        return fee;
+    }
+    return asset(0, STEEM_SYMBOL);
+}
+
 account_api_object::account_api_object(const account_object& a, const golos::chain::database& db)
     :   id(a.id), name(a.name), memo_key(a.memo_key), proxy(a.proxy),
         last_account_update(a.last_account_update), created(a.created), mined(a.mined),
@@ -101,6 +119,8 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
     last_active_operation = a.last_active_operation;
     last_claim = a.last_claim;
 
+    const auto& mprops = db.get_witness_schedule_object().median_props;
+
     if (db.has_hardfork(STEEMIT_HARDFORK_0_27__202)) {
         claim_expiration = time_point_sec::maximum();
     } else if (db.has_hardfork(STEEMIT_HARDFORK_0_23__83)) {
@@ -108,7 +128,7 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         auto now_block = db.head_block_num();
 
         auto expire_block = now_block;
-        auto expire = last_claim.sec_since_epoch() + db.get_witness_schedule_object().median_props.claim_idleness_time;
+        auto expire = last_claim.sec_since_epoch() + mprops.claim_idleness_time;
         if (expire > now) {
             expire_block += ((expire - now) / STEEMIT_BLOCK_INTERVAL);
         }
@@ -126,6 +146,17 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
     if (fr != nullptr) {
         freeze = account_freeze_api_object(*fr);
     }
+
+    auto now_time = db.head_block_time();
+    services.post = battery_cost(a.last_post, now_time,
+        mprops.posts_window, mprops.posts_per_window,
+        a.posts_capacity, mprops.unlimit_operation_cost);
+    services.comment = battery_cost(a.last_comment, now_time,
+        mprops.comments_window, mprops.comments_per_window,
+        a.comments_capacity, mprops.unlimit_operation_cost);
+    services.vote = battery_cost(a.last_vote_time, now_time,
+        mprops.votes_window, mprops.votes_per_window,
+        a.voting_capacity, mprops.unlimit_operation_cost);
 }
 
 account_api_object::account_api_object() = default;

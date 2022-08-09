@@ -912,9 +912,14 @@ namespace golos { namespace protocol {
         struct chain_properties_27 : public chain_properties_26 {
 
             /**
-             * Percent of fee on GOLOS-GBG conversions.
+             * Fee on operations by blocked users.
              */
             asset unwanted_operation_cost = GOLOS_DEF_UNWANTED_OPERATION_COST;
+
+            /**
+             * Fee on operations by negative-reputation users, and operations outside window limits (post, comment, vote).
+             */
+            asset unlimit_operation_cost = GOLOS_DEF_UNLIMIT_OPERATION_COST;
 
             void validate() const;
 
@@ -1981,7 +1986,7 @@ FC_REFLECT_DERIVED(
 )
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_27), ((golos::protocol::chain_properties_26)),
-    (unwanted_operation_cost)
+    (unwanted_operation_cost)(unlimit_operation_cost)
 )
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))

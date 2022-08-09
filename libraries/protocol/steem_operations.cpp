@@ -387,6 +387,7 @@ namespace golos { namespace protocol {
         void chain_properties_27::validate() const {
             chain_properties_26::validate();
            GOLOS_CHECK_ASSET_GE(unwanted_operation_cost, GOLOS, 0);
+           GOLOS_CHECK_ASSET_GE(unlimit_operation_cost, GOLOS, 0);
         }
 
         void witness_update_operation::validate() const {

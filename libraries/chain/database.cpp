@@ -1126,14 +1126,14 @@ namespace golos { namespace chain {
 
             if (hf27) {
                 const auto& median_props = get_witness_schedule_object().median_props;
-                GOLOS_CHECK_VALUE(acc.tip_balance >= median_props.unwanted_operation_cost,
+                GOLOS_CHECK_VALUE(acc.tip_balance >= median_props.unlimit_operation_cost,
                     "You are have negative reputation, so you need to pay ${amount} of TIP balance",
-                    ("amount", median_props.unwanted_operation_cost));
+                    ("amount", median_props.unlimit_operation_cost));
                 modify(get_account(STEEMIT_NULL_ACCOUNT), [&](auto& a) {
-                    a.tip_balance += median_props.unwanted_operation_cost;
+                    a.tip_balance += median_props.unlimit_operation_cost;
                 });
                 modify(acc, [&](auto& a) {
-                    a.tip_balance -= median_props.unwanted_operation_cost;
+                    a.tip_balance -= median_props.unlimit_operation_cost;
                     a.last_posting_action = now;
                 });
                 return;
@@ -2548,7 +2548,8 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_26::vesting_of_remain_percent);
             calc_median_battery(&chain_properties_26::negrep_posting_window, &chain_properties_26::negrep_posting_per_window);
             calc_median(&chain_properties_27::unwanted_operation_cost);
-            
+            calc_median(&chain_properties_27::unlimit_operation_cost);
+
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
             modify(wso, [&](witness_schedule_object &_wso) {
