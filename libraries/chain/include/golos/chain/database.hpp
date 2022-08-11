@@ -300,7 +300,10 @@ namespace golos { namespace chain {
              */
             bool update_account_bandwidth(const dynamic_global_property_object& props, const account_object &a, uint32_t trx_size, const bandwidth_type type);
 
-            void check_negrep_posting_bandwidth(const account_object& acc);
+            void check_negrep_posting_bandwidth(const account_object& acc,
+                const std::string& target_type,
+                const std::string& id1, const std::string& id2,
+                const std::string& id3, const std::string& id4);
 
             /**
              *  Calculate the percent of block production slots that were missed in the

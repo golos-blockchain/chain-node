@@ -480,6 +480,28 @@ namespace golos { namespace protocol {
             asset amount;
             std::string target;
         };
+
+        struct unlimit_cost_operation : public virtual_operation {
+            unlimit_cost_operation() {
+            }
+
+            unlimit_cost_operation(const account_name_type& acc,
+                        const asset& a, const std::string& lt, const std::string& tt,
+                        const std::string& _id1, std::string _id2 = "",
+                        std::string _id3 = "", std::string _id4 = "")
+                    : account(acc), amount(a), limit_type(lt), target_type(tt),
+                    id1(_id1), id2(_id2), id3(_id3), id4(_id4) {
+            }
+
+            account_name_type account;
+            asset amount;
+            std::string limit_type; // "negrep", "window"
+            std::string target_type; // "comment", "vote"
+            std::string id1;
+            std::string id2;
+            std::string id3;
+            std::string id4;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(hashlink)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -513,3 +535,4 @@ FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
 FC_REFLECT((golos::protocol::authority_updated_operation), (account)(owner)(active)(posting)(memo_key))
 FC_REFLECT((golos::protocol::account_freeze_operation), (account)(frozen)(unfreeze_fee))
 FC_REFLECT((golos::protocol::unwanted_cost_operation), (blocker)(blocking)(amount)(target))
+FC_REFLECT((golos::protocol::unlimit_cost_operation), (account)(amount)(limit_type)(target_type)(id1)(id2)(id3)(id4))

@@ -775,16 +775,22 @@ namespace golos { namespace chain {
             }
 
             void make_unlimit_fee() const {
+                auto fee = mprops.unlimit_operation_cost;
                 db.modify(db.get_account(STEEMIT_NULL_ACCOUNT), [&](auto& a) {
-                    a.tip_balance += mprops.unlimit_operation_cost;
+                    a.tip_balance += fee;
                 });
                 db.modify(auth, [&](auto& a) {
-                    a.tip_balance -= mprops.unlimit_operation_cost;
+                    a.tip_balance -= fee;
                 });
+                db.push_event(unlimit_cost_operation(
+                    op.author, fee, "window", "comment",
+                    op.author, op.permlink, op.parent_author, op.parent_permlink
+                ));
             }
 
             void hf22() const {
-                db.check_negrep_posting_bandwidth(auth);
+                db.check_negrep_posting_bandwidth(auth, "comment",
+                    op.author, op.permlink, op.parent_author, op.parent_permlink);
 
                 if (op.parent_author == STEEMIT_ROOT_POST_PARENT) {
                     auto consumption = mprops.posts_window / mprops.posts_per_window;
@@ -1734,7 +1740,8 @@ namespace golos { namespace chain {
                         "Votes are not allowed on the comment.");
                 }
 
-                _db.check_negrep_posting_bandwidth(voter);
+                _db.check_negrep_posting_bandwidth(voter, "vote",
+                    op.author, op.permlink, "", "");
 
                 if (comment && _db.calculate_discussion_payout_time(*comment) == fc::time_point_sec::maximum()) {
                     // non-consensus vote (after cashout)
@@ -1785,12 +1792,17 @@ namespace golos { namespace chain {
                                     ("amount", mprops.unlimit_operation_cost)
                                 );
                             }
+                            auto fee = mprops.unlimit_operation_cost;
                             _db.modify(_db.get_account(STEEMIT_NULL_ACCOUNT), [&](auto& a) {
-                                a.tip_balance += mprops.unlimit_operation_cost;
+                                a.tip_balance += fee;
                             });
                             _db.modify(voter, [&](auto& a) {
-                                a.tip_balance -= mprops.unlimit_operation_cost;
+                                a.tip_balance -= fee;
                             });
+                            _db.push_event(unlimit_cost_operation(
+                                op.voter, fee, "window", "vote",
+                                op.author, op.permlink, "", ""
+                            ));
                         } else {
                             _db.modify(voter, [&](auto& a) {
                                 a.voting_capacity = current_capacity - consumption;

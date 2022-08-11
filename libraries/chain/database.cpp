@@ -1111,7 +1111,10 @@ namespace golos { namespace chain {
             return has_bandwidth;
         }
 
-        void database::check_negrep_posting_bandwidth(const account_object& acc) {
+        void database::check_negrep_posting_bandwidth(const account_object& acc,
+            const std::string& target_type,
+            const std::string& id1, const std::string& id2,
+            const std::string& id3, const std::string& id4) {
             auto now = head_block_time();
 
             bool hf27 = has_hardfork(STEEMIT_HARDFORK_0_27);
@@ -1126,16 +1129,21 @@ namespace golos { namespace chain {
 
             if (hf27) {
                 const auto& median_props = get_witness_schedule_object().median_props;
-                GOLOS_CHECK_VALUE(acc.tip_balance >= median_props.unlimit_operation_cost,
+                auto fee = median_props.unlimit_operation_cost;
+                GOLOS_CHECK_VALUE(acc.tip_balance >= fee,
                     "You are have negative reputation, so you need to pay ${amount} of TIP balance",
-                    ("amount", median_props.unlimit_operation_cost));
+                    ("amount", fee));
                 modify(get_account(STEEMIT_NULL_ACCOUNT), [&](auto& a) {
-                    a.tip_balance += median_props.unlimit_operation_cost;
+                    a.tip_balance += fee;
                 });
                 modify(acc, [&](auto& a) {
-                    a.tip_balance -= median_props.unlimit_operation_cost;
+                    a.tip_balance -= fee;
                     a.last_posting_action = now;
                 });
+                push_event(unlimit_cost_operation(
+                    acc.name, fee, "negrep", target_type,
+                    id1, id2, id3, id4
+                ));
                 return;
             }
 

@@ -352,7 +352,11 @@ if (options.count(name)) { \
         }
 
         void operator()(const unwanted_cost_operation& op) {
-            insert_receiver(op.blocker);
+            insert_pair(op.blocking, op.blocker);
+        }
+
+        void operator()(const unlimit_cost_operation& op) {
+            insert_receiver(op.account);
         }
 
         void operator()(const comment_operation& op) {
