@@ -1333,7 +1333,7 @@ namespace golos { namespace chain {
             const auto &from_account = _db.get_account(o.from);
             const auto &to_account = _db.get_account(o.to);
 
-            _db.check_no_blocking(o.to, o.from);
+            _db.check_no_blocking(o.to, o.from, false);
 
             const auto now = _db.head_block_time();
 
@@ -3206,7 +3206,7 @@ void delegate_vesting_shares(
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
-            _db.check_no_blocking(op.to, op.from);
+            _db.check_no_blocking(op.to, op.from, false);
 
             GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, op.amount);
 
