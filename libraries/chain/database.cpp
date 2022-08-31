@@ -2554,7 +2554,12 @@ namespace golos { namespace chain {
 
             calc_median(&chain_properties_26::worker_emission_percent);
             calc_median(&chain_properties_26::vesting_of_remain_percent);
-            calc_median_battery(&chain_properties_26::negrep_posting_window, &chain_properties_26::negrep_posting_per_window);
+            if (has_hardfork(STEEMIT_HARDFORK_0_27)) {
+                calc_median(&chain_properties_26::negrep_posting_window);
+                calc_median(&chain_properties_26::negrep_posting_per_window);
+            } else {
+                calc_median_battery(&chain_properties_26::negrep_posting_window, &chain_properties_26::negrep_posting_per_window);
+            }
             calc_median(&chain_properties_27::unwanted_operation_cost);
             calc_median(&chain_properties_27::unlimit_operation_cost);
 

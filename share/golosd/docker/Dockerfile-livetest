@@ -138,7 +138,7 @@ EXPOSE 8091
 EXPOSE 4243
 
 RUN mkdir -p /etc/service/golosd
-ADD share/golosd/golosd.sh /etc/service/golosd/run
+ADD share/golosd/golosd_debug.sh /etc/service/golosd/run
 RUN chmod +x /etc/service/golosd/run
 
 # add seednodes from documentation to image
