@@ -605,6 +605,7 @@ namespace golos {
                     if (category_matches_masks(to_string(extras->parent_permlink), filter_tag_masks)) continue;
                     feed_entry entry;
                     entry.author = comment.author;
+                    entry.hashlink = comment.hashlink;
                     entry.permlink = to_string(extras->permlink);
                     entry.entry_id = itr->account_feed_id;
                     if (itr->first_reblogged_by != account_name_type()) {
@@ -700,6 +701,7 @@ namespace golos {
                     if (category_matches_masks(to_string(extras->parent_permlink), filter_tag_masks)) continue;
                     blog_entry entry;
                     entry.author = comment.author;
+                    entry.hashlink = comment.hashlink;
                     entry.permlink = to_string(extras->permlink);
                     entry.blog = account;
                     entry.reblog_on = itr->reblogged_on;

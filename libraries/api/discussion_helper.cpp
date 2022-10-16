@@ -94,7 +94,9 @@ namespace golos { namespace api {
     void discussion_helper::impl::fill_comment_api_object(const comment_object& o, comment_api_object& d) const {
         d.id = o.id;
         d.parent_author = o.parent_author;
+        d.parent_hashlink = o.parent_hashlink;
         d.author = o.author;
+        d.hashlink = o.hashlink;
         d.created = o.created;
         d.last_payout = o.last_payout;
         d.depth = o.depth;

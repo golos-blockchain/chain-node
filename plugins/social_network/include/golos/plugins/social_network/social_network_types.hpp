@@ -243,6 +243,11 @@ namespace golos { namespace plugins { namespace social_network {
             >, composite_key_compare<std::less<fc::sha256>, std::less<bool>, std::greater<share_type>>>>,
         allocator<donate_data_object>
     >;
+
+    struct author_hashlink {
+        account_name_type author;
+        hashlink_type hashlink;
+    };
 } } }
 
 
@@ -264,3 +269,6 @@ CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::social_network::donate_data_index)
 FC_REFLECT((golos::plugins::social_network::donate_api_object),
     (from)(to)(amount)(uia)(app)(version)(target)(target_id)(comment)(time)(wrong))
+
+FC_REFLECT((golos::plugins::social_network::author_hashlink),
+    (author)(hashlink))

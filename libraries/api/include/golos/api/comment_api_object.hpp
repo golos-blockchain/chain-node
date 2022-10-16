@@ -35,8 +35,10 @@ namespace golos { namespace api {
 
         account_name_type parent_author;
         std::string parent_permlink;
+        hashlink_type parent_hashlink = 0;
         account_name_type author;
         std::string permlink;
+        hashlink_type hashlink = 0;
 
         std::string category;
 
@@ -122,7 +124,7 @@ FC_REFLECT((golos::api::content_prefs),
 
 FC_REFLECT(
     (golos::api::comment_api_object),
-    (id)(author)(permlink)(parent_author)(parent_permlink)(category)(title)(body)(json_metadata)(last_update)
+    (id)(author)(permlink)(hashlink)(parent_author)(parent_permlink)(parent_hashlink)(category)(title)(body)(json_metadata)(last_update)
     (created)(active)(num_changes)(last_payout)(depth)(children)(children_rshares2)(net_rshares)(abs_rshares)
     (vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)(total_vote_weight)
     (reward_weight)(donates)(donates_uia)(total_payout_value)(beneficiary_payout_value)(beneficiary_gests_payout_value)(curator_payout_value)(curator_gests_payout_value)

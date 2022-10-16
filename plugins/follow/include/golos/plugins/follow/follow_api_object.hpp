@@ -9,12 +9,14 @@
 namespace golos {
     namespace plugins {
         namespace follow {
+            using golos::protocol::hashlink_type;
             using golos::api::comment_api_object;
             using golos::api::reblog_entry;
 
             struct feed_entry {
                 std::string author;
                 std::string permlink;
+                hashlink_type hashlink;
                 std::vector<std::string> reblog_by;
                 std::vector<reblog_entry> reblog_entries;
                 time_point_sec reblog_on;
@@ -32,6 +34,7 @@ namespace golos {
             struct blog_entry {
                 std::string author;
                 std::string permlink;
+                hashlink_type hashlink;
                 std::string blog;
                 time_point_sec reblog_on;
                 uint32_t entry_id = 0;
@@ -94,11 +97,11 @@ namespace golos {
             using blog_authors_r = std::vector<std::pair<std::string, uint32_t>>;
         }}}
 
-FC_REFLECT((golos::plugins::follow::feed_entry), (author)(permlink)(reblog_by)(reblog_entries)(reblog_on)(entry_id));
+FC_REFLECT((golos::plugins::follow::feed_entry), (author)(permlink)(hashlink)(reblog_by)(reblog_entries)(reblog_on)(entry_id));
 
 FC_REFLECT((golos::plugins::follow::comment_feed_entry), (comment)(reblog_by)(reblog_entries)(reblog_on)(entry_id));
 
-FC_REFLECT((golos::plugins::follow::blog_entry), (author)(permlink)(blog)(reblog_on)(entry_id)
+FC_REFLECT((golos::plugins::follow::blog_entry), (author)(permlink)(hashlink)(blog)(reblog_on)(entry_id)
     (reblog_title)(reblog_body)(reblog_json_metadata));
 
 FC_REFLECT((golos::plugins::follow::comment_blog_entry), (comment)(blog)(reblog_on)(entry_id)

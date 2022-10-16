@@ -21,6 +21,7 @@ namespace golos { namespace plugins { namespace social_network {
     using categorized_discussions = std::map<std::string,std::vector<discussion>>;
 
     DEFINE_API_ARGS(get_content,                  msg_pack, discussion)
+    DEFINE_API_ARGS(get_content_previews,         msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_content_replies,          msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_all_content_replies,      msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_account_votes,            msg_pack, std::vector<account_vote>)
@@ -40,6 +41,7 @@ namespace golos { namespace plugins { namespace social_network {
 
         DECLARE_API(
             (get_content)
+            (get_content_previews)
             (get_content_replies)
             (get_all_content_replies)
             (get_account_votes)
