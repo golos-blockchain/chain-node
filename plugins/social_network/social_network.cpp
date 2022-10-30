@@ -100,6 +100,11 @@ namespace golos { namespace plugins { namespace social_network {
             bool uia, const fc::variant_object& target, const std::string& from, const std::string& to, uint32_t limit, uint32_t offset, bool join_froms, bool with_wrongs
         ) const ;
 
+        std::vector<discussion> get_content_previews(
+            const std::vector<author_hashlink>& ids,
+            uint32_t truncate_body
+        ) const;
+
         std::vector<discussion> get_content_replies(
             const std::string& author, const std::string& permlink, uint32_t vote_limit, uint32_t vote_offset,
             const std::set<comment_object::id_type>& filter_ids,
@@ -879,6 +884,42 @@ namespace golos { namespace plugins { namespace social_network {
     ) const {
         std::vector<discussion> result;
         select_content_replies(result, author, permlink, vote_limit, vote_offset, filter_ids, filter_authors, filter_negative_rep_authors, prefs);
+        return result;
+    }
+
+    DEFINE_API(social_network, get_content_previews) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (std::vector<author_hashlink>, ids)
+            (uint32_t, truncate_body, 1024)
+        );
+        return pimpl->db.with_weak_read_lock([&]() {
+            return pimpl->get_content_previews(ids, truncate_body);
+        });
+    }
+
+    std::vector<discussion> social_network::impl::get_content_previews(
+        const std::vector<author_hashlink>& ids,
+        uint32_t truncate_body
+    ) const {
+        std::vector<discussion> result;
+        for (const auto& id : ids) {
+            const auto* comment = db.find_comment(id.author, id.hashlink);
+            if (comment) {
+                auto dis = get_discussion(*comment, 0, 0);
+
+                if (dis.body.size() > truncate_body) {
+                    dis.body.erase(truncate_body);
+                    if (!fc::is_utf8(dis.body)) {
+                        dis.body = fc::prune_invalid_utf8(dis.body);
+                    }
+                    dis.body += "...";
+                }
+
+                result.emplace_back(dis);
+                continue;
+            }
+            result.emplace_back(helper->create_discussion(id.author));
+        }
         return result;
     }
 
