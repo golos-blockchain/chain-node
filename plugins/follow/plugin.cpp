@@ -198,6 +198,11 @@ namespace golos {
                         auto itr = idx.find(op.author);
                         for (; itr != idx.end() && itr->following == op.author; ++itr) {
                             if (itr->what & (1 << blog)) {
+                                auto* foll = _db.find_account(itr->follower);
+                                if (!foll || foll->frozen) {
+                                    continue;
+                                }
+
                                 uint32_t next_id = 0;
                                 auto last_feed = feed_idx.lower_bound(itr->follower);
                                 if (last_feed != feed_idx.end() && last_feed->account == itr->follower) {
