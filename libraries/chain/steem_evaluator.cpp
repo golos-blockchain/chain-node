@@ -2994,9 +2994,11 @@ void delegate_vesting_shares(
     auto increasing = delta.amount > 0;
 
     GOLOS_CHECK_OP_PARAM(op, vesting_shares, {
-        GOLOS_CHECK_LOGIC((increasing ? delta : -delta) >= min_update,
-            logic_exception::delegation_difference_too_low,
-            "Delegation difference is not enough. min_update: ${min}", ("min", min_update));
+        if (!_db.has_hardfork(STEEMIT_HARDFORK_0_28__214) || op.vesting_shares.amount != 0) {
+            GOLOS_CHECK_LOGIC((increasing ? delta : -delta) >= min_update,
+                logic_exception::delegation_difference_too_low,
+                "Delegation difference is not enough. min_update: ${min}", ("min", min_update));
+        }
 #ifdef STEEMIT_BUILD_TESTNET
         // min_update depends on account_creation_fee, which can be 0 on testnet
         GOLOS_CHECK_LOGIC(delta.amount != 0,
