@@ -2854,6 +2854,12 @@ namespace golos { namespace chain {
 
                 if (to_withdraw < 0) {
                     to_withdraw = 0;
+                } else if (has_hardfork(STEEMIT_HARDFORK_0_28__215)) {
+                    auto remainder = from_account.withdrawn + to_withdraw;
+                    remainder = from_account.to_withdraw - remainder;
+                    if (remainder > 0 && remainder < from_account.vesting_withdraw_rate.amount) {
+                        to_withdraw += remainder;
+                    }
                 }
 
                 share_type vests_deposited_as_steem = 0;
