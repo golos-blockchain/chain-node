@@ -9,6 +9,7 @@ list(APPEND CURRENT_TARGET_HEADERS
     include/golos/api/discussion.hpp
     include/golos/api/vote_state.hpp
     include/golos/api/account_vote.hpp
+    include/golos/api/callback_info.hpp
     include/golos/api/content_utils.hpp
     include/golos/api/discussion_helper.hpp
     include/golos/api/block_objects.hpp

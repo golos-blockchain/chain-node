@@ -19,6 +19,7 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
         include/golos/protocol/steem_operations.hpp
         include/golos/protocol/worker_operations.hpp
         include/golos/protocol/steem_virtual_operations.hpp
+        include/golos/protocol/market_events.hpp
         include/golos/protocol/transaction.hpp
         include/golos/protocol/types.hpp
         include/golos/protocol/version.hpp

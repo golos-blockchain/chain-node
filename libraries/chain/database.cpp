@@ -5456,6 +5456,7 @@ namespace golos { namespace chain {
             const auto& owner = get_account(order.seller);
             adjust_balance(owner, order.amount_for_sale());
             adjust_market_balance(owner, -order.amount_for_sale());
+            push_order_delete_event(order);
             remove(order);
         }
 

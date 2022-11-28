@@ -380,6 +380,10 @@ namespace golos { namespace chain {
 
             void process_events();
 
+            void push_order_create_event(const limit_order_object& order);
+
+            void push_order_delete_event(const limit_order_object& order);
+
             bool is_account_vote(const vote_operation& op) const {
                 // Check if it is account vote, not comment vote
                 return !op.permlink.size() && has_hardfork(STEEMIT_HARDFORK_0_26__164);

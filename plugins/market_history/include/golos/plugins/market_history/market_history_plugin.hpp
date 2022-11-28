@@ -16,6 +16,7 @@
 #include <golos/chain/operation_notification.hpp>
 #include <golos/chain/steem_objects.hpp>
 #include <golos/protocol/types.hpp>
+#include <golos/plugins/market_history/market_history_callbacks.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <chainbase/chainbase.hpp>
 
@@ -29,6 +30,7 @@ namespace golos {
             using namespace chainbase;
             using namespace golos::protocol;
 
+            using plugins::json_rpc::void_type;
             using symbol_type_pair = std::pair<asset_symbol_type, asset_symbol_type>;
             using symbol_name_pair = std::pair<std::string, std::string>;
 
@@ -42,7 +44,8 @@ namespace golos {
             DEFINE_API_ARGS(get_market_history,         json_rpc::msg_pack, vector<bucket_object>)
             DEFINE_API_ARGS(get_market_history_buckets, json_rpc::msg_pack, flat_set<uint32_t>)
             DEFINE_API_ARGS(get_open_orders,            json_rpc::msg_pack, std::vector<limit_order>)
-            DEFINE_API_ARGS(get_fillable_orders,        json_rpc::msg_pack, std::vector<limit_order>)
+            DEFINE_API_ARGS(get_orders,                 json_rpc::msg_pack, std::vector<limit_order>)
+            DEFINE_API_ARGS(subscribe_to_market,        json_rpc::msg_pack, void_type)
 
             class market_history_plugin : public appbase::plugin<market_history_plugin> {
             public:
@@ -68,16 +71,18 @@ namespace golos {
                 uint32_t get_max_history_per_bucket() const;
 
                 DECLARE_API((get_ticker)
-                                (get_volume)
-                                (get_depth)
-                                (get_order_book)
-                                (get_order_book_extended)
-                                (get_trade_history)
-                                (get_recent_trades)
-                                (get_market_history)
-                                (get_market_history_buckets)
-                                (get_open_orders)
-                                (get_fillable_orders))
+                    (get_volume)
+                    (get_depth)
+                    (get_order_book)
+                    (get_order_book_extended)
+                    (get_trade_history)
+                    (get_recent_trades)
+                    (get_market_history)
+                    (get_market_history_buckets)
+                    (get_open_orders)
+                    (get_orders)
+                    (subscribe_to_market)
+                )
 
                 constexpr const static char *plugin_name = "market_history";
 
@@ -85,6 +90,8 @@ namespace golos {
                     static std::string name = plugin_name;
                     return name;
                 }
+
+                fc::signal<void(const callback_arg&)> create_order_signal;
 
             private:
                 class market_history_plugin_impl;

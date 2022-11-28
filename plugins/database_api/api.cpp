@@ -11,39 +11,14 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 #include <memory>
+#include <golos/api/callback_info.hpp>
 
 
 namespace golos { namespace plugins { namespace database_api {
 
 using golos::api::annotated_signed_block;
 using golos::api::block_operations;
-
-template<typename arg>
-struct callback_info {
-    using callback_t = std::function<void(arg)>;
-    using ptr = std::shared_ptr<callback_info>;
-    using cont = std::list<ptr>;
-
-    callback_t callback;
-    boost::signals2::connection connection;
-    typename cont::iterator it;
-
-    void connect(
-        boost::signals2::signal<void(arg)>& sig,
-        cont& free_cont,
-        callback_t cb
-    ) {
-        callback = cb;
-        connection = sig.connect([this, &free_cont](arg item) {
-            try {
-                this->callback(item);
-            } catch (...) {
-                free_cont.push_back(*this->it);
-                this->connection.disconnect();
-            }
-        });
-    }
-};
+using golos::api::callback_info;
 
 using block_applied_callback_info = callback_info<const signed_block&>;
 using block_applied_callback = block_applied_callback_info::callback_t;

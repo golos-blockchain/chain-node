@@ -2536,6 +2536,8 @@ namespace golos { namespace chain {
                 obj.expiration = o.expiration;
             });
 
+            _db.push_order_create_event(order);
+
             bool filled = _db.apply_order(order);
 
             if (o.fill_or_kill)
@@ -2589,6 +2591,8 @@ namespace golos { namespace chain {
                 obj.sell_price = o.exchange_rate;
                 obj.expiration = o.expiration;
             });
+
+            _db.push_order_create_event(order);
 
             bool filled = _db.apply_order(order);
 
