@@ -31,22 +31,26 @@ struct order_delete_operation : public virtual_operation {
 	order_delete_operation() {
 	}
 
-	order_delete_operation(uint32_t oid) :
-		orderid(oid) {
+	order_delete_operation(uint32_t oid, const account_name_type& s, const price& sp) :
+		orderid(oid), seller(s), sell_price(sp) {
 	}
 
     uint32_t orderid = 0;
+    account_name_type seller;
+    price sell_price;
 };
 
 struct order_filled_operation : public virtual_operation {
 	order_filled_operation() {
 	}
 
-	order_filled_operation(uint32_t oid) :
-		orderid(oid) {
+	order_filled_operation(uint32_t oid, const account_name_type& s, const price& sp) :
+		orderid(oid), seller(s), sell_price(sp) {
 	}
 
     uint32_t orderid = 0;
+    account_name_type seller;
+    price sell_price;
     // TODO: more info )
 };
 
@@ -57,9 +61,9 @@ FC_REFLECT((golos::protocol::order_create_operation),
 )
 
 FC_REFLECT((golos::protocol::order_delete_operation),
-    (orderid)
+    (orderid)(seller)(sell_price)
 )
 
 FC_REFLECT((golos::protocol::order_filled_operation),
-    (orderid)
+    (orderid)(seller)(sell_price)
 )

@@ -19,6 +19,8 @@ void database::push_order_create_event(const limit_order_object& order) {
 void database::push_order_delete_event(const limit_order_object& order) {
 	order_delete_operation op;
 	op.orderid = order.orderid;
+	op.seller = order.seller;
+	op.sell_price = order.sell_price;
 	push_event(op);
 }
 
