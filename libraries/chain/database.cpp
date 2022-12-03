@@ -2059,32 +2059,35 @@ namespace golos { namespace chain {
 
             /// Add miners from the top of the mining queue
             flat_set<witness_id_type> selected_miners;
-            selected_miners.reserve(STEEMIT_MAX_MINER_WITNESSES);
-            const auto &gprops = get_dynamic_global_properties();
-            const auto &pow_idx = get_index<witness_index>().indices().get<by_pow>();
-            auto mitr = pow_idx.upper_bound(0);
-            while (mitr != pow_idx.end() &&
-                   selected_miners.size() < STEEMIT_MAX_MINER_WITNESSES) {
-                // Only consider a miner who is not a top voted witness
-                if (selected_voted.find(mitr->id) == selected_voted.end()) {
-                    // Only consider a miner who has a valid block signing key
-                    if (!(has_hardfork(STEEMIT_HARDFORK_0_14__278) &&
-                          get_witness(mitr->owner).signing_key ==
-                          public_key_type())) {
-                        selected_miners.insert(mitr->id);
-                        active_witnesses.push_back(mitr->owner);
-                        modify(*mitr, [&](witness_object &wo) { wo.schedule = witness_object::miner; });
+
+            if (!has_hardfork(STEEMIT_HARDFORK_0_28__216)) {
+                selected_miners.reserve(STEEMIT_MAX_MINER_WITNESSES);
+                const auto &gprops = get_dynamic_global_properties();
+                const auto &pow_idx = get_index<witness_index>().indices().get<by_pow>();
+                auto mitr = pow_idx.upper_bound(0);
+                while (mitr != pow_idx.end() &&
+                       selected_miners.size() < STEEMIT_MAX_MINER_WITNESSES) {
+                    // Only consider a miner who is not a top voted witness
+                    if (selected_voted.find(mitr->id) == selected_voted.end()) {
+                        // Only consider a miner who has a valid block signing key
+                        if (!(has_hardfork(STEEMIT_HARDFORK_0_14__278) &&
+                              get_witness(mitr->owner).signing_key ==
+                              public_key_type())) {
+                            selected_miners.insert(mitr->id);
+                            active_witnesses.push_back(mitr->owner);
+                            modify(*mitr, [&](witness_object &wo) { wo.schedule = witness_object::miner; });
+                        }
                     }
+                    // Remove processed miner from the queue
+                    auto itr = mitr;
+                    ++mitr;
+                    modify(*itr, [&](witness_object &wit) {
+                        wit.pow_worker = 0;
+                    });
+                    modify(gprops, [&](dynamic_global_property_object &obj) {
+                        obj.num_pow_witnesses--;
+                    });
                 }
-                // Remove processed miner from the queue
-                auto itr = mitr;
-                ++mitr;
-                modify(*itr, [&](witness_object &wit) {
-                    wit.pow_worker = 0;
-                });
-                modify(gprops, [&](dynamic_global_property_object &obj) {
-                    obj.num_pow_witnesses--;
-                });
             }
 
             auto num_miners = selected_miners.size();

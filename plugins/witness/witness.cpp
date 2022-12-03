@@ -59,7 +59,6 @@ namespace golos {
                 impl():
                     p2p_(appbase::app().get_plugin<golos::plugins::p2p::p2p_plugin>()),
                     chain_(appbase::app().get_plugin<golos::plugins::chain::plugin>()),
-                    mining_work_(mining_service_),
                     production_timer_(appbase::app().get_io_service()) {
 
                 }
@@ -96,8 +95,6 @@ namespace golos {
 
                 void on_applied_block(const signed_block &b);
 
-                void start_mining(const fc::ecc::public_key &pub, const fc::ecc::private_key &pk, const string &name, const signed_block &b);
-
                 void schedule_production_loop();
 
                 block_production_condition::block_production_condition_enum block_production_loop();
@@ -107,24 +104,14 @@ namespace golos {
                 boost::program_options::variables_map _options;
                 uint32_t _required_witness_participation = 33 * STEEMIT_1_PERCENT;
 
-                std::atomic<uint64_t> head_block_num_;
-                block_id_type head_block_id_ = block_id_type();
-                std::atomic<uint64_t> total_hashes_;
-                fc::time_point hash_start_time_;
-
-                uint32_t mining_threads_ = 0;
-                asio::io_service mining_service_;
-                asio::io_service::work mining_work_;
-                std::vector<std::unique_ptr<std::thread>> mining_thread_pool_;
-
                 uint32_t _production_skip_flags = golos::chain::database::skip_nothing;
                 bool _production_enabled = false;
                 asio::deadline_timer production_timer_;
 
                 std::map<public_key_type, fc::ecc::private_key> _private_keys;
                 std::set<string> _witnesses;
-                std::map<string, public_key_type> _miners;
-                protocol::chain_properties_17 _miner_prop_vote;
+
+                bool _warn_miner = false;
             };
 
             void witness_plugin::set_program_options(
@@ -154,23 +141,16 @@ namespace golos {
                     ilog("witness plugin:  plugin_initialize() begin");
                     pimpl = std::make_unique<witness_plugin::impl>();
 
-                    pimpl->total_hashes_.store(0, std::memory_order_relaxed);
                     pimpl->_options = &options;
                     LOAD_VALUE_SET(options, "witness", pimpl->_witnesses, string)
                     edump((pimpl->_witnesses));
 
-                    if (options.count("miner")) {
-
-                        const vector<string> miner_to_wif_pair_strings = options["miner"].as<vector<string>>();
-                        for (auto p : miner_to_wif_pair_strings) {
-                            auto m = dejsonify<pair<string, string>>(p);
-                            idump((m));
-
-                            fc::optional<fc::ecc::private_key> private_key = golos::utilities::wif_to_key(m.second);
-                            GOLOS_CHECK_OPTION(private_key.valid(), "unable to parse private key");
-                            pimpl->_private_keys[private_key->get_public_key()] = *private_key;
-                            pimpl->_miners[m.first] = private_key->get_public_key();
-                        }
+                    if (options.count("miner")
+                        || options.count("mining-threads")
+                        || options.count("miner-account-creation-fee")
+                        || options.count("miner-maximum-block-size")
+                        || options.count("miner-sbd-interest-rate")) {
+                        pimpl->_warn_miner = true;
                     }
 
                     if(options.count("enable-stale-production")){
@@ -182,15 +162,6 @@ namespace golos {
                         pimpl->_required_witness_participation = uint32_t(e * STEEMIT_1_PERCENT);
                     }
 
-
-                    if (options.count("mining-threads")) {
-                        pimpl->mining_threads_ = std::min(options["mining-threads"].as<uint32_t>(), uint32_t(64));
-                        pimpl->mining_thread_pool_.resize(pimpl->mining_threads_);
-                        for (uint32_t i = 0; i < pimpl->mining_threads_; ++i) {
-                            pimpl-> mining_thread_pool_[i].reset(new std::thread( [&] { pimpl->mining_service_.run(); } ));
-                        }
-                    }
-
                     if (options.count("private-key")) {
                         const std::vector<std::string> keys = options["private-key"].as<std::vector<std::string>>();
                         for (const std::string &wif_key : keys) {
@@ -200,33 +171,6 @@ namespace golos {
                         }
                     }
 
-                    if (options.count("miner-account-creation-fee")) {
-                        const uint64_t account_creation_fee = options["miner-account-creation-fee"].as<uint64_t>();
-
-                        if (account_creation_fee < STEEMIT_MIN_ACCOUNT_CREATION_FEE)
-                            wlog("miner-account-creation-fee is below the minimum fee, using minimum instead");
-                        else {
-                            pimpl->_miner_prop_vote.account_creation_fee.amount = account_creation_fee;
-                        }
-                    }
-
-                    if (options.count("miner-maximum-block-size")) {
-                        const uint32_t maximum_block_size = options["miner-maximum-block-size"].as<uint32_t>();
-
-                        if (maximum_block_size < STEEMIT_MIN_BLOCK_SIZE_LIMIT)
-                            wlog("miner-maximum-block-size is below the minimum block size limit, using default of 128 KB instead");
-                        else if (maximum_block_size > STEEMIT_MAX_BLOCK_SIZE) {
-                            wlog("miner-maximum-block-size is above the maximum block size limit, using maximum of 750 MB instead");
-                            pimpl->_miner_prop_vote.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
-                        } else {
-                            pimpl->_miner_prop_vote.maximum_block_size = maximum_block_size;
-                        }
-                    }
-
-                    if (options.count("miner-sbd-interest-rate")) {
-                        pimpl->_miner_prop_vote.sbd_interest_rate = options["miner-sbd-interest-rate"].as<uint32_t>();
-                    }
-
                     ilog("witness plugin:  plugin_initialize() end");
                 } FC_LOG_AND_RETHROW()
             }
@@ -234,6 +178,11 @@ namespace golos {
             void witness_plugin::plugin_startup() {
                 try {
                     ilog("witness plugin:  plugin_startup() begin");
+
+                    if (pimpl->_warn_miner) {
+                        wlog("Miners are not supported in HF28. Please remove following parameters from config: mining-threads, miner-account-creation-fee, miner-maximum-block-size, miner-sbd-interest-rate");
+                    }
+
                     auto &d = pimpl->database();
                     //Start NTP time client
                     golos::time::now();
@@ -250,27 +199,12 @@ namespace golos {
                         pimpl->schedule_production_loop();
                     } else
                         elog("No witnesses configured! Please add witness names and private keys to configuration.");
-                    if (!pimpl->_miners.empty()) {
-                        ilog("Starting mining...");
-                        d.applied_block.connect([this](const protocol::signed_block &b) { pimpl->on_applied_block(b); });
-                    } else {
-                        elog("No miners configured! Please add miner names and private keys to configuration.");
-                    }
+                    d.applied_block.connect([this](const protocol::signed_block &b) { pimpl->on_applied_block(b); });
                     ilog("witness plugin:  plugin_startup() end");
                 } FC_CAPTURE_AND_RETHROW()
             }
 
             void witness_plugin::plugin_shutdown() {
-                if (pimpl->mining_threads_) {
-                    ilog("shutting downing mining threads");
-                    pimpl->mining_service_.stop();
-                    for (auto &t : pimpl->mining_thread_pool_) {
-                        t->join();
-                        t.reset();
-                    }
-                    pimpl->mining_thread_pool_.clear();
-                }
-
                 if (!pimpl->_witnesses.empty()) {
                     ilog("shutting downing production timer");
                     pimpl->production_timer_.cancel();
@@ -450,201 +384,9 @@ namespace golos {
                 return block_production_condition::exception_producing_block;
             }
 
-/**
- * Every time a block is produced, this method is called. This method will iterate through all
- * mining accounts specified by commandline and for which the private key is known. The first
- * account that isn't already scheduled in the mining queue is selected to mine for the
- * BLOCK_INTERVAL minus 1 second. If a POW is solved or a a new block comes in then the
- * worker will stop early.
- *
- * Work is farmed out to N threads in parallel based upon the value specified on the command line.
- *
- * The miner assumes that the next block will be produced on time and that network propagation
- * will take at least 1 second. This 1 second consists of the time it took to receive the block
- * and how long it will take to broadcast the work. In other words, we assume 0.5s broadcast times
- * and therefore do not even attempt work that cannot be delivered on time.
- */
             void witness_plugin::impl::on_applied_block(const golos::protocol::signed_block &b) {
-                try {
-                    if (!mining_threads_ || _miners.size() == 0) {
-                        return;
-                    }
-                    auto &db = database();
-
-                    const auto &dgp = db.get_dynamic_global_properties();
-                    const uint64_t total_hashes = total_hashes_.load(std::memory_order_acquire);
-                    double hps = (total_hashes * 1000000) /
-                                 (fc::time_point::now() - hash_start_time_).count();
-                    uint64_t i_hps = uint64_t(hps + 0.5);
-
-                    uint32_t summary_target = db.get_pow_summary_target();
-
-                    double target = fc::sha256::inverse_approx_log_32_double(summary_target);
-                    static const double max_target = std::ldexp(1.0, 256);
-
-                    double seconds_needed = 0.0;
-                    if (i_hps > 0) {
-                        double hashes_needed = max_target / target;
-                        seconds_needed = hashes_needed / i_hps;
-                    }
-
-                    uint64_t minutes_needed = uint64_t(seconds_needed / 60.0 + 0.5);
-
-                    fc::sha256 hash_target;
-                    hash_target.set_to_inverse_approx_log_32(summary_target);
-
-                    if (total_hashes > 0)
-                        ilog("hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
-                             ("x", i_hps)("t", hash_target.str())("m", minutes_needed)("l", dgp.num_pow_witnesses)
-                        );
-
-                    for (const auto &miner : _miners) {
-                        const auto *w = db.find_witness(miner.first);
-                        if (!w || w->pow_worker == 0) {
-                            auto miner_pub_key = miner.second; //a.active.key_auths.begin()->first;
-                            auto priv_key_itr = _private_keys.find(miner_pub_key);
-                            if (priv_key_itr == _private_keys.end()) {
-                                continue; /// skipping miner for lack of private key
-                            }
-
-                            auto miner_priv_key = priv_key_itr->second;
-                            start_mining(miner_pub_key, priv_key_itr->second, miner.first, b);
-                            break;
-                        } else {
-                            // ilog( "Skipping miner ${m} because it is already scheduled to produce a block", ("m",miner) );
-                        }
-                    } // for miner in miners
-
-                } catch (const fc::exception &e) {
-                    ilog("exception thrown while attempting to mine");
-                }
-            }
-
-            void witness_plugin::impl::start_mining(
-                    const fc::ecc::public_key &pub,
-                    const fc::ecc::private_key &pk,
-                    const string &miner,
-                    const golos::protocol::signed_block &b
-            ) {
-                static const uint64_t seed = fc::time_point::now().time_since_epoch().count();
-                static const uint64_t start = fc::city_hash64((const char *) &seed, sizeof(seed));
-                auto &db = database();
-                const auto head_block_num = b.block_num();
-                const auto head_block_time = b.timestamp;
-                const auto block_id = b.id();
-                const auto stop = head_block_time + fc::seconds(STEEMIT_BLOCK_INTERVAL * 2);
-                uint32_t thread_num = 0;
-                const uint32_t target = db.get_pow_summary_target();
-                const auto &acct_idx = db.get_index<golos::chain::account_index>().indices().get<golos::chain::by_name>();
-                auto acct_it = acct_idx.find(miner);
-                const bool has_account = (acct_it != acct_idx.end());
-                const bool has_hardfork_16 = db.has_hardfork(STEEMIT_HARDFORK_0_16__551);
-
-                head_block_id_ = b.id();
-                total_hashes_.store(0, std::memory_order_release);
-                head_block_num_.store(head_block_num, std::memory_order_release);
-                hash_start_time_ = fc::time_point::now();
-
-                for (uint32_t i = 0; i <= mining_threads_; ++i) {
-                    thread_num++; // TODO: why it is incremented two times? second incrementation see after mining_service_.post(...)
-                    mining_service_.post( [=]{
-                        // hardfork_16: differences with previous version are commented with `hardfork_16`
-                        if (has_hardfork_16) {
-                            protocol::pow2_operation op;
-                            protocol::equihash_pow work; // hardfork_16: changed type of `work`
-                            work.input.prev_block = block_id;
-                            work.input.worker_account = miner;
-                            work.input.nonce = start + thread_num;
-                            op.props = _miner_prop_vote;
-
-                            while (true) {
-                                if (golos::time::now() > stop) {
-                                    // ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
-                                    return;
-                                }
-                                if (head_block_num_.load(std::memory_order_acquire) != head_block_num) {
-                                    // wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
-                                    return;
-                                }
-
-                                total_hashes_.fetch_add(1, std::memory_order_relaxed); /// signal other workers to stop
-                                work.input.nonce += mining_threads_;
-                                work.create(block_id, miner, work.input.nonce);
-
-                                if (work.proof.is_valid() && work.pow_summary < target) { // hardfork_16: added `proof.is_valid()`
-                                    protocol::signed_transaction trx;
-                                    work.prev_block = head_block_id_; // hardfork_16: added field 'prev_block'
-                                    op.work = work;
-                                    if (!has_account) {
-                                        op.new_owner_key = pub;
-                                    }
-                                    trx.operations.push_back(op);
-                                    trx.ref_block_num = head_block_num;
-                                    trx.ref_block_prefix = work.input.prev_block._hash[1];
-                                    trx.set_expiration(head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-                                    trx.sign(pk, STEEMIT_CHAIN_ID);
-                                    head_block_num_.fetch_add(1, std::memory_order_relaxed);
-
-                                    try {
-                                        chain().accept_transaction(trx);
-                                        ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
-                                        p2p().broadcast_transaction(trx);
-                                    } catch (const fc::exception &e) {
-                                        // wdump((e.to_detail_string()));
-                                    }
-
-                                    return;
-                                }
-                            }
-                        }
-                        else { // delete after hardfork 16
-                            protocol::pow2_operation op;
-                            protocol::pow2 work;
-                            work.input.prev_block = block_id;
-                            work.input.worker_account = miner;
-                            work.input.nonce = start + thread_num;
-                            op.props = _miner_prop_vote;
-                            while (true) {
-                                //  if( ((op.nonce/num_threads) % 1000) == 0 ) idump((op.nonce));
-                                if (golos::time::now() > stop) {
-                                    // ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
-                                    return;
-                                }
-                                if (head_block_num_.load(std::memory_order_acquire) != head_block_num) {
-                                    // wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
-                                    return;
-                                }
-
-                                total_hashes_.fetch_add(1, std::memory_order_relaxed);
-                                work.input.nonce += mining_threads_;
-                                work.create(block_id, miner, work.input.nonce);
-                                if (work.pow_summary < target) {
-                                    head_block_num_.fetch_add(1, std::memory_order_relaxed); /// signal other workers to stop
-                                    protocol::signed_transaction trx;
-                                    op.work = work;
-                                    if (!has_account) {
-                                        op.new_owner_key = pub;
-                                    }
-                                    trx.operations.push_back(op);
-                                    trx.ref_block_num = head_block_num;
-                                    trx.ref_block_prefix = work.input.prev_block._hash[1];
-                                    trx.set_expiration(head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-                                    trx.sign(pk, STEEMIT_CHAIN_ID);
-
-                                    try {
-                                        chain().accept_transaction(trx);
-                                        ilog("Broadcasting Proof of Work for ${miner}", ("miner", miner));
-                                        p2p().broadcast_transaction(trx);
-                                    } catch (const fc::exception &e) {
-                                        // wdump((e.to_detail_string()));
-                                    }
-
-                                    return;
-                                }
-                            }
-                        }
-                    });
-                    thread_num++; // TODO: second incrementation
+                if (_warn_miner && b.block_num() % 3 == 0) {
+                    wlog("Miners are not supported in HF28. Please remove following parameters from config: mining-threads, miner-account-creation-fee, miner-maximum-block-size, miner-sbd-interest-rate");
                 }
             }
         }

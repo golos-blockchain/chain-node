@@ -2331,6 +2331,10 @@ namespace golos { namespace chain {
 
 
         void pow2_evaluator::do_apply(const pow2_operation &o) {
+            if (db().has_hardfork(STEEMIT_HARDFORK_0_28__216)) {
+                FC_THROW_EXCEPTION(golos::unsupported_operation, "Miners are deprecated in HF28.");
+            }
+
             database &db = this->db();
             const auto &dgp = db.get_dynamic_global_properties();
             uint32_t target_pow = db.get_pow_summary_target();
