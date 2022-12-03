@@ -7,6 +7,10 @@ namespace golos { namespace plugins { namespace database_api {
     using golos::chain::asset_object;
     using namespace golos::protocol;
 
+    struct assets_query {
+        bool system = false; // GOLOS, GBG
+    };
+
     struct asset_api_object final {
         asset_api_object() = default;
 
@@ -28,6 +32,28 @@ namespace golos { namespace plugins { namespace database_api {
             }
         }
 
+        static asset_api_object golos(const golos::chain::database& _db) {
+            asset_api_object o;
+            o.max_supply = asset(INT64_MAX, STEEM_SYMBOL);
+            const auto& props = _db.get_dynamic_global_properties();
+            o.supply = props.current_supply;
+            o.can_issue = o.max_supply - o.supply;
+            o.precision = o.supply.decimals();
+            o.fee_percent = 0;
+            return o;
+        }
+
+        static asset_api_object gbg(const golos::chain::database& _db) {
+            asset_api_object o;
+            o.max_supply = asset(INT64_MAX, SBD_SYMBOL);
+            const auto& props = _db.get_dynamic_global_properties();
+            o.supply = props.current_sbd_supply;
+            o.can_issue = o.max_supply - o.supply;
+            o.precision = o.supply.decimals();
+            o.fee_percent = 0;
+            return o;
+        }
+
         asset_object::id_type id;
 
         account_name_type creator;
@@ -46,6 +72,11 @@ namespace golos { namespace plugins { namespace database_api {
     };
 
 }}} // golos::plugins::database_api
+
+FC_REFLECT(
+    (golos::plugins::database_api::assets_query),
+    (system)
+)
 
 FC_REFLECT(
     (golos::plugins::database_api::asset_api_object),

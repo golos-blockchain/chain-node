@@ -80,8 +80,8 @@ public:
     std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type) const;
     std::vector<proposal_api_object> get_proposed_transactions(const std::string&, uint32_t, uint32_t) const;
 
-    std::vector<asset_api_object> get_assets(const std::string& creator, const std::vector<std::string>& symbols, const std::string& from, uint32_t limit, asset_api_sort sort = asset_api_sort::by_symbol_name) const ;
-    std::vector<account_balances_map_api_object> get_accounts_balances(const std::vector<std::string>& account_names) const;
+    std::vector<asset_api_object> get_assets(const std::string& creator, const std::vector<std::string>& symbols, const std::string& from, uint32_t limit, asset_api_sort sort, const assets_query& query) const ;
+    std::vector<account_balances_map_api_object> get_accounts_balances(const std::vector<std::string>& account_names, const balances_query& query) const;
 
     golos::chain::database& database() const {
         return _db;
@@ -950,7 +950,8 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
         const std::string& creator,
         const std::vector<std::string>& symbols,
         const std::string& from, uint32_t limit,
-        asset_api_sort sort) const {
+        asset_api_sort sort,
+        const assets_query& query) const {
     std::vector<asset_api_object> results;
     results.reserve(limit);
 
@@ -964,6 +965,22 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
             if (results.size() == limit) break;
             results.push_back(asset_api_object(*itr, _db));
         }
+    };
+
+    bool with_golos = query.system;
+    bool with_gbg = query.system;
+
+    auto add_golos = [&]() {
+        results.push_back(asset_api_object::golos(_db));
+        with_golos = false;
+    };
+    auto add_gbg = [&]() {
+        results.push_back(asset_api_object::gbg(_db));
+        with_gbg = false;
+    };
+    auto add_system = [&]() {
+        if (with_golos) add_golos();
+        if (with_gbg) add_gbg();
     };
 
     const auto& indices = _db.get_index<asset_index>().indices();
@@ -982,6 +999,8 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
             go_page(idx, itr);
             fill_assets(idx, itr, verify);
         }
+
+        add_system();
     } else {
         if (symbols.size()) {
             const auto& sym_idx = indices.get<by_symbol_name>();
@@ -994,8 +1013,14 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
                 auto itr = sym_idx.find(symbol_name);
                 if (itr != sym_idx.end()) {
                     results.push_back(asset_api_object(*itr, _db));
+                } else if (symbol == "GOLOS") {
+                    add_golos();
+                } else if (symbol == "GBG") {
+                    add_gbg();
                 }
             }
+
+            add_system();
 
             if (sort == asset_api_sort::by_marketed) {
                 std::sort(results.begin(), results.end(), [&](auto& lhs, auto& rhs) {
@@ -1018,6 +1043,8 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
                 go_page(idx, itr);
                 fill_assets(idx, itr, verify);
             }
+
+            add_system();
         }
     }
 
@@ -1031,25 +1058,85 @@ DEFINE_API(plugin, get_assets) {
         (std::string, from, std::string())
         (uint32_t, limit, 20)
         (asset_api_sort, sort, asset_api_sort::by_symbol_name)
+        (assets_query, query, assets_query())
     );
     GOLOS_CHECK_LIMIT_PARAM(limit, 5000);
 
     return my->database().with_weak_read_lock([&]() {
-        return my->get_assets(creator, symbols, from, limit, sort);
+        return my->get_assets(creator, symbols, from, limit, sort, query);
     });
 }
 
-std::vector<account_balances_map_api_object> plugin::api_impl::get_accounts_balances(const std::vector<std::string>& account_names) const {
+std::vector<account_balances_map_api_object> plugin::api_impl::get_accounts_balances(const std::vector<std::string>& account_names, const balances_query& query) const {
     std::vector<account_balances_map_api_object> results;
+
+    const auto& token_holders = query.token_holders;
+    if (token_holders.size()) {
+        auto sym = _db.get_asset(token_holders).symbol();
+
+        const auto& idx = _db.get_index<account_balance_index, by_symbol_account>();
+        
+        auto itr = idx.find(sym);
+        uint32_t i = 0;
+        for (; itr != idx.end(); ++itr, ++i) {
+            if (itr->balance.amount != 0 || itr->tip_balance.amount != 0
+                    || itr->market_balance.amount != 0) {
+                account_balances_map_api_object acc_balances;
+                acc_balances[token_holders] = account_balance_api_object(*itr);
+                results.push_back(acc_balances);
+            }
+
+            if (results.size() == 500 || (i > 10000 && results.size())) {
+                break;
+            }
+        }
+
+        std::sort(results.begin(), results.end(), [&](auto& lhs, auto& rhs) {
+            auto lbal = lhs.begin()->second;
+            auto rbal = rhs.begin()->second;
+            auto lsum = lbal.balance + lbal.tip_balance + lbal.market_balance;
+            auto rsum = rbal.balance + rbal.tip_balance + rbal.market_balance;
+            return lsum > rsum;
+        });
+
+        return results;
+    }
 
     const auto& idx = _db.get_index<account_balance_index, by_account_symbol>();
 
     for (auto account_name : account_names) {
         account_balances_map_api_object acc_balances;
 
+        const auto& symbols = query.symbols;
+
         auto itr = idx.lower_bound(account_name);
         for (; itr != idx.end() && itr->account == account_name; ++itr) {
-            acc_balances[itr->balance.symbol_name()] = *itr;
+            if (symbols.size()) {
+                const auto& sym = itr->balance.symbol_name();
+                if (symbols.find(sym) == symbols.end()) {
+                    continue;
+                }
+            }
+            acc_balances[itr->balance.symbol_name()] = account_balance_api_object(*itr);
+        }
+
+        auto add_golos = [&]() {
+            acc_balances["GOLOS"] = account_balance_api_object::golos(account_name, _db);
+        };
+        auto add_gbg = [&]() {
+            acc_balances["GBG"] = account_balance_api_object::gbg(account_name, _db);
+        };
+
+        if (query.system) {
+            add_golos();
+            add_gbg();
+        } else if (symbols.size()) {
+            if (symbols.find("GOLOS") != symbols.end()) {
+                add_golos();
+            }
+            if (symbols.find("GBG") != symbols.end()) {
+                add_gbg();
+            }
         }
 
         results.push_back(acc_balances);
@@ -1061,9 +1148,10 @@ std::vector<account_balances_map_api_object> plugin::api_impl::get_accounts_bala
 DEFINE_API(plugin, get_accounts_balances) {
     PLUGIN_API_VALIDATE_ARGS(
         (vector<std::string>, account_names)
+        (balances_query, query, balances_query())
     );
     return my->database().with_weak_read_lock([&]() {
-        return my->get_accounts_balances(account_names);
+        return my->get_accounts_balances(account_names, query);
     });
 }
 
