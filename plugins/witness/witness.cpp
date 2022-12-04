@@ -145,11 +145,7 @@ namespace golos {
                     LOAD_VALUE_SET(options, "witness", pimpl->_witnesses, string)
                     edump((pimpl->_witnesses));
 
-                    if (options.count("miner")
-                        || options.count("mining-threads")
-                        || options.count("miner-account-creation-fee")
-                        || options.count("miner-maximum-block-size")
-                        || options.count("miner-sbd-interest-rate")) {
+                    if (options.count("miner")) {
                         pimpl->_warn_miner = true;
                     }
 
@@ -180,7 +176,7 @@ namespace golos {
                     ilog("witness plugin:  plugin_startup() begin");
 
                     if (pimpl->_warn_miner) {
-                        wlog("Miners are not supported in HF28. Please remove following parameters from config: mining-threads, miner-account-creation-fee, miner-maximum-block-size, miner-sbd-interest-rate");
+                        wlog("Miners are not supported in HF28. Please remove following parameters from config: miner, mining-threads, miner-account-creation-fee, miner-maximum-block-size, miner-sbd-interest-rate");
                     }
 
                     auto &d = pimpl->database();
