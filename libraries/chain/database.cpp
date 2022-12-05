@@ -5373,7 +5373,7 @@ namespace golos { namespace chain {
 
             push_virtual_operation(fill_order_operation(
                 new_order.seller, new_order.orderid, new_order_pays, new_trade_fee, new_trade_fee_receiver,
-                old_order.seller, old_order.orderid, old_order_pays, old_trade_fee, old_trade_fee_receiver));
+                old_order.seller, old_order.orderid, old_order_pays, old_trade_fee, old_trade_fee_receiver, old_order.sell_price));
 
             int result = 0;
             result |= fill_order(new_order, new_order_pays, new_order_receives);

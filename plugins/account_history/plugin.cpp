@@ -365,9 +365,6 @@ if (options.count(name)) { \
         void operator()(const order_delete_operation& op) {
         }
 
-        void operator()(const order_filled_operation& op) {
-        }
-
         void operator()(const comment_operation& op) {
             insert_pair(op.author, op.parent_author, op.parent_author.size());
         }

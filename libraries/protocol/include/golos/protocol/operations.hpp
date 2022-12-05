@@ -126,8 +126,7 @@ namespace golos { namespace protocol {
                 unwanted_cost_operation,
                 unlimit_cost_operation,
                 order_create_operation,
-                order_delete_operation,
-                order_filled_operation
+                order_delete_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

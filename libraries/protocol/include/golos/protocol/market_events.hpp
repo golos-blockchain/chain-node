@@ -23,8 +23,7 @@ struct order_create_operation : public virtual_operation {
     fc::time_point_sec expiration;
     account_name_type seller;
     asset for_sale;
-    price sell_price; // TODO: correct?
-    // TODO: fee
+    price sell_price;
 };
 
 struct order_delete_operation : public virtual_operation {
@@ -40,20 +39,6 @@ struct order_delete_operation : public virtual_operation {
     price sell_price;
 };
 
-struct order_filled_operation : public virtual_operation {
-	order_filled_operation() {
-	}
-
-	order_filled_operation(uint32_t oid, const account_name_type& s, const price& sp) :
-		orderid(oid), seller(s), sell_price(sp) {
-	}
-
-    uint32_t orderid = 0;
-    account_name_type seller;
-    price sell_price;
-    // TODO: more info )
-};
-
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::order_create_operation),
@@ -61,9 +46,5 @@ FC_REFLECT((golos::protocol::order_create_operation),
 )
 
 FC_REFLECT((golos::protocol::order_delete_operation),
-    (orderid)(seller)(sell_price)
-)
-
-FC_REFLECT((golos::protocol::order_filled_operation),
     (orderid)(seller)(sell_price)
 )

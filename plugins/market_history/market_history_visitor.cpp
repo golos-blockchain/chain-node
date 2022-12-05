@@ -30,4 +30,11 @@ namespace golos { namespace plugins { namespace market_history {
          NOTIFY_SIGNAL(_plugin.create_order_signal, arg)
     }
 
+    void operation_visitor::operator()(const fill_order_operation& op) const {
+        if (_db.is_generating() || _db.is_producing())
+            return;
+         callback_arg arg = op;
+         NOTIFY_SIGNAL(_plugin.create_order_signal, arg)
+    }
+
 } } } // golos::plugins::market_history

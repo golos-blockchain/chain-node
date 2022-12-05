@@ -19,6 +19,8 @@ namespace golos { namespace plugins { namespace market_history {
 
         void operator()(const order_delete_operation& op) const;
 
+        void operator()(const fill_order_operation& op) const;
+
         template<typename Op>
         void operator()(Op&&) const {
         } /// ignore all other ops

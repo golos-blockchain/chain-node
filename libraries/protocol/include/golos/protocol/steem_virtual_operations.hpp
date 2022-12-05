@@ -144,9 +144,9 @@ namespace golos { namespace protocol {
             }
 
             fill_order_operation(const string& c_o, uint32_t c_id, const asset& c_p, const asset& c_tf, const string& c_tfr,
-                const string& o_o, uint32_t o_id, const asset& o_p, const asset& o_tf, const string& o_tfr)
+                const string& o_o, uint32_t o_id, const asset& o_p, const asset& o_tf, const string& o_tfr, const price& o_pr)
                     : current_owner(c_o), current_orderid(c_id), current_pays(c_p), current_trade_fee(c_tf), current_trade_fee_receiver(c_tfr),
-                      open_owner(o_o), open_orderid(o_id), open_pays(o_p), open_trade_fee(o_tf), open_trade_fee_receiver(o_tfr) {
+                      open_owner(o_o), open_orderid(o_id), open_pays(o_p), open_trade_fee(o_tf), open_trade_fee_receiver(o_tfr), open_price(o_pr) {
             }
 
             account_name_type current_owner;
@@ -160,6 +160,7 @@ namespace golos { namespace protocol {
             asset open_pays;
             asset open_trade_fee;
             account_name_type open_trade_fee_receiver;
+            price open_price;
         };
 
 
@@ -513,7 +514,7 @@ FC_REFLECT((golos::protocol::liquidity_reward_operation), (owner)(payout))
 FC_REFLECT((golos::protocol::interest_operation), (owner)(interest))
 FC_REFLECT((golos::protocol::fill_vesting_withdraw_operation), (from_account)(to_account)(withdrawn)(deposited))
 FC_REFLECT((golos::protocol::shutdown_witness_operation), (owner))
-FC_REFLECT((golos::protocol::fill_order_operation), (current_owner)(current_orderid)(current_pays)(current_trade_fee)(current_trade_fee_receiver)(open_owner)(open_orderid)(open_pays)(open_trade_fee)(open_trade_fee_receiver))
+FC_REFLECT((golos::protocol::fill_order_operation), (current_owner)(current_orderid)(current_pays)(current_trade_fee)(current_trade_fee_receiver)(open_owner)(open_orderid)(open_pays)(open_trade_fee)(open_trade_fee_receiver)(open_price))
 FC_REFLECT((golos::protocol::fill_transfer_from_savings_operation), (from)(to)(amount)(request_id)(memo))
 FC_REFLECT((golos::protocol::hardfork_operation), (hardfork_id))
 FC_REFLECT((golos::protocol::comment_payout_update_operation), (author)(hashlink)(permlink))
