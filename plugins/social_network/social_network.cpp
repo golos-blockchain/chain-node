@@ -905,7 +905,7 @@ namespace golos { namespace plugins { namespace social_network {
         for (const auto& id : ids) {
             const auto* comment = db.find_comment(id.author, id.hashlink);
             if (comment) {
-                auto dis = get_discussion(*comment, 0, 0);
+                auto dis = get_discussion(*comment, DEFAULT_VOTE_LIMIT, 0);
 
                 if (dis.body.size() > truncate_body) {
                     dis.body.erase(truncate_body);
