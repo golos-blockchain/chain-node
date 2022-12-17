@@ -718,7 +718,7 @@ namespace golos { namespace chain {
                 modify(get_account(account), [&](auto& account) {
                     account.tip_balance += median_props.unwanted_operation_cost;
                 });
-                push_event(unwanted_cost_operation(account, blocking, median_props.unwanted_operation_cost, ""));
+                push_event(unwanted_cost_operation(account, blocking, median_props.unwanted_operation_cost, "", false));
             }
         }
 

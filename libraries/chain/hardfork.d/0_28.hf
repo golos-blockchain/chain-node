@@ -4,6 +4,7 @@
 #define STEEMIT_HARDFORK_0_28__214 (STEEMIT_HARDFORK_0_28) // Improve VS undelegation
 #define STEEMIT_HARDFORK_0_28__215 (STEEMIT_HARDFORK_0_28) // Fix VS excessive week
 #define STEEMIT_HARDFORK_0_28__216 (STEEMIT_HARDFORK_0_28) // Deprecate miners in witnesses scheduling
+#define STEEMIT_HARDFORK_0_28__217 (STEEMIT_HARDFORK_0_28) // Fee for reputation downvoting
 
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_28_TIME  1668531600 // 15 nov 2022 20:00:00 MSK

@@ -32,6 +32,7 @@ struct account_services {
     asset post;
     asset comment;
     asset vote;
+    asset vote_rep; // only downvote
 };
 
 struct account_api_object {
@@ -152,7 +153,7 @@ FC_REFLECT((golos::api::account_freeze_api_object),
 )
 
 FC_REFLECT((golos::api::account_services),
-    (post)(comment)(vote)
+    (post)(comment)(vote)(vote_rep)
 )
 
 FC_REFLECT((golos::api::account_api_object),

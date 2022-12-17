@@ -1743,6 +1743,17 @@ namespace golos { namespace chain {
                 _db.check_negrep_posting_bandwidth(voter, "vote",
                     op.author, op.permlink, "", "");
 
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_28__217) && !comment && op.weight < 0) {
+                    GOLOS_CHECK_VALUE(voter.tip_balance >= mprops.unwanted_operation_cost,
+                        "For reputation unvote you need at least ${amount} of TIP balance",
+                        ("amount", mprops.unwanted_operation_cost));
+                    _db.modify(voter, [&](auto& voter) {
+                        voter.tip_balance -= mprops.unwanted_operation_cost;
+                    });
+                    _db.adjust_supply(-mprops.unwanted_operation_cost);
+                    _db.push_event(unwanted_cost_operation(op.author, op.voter, mprops.unwanted_operation_cost, "", true));
+                }
+
                 if (comment && _db.calculate_discussion_payout_time(*comment) == fc::time_point_sec::maximum()) {
                     // non-consensus vote (after cashout)
                     const auto& comment_vote_idx = _db.get_index<comment_vote_index, by_comment_voter>();

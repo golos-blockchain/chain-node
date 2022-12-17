@@ -472,14 +472,15 @@ namespace golos { namespace protocol {
             }
 
             unwanted_cost_operation(const account_name_type& br, const account_name_type& bg,
-                        const asset& a, const std::string& t)
-                    : blocker(br), blocking(bg), amount(a), target(t) {
+                        const asset& a, const std::string& t, bool bf)
+                    : blocker(br), blocking(bg), amount(a), target(t), burn_fee(bf) {
             }
 
             account_name_type blocker;
             account_name_type blocking;
             asset amount;
             std::string target;
+            bool burn_fee;
         };
 
         struct unlimit_cost_operation : public virtual_operation {
@@ -535,5 +536,5 @@ FC_REFLECT((golos::protocol::comment_mention_operation), (mentioned)(author)(has
 FC_REFLECT((golos::protocol::accumulative_remainder_operation), (amount))
 FC_REFLECT((golos::protocol::authority_updated_operation), (account)(owner)(active)(posting)(memo_key))
 FC_REFLECT((golos::protocol::account_freeze_operation), (account)(frozen)(unfreeze_fee))
-FC_REFLECT((golos::protocol::unwanted_cost_operation), (blocker)(blocking)(amount)(target))
+FC_REFLECT((golos::protocol::unwanted_cost_operation), (blocker)(blocking)(amount)(target)(burn_fee))
 FC_REFLECT((golos::protocol::unlimit_cost_operation), (account)(amount)(limit_type)(target_type)(id1)(id2)(id3)(id4))
