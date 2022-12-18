@@ -73,6 +73,9 @@ namespace golos { namespace api {
             unwanted_operation_cost = src.unwanted_operation_cost;
             unlimit_operation_cost = src.unlimit_operation_cost;
         }
+        if (db.has_hardfork(STEEMIT_HARDFORK_0_28)) {
+            min_golos_power_to_emission = src.min_golos_power_to_emission;
+        }
     }
 
 } } // golos::api

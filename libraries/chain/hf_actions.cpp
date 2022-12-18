@@ -137,6 +137,29 @@ void hf_actions::create_registrator_account() {
 #endif
 }
 
+void hf_actions::convert_min_curate_golos_power() {
+    const auto& wso = _db.get_witness_schedule_object();
+
+    const auto& gbg_median = _db.get_feed_history().current_median_history;
+    auto convert_to_gbg = [&](auto& a) {
+        if (!gbg_median.is_null()) {
+            return a * gbg_median;
+        }
+        return asset(a.amount, SBD_SYMBOL);
+    };
+
+    const auto &idx = _db.get_index<witness_index>().indices();
+    for (const auto& witness : idx) {
+        _db.modify(witness, [&](auto& w) {
+            w.props.min_golos_power_to_curate = convert_to_gbg(w.props.min_golos_power_to_curate);
+        });
+    }
+
+    _db.modify(wso, [&](auto& wso) {
+        wso.median_props.min_golos_power_to_curate = convert_to_gbg(wso.median_props.min_golos_power_to_curate);
+    });
+}
+
 hf_actions::hf_actions(database& db) : _db(db) {
 }
 

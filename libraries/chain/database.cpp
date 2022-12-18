@@ -2437,7 +2437,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_27 median_props;
+            chain_properties_28 median_props;
 
             auto median = active.size() / 2;
 
@@ -2565,6 +2565,7 @@ namespace golos { namespace chain {
             }
             calc_median(&chain_properties_27::unwanted_operation_cost);
             calc_median(&chain_properties_27::unlimit_operation_cost);
+            calc_median(&chain_properties_28::min_golos_power_to_emission);
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -3425,12 +3426,23 @@ namespace golos { namespace chain {
                 if (head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL_HF26 != 0) return;
             }
 
+            bool has_hf28 = has_hardfork(STEEMIT_HARDFORK_0_28__218);
+            auto min_golos_power_to_emission = asset(0, VESTS_SYMBOL);
+            if (has_hf28) {
+                const auto& gbg_median = get_feed_history().current_median_history;
+                if (!gbg_median.is_null()) {
+                    auto min_gbg = get_witness_schedule_object().median_props.min_golos_power_to_emission;
+                    auto min_golos = min_gbg * gbg_median;
+                    min_golos_power_to_emission = min_golos * props.get_vesting_share_price();
+                }
+            }
+
             auto distributed_sum = asset(0, STEEM_SYMBOL);
 
             auto process_acc = [&](const auto& acc) {
                 auto stake = asset((uint128_t(props.accumulative_balance.amount.value) * acc.emission_vesting_shares().amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
                 modify(acc, [&](auto& a) {
-                    if (has_hf27) {
+                    if (has_hf27 && (!has_hf28 || acc.vesting_shares >= min_golos_power_to_emission)) {
                         a.tip_balance += stake;
                     } else {
                         a.accumulative_balance += stake;
@@ -3467,6 +3479,7 @@ namespace golos { namespace chain {
 
         void database::auto_claim_accumulatives() {
             if (!has_hardfork(STEEMIT_HARDFORK_0_27__202)) return;
+            if (has_hardfork(STEEMIT_HARDFORK_0_28__218)) return;
 
             const auto& acc_idx = get_index<account_index, by_accumulative>();
             auto acc_itr = acc_idx.begin();
@@ -6037,6 +6050,7 @@ namespace golos { namespace chain {
                     break;
                 case STEEMIT_HARDFORK_0_28:
                     hf_act.prepare_for_tests();
+                    hf_act.convert_min_curate_golos_power();
                     break;
                 default:
                     break;

@@ -2313,7 +2313,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             chain_properties_update_operation op;
             chain_api_properties ap;
-            chain_properties_26 p;
+            chain_properties_27 p;
 
             // copy defaults in case of missing witness object
             ap.account_creation_fee = p.account_creation_fee;
@@ -2360,7 +2360,6 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             SET_PROP(p, witness_skipping_reset_time);
             SET_PROP(p, witness_idleness_time);
             SET_PROP(p, account_idleness_time);
-            SET_PROP(p, claim_idleness_time);
             SET_PROP(p, min_invite_balance);
             SET_PROP(p, asset_creation_fee);
             SET_PROP(p, invite_transfer_interval_sec);
@@ -2371,19 +2370,18 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             p.vesting_reward_percent = 0;
             SET_PROP(p, worker_emission_percent);
             SET_PROP(p, vesting_of_remain_percent);
-            SET_PROP(p, negrep_posting_window);
-            SET_PROP(p, negrep_posting_per_window);
+            p.negrep_posting_window = 0;
+            p.negrep_posting_per_window = 0;
+            p.claim_idleness_time = 0;
+            SET_PROP(p, unwanted_operation_cost);
+            SET_PROP(p, unlimit_operation_cost);
             op.props = p;
             auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_27)) {
-                chain_properties_27 p27;
-                p27 = p;
-                SET_PROP(p27, unwanted_operation_cost);
-                SET_PROP(p27, unlimit_operation_cost);
-                p.negrep_posting_window = 0;
-                p.negrep_posting_per_window = 0;
-                p.claim_idleness_time = 0;
-                op.props = p27;
+            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_28)) {
+                chain_properties_28 p28;
+                SET_PROP(p28, min_golos_power_to_emission);
+                p28 = p;
+                op.props = p28;
             }
 #undef SET_PROP
 

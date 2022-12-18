@@ -378,7 +378,6 @@ namespace golos { namespace protocol {
         void chain_properties_26::validate() const {
             chain_properties_24::validate();
             GOLOS_CHECK_VALUE_LEGE(convert_fee_percent, GOLOS_MIN_CONVERT_FEE_PERCENT, GOLOS_MAX_CONVERT_FEE_PERCENT);
-            GOLOS_CHECK_ASSET_GE(min_golos_power_to_curate, GOLOS, GOLOS_MIN_GOLOS_POWER_TO_CURATE);
 
             GOLOS_CHECK_VALUE_LE(worker_emission_percent, GOLOS_MAX_WORKER_EMISSION_PERCENT);
             GOLOS_CHECK_VALUE_LE(vesting_of_remain_percent, STEEMIT_100_PERCENT);
@@ -388,6 +387,11 @@ namespace golos { namespace protocol {
             chain_properties_26::validate();
            GOLOS_CHECK_ASSET_GE(unwanted_operation_cost, GOLOS, 0);
            GOLOS_CHECK_ASSET_GE(unlimit_operation_cost, GOLOS, 0);
+        }
+
+        void chain_properties_28::validate() const {
+            chain_properties_27::validate();
+            GOLOS_CHECK_ASSET_GE(min_golos_power_to_emission, GBG, GOLOS_MIN_GOLOS_POWER_TO_EMISSION);
         }
 
         void witness_update_operation::validate() const {

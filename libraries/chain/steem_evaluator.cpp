@@ -1044,7 +1044,14 @@ namespace golos { namespace chain {
                             com.curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
                         }
 
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_28__218)) {
+                            const auto& gbg_median = _db.get_feed_history().current_median_history;
+                            if (!gbg_median.is_null()) {
+                                com.min_golos_power_to_curate = (mprops.min_golos_power_to_curate * gbg_median).amount;
+                            } else {
+                                com.min_golos_power_to_curate = 0;
+                            }
+                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
                             com.min_golos_power_to_curate = mprops.min_golos_power_to_curate.amount;
                         }
 
@@ -3194,13 +3201,26 @@ void delegate_vesting_shares(
         void claim_evaluator::do_apply(const claim_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "claim_operation");
 
-            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__202)) {
+            bool has_hf28 = _db.has_hardfork(STEEMIT_HARDFORK_0_28__218);
+
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__202) && !has_hf28) {
                 FC_THROW_EXCEPTION(golos::unsupported_operation, "claim is deprecated");
             }
 
             const auto& from_account = _db.get_account(op.from);
             const auto& to_account = op.to.size() ? _db.get_account(op.to)
                                                  : from_account;
+
+            if (has_hf28) {
+                const auto& gbg_median = _db.get_feed_history().current_median_history;
+                if (!gbg_median.is_null()) {
+                    auto min_gbg = _db.get_witness_schedule_object().median_props.min_golos_power_to_emission;
+                    auto min_golos = min_gbg * gbg_median;
+                    auto min_golos_power_to_emission = min_golos * _db.get_dynamic_global_properties().get_vesting_share_price();
+                    GOLOS_CHECK_VALUE(from_account.emission_vesting_shares() >= min_golos_power_to_emission,
+                        "Vesting shares too low.");
+                }
+            }
 
             GOLOS_CHECK_LOGIC(op.amount <= from_account.accumulative_balance, logic_exception::not_enough_accumulative_balance, "Not enough accumulative balance");
 
