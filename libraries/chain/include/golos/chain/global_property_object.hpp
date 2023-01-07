@@ -57,6 +57,7 @@ namespace golos {
             asset total_vesting_fund_steem = asset(0, STEEM_SYMBOL);
             asset total_vesting_shares = asset(0, VESTS_SYMBOL);
             asset accumulative_balance = asset(0, STEEM_SYMBOL);
+            asset accumulative_remainder = asset(0, STEEM_SYMBOL);
             asset total_reward_fund_steem = asset(0, STEEM_SYMBOL);
             fc::uint128_t total_reward_shares2; ///< the running total of REWARD^2
 

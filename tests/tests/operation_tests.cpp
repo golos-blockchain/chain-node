@@ -8097,6 +8097,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             signed_transaction tx;
             vote_operation op;
 
+            fund("bob", 100000);
+            transfer_to_tip_operation totip;
+            totip.from = "bob";
+            totip.to = "bob";
+            totip.amount = asset(100000, STEEM_SYMBOL);
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, totip));
+
             BOOST_TEST_MESSAGE("-- Downvoting alice account (by bob, who have 0 reputation)");
 
             op.voter = "bob";
@@ -8133,6 +8140,9 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             generate_block();
 
             BOOST_TEST_MESSAGE("-- Try downvote alice by bob again");
+
+            fund("bob", 100000);
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, totip));
 
             op.voter = "bob";
             op.author = "alice";
@@ -8214,6 +8224,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_TEST_MESSAGE("-- Downvote alice by bob");
 
+            fund("bob", 100000);
+            transfer_to_tip_operation totip;
+            totip.from = "bob";
+            totip.to = "bob";
+            totip.amount = asset(100000, STEEM_SYMBOL);
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, totip));
+
             vop.voter = "bob";
             vop.author = "alice";
             vop.permlink = "";
@@ -8225,24 +8242,23 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
 
             BOOST_CHECK_LT(db->get_account_reputation("alice"), 0);
 
-            BOOST_TEST_MESSAGE("-- Checking that alice has now decreased bandwidth");
+            BOOST_TEST_MESSAGE("-- Checking that alice now will pay negrep cost");
 
-            for (int i = 0; i < GOLOS_NEGREP_POSTING_PER_WINDOW; i++) {
-                vop.voter = "alice";
-                vop.author = "bob";
-                vop.permlink = "";
-                vop.weight = -STEEMIT_1_PERCENT;
-                push_tx_with_ops(tx, alice_private_key, vop);
-                generate_block();
-            }
+            fund("alice", 110000);
+            totip.from = "alice";
+            totip.to = "alice";
+            totip.amount = asset(110000, STEEM_SYMBOL);
+            GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, totip));
 
-            GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, vop),
-                CHECK_ERROR(tx_invalid_operation, 0,
-                    CHECK_ERROR(bandwidth_exception, golos::bandwidth_exception::negrep_posting_bandwidth)));
-
-            generate_blocks(db->head_block_time() + GOLOS_NEGREP_POSTING_WINDOW * 60, true);
-
+            vop.voter = "alice";
+            vop.author = "bob";
+            vop.permlink = "";
+            vop.weight = -STEEMIT_1_PERCENT;
             push_tx_with_ops(tx, alice_private_key, vop);
+            generate_block();
+
+            BOOST_CHECK_EQUAL(db->get_account("alice").tip_balance.amount.value, 18);
+
         } catch (fc::exception& e) {
             edump((e.to_detail_string()));
             throw;

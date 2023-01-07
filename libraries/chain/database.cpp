@@ -3471,14 +3471,13 @@ namespace golos { namespace chain {
                 }
             }
 
-            _accumulative_remainder += (props.accumulative_balance - distributed_sum);
-
             modify(props, [&](auto& props) {
+                props.accumulative_remainder += (props.accumulative_balance - distributed_sum);
                 props.accumulative_balance = asset(0, STEEM_SYMBOL);
             });
 
-            if (_accumulative_remainder.amount.value) {
-                push_virtual_operation(accumulative_remainder_operation(_accumulative_remainder));
+            if (props.accumulative_remainder.amount.value) {
+                push_virtual_operation(accumulative_remainder_operation(props.accumulative_remainder));
             }
         }
 
@@ -6234,7 +6233,7 @@ namespace golos { namespace chain {
 
                 total_supply += gpo.total_vesting_fund_steem +
                                 gpo.accumulative_balance +
-                                _accumulative_remainder +
+                                gpo.accumulative_remainder +
                                 gpo.total_reward_fund_steem;
 
                 FC_ASSERT(gpo.current_supply ==
