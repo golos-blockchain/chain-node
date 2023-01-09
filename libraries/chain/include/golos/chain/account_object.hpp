@@ -413,6 +413,7 @@ struct by_last_active_operation;
 struct by_last_claim;
 struct by_vesting_shares;
 struct by_sbd;
+struct by_savings;
 struct by_savings_seconds;
 struct by_accumulative;
 struct by_proved;
@@ -462,6 +463,10 @@ typedef multi_index_container<
                 >,
                 ordered_non_unique<tag<by_accumulative>,
                     member<account_object, asset, &account_object::accumulative_balance>,
+                    std::greater<asset>
+                >,
+                ordered_non_unique<tag<by_savings>,
+                    member<account_object, asset, &account_object::savings_sbd_balance>,
                     std::greater<asset>
                 >,
                 ordered_non_unique<tag<by_savings_seconds>,

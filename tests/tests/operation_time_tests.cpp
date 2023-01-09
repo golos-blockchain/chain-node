@@ -1646,91 +1646,87 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture)
 
             generate_blocks(db->get_comment_by_perm("alice", string("test")).cashout_time, true);
 
-            BOOST_TEST_MESSAGE("Transferring worker sbd payout to alice");
+            fund(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("10000.000 GBG"));
+
+            BOOST_TEST_MESSAGE("-- Transferring worker sbd payout to alice");
             vest(STEEMIT_WORKER_POOL_ACCOUNT, ASSET("100.000 GOLOS")); // for transfer bandwidth
-            transfer<transfer_to_savings_operation>(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
+            transfer<transfer_to_savings_operation>(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance / 2);
 
             auto start_time = db->get_account("alice").savings_sbd_seconds_last_update;
 
             auto alice_sbd = db->get_account("alice").savings_sbd_balance;
 
-            generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC), true);
+            BOOST_TEST_MESSAGE("-- Testing interest after only 1 transfer (seconds will be counted in process_gbg_payments)");
 
-            transfer_from_savings_operation transfer;
-            transfer.to = "bob";
-            transfer.from = "alice";
-            transfer.amount = ASSET("1.000 GBG");
-            tx.operations.clear();
-            tx.signatures.clear();
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.operations.push_back(transfer);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            vest("alice", ASSET("1000.000 GOLOS"));
+
+            {
+                auto interval = STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC / 3;
+                auto now = db->head_block_num();
+                generate_blocks(interval - (now % interval));
+            }
 
             auto gpo = db->get_dynamic_global_properties();
             auto interest_op = get_last_operations(1)[0].get<interest_operation>();
 
             BOOST_REQUIRE(gpo.sbd_interest_rate > 0);
-            BOOST_REQUIRE(uint64_t(db->get_account("alice").savings_sbd_balance.amount.value) ==
-                          alice_sbd.amount.value -
-                          ASSET("1.000 GBG").amount.value +
+            BOOST_REQUIRE_EQUAL(uint64_t(db->get_account("alice").savings_sbd_balance.amount.value),
+                          alice_sbd.amount.value +
                           ((((uint128_t(alice_sbd.amount.value) *
                               (db->head_block_time() -
                                start_time).to_seconds()) /
                              STEEMIT_SECONDS_PER_YEAR) *
                             gpo.sbd_interest_rate) /
                            STEEMIT_100_PERCENT).to_uint64());
-            BOOST_REQUIRE(interest_op.owner == "alice");
-            BOOST_REQUIRE(interest_op.interest.amount.value ==
+            BOOST_REQUIRE_EQUAL(interest_op.owner, "alice");
+            BOOST_REQUIRE_EQUAL(interest_op.interest.amount.value,
                           db->get_account("alice").savings_sbd_balance.amount.value -
-                          (alice_sbd.amount.value -
-                           ASSET("1.000 GBG").amount.value));
+                          alice_sbd.amount.value);
             validate_database();
 
-            BOOST_TEST_MESSAGE("Testing interest under interest period");
+            BOOST_TEST_MESSAGE("-- Testing interest after another transfer");
 
-            start_time = db->get_account("alice").savings_sbd_seconds_last_update;
             alice_sbd = db->get_account("alice").savings_sbd_balance;
+            auto alice_seconds = db->get_account("alice").savings_sbd_seconds;
+            start_time = db->head_block_time();
 
-            generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC / 2), true);
+            generate_blocks(5);
 
-            tx.operations.clear();
-            tx.signatures.clear();
-            tx.operations.push_back(transfer);
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            transfer<transfer_to_savings_operation>(STEEMIT_WORKER_POOL_ACCOUNT, "alice", db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance);
 
-            BOOST_REQUIRE(
-                db->get_account("alice").savings_sbd_balance.amount.value ==
-                alice_sbd.amount.value - ASSET("1.000 GBG").amount.value);
             validate_database();
 
-            auto alice_coindays =
-                uint128_t(alice_sbd.amount.value) * (db->head_block_time() - start_time).to_seconds();
-            alice_sbd = db->get_account("alice").savings_sbd_balance;
-            start_time = db->get_account("alice").savings_sbd_seconds_last_update;
+            auto alice_sbd2 = db->get_account("alice").savings_sbd_balance;
 
-            BOOST_TEST_MESSAGE("Testing longer interest period");
+            BOOST_REQUIRE(alice_sbd2 > alice_sbd);
+            BOOST_CHECK_EQUAL(db->get_account("alice").savings_sbd_seconds -
+                alice_seconds, alice_sbd.amount.value * 15);
 
-            generate_blocks(
-                db->head_block_time() + fc::seconds((STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC * 7) / 3), true);
+            {
+                auto interval = STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC / 3;
+                auto now = db->head_block_num();
+                generate_blocks(interval - (now % interval));
+            }
 
-            tx.operations.clear();
-            tx.signatures.clear();
-            tx.operations.push_back(transfer);
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            auto alice_sbd3 = db->get_account("alice").savings_sbd_balance;
 
-            BOOST_REQUIRE(uint64_t(db->get_account("alice").savings_sbd_balance.amount.value) ==
-                          alice_sbd.amount.value -
-                          ASSET("1.000 GBG").amount.value +
-                          ((((uint128_t(alice_sbd.amount.value) *
-                              (db->head_block_time() - start_time).to_seconds() +
-                              alice_coindays) / STEEMIT_SECONDS_PER_YEAR) *
+            gpo = db->get_dynamic_global_properties();
+            interest_op = get_last_operations(1)[0].get<interest_operation>();
+
+            auto coinseconds = alice_sbd.amount.value * 15
+                + alice_sbd2.amount.value * (STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC - 15);
+
+            BOOST_REQUIRE(gpo.sbd_interest_rate > 0);
+            BOOST_REQUIRE_EQUAL(uint64_t(alice_sbd3.amount.value),
+                          alice_sbd2.amount.value +
+                          (((uint128_t(coinseconds) /
+                             STEEMIT_SECONDS_PER_YEAR) *
                             gpo.sbd_interest_rate) /
                            STEEMIT_100_PERCENT).to_uint64());
+            BOOST_REQUIRE_EQUAL(interest_op.owner, "alice");
+            BOOST_REQUIRE_EQUAL(interest_op.interest.amount.value,
+                          alice_sbd3.amount.value -
+                          alice_sbd2.amount.value);
             validate_database();
         } catch (fc::exception& e) {
             edump((e.to_detail_string()));

@@ -39,6 +39,9 @@ namespace golos { namespace chain {
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__168)) {
                     w.props.hf26_windows_sec_to_min();
                 }
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_28)) {
+                    w.props.min_golos_power_to_curate = _db.get_witness_schedule_object().median_props.min_golos_power_to_curate;
+                }
             });
         }
     }
