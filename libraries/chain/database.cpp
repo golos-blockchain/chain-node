@@ -4048,7 +4048,28 @@ namespace golos { namespace chain {
         void database::process_gbg_payments() {
             if (!has_hardfork(STEEMIT_HARDFORK_0_28__219)) return;
 
+            if (head_block_num() % (STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC / 3) != 0) {
+                return;
+            }
+
+            const auto& bidx = get_index<account_index, by_savings>();
+
+            for (auto itr = bidx.begin();
+                    itr != bidx.end() && itr->savings_sbd_balance.amount > 0; ) {
+                const auto& acc = *itr;
+                ++itr;
+
+                modify(acc, [&](auto& acc) {
+                    acc.savings_sbd_seconds +=
+                            fc::uint128_t(acc.savings_sbd_balance.amount.value) *
+                            (head_block_time() -
+                             acc.savings_sbd_seconds_last_update).to_seconds();
+                    acc.savings_sbd_seconds_last_update = head_block_time();
+                });
+            }
+
             const auto& idx = get_index<account_index, by_savings_seconds>();
+
             for (auto itr = idx.begin(); itr != idx.end() && itr->savings_sbd_seconds > 0; ) {
                 const auto& acc = *itr;
                 ++itr;
