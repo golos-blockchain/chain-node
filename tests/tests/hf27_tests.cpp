@@ -269,8 +269,8 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
             ++accs_after;
         }
 
-        // 4 are system ones
-        BOOST_CHECK_EQUAL(accs_now + 5 - accs_after, 95);
+        // 5 was system ones + 1 system acc (newacc) created when HF
+        BOOST_CHECK_EQUAL(accs_now - accs_after, 94);
 
         generate_blocks(38);
 

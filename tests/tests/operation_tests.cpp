@@ -8257,7 +8257,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             push_tx_with_ops(tx, alice_private_key, vop);
             generate_block();
 
-            BOOST_CHECK_EQUAL(db->get_account("alice").tip_balance.amount.value, 18);
+            BOOST_CHECK_EQUAL(db->get_account("alice").tip_balance.amount.value, 0);
 
         } catch (fc::exception& e) {
             edump((e.to_detail_string()));
