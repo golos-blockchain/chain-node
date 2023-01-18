@@ -1,4 +1,5 @@
 #include <golos/plugins/market_history/market_history_plugin.hpp>
+#include <golos/plugins/market_history/market_history_visitor.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
 
 #include <golos/chain/index.hpp>
@@ -9,6 +10,8 @@
 #include <golos/protocol/exceptions.hpp>
 
 #include <boost/algorithm/string.hpp>
+#include <golos/api/callback_info.hpp>
+#include <golos/plugins/market_history/market_history_callbacks.hpp>
 
 
 namespace golos {
@@ -18,6 +21,11 @@ namespace golos {
             using golos::protocol::fill_order_operation;
             using golos::chain::operation_notification;
 
+            using golos::api::callback_info;
+            using plugins::json_rpc::msg_pack_transfer;
+
+            using market_callback_info = callback_info<const callback_arg&>;
+            using market_callback = market_callback_info::callback_t;
 
             class market_history_plugin::market_history_plugin_impl {
             public:
@@ -27,6 +35,18 @@ namespace golos {
                 }
 
                 ~market_history_plugin_impl() {
+                }
+
+                void on_operation(const operation_notification& note) {
+                    try {
+                        /// plugins shouldn't ever throw
+                        update_market_histories(note);
+                        note.op.visit(operation_visitor(_my, _db));
+                    } catch (const fc::exception& e) {
+                        edump((e.to_detail_string()));
+                    } catch (...) {
+                        elog("unhandled exception");
+                    }
                 }
 
                 symbol_type_pair get_symbol_type_pair(asset asset1, asset asset2, bool* pair_reversed = nullptr) const;
@@ -43,8 +63,9 @@ namespace golos {
                 vector<bucket_object> get_market_history(const symbol_type_pair& pair, uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const;
                 flat_set<uint32_t> get_market_history_buckets() const;
                 std::vector<limit_order> get_open_orders(const symbol_type_pair& pair, bool pair_reversed, const std::string& owner, bool sort_by_price, bool sort_lesser) const;
-                std::vector<limit_order> get_fillable_orders(price market_price) const;
+                std::vector<limit_order> get_orders(const std::vector<std::string>& order_ids) const;
 
+                void subscribe_to_market(market_callback cb);
 
                 void update_market_histories(const golos::chain::operation_notification &o);
 
@@ -58,6 +79,9 @@ namespace golos {
                 int32_t _maximum_history_per_bucket_size = 1000;
 
                 golos::chain::database &_db;
+
+                market_callback_info::cont active_market_callback;
+                market_callback_info::cont free_market_callback;
             };
 
             void market_history_plugin::market_history_plugin_impl::update_market_histories(const operation_notification &o) {
@@ -520,24 +544,36 @@ namespace golos {
                 });
             }
 
-            std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_fillable_orders(price market_price) const {
+            std::vector<limit_order> market_history_plugin::market_history_plugin_impl::get_orders(const std::vector<std::string>& order_ids) const {
                 return _db.with_weak_read_lock([&]() {
                     std::vector<limit_order> result;
 
-                    const auto &limit_price_idx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_price>();
+                    const auto& idx = _db.get_index<golos::chain::limit_order_index, golos::chain::by_account>();
 
-                    auto max_price = ~market_price;
-                    auto limit_itr = limit_price_idx.lower_bound(max_price.max());
-                    auto limit_end = limit_price_idx.upper_bound(max_price);
-
-                    bool finished = false;
-                    while (!finished && limit_itr != limit_end) {
-                        result.push_back(*limit_itr);
-                        ++limit_itr;
+                    for (const auto& id : order_ids) {
+                        std::vector<std::string> parts;
+                        parts.reserve(2);
+                        boost::split(parts, id, boost::is_any_of("|"));
+                        if (parts.size() == 2) {
+                            auto orderid = std::stoul(parts[1]);
+                            auto itr = idx.find(std::make_tuple(parts[0], orderid));
+                            if (itr != idx.end()) {
+                                result.push_back(*itr);
+                                continue;
+                            }
+                        }
+                        result.emplace_back();
                     }
 
                     return result;
                 });
+            }
+
+            void market_history_plugin::market_history_plugin_impl::subscribe_to_market(market_callback cb) {
+                auto info_ptr = std::make_shared<market_callback_info>();
+                active_market_callback.push_back(info_ptr);
+                info_ptr->it = std::prev(active_market_callback.end());
+                info_ptr->connect(_my.create_order_signal, free_market_callback, cb);
             }
 
             market_history_plugin::market_history_plugin() {
@@ -566,7 +602,9 @@ namespace golos {
                     golos::chain::database& db = _my->database();
 
                     db.post_apply_operation.connect(
-                            [&](const golos::chain::operation_notification &o) { _my->update_market_histories(o); });
+                            [&](const golos::chain::operation_notification &o) {
+                                _my->on_operation(o);
+                            });
                     golos::chain::add_plugin_index<bucket_index>(db);
                     golos::chain::add_plugin_index<order_history_index>(db);
 
@@ -608,6 +646,23 @@ namespace golos {
 
 
             // Api Defines
+
+            DEFINE_API(market_history_plugin, subscribe_to_market) {
+                msg_pack_transfer transfer(args);
+
+                auto& _db = _my->database();
+                _db.with_weak_read_lock([&]{
+                    _my->subscribe_to_market([this,msg = transfer.msg()](const auto& block) {
+                        fc::variant r = fc::variant(block);
+                        wlog(fc::json::to_string(r));
+                        msg->unsafe_result(r);
+                    });
+                });
+
+                transfer.complete();
+
+                return {};
+            }
 
             DEFINE_API(market_history_plugin, get_ticker) {
                 PLUGIN_API_VALIDATE_ARGS(
@@ -789,13 +844,13 @@ namespace golos {
                 });
             }
 
-            DEFINE_API(market_history_plugin, get_fillable_orders) {
+            DEFINE_API(market_history_plugin, get_orders) {
                 PLUGIN_API_VALIDATE_ARGS(
-                    (price, market_price)
+                    (std::vector<std::string>, order_ids)
                 );
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_fillable_orders(market_price);
+                    return _my->get_orders(order_ids);
                 });
             }
 

@@ -380,6 +380,10 @@ namespace golos { namespace chain {
 
             void process_events();
 
+            void push_order_create_event(const limit_order_object& order);
+
+            void push_order_delete_event(const limit_order_object& order);
+
             bool is_account_vote(const vote_operation& op) const {
                 // Check if it is account vote, not comment vote
                 return !op.permlink.size() && has_hardfork(STEEMIT_HARDFORK_0_26__164);
@@ -486,6 +490,8 @@ namespace golos { namespace chain {
 
             void adjust_balance(const account_object &a, const asset &delta);
 
+            void pay_savings_interest(account_object& acnt);
+
             void adjust_savings_balance(const account_object &a, const asset &delta);
 
             void adjust_market_balance(const account_object& a, const asset& delta);
@@ -557,6 +563,8 @@ namespace golos { namespace chain {
 
             void process_funds();
 
+            asset get_min_gp_to_emission() const;
+
             void process_accumulative_distributions();
 
             void auto_claim_accumulatives();
@@ -576,6 +584,8 @@ namespace golos { namespace chain {
             void fix_recovery_accounts();
 
             void process_account_freezing();
+
+            void process_gbg_payments();
 
             void update_median_feed();
 

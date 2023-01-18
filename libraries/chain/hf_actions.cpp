@@ -41,7 +41,7 @@ void hf_actions::prepare_for_tests() {
 #define COMMON_POSTING public_key_type("GLS8hnaAj3ufXbfFBKqGNhyGvW78EQN5rpeqfcDD2d2tQyhd2dEDb")
 #define COMMON_ACTIVE public_key_type("GLS8EAm8DhD8tjX3N87RVAvw1o8uzSQkRJ3Tcn4dgmybHwnsyvThb")
 
-    // adjust_balance(get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
+    //_db.adjust_balance(_db.get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
 
     _db.modify(_db.get_authority(_db.get_account("cyberfounder").name), [&](account_authority_object &auth) {
         auth.posting = authority(1, COMMON_POSTING, 1);
@@ -135,6 +135,29 @@ void hf_actions::create_registrator_account() {
         o.posting.weight_threshold = 1;
     });
 #endif
+}
+
+void hf_actions::convert_min_curate_golos_power() {
+    const auto& wso = _db.get_witness_schedule_object();
+
+    const auto& gbg_median = _db.get_feed_history().current_median_history;
+    auto convert_to_gbg = [&](auto& a) {
+        if (!gbg_median.is_null()) {
+            return a * gbg_median;
+        }
+        return asset(a.amount, SBD_SYMBOL);
+    };
+
+    const auto &idx = _db.get_index<witness_index>().indices();
+    for (const auto& witness : idx) {
+        _db.modify(witness, [&](auto& w) {
+            w.props.min_golos_power_to_curate = convert_to_gbg(w.props.min_golos_power_to_curate);
+        });
+    }
+
+    _db.modify(wso, [&](auto& wso) {
+        wso.median_props.min_golos_power_to_curate = convert_to_gbg(wso.median_props.min_golos_power_to_curate);
+    });
 }
 
 hf_actions::hf_actions(database& db) : _db(db) {

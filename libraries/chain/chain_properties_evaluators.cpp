@@ -39,6 +39,9 @@ namespace golos { namespace chain {
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__168)) {
                     w.props.hf26_windows_sec_to_min();
                 }
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_28)) {
+                    w.props.min_golos_power_to_curate = _db.get_witness_schedule_object().median_props.min_golos_power_to_curate;
+                }
             });
         }
     }
@@ -107,6 +110,13 @@ namespace golos { namespace chain {
                     auto negrep_posting_window = props.negrep_posting_window;
                     GOLOS_CHECK_VALUE_LEGE(negrep_posting_window, 1, std::numeric_limits<uint16_t>::max() / 2);
                 }
+                // GOLOS_MIN_GOLOS_POWER_TO_CURATE is just 0
+                auto min_golos_power_to_curate = props.min_golos_power_to_curate;
+                if (!_db.has_hardfork(STEEMIT_HARDFORK_0_28)) {
+                    GOLOS_CHECK_ASSET_GE(min_golos_power_to_curate, GOLOS, GOLOS_MIN_GOLOS_POWER_TO_CURATE);
+                } else {
+                    GOLOS_CHECK_ASSET_GE(min_golos_power_to_curate, GBG, GOLOS_MIN_GOLOS_POWER_TO_CURATE);
+                }
             });
         }
 
@@ -119,6 +129,13 @@ namespace golos { namespace chain {
 
         result_type operator()(const chain_properties_27& props) const {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_27, "chain_properties_27");
+            hf23_check(props);
+            hf26_check(props);
+            _wprops = props;
+        }
+
+        result_type operator()(const chain_properties_28& props) const {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_28, "chain_properties_28");
             hf23_check(props);
             hf26_check(props);
             _wprops = props;

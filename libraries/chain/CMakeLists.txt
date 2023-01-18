@@ -36,6 +36,7 @@ if(BUILD_SHARED_LIBRARIES)
             curation_info.cpp
             worker_evaluators.cpp
             database_worker_objects.cpp
+            database_market_events.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
@@ -96,6 +97,7 @@ else()
             curation_info.cpp
             worker_evaluators.cpp
             database_worker_objects.cpp
+            database_market_events.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp

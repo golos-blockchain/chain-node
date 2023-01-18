@@ -1,0 +1,19 @@
+#ifndef STEEMIT_HARDFORK_0_28
+#define STEEMIT_HARDFORK_0_28 28
+
+#define STEEMIT_HARDFORK_0_28__214 (STEEMIT_HARDFORK_0_28) // Improve VS undelegation
+#define STEEMIT_HARDFORK_0_28__215 (STEEMIT_HARDFORK_0_28) // Fix VS excessive week
+#define STEEMIT_HARDFORK_0_28__216 (STEEMIT_HARDFORK_0_28) // Deprecate miners in witnesses scheduling
+#define STEEMIT_HARDFORK_0_28__217 (STEEMIT_HARDFORK_0_28) // Fee for reputation downvoting
+#define STEEMIT_HARDFORK_0_28__218 (STEEMIT_HARDFORK_0_28) // Accumulative balance for users with low GP
+#define STEEMIT_HARDFORK_0_28__219 (STEEMIT_HARDFORK_0_28) // Automatic GBG interest payments
+
+#ifdef STEEMIT_BUILD_TESTNET
+#define STEEMIT_HARDFORK_0_28_TIME  1668531600 // 15 nov 2022 20:00:00 MSK
+#else
+#define STEEMIT_HARDFORK_0_28_TIME  1674320400 // 21 jan 2023 20:00:00 MSK
+#endif
+
+#define STEEMIT_HARDFORK_0_28_VERSION hardfork_version( 0, 28 )
+
+#endif

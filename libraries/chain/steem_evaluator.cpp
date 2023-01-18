@@ -1044,7 +1044,14 @@ namespace golos { namespace chain {
                             com.curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
                         }
 
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_28__218)) {
+                            const auto& gbg_median = _db.get_feed_history().current_median_history;
+                            if (!gbg_median.is_null()) {
+                                com.min_golos_power_to_curate = (mprops.min_golos_power_to_curate * gbg_median).amount;
+                            } else {
+                                com.min_golos_power_to_curate = 0;
+                            }
+                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
                             com.min_golos_power_to_curate = mprops.min_golos_power_to_curate.amount;
                         }
 
@@ -1743,6 +1750,17 @@ namespace golos { namespace chain {
                 _db.check_negrep_posting_bandwidth(voter, "vote",
                     op.author, op.permlink, "", "");
 
+                if (_db.has_hardfork(STEEMIT_HARDFORK_0_28__217) && !comment && op.weight < 0) {
+                    GOLOS_CHECK_VALUE(voter.tip_balance >= mprops.unwanted_operation_cost,
+                        "For reputation unvote you need at least ${amount} of TIP balance",
+                        ("amount", mprops.unwanted_operation_cost));
+                    _db.modify(voter, [&](auto& voter) {
+                        voter.tip_balance -= mprops.unwanted_operation_cost;
+                    });
+                    _db.adjust_supply(-mprops.unwanted_operation_cost);
+                    _db.push_event(unwanted_cost_operation(op.author, op.voter, mprops.unwanted_operation_cost, "", true));
+                }
+
                 if (comment && _db.calculate_discussion_payout_time(*comment) == fc::time_point_sec::maximum()) {
                     // non-consensus vote (after cashout)
                     const auto& comment_vote_idx = _db.get_index<comment_vote_index, by_comment_voter>();
@@ -2331,6 +2349,10 @@ namespace golos { namespace chain {
 
 
         void pow2_evaluator::do_apply(const pow2_operation &o) {
+            if (db().has_hardfork(STEEMIT_HARDFORK_0_28__216)) {
+                FC_THROW_EXCEPTION(golos::unsupported_operation, "Miners are deprecated in HF28.");
+            }
+
             database &db = this->db();
             const auto &dgp = db.get_dynamic_global_properties();
             uint32_t target_pow = db.get_pow_summary_target();
@@ -2536,6 +2558,8 @@ namespace golos { namespace chain {
                 obj.expiration = o.expiration;
             });
 
+            _db.push_order_create_event(order);
+
             bool filled = _db.apply_order(order);
 
             if (o.fill_or_kill)
@@ -2589,6 +2613,8 @@ namespace golos { namespace chain {
                 obj.sell_price = o.exchange_rate;
                 obj.expiration = o.expiration;
             });
+
+            _db.push_order_create_event(order);
 
             bool filled = _db.apply_order(order);
 
@@ -2994,9 +3020,11 @@ void delegate_vesting_shares(
     auto increasing = delta.amount > 0;
 
     GOLOS_CHECK_OP_PARAM(op, vesting_shares, {
-        GOLOS_CHECK_LOGIC((increasing ? delta : -delta) >= min_update,
-            logic_exception::delegation_difference_too_low,
-            "Delegation difference is not enough. min_update: ${min}", ("min", min_update));
+        if (!_db.has_hardfork(STEEMIT_HARDFORK_0_28__214) || op.vesting_shares.amount != 0) {
+            GOLOS_CHECK_LOGIC((increasing ? delta : -delta) >= min_update,
+                logic_exception::delegation_difference_too_low,
+                "Delegation difference is not enough. min_update: ${min}", ("min", min_update));
+        }
 #ifdef STEEMIT_BUILD_TESTNET
         // min_update depends on account_creation_fee, which can be 0 on testnet
         GOLOS_CHECK_LOGIC(delta.amount != 0,
@@ -3173,13 +3201,26 @@ void delegate_vesting_shares(
         void claim_evaluator::do_apply(const claim_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "claim_operation");
 
-            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__202)) {
+            bool has_hf28 = _db.has_hardfork(STEEMIT_HARDFORK_0_28__218);
+
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_27__202) && !has_hf28) {
                 FC_THROW_EXCEPTION(golos::unsupported_operation, "claim is deprecated");
             }
 
             const auto& from_account = _db.get_account(op.from);
             const auto& to_account = op.to.size() ? _db.get_account(op.to)
                                                  : from_account;
+
+            if (has_hf28) {
+                const auto& gbg_median = _db.get_feed_history().current_median_history;
+                if (!gbg_median.is_null()) {
+                    auto min_gbg = _db.get_witness_schedule_object().median_props.min_golos_power_to_emission;
+                    auto min_golos = min_gbg * gbg_median;
+                    auto min_golos_power_to_emission = min_golos * _db.get_dynamic_global_properties().get_vesting_share_price();
+                    GOLOS_CHECK_VALUE(from_account.emission_vesting_shares() >= min_golos_power_to_emission,
+                        "Vesting shares too low.");
+                }
+            }
 
             GOLOS_CHECK_LOGIC(op.amount <= from_account.accumulative_balance, logic_exception::not_enough_accumulative_balance, "Not enough accumulative balance");
 

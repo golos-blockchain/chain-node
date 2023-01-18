@@ -961,6 +961,58 @@ namespace golos { namespace protocol {
             chain_properties_27& operator=(const chain_properties_27&) = default;
         };
 
+        struct chain_properties_28 : public chain_properties_27 {
+
+            /**
+             * Minimum vesting shares amount (in GBG) to receive emission.
+             */
+            asset min_golos_power_to_emission = GOLOS_DEF_GOLOS_POWER_TO_EMISSION;
+
+            void validate() const;
+
+            chain_properties_28& operator=(const chain_properties_17& src) {
+                chain_properties_27::operator=(src);
+                return *this;
+            }
+
+            chain_properties_28& operator=(const chain_properties_18& src) {
+                chain_properties_27::operator=(src);
+                return *this;
+            }
+
+            chain_properties_28& operator=(const chain_properties_19& src) {
+                chain_properties_27::operator=(src);
+                return *this;
+            }
+
+            chain_properties_28& operator=(const chain_properties_22& src) {
+                chain_properties_27::operator=(src);
+                return *this;
+            }
+
+            chain_properties_28& operator=(const chain_properties_23& src) {
+                chain_properties_27::operator=(src);
+                return *this;
+            }
+
+            chain_properties_28& operator=(const chain_properties_24& src) {
+                chain_properties_27::operator=(src);
+                return *this;
+            }
+
+            chain_properties_28& operator=(const chain_properties_26& src) {
+                chain_properties_27::operator=(src);
+                return *this;
+            }
+
+            chain_properties_28& operator=(const chain_properties_27& src) {
+                chain_properties_27::operator=(src);
+                return *this;
+            }
+
+            chain_properties_28& operator=(const chain_properties_28&) = default;
+        };
+
         inline chain_properties_17& chain_properties_17::operator=(const chain_properties_18& src) {
             account_creation_fee = src.account_creation_fee;
             maximum_block_size = src.maximum_block_size;
@@ -976,7 +1028,8 @@ namespace golos { namespace protocol {
             chain_properties_23,
             chain_properties_24,
             chain_properties_26,
-            chain_properties_27
+            chain_properties_27,
+            chain_properties_28
         >;
 
         /**
@@ -1987,6 +2040,10 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::protocol::chain_properties_27), ((golos::protocol::chain_properties_26)),
     (unwanted_operation_cost)(unlimit_operation_cost)
+)
+FC_REFLECT_DERIVED(
+    (golos::protocol::chain_properties_28), ((golos::protocol::chain_properties_27)),
+    (min_golos_power_to_emission)
 )
 
 FC_REFLECT_TYPENAME((golos::protocol::versioned_chain_properties))

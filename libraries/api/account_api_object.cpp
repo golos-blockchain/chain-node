@@ -157,6 +157,7 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
     services.vote = battery_cost(a.last_vote_time, now_time,
         mprops.votes_window, mprops.votes_per_window,
         a.voting_capacity, mprops.unlimit_operation_cost);
+    services.vote_rep = services.vote + mprops.unwanted_operation_cost;
 }
 
 account_api_object::account_api_object() = default;

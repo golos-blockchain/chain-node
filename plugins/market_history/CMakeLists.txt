@@ -3,10 +3,12 @@ set(CURRENT_TARGET market_history)
 list(APPEND CURRENT_TARGET_HEADERS
      include/golos/plugins/market_history/market_history_plugin.hpp
      include/golos/plugins/market_history/market_history_objects.hpp
+     include/golos/plugins/market_history/market_history_visitor.hpp
      )
 
 list(APPEND CURRENT_TARGET_SOURCES
      market_history_plugin.cpp
+     market_history_visitor.cpp
      )
 
 if(BUILD_SHARED_LIBRARIES)
@@ -28,6 +30,7 @@ target_link_libraries(
         golos_${CURRENT_TARGET}
         golos::chain_plugin
         golos::p2p
+        golos::api
         golos::protocol
         golos::network
         graphene_utilities

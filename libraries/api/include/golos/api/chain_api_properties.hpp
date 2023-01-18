@@ -77,6 +77,8 @@ namespace golos { namespace api {
 
         fc::optional<asset> unwanted_operation_cost;
         fc::optional<asset> unlimit_operation_cost;
+
+        fc::optional<asset> min_golos_power_to_emission;
     };
 
 } } // golos::api
@@ -102,4 +104,5 @@ FC_REFLECT(
     (convert_fee_percent)(min_golos_power_to_curate)
     (negrep_posting_window)(negrep_posting_per_window)
     (unwanted_operation_cost)(unlimit_operation_cost)
+    (min_golos_power_to_emission)
 )

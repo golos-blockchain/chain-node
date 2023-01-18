@@ -5,6 +5,7 @@
 #include <golos/protocol/steem_operations.hpp>
 #include <golos/protocol/worker_operations.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
+#include <golos/protocol/market_events.hpp>
 
 namespace golos { namespace protocol {
 
@@ -123,7 +124,9 @@ namespace golos { namespace protocol {
                 authority_updated_operation,
                 account_freeze_operation,
                 unwanted_cost_operation,
-                unlimit_cost_operation
+                unlimit_cost_operation,
+                order_create_operation,
+                order_delete_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,
