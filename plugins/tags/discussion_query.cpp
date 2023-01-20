@@ -102,5 +102,12 @@ namespace golos { namespace plugins { namespace tags {
         return result;
     }
 
+    bool discussion_query::is_good_app(const comment_app& app) const {
+        if (!!prefs) {
+            return true;
+        }
+        return prefs->is_good_app(app);
+    }
+
 } } } // golos::plugins::tags
 

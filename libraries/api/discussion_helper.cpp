@@ -3,6 +3,7 @@
 #include <golos/api/content_utils.hpp>
 #include <golos/chain/account_object.hpp>
 #include <golos/chain/steem_objects.hpp>
+#include <golos/chain/comment_app_helper.hpp>
 #include <golos/chain/curation_info.hpp>
 #include <fc/io/json.hpp>
 #include <boost/algorithm/string.hpp>
@@ -148,6 +149,7 @@ namespace golos { namespace api {
                     d.root_permlink = to_string(root_extras->permlink);
                 }
             }
+            d.app = get_comment_app_by_id(database(), extras->app_id);
         }
     }
 

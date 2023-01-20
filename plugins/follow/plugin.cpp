@@ -7,6 +7,7 @@
 #include <golos/chain/generic_custom_operation_interpreter.hpp>
 #include <golos/chain/operation_notification.hpp>
 #include <golos/chain/account_object.hpp>
+#include <golos/chain/comment_app_helper.hpp>
 #include <golos/chain/comment_object.hpp>
 #include <memory>
 #include <golos/plugins/json_rpc/plugin.hpp>
@@ -35,6 +36,7 @@ namespace golos {
             using golos::chain::account_index;
             using golos::chain::by_name;
             using golos::api::discussion_helper;
+            using golos::api::opt_prefs;
 
             struct pre_operation_visitor {
                 plugin& _plugin;
@@ -391,7 +393,8 @@ namespace golos {
                         account_name_type account,
                         uint32_t start_entry_id = 0,
                         uint32_t limit = 500,
-                        const std::set<std::string>* filter_tag_masks = nullptr);
+                        const std::set<std::string>* filter_tag_masks = nullptr,
+                        opt_prefs prefs = opt_prefs());
 
                 std::vector<comment_feed_entry> get_feed(
                         account_name_type account,
@@ -403,7 +406,8 @@ namespace golos {
                         account_name_type account,
                         uint32_t start_entry_id = 0,
                         uint32_t limit = 500,
-                        const std::set<std::string>* filter_tag_masks = nullptr);
+                        const std::set<std::string>* filter_tag_masks = nullptr,
+                        opt_prefs prefs = opt_prefs());
 
                 std::vector<comment_blog_entry> get_blog(
                         account_name_type account,
@@ -589,7 +593,8 @@ namespace golos {
                     account_name_type account,
                     uint32_t entry_id,
                     uint32_t limit,
-                    const std::set<std::string>* filter_tag_masks) {
+                    const std::set<std::string>* filter_tag_masks,
+                    opt_prefs prefs) {
                 GOLOS_CHECK_LIMIT_PARAM(limit, 500);
 
                 if (entry_id == 0) {
@@ -607,6 +612,8 @@ namespace golos {
                     const auto& comment = db.get(itr->comment);
                     const auto* extras = db.find_extras(comment.author, comment.hashlink);
                     if (!extras) continue;
+                    auto app = get_comment_app_by_id(db, extras->app_id);
+                    if (!!prefs && !prefs->is_good_app(app)) continue;
                     if (category_matches_masks(to_string(extras->parent_permlink), filter_tag_masks)) continue;
                     feed_entry entry;
                     entry.author = comment.author;
@@ -685,7 +692,8 @@ namespace golos {
                     account_name_type account,
                     uint32_t entry_id,
                     uint32_t limit,
-                    const std::set<std::string>* filter_tag_masks) {
+                    const std::set<std::string>* filter_tag_masks,
+                    opt_prefs prefs) {
                 GOLOS_CHECK_LIMIT_PARAM(limit, 500);
 
                 if (entry_id == 0) {
@@ -703,6 +711,8 @@ namespace golos {
                     const auto& comment = db.get(itr->comment);
                     const auto* extras = db.find_extras(comment.author, comment.hashlink);
                     if (!extras) continue;
+                    auto app = get_comment_app_by_id(db, extras->app_id);
+                    if (!!prefs && !prefs->is_good_app(app)) continue;
                     if (category_matches_masks(to_string(extras->parent_permlink), filter_tag_masks)) continue;
                     blog_entry entry;
                     entry.author = comment.author;
@@ -844,9 +854,10 @@ namespace golos {
                     (uint32_t,              entry_id, 0)
                     (uint32_t,              limit, 500)
                     (std::set<std::string>, filter_tag_masks, std::set<std::string>())
+                    (opt_prefs, prefs, opt_prefs())
                 )
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_feed_entries(account, entry_id, limit, &filter_tag_masks);
+                    return pimpl->get_feed_entries(account, entry_id, limit, &filter_tag_masks, prefs);
                 });
             }
 
@@ -868,9 +879,10 @@ namespace golos {
                     (uint32_t,              entry_id, 0)
                     (uint32_t,              limit, 500)
                     (std::set<std::string>, filter_tag_masks, std::set<std::string>())
+                    (opt_prefs, prefs, opt_prefs())
                 )
                 return pimpl->database().with_weak_read_lock([&]() {
-                    return pimpl->get_blog_entries(account, entry_id, limit, &filter_tag_masks);
+                    return pimpl->get_blog_entries(account, entry_id, limit, &filter_tag_masks, prefs);
                 });
             }
 

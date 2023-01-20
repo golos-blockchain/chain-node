@@ -42,6 +42,8 @@ namespace golos {
 
         using protocol::auction_window_reward_destination_type;
 
+        using comment_app = fc::fixed_string<>;
+        using comment_app_id = uint32_t;
         
         class comment_object
                 : public object<comment_object_type, comment_object> {
@@ -94,7 +96,6 @@ namespace golos {
 
             id_type root_comment;
 
-
             comment_mode mode = first_payout;
 
             protocol::curation_curve curation_reward_curve = protocol::curation_curve::detect;
@@ -111,6 +112,20 @@ namespace golos {
             bool has_worker_request = false;
 
             bip::vector <protocol::beneficiary_route_type, allocator<protocol::beneficiary_route_type>> beneficiaries;
+        };
+
+        class comment_app_object
+                : public object<comment_app_object_type, comment_app_object> {
+        public:
+            comment_app_object() = delete;
+
+            template<typename Constructor, typename Allocator>
+            comment_app_object(Constructor &&c, allocator <Allocator> a) {
+                c(*this);
+            }
+
+            id_type id;
+            comment_app app;
         };
 
         class comment_extras_object
@@ -130,6 +145,7 @@ namespace golos {
             hashlink_type hashlink;
             shared_string permlink;
             shared_string parent_permlink;
+            comment_app_id app_id;
         };
 
         struct delegator_vote_interest_rate {
@@ -247,6 +263,21 @@ namespace golos {
         >
         comment_index;
 
+        struct by_app;
+
+        using comment_app_index = multi_index_container<
+            comment_app_object,
+            indexed_by<
+                ordered_unique <tag<by_id>,
+                    member<comment_app_object, comment_app_object::id_type, &comment_app_object::id>
+                >,
+                ordered_unique <tag<by_app>,
+                    member<comment_app_object, comment_app, &comment_app_object::app>
+                >
+            >,
+            allocator<comment_app_object>
+        >;
+
         using comment_extras_index = multi_index_container<
             comment_extras_object,
             indexed_by<
@@ -269,6 +300,8 @@ namespace golos {
 FC_REFLECT_ENUM(golos::chain::comment_mode, (not_set)(first_payout)(second_payout)(archived))
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_object, golos::chain::comment_index)
+
+CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_app_object, golos::chain::comment_app_index)
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_extras_object, golos::chain::comment_extras_index)
 

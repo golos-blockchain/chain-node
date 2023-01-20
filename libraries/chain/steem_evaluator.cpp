@@ -10,6 +10,7 @@
 #include <fc/io/json.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 #include <boost/algorithm/string.hpp>
+#include <golos/chain/comment_app_helper.hpp>
 
 
 namespace golos { namespace chain {
@@ -1095,11 +1096,15 @@ namespace golos { namespace chain {
                     });
 
                     if (_db.store_comment_extras()) {
+                        comment_app app = parse_comment_app(_db, o);
+                        auto app_id = singleton_comment_app(_db, app);
+
                         _db.create<comment_extras_object>([&](auto& ceo) {
                             ceo.author = o.author;
                             ceo.hashlink = hashlink;
                             from_string(ceo.permlink, o.permlink);
                             from_string(ceo.parent_permlink, o.parent_permlink);
+                            ceo.app_id = app_id;
                         });
                     }
 

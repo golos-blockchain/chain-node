@@ -37,10 +37,12 @@ if(BUILD_SHARED_LIBRARIES)
             worker_evaluators.cpp
             database_worker_objects.cpp
             database_market_events.cpp
+            comment_app_helper.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
             include/golos/chain/block_summary_object.hpp
+            include/golos/chain/comment_app_helper.hpp
             include/golos/chain/comment_object.hpp
             include/golos/chain/proposal_object.hpp
             include/golos/chain/compound.hpp
@@ -98,10 +100,12 @@ else()
             worker_evaluators.cpp
             database_worker_objects.cpp
             database_market_events.cpp
+            comment_app_helper.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
             include/golos/chain/block_summary_object.hpp
+            include/golos/chain/comment_app_helper.hpp
             include/golos/chain/comment_object.hpp
             include/golos/chain/proposal_object.hpp
             include/golos/chain/compound.hpp

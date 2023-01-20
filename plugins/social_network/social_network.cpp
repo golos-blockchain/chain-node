@@ -1208,6 +1208,9 @@ namespace golos { namespace plugins { namespace social_network {
                 if (!!dis.bad && dis.bad->to_remove) {
                     continue;
                 }
+                if (!!prefs && !prefs->is_good_app(dis.app)) {
+                    continue;
+                }
                 if (filter_tag_masks) {
                     bool found = false;
                     for (const auto& mask : *filter_tag_masks) {
@@ -1289,6 +1292,10 @@ namespace golos { namespace plugins { namespace social_network {
                     ++itr;
                     continue;
                 }
+                if (!!prefs && !prefs->is_good_app(d.app)) {
+                    ++itr;
+                    continue;
+                }
                 unordered.emplace_back(d);
 
                 ++itr;
@@ -1351,6 +1358,7 @@ namespace golos { namespace plugins { namespace social_network {
                         }
                     }
 
+
                     if (filter_ids.count(cmt.id) || filter_authors.count(cmt.author)) {
                         ++itr;
                         continue;
@@ -1359,6 +1367,11 @@ namespace golos { namespace plugins { namespace social_network {
                     auto dis = get_discussion(cmt, vote_limit, vote_offset, prefs);
 
                     if (!!dis.bad && dis.bad->to_remove) {
+                        ++itr;
+                        continue;
+                    }
+
+                    if (!!prefs && !prefs->is_good_app(dis.app)) {
                         ++itr;
                         continue;
                     }
