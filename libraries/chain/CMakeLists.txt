@@ -37,6 +37,7 @@ if(BUILD_SHARED_LIBRARIES)
             worker_evaluators.cpp
             database_worker_objects.cpp
             database_market_events.cpp
+            database_comment_bill.cpp
             comment_app_helper.cpp
 
             include/golos/chain/account_object.hpp
@@ -100,6 +101,7 @@ else()
             worker_evaluators.cpp
             database_worker_objects.cpp
             database_market_events.cpp
+            database_comment_bill.cpp
             comment_app_helper.cpp
 
             include/golos/chain/account_object.hpp

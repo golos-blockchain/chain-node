@@ -766,7 +766,7 @@ namespace golos { namespace plugins { namespace tags {
         return pimpl->select_ordered_discussions<sort::by_net_rshares>(
             query,
             [&](const discussion& d) -> bool {
-                return d.net_rshares > 0 && d.max_accepted_payout.amount != 0;
+                return d.net_rshares > 0 && (!d.max_accepted_payout.valid() || d.max_accepted_payout->amount != 0);
             }
         );
     }

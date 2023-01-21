@@ -145,7 +145,8 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
 
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
+            const auto& alice_bill = db->get_comment_bill(alice_post.id);
+            generate_blocks((alice_post.created + alice_bill.auction_window_size), true);
 
             vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
 
@@ -222,7 +223,9 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
             BOOST_TEST_MESSAGE("Create votes.");
             BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
+            const auto& alice_bill = db->get_comment_bill(alice_post.id);
+
+            generate_blocks((alice_post.created + alice_bill.auction_window_size), true);
             vote_sequence(comment.author, comment.permlink, voters_count, 5);
 
             generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
@@ -299,7 +302,9 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
             BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
             vote_sequence(comment.author, comment.permlink, voters_count, 5);
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
+            
+            const auto& alice_bill = db->get_comment_bill(alice_post.id);
+            generate_blocks((alice_post.created + alice_bill.auction_window_size), true);
 
             generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
 
@@ -374,7 +379,9 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
             BOOST_TEST_MESSAGE("Create votes.");
             BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
+            const auto& alice_bill = db->get_comment_bill(alice_post.id);
+
+            generate_blocks((alice_post.created + alice_bill.auction_window_size), true);
             vote_sequence(comment.author, comment.permlink, voters_count, 5);
 
             generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
@@ -452,7 +459,10 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
             BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
             vote_sequence(comment.author, comment.permlink, voters_count, 5);
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
+
+            const auto& alice_bill = db->get_comment_bill(alice_post.id);
+
+            generate_blocks((alice_post.created + alice_bill.auction_window_size), true);
 
             generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);
 
@@ -528,7 +538,10 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
             BOOST_CHECK_EQUAL(alice_post.cashout_time, alice_post.created + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
             vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
-            generate_blocks((alice_post.created + alice_post.auction_window_size), true);
+
+            const auto& alice_bill = db->get_comment_bill(alice_post.id);
+
+            generate_blocks((alice_post.created + alice_bill.auction_window_size), true);
             vote_sequence(comment.author, comment.permlink, voters_count / 2, 5);
 
             generate_blocks((alice_post.cashout_time - STEEMIT_BLOCK_INTERVAL), true);

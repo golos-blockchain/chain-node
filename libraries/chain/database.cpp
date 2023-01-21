@@ -17,6 +17,7 @@
 #include <golos/chain/snapshot_state.hpp>
 #include <golos/chain/steem_evaluator.hpp>
 #include <golos/chain/steem_objects.hpp>
+#include <golos/chain/comment_bill.hpp>
 #include <golos/chain/transaction_object.hpp>
 #include <golos/chain/shared_db_merkle.hpp>
 #include <golos/chain/operation_notification.hpp>
@@ -2792,10 +2793,13 @@ namespace golos { namespace chain {
  * TODO: this method can be skipped for validation-only nodes
  */
         void database::adjust_rshares2(const comment_object &c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2) {
-            modify(c, [&](comment_object &comment) {
-                comment.children_rshares2 -= old_rshares2;
-                comment.children_rshares2 += new_rshares2;
-            });
+            const auto* extras = find_extras(c.author, c.hashlink);
+            if (extras) {
+                modify(*extras, [&](auto& ex) {
+                    ex.children_rshares2 -= old_rshares2;
+                    ex.children_rshares2 += new_rshares2;
+                });
+            }
             if (c.depth) {
                 adjust_rshares2(get_comment(c.parent_author, c.parent_hashlink), old_rshares2, new_rshares2);
             } else {
@@ -3045,7 +3049,9 @@ namespace golos { namespace chain {
             try {
                 share_type unclaimed_rewards = max_rewards;
 
-                if (c.total_vote_weight > 0 && c.comment.allow_curation_rewards) {
+                const auto& cbl = get_comment_bill(c.comment.id);
+
+                if (c.total_vote_weight > 0 && cbl.allow_curation_rewards) {
                     share_type back_to_fund = 0;
                     uint128_t total_weight(c.total_vote_weight);
                     uint128_t auction_window_reward = uint128_t(max_rewards.value) * c.auction_window_weight / total_weight;
@@ -3057,8 +3063,8 @@ namespace golos { namespace chain {
                         uint128_t weight(itr->weight);
                         uint64_t claim = ((max_rewards.value * weight) / total_weight).to_uint64();
                         // to_curators case
-                        if (c.comment.auction_window_reward_destination == protocol::to_curators &&
-                            itr->vote->auction_time == c.comment.auction_window_size
+                        if (cbl.auction_window_reward_destination == protocol::to_curators &&
+                            itr->vote->auction_time == cbl.auction_window_size
                         ) {
                             if (c.votes_after_auction_window_weight) {
                                 claim += ((auction_window_reward * weight) / c.votes_after_auction_window_weight).to_uint64();
@@ -3078,7 +3084,7 @@ namespace golos { namespace chain {
                             break;
                         }
                     }
-                    if (c.comment.auction_window_reward_destination == protocol::to_curators && heaviest_itr != c.vote_list.end()) {
+                    if (cbl.auction_window_reward_destination == protocol::to_curators && heaviest_itr != c.vote_list.end()) {
                         // pay needed claim + rest unclaimed tokens (close to zero value) to curator with greates weight
                         // BTW: it has to be unclaimed_rewards.value not heaviest_vote_after_auw_weight + unclaimed_rewards.value, coz
                         //      unclaimed_rewards already contains this.
@@ -3091,7 +3097,8 @@ namespace golos { namespace chain {
                         });
                     }
                 }
-                if (!c.comment.allow_curation_rewards) {
+
+                if (!cbl.allow_curation_rewards) {
                     modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
                         props.total_reward_fund_steem += unclaimed_rewards;
                     });
@@ -3099,7 +3106,7 @@ namespace golos { namespace chain {
                     unclaimed_rewards = 0;
                 }
                 // Case: auction window destination is reward fund or there are not curator which can get the auw reward
-                else if (c.comment.auction_window_reward_destination != protocol::to_author && unclaimed_rewards > 0) {
+                else if (cbl.auction_window_reward_destination != protocol::to_author && unclaimed_rewards > 0) {
                     push_virtual_operation(auction_window_reward_operation(asset(unclaimed_rewards, STEEM_SYMBOL), c.comment.author, c.comment.hashlink));
                     modify(get_dynamic_global_properties(), [&](dynamic_global_property_object &props) {
                         props.total_reward_fund_steem += asset(unclaimed_rewards, STEEM_SYMBOL);
@@ -3114,12 +3121,15 @@ namespace golos { namespace chain {
         void database::cashout_comment_helper(const comment_object &comment) {
             protocol::curation_curve curve = comment.curation_reward_curve;
             try {
+                const comment_bill_object* cblo = nullptr;
                 if (comment.net_rshares > 0) {
+                    cblo = find_comment_bill(comment.id);
+
                     uint128_t reward_tokens = uint128_t(
                          claim_rshare_reward(
                              comment.net_rshares,
                              comment.reward_weight,
-                             to_steem(asset(comment.max_accepted_payout, SBD_SYMBOL))));
+                             to_steem(asset(cblo->bill.max_accepted_payout, SBD_SYMBOL))));
 
                     const account_object* author = nullptr;
 
@@ -3138,7 +3148,7 @@ namespace golos { namespace chain {
                     asset total_payout;
                     if (should_pay) {
                         share_type curation_tokens = ((reward_tokens *
-                                                      comment.curation_rewards_percent) /
+                                                      cblo->bill.curation_rewards_percent) /
                                                       STEEMIT_100_PERCENT).to_uint64();
 
                         share_type author_tokens = reward_tokens.to_uint64() - curation_tokens;
@@ -3151,7 +3161,7 @@ namespace golos { namespace chain {
 
                         share_type total_beneficiary = 0;
 
-                        for (auto &b : comment.beneficiaries) {
+                        for (auto &b : cblo->beneficiaries) {
                             auto benefactor_tokens = (author_tokens * b.weight) / STEEMIT_100_PERCENT;
                             auto vest_created = create_vesting(get_account(b.account), benefactor_tokens);
                             push_virtual_operation(
@@ -3165,7 +3175,7 @@ namespace golos { namespace chain {
 
                         author_tokens -= total_beneficiary;
 
-                        auto sbd_steem = (author_tokens * comment.percent_steem_dollars) / (2 * STEEMIT_100_PERCENT);
+                        auto sbd_steem = (author_tokens * cblo->bill.percent_steem_dollars) / (2 * STEEMIT_100_PERCENT);
                         auto vesting_steem = author_tokens - sbd_steem;
 
                         auto vest_created = create_vesting(*author, vesting_steem);
@@ -3242,6 +3252,11 @@ namespace golos { namespace chain {
                         modify(cur_vote, [&](comment_vote_object& cvo) {
                             cvo.num_changes = (-1) - (cvo.num_changes); // mark vote that it's ready to be removed (archived comment)
                         });
+                    }
+
+                    if (!cblo) cblo = find_comment_bill(comment.id);
+                    if (cblo) {
+                        remove(*cblo);
                     }
                 }
             } FC_CAPTURE_AND_RETHROW()
@@ -4199,6 +4214,7 @@ namespace golos { namespace chain {
             add_core_index<witness_schedule_index>(*this);
             add_core_index<comment_index>(*this);
             add_core_index<comment_app_index>(*this);
+            add_core_index<comment_bill_index>(*this);
             add_core_index<comment_extras_index>(*this);
             add_core_index<comment_vote_index>(*this);
             add_core_index<witness_vote_index>(*this);
@@ -6249,7 +6265,10 @@ namespace golos { namespace chain {
                         total_rshares2 += delta;
                     }
                     if (itr->parent_author == STEEMIT_ROOT_POST_PARENT) {
-                        total_children_rshares2 += itr->children_rshares2;
+                        const auto* ex = find_extras(itr->author, itr->hashlink);
+                        if (ex) {
+                            total_children_rshares2 += ex->children_rshares2;
+                        }
                     }
                 }
 
@@ -6316,8 +6335,13 @@ namespace golos { namespace chain {
                         c.net_rshares *= magnitude;
                         c.abs_rshares *= magnitude;
                         c.vote_rshares *= magnitude;
-                        c.children_rshares2 = 0;
                     });
+                    auto* extras = find_extras(comment.author, comment.hashlink);
+                    if (extras) {
+                        modify(*extras, [&](auto& ex) {
+                            ex.children_rshares2 = 0;
+                        });
+                    }
                 }
 
                 for (const auto &c : comments) {

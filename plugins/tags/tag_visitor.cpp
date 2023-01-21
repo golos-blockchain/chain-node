@@ -154,13 +154,17 @@ namespace golos { namespace plugins { namespace tags {
         auto cashout_time = db_.calculate_discussion_payout_time(comment);
         remove_stats(current);
 
+        const auto* extras = db_.find_extras(comment.author, comment.hashlink);
+
         db_.modify(current, [&](tag_object& obj) {
             obj.active = get_comment_last_update(comment).active;
             obj.cashout = cashout_time;
             obj.children = comment.children;
             obj.net_rshares = comment.net_rshares.value;
             obj.net_votes = comment.net_votes;
-            obj.children_rshares2 = comment.children_rshares2;
+            if (extras) {
+                obj.children_rshares2 = extras->children_rshares2;
+            }
             obj.hot = hot;
             obj.trending = trending;
             if (obj.cashout == fc::time_point_sec()) {
@@ -182,6 +186,8 @@ namespace golos { namespace plugins { namespace tags {
 
         auto com_date = get_comment_last_update(comment);
 
+        const auto* extras = db_.find_extras(comment.author, comment.hashlink);
+
         const auto& tag_obj = db_.create<tag_object>([&](tag_object& obj) {
             obj.name = name;
             obj.type = type;
@@ -194,7 +200,9 @@ namespace golos { namespace plugins { namespace tags {
             obj.net_votes = comment.net_votes;
             obj.children = comment.children;
             obj.net_rshares = comment.net_rshares.value;
-            obj.children_rshares2 = comment.children_rshares2;
+            if (extras) {
+                obj.children_rshares2 = extras->children_rshares2;
+            }
             obj.author = author;
             obj.hot = hot;
             obj.trending = trending;

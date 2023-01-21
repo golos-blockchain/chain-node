@@ -83,7 +83,7 @@ void pack(S& s, const golos::chain::comment_object& c) {
     if (c.mode != golos::chain::comment_mode::archived) {
         fc::raw::pack(s, c.created);
         fc::raw::pack(s, c.last_payout);
-        fc::raw::pack(s, c.children_rshares2);
+        //fc::raw::pack(s, c.children_rshares2);
         fc::raw::pack(s, c.net_rshares);
         fc::raw::pack(s, c.abs_rshares);
         fc::raw::pack(s, c.vote_rshares);
@@ -95,15 +95,14 @@ void pack(S& s, const golos::chain::comment_object& c) {
         fc::raw::pack(s, c.total_votes);
         fc::raw::pack(s, c.root_comment);
         fc::raw::pack(s, c.curation_reward_curve);
-        fc::raw::pack(s, c.auction_window_reward_destination);
-        fc::raw::pack(s, c.auction_window_size);
-        fc::raw::pack(s, golos::protocol::asset(c.max_accepted_payout, SBD_SYMBOL));
-        fc::raw::pack(s, c.percent_steem_dollars);
-        fc::raw::pack(s, c.allow_replies);
+        //fc::raw::pack(s, c.auction_window_reward_destination);
+        //fc::raw::pack(s, c.auction_window_size);
+        //fc::raw::pack(s, golos::protocol::asset(c.max_accepted_payout, SBD_SYMBOL));
+        //fc::raw::pack(s, c.percent_steem_dollars);
         fc::raw::pack(s, c.allow_votes);
-        fc::raw::pack(s, c.allow_curation_rewards);
-        fc::raw::pack(s, c.curation_rewards_percent);
-        fc::raw::pack(s, c.beneficiaries);
+        //fc::raw::pack(s, c.allow_curation_rewards);
+        //fc::raw::pack(s, c.curation_rewards_percent);
+        //fc::raw::pack(s, c.beneficiaries);
     }
 }
 
@@ -368,7 +367,7 @@ FC_REFLECT((golos::chain::comment_object),
     (children_rshares2)(net_rshares)(abs_rshares)(vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)
     (reward_weight)(net_votes)(total_votes)(root_comment)
     (curation_reward_curve)(auction_window_reward_destination)(auction_window_size)(max_accepted_payout)
-    (percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)(curation_rewards_percent)
+    (percent_steem_dollars)(allow_votes)(allow_curation_rewards)(curation_rewards_percent)
     (beneficiaries));*/
 
 // missing reflections

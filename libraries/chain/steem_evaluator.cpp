@@ -1,4 +1,5 @@
 #include <golos/chain/steem_evaluator.hpp>
+#include <golos/chain/steem_objects.hpp>
 #include <golos/chain/database.hpp>
 #include <golos/chain/reputation_manager.hpp>
 #include <golos/chain/custom_operation_interpreter.hpp>
@@ -11,7 +12,7 @@
 #include <graphene/utilities/key_conversion.hpp>
 #include <boost/algorithm/string.hpp>
 #include <golos/chain/comment_app_helper.hpp>
-
+#include <golos/chain/comment_bill.hpp>
 
 namespace golos { namespace chain {
         using fc::uint128_t;
@@ -575,9 +576,11 @@ namespace golos { namespace chain {
 
                 uint16_t total_weight = 0;
 
-                if (_c.beneficiaries.size() == 1
-                        && _c.beneficiaries.front().account == _a.referrer_account) {
-                    total_weight += _c.beneficiaries[0].weight;
+                const auto* cblo = _db.upsert_comment_bill(_c.id);
+
+                if (cblo->beneficiaries.size() == 1
+                        && cblo->beneficiaries.front().account == _a.referrer_account) {
+                    total_weight += cblo->beneficiaries[0].weight;
                     auto& referrer = _a.referrer_account;
                     const auto& itr = std::find_if(cpb.beneficiaries.begin(), cpb.beneficiaries.end(),
                             [&referrer](const beneficiary_route_type& benef) {
@@ -587,7 +590,7 @@ namespace golos { namespace chain {
                         logic_exception::beneficiaries_should_be_unique,
                         "Comment already has '${referrer}' as a referrer-beneficiary.", ("referrer",referrer));
                 } else {
-                    GOLOS_CHECK_LOGIC(_c.beneficiaries.size() == 0,
+                    GOLOS_CHECK_LOGIC(cblo->beneficiaries.size() == 0,
                         logic_exception::comment_already_has_beneficiaries,
                         "Comment already has beneficiaries specified.");
                 }
@@ -596,10 +599,10 @@ namespace golos { namespace chain {
                     logic_exception::comment_must_not_have_been_voted,
                     "Comment must not have been voted on before specifying beneficiaries.");
 
-                _db.modify(_c, [&](comment_object& c) {
+                _db.modify(*cblo, [&](auto& cblo) {
                     for (auto& b : cpb.beneficiaries) {
                         _db.get_account(b.account);   // check beneficiary exists
-                        c.beneficiaries.push_back(b);
+                        cblo.beneficiaries.push_back(b);
                         total_weight += b.weight;
                     }
                 });
@@ -633,8 +636,10 @@ namespace golos { namespace chain {
                     );
                 });
 
-                _db.modify(_c, [&](comment_object& c) {
-                    c.auction_window_reward_destination = cawrd.destination;
+                const auto* cblo = _db.upsert_comment_bill(_c.id);
+
+                _db.modify(*cblo, [&](auto& cblo) {
+                    cblo.bill.auction_window_reward_destination = cawrd.destination;
                 });
             }
 
@@ -657,8 +662,8 @@ namespace golos { namespace chain {
                         ("min", mprops.min_curation_percent)("max", mprops.max_curation_percent));
                 });
 
-                _db.modify(_c, [&](comment_object& c) {
-                    c.curation_rewards_percent = ccrp.percent;
+                _db.modify(*_db.upsert_comment_bill(_c.id), [&](auto& cblo) {
+                    cblo.bill.curation_rewards_percent = ccrp.percent;
                 });
             }
         };
@@ -674,14 +679,16 @@ namespace golos { namespace chain {
 
 
             const auto &comment = _db.get_comment_by_perm(o.author, o.permlink);
-            auto max_accepted_payout = asset(comment.max_accepted_payout, SBD_SYMBOL);
+            const auto& cbl = _db.get_comment_bill(comment.id);
+
+            auto max_accepted_payout = asset(cbl.max_accepted_payout, SBD_SYMBOL);
             if (!o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < max_accepted_payout) {
                 GOLOS_CHECK_LOGIC(comment.abs_rshares == 0,
                         logic_exception::comment_options_requires_no_rshares,
                         "One of the included comment options requires the comment to have no rshares allocated to it.");
             }
 
-            GOLOS_CHECK_LOGIC(comment.allow_curation_rewards >= o.allow_curation_rewards,
+            GOLOS_CHECK_LOGIC(cbl.allow_curation_rewards >= o.allow_curation_rewards,
                     logic_exception::curation_rewards_cannot_be_reenabled,
                     "Curation rewards cannot be re-enabled.");
             GOLOS_CHECK_LOGIC(comment.allow_votes >= o.allow_votes,
@@ -690,15 +697,18 @@ namespace golos { namespace chain {
             GOLOS_CHECK_LOGIC(max_accepted_payout >= o.max_accepted_payout,
                     logic_exception::comment_cannot_accept_greater_payout,
                     "A comment cannot accept a greater payout.");
-            GOLOS_CHECK_LOGIC(comment.percent_steem_dollars >= o.percent_steem_dollars,
+            GOLOS_CHECK_LOGIC(o.percent_steem_dollars <= cbl.percent_steem_dollars,
                     logic_exception::comment_cannot_accept_greater_percent_GBG,
                     "A comment cannot accept a greater percent SBD.");
 
             _db.modify(comment, [&](comment_object& c) {
-                c.max_accepted_payout = o.max_accepted_payout.amount;
-                c.percent_steem_dollars = o.percent_steem_dollars;
                 c.allow_votes = o.allow_votes;
-                c.allow_curation_rewards = o.allow_curation_rewards;
+            });
+
+            _db.modify(*_db.upsert_comment_bill(comment.id), [&](auto& cblo) {
+                cblo.bill.allow_curation_rewards = o.allow_curation_rewards;
+                cblo.bill.max_accepted_payout = o.max_accepted_payout.amount;
+                cblo.bill.percent_steem_dollars = o.percent_steem_dollars;
             });
 
             for (auto& e : o.extensions) {
@@ -1001,12 +1011,6 @@ namespace golos { namespace chain {
                 auto now = _db.head_block_time();
 
                 if (!comment) {
-                    if (o.parent_author != STEEMIT_ROOT_POST_PARENT) {
-                        GOLOS_CHECK_LOGIC(_db.get(parent->root_comment).allow_replies,
-                                logic_exception::replies_are_not_allowed,
-                                "The parent comment has disabled replies.");
-                    }
-
                     uint16_t reward_weight = comment_bandwidth{_db, now, o, mprops, auth}.calc_reward_weight();
 
                     db().modify(auth, [&](account_object &a) {
@@ -1021,39 +1025,10 @@ namespace golos { namespace chain {
 
                     bool referrer_to_delete = false;
 
-                    _db.create<comment_object>([&](comment_object &com) {
+                    auto& cmt = _db.create<comment_object>([&](comment_object &com) {
                         if (_db.has_hardfork(STEEMIT_HARDFORK_0_1)) {
                             GOLOS_CHECK_OP_PARAM(o, parent_permlink, validate_permlink_0_1(o.parent_permlink));
                             GOLOS_CHECK_OP_PARAM(o, permlink,        validate_permlink_0_1(o.permlink));
-                        }
-
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__898)) {
-                            if (mprops.allow_distribute_auction_reward) {
-                                com.auction_window_reward_destination = protocol::to_curators;
-                            } else {
-                                com.auction_window_reward_destination = protocol::to_reward_fund;
-                            }
-                            com.auction_window_size = mprops.auction_window_size;
-                        }
-
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__66)) {
-                            com.curation_rewards_percent = std::max(mprops.min_curation_percent,
-                                std::min(uint16_t(STEEMIT_DEF_CURATION_PERCENT), mprops.max_curation_percent));
-                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__324)) {
-                            com.curation_rewards_percent = mprops.min_curation_percent;
-                        } else {
-                            com.curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
-                        }
-
-                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_28__218)) {
-                            const auto& gbg_median = _db.get_feed_history().current_median_history;
-                            if (!gbg_median.is_null()) {
-                                com.min_golos_power_to_curate = (mprops.min_golos_power_to_curate * gbg_median).amount;
-                            } else {
-                                com.min_golos_power_to_curate = 0;
-                            }
-                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
-                            com.min_golos_power_to_curate = mprops.min_golos_power_to_curate.amount;
                         }
 
                         com.author = o.author;
@@ -1084,16 +1059,51 @@ namespace golos { namespace chain {
                         if (_db.has_hardfork(STEEMIT_HARDFORK_0_17__431)) {
                             com.cashout_time = com.created + STEEMIT_CASHOUT_WINDOW_SECONDS;
                         }
+                    });
 
-                        if (auth.referrer_account != account_name_type()) {
-                            if (_db.head_block_time() < auth.referral_end_date) {
-                                com.beneficiaries.push_back(beneficiary_route_type(auth.referrer_account,
-                                    auth.referrer_interest_rate));
+                    const auto* cblo = _db.upsert_comment_bill(cmt.id);
+                    _db.modify(*cblo, [&](auto& cblo) {
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__898)) {
+                            if (mprops.allow_distribute_auction_reward) {
+                                cblo.bill.auction_window_reward_destination = protocol::to_curators;
                             } else {
-                                referrer_to_delete = true;
+                                cblo.bill.auction_window_reward_destination = protocol::to_reward_fund;
                             }
+                            cblo.bill.auction_window_size = mprops.auction_window_size;
+                        }
+
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_22__66)) {
+                            cblo.bill.curation_rewards_percent = std::max(mprops.min_curation_percent,
+                                std::min(uint16_t(STEEMIT_DEF_CURATION_PERCENT), mprops.max_curation_percent));
+                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__324)) {
+                            cblo.bill.curation_rewards_percent = mprops.min_curation_percent;
+                        } else {
+                            cblo.bill.curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
+                        }
+
+                        if (_db.has_hardfork(STEEMIT_HARDFORK_0_28__218)) {
+                            const auto& gbg_median = _db.get_feed_history().current_median_history;
+                            if (!gbg_median.is_null()) {
+                                cblo.bill.min_golos_power_to_curate = (mprops.min_golos_power_to_curate * gbg_median).amount;
+                            } else {
+                                cblo.bill.min_golos_power_to_curate = 0;
+                            }
+                        } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__162)) {
+                            cblo.bill.min_golos_power_to_curate = mprops.min_golos_power_to_curate.amount;
                         }
                     });
+
+                    if (auth.referrer_account != account_name_type()) {
+                        if (_db.head_block_time() < auth.referral_end_date) {
+                            const auto* cblo = _db.upsert_comment_bill(cmt.id);
+                            _db.modify(*cblo, [&](auto& cblo) {
+                                cblo.beneficiaries.push_back(beneficiary_route_type(auth.referrer_account,
+                                    auth.referrer_interest_rate));
+                            });
+                        } else {
+                            referrer_to_delete = true;
+                        }
+                    }
 
                     if (_db.store_comment_extras()) {
                         comment_app app = parse_comment_app(_db, o);
@@ -2036,20 +2046,22 @@ namespace golos { namespace chain {
                         cv.vote_percent = op.weight;
                         cv.last_update = _db.head_block_time();
 
-                        if (rshares > 0 && (comment->last_payout == fc::time_point_sec()) && comment->allow_curation_rewards) {
+                        if (rshares > 0 && (comment->last_payout == fc::time_point_sec()) && _db.get_comment_bill(comment->id).allow_curation_rewards) {
                             cv.orig_rshares = rshares;
 
                             if (_db.head_block_time() > fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME)) {
                                 /// start enforcing this prior to the hardfork
 
+                                const auto& cbl = _db.get_comment_bill(comment->id);
+
                                 /// discount weight by time
                                 uint64_t delta_t = std::min(
                                     uint64_t((cv.last_update - comment->created).to_seconds()),
-                                    uint64_t(comment->auction_window_size));
+                                    uint64_t(cbl.auction_window_size));
 
                                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_19__898)) {
                                     if (voter.name == comment->author) { // self upvote
-                                        cv.auction_time = comment->auction_window_size;
+                                        cv.auction_time = cbl.auction_window_size;
                                     } else {
                                         cv.auction_time = static_cast<uint16_t>(delta_t);
                                     }

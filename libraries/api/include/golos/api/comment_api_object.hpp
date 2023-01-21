@@ -103,24 +103,24 @@ namespace golos { namespace api {
         comment_app app;
 
         protocol::curation_curve curation_reward_curve = protocol::curation_curve::detect;
-        auction_window_reward_destination_type auction_window_reward_destination = protocol::to_reward_fund;
-        uint16_t auction_window_size = STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
+        fc::optional<auction_window_reward_destination_type> auction_window_reward_destination;
+        fc::optional<uint16_t> auction_window_size;
         uint64_t auction_window_weight = 0;
         uint64_t votes_in_auction_window_weight = 0;
         
         string root_title;
 
-        protocol::asset max_accepted_payout;
-        uint16_t percent_steem_dollars = 0;
-        bool allow_replies = 0;
+        fc::optional<protocol::asset> max_accepted_payout;
+        fc::optional<uint16_t> percent_steem_dollars = 0;
+        bool allow_replies = true;
         bool allow_votes = 0;
-        bool allow_curation_rewards = 0;
-        uint16_t curation_rewards_percent = 0;
-        asset min_golos_power_to_curate = asset(0, STEEM_SYMBOL);
+        fc::optional<bool> allow_curation_rewards = 0;
+        fc::optional<uint16_t> curation_rewards_percent = 0;
+        fc::optional<asset> min_golos_power_to_curate = asset(0, STEEM_SYMBOL);
 
         bool has_worker_request = false;
 
-        vector< protocol::beneficiary_route_type > beneficiaries;
+        fc::optional<vector<protocol::beneficiary_route_type>> beneficiaries;
     
         fc::optional<bad_comment> bad;
     };

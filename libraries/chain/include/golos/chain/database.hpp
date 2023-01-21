@@ -4,6 +4,7 @@
 #include <golos/chain/node_property_object.hpp>
 #include <golos/chain/worker_objects.hpp>
 #include <golos/chain/event_objects.hpp>
+#include <golos/chain/comment_bill.hpp>
 #include <golos/chain/fork_database.hpp>
 #include <golos/chain/block_log.hpp>
 #include <golos/chain/hardfork.hpp>
@@ -153,6 +154,8 @@ namespace golos { namespace chain {
 
             void set_clear_old_worker_votes(bool clear_old_worker_votes);
 
+            void set_clear_comment_bills(bool clear_comment_bills);
+
             /**
              * @brief wipe Delete database from disk, and potentially the raw chain as well.
              * @param include_blocks If true, delete the raw chain as well as the database.
@@ -215,6 +218,10 @@ namespace golos { namespace chain {
 
             const worker_request_object& get_worker_request(const comment_id_type& post) const;
             const worker_request_object* find_worker_request(const comment_id_type& post) const;
+
+            const comment_bill_object* find_comment_bill(const comment_id_type& id) const;
+            comment_bill get_comment_bill(const comment_id_type& id) const;
+            const comment_bill_object* upsert_comment_bill(const comment_id_type& id);
 
             const hashlink_type make_hashlink_shstr(const shared_string& permlink) const;
 
@@ -810,6 +817,8 @@ namespace golos { namespace chain {
             bool _store_comment_extras = true;
 
             bool _clear_old_worker_votes = false;
+
+            bool _clear_comment_bills = false;
 
             asset _accumulative_remainder = asset(0, STEEM_SYMBOL);
 

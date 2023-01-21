@@ -40,8 +40,6 @@ namespace golos {
             archived
         };
 
-        using protocol::auction_window_reward_destination_type;
-
         using comment_app = fc::fixed_string<>;
         using comment_app_id = uint32_t;
         
@@ -51,8 +49,7 @@ namespace golos {
             comment_object() = delete;
 
             template<typename Constructor, typename Allocator>
-            comment_object(Constructor &&c, allocator <Allocator> a)
-                    : beneficiaries(a) {
+            comment_object(Constructor &&c, allocator <Allocator> a) {
                 c(*this);
             }
 
@@ -70,13 +67,6 @@ namespace golos {
 
             uint16_t depth = 0; ///< used to track max nested depth
             uint32_t children = 0; ///< used to track the total number of children, grandchildren, etc...
-
-            /**
-             *  Used to track the total rshares^2 of all children, this is used for indexing purposes. A discussion
-             *  that has a nested comment of high value should promote the entire discussion so that the comment can
-             *  be reviewed.
-             */
-            fc::uint128_t children_rshares2;
 
             /// index on pending_payout for "things happning now... needs moderation"
             /// TRENDING = UNCLAIMED + PENDING
@@ -99,19 +89,8 @@ namespace golos {
             comment_mode mode = first_payout;
 
             protocol::curation_curve curation_reward_curve = protocol::curation_curve::detect;
-            auction_window_reward_destination_type auction_window_reward_destination = protocol::to_author;
-            uint16_t auction_window_size = STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
 
-            share_type max_accepted_payout = 1000000000; /// GBG value of the maximum payout this post will receive
-            uint16_t percent_steem_dollars = STEEMIT_100_PERCENT; /// the percent of Golos Dollars to key, unkept amounts will be received as Golos Power
-            bool allow_replies = true;      /// allows a post to disable replies.
             bool allow_votes = true;      /// allows a post to receive votes;
-            bool allow_curation_rewards = true;
-            uint16_t curation_rewards_percent = STEEMIT_DEF_CURATION_PERCENT;
-            share_type min_golos_power_to_curate = 0; /// GOLOS value
-            bool has_worker_request = false;
-
-            bip::vector <protocol::beneficiary_route_type, allocator<protocol::beneficiary_route_type>> beneficiaries;
         };
 
         class comment_app_object
@@ -146,6 +125,14 @@ namespace golos {
             shared_string permlink;
             shared_string parent_permlink;
             comment_app_id app_id;
+            bool has_worker_request = false;
+
+            /**
+             *  Used to track the total rshares^2 of all children, this is used for indexing purposes. A discussion
+             *  that has a nested comment of high value should promote the entire discussion so that the comment can
+             *  be reviewed.
+             */
+            fc::uint128_t children_rshares2;
         };
 
         struct delegator_vote_interest_rate {
@@ -225,7 +212,6 @@ namespace golos {
         struct by_cashout_time; /// cashout_time
         struct by_hashlink;
         struct by_root;
-        struct by_parent;
 
         /**
          * @ingroup object_index
@@ -250,14 +236,7 @@ namespace golos {
                     tag<by_root>,
                         composite_key<comment_object,
                         member <comment_object, comment_id_type, &comment_object::root_comment>,
-                        member<comment_object, comment_id_type, &comment_object::id>>>,
-                ordered_unique <
-                    tag<by_parent>,
-                        composite_key<comment_object,
-                        member <comment_object, account_name_type, &comment_object::parent_author>,
-                        member<comment_object, hashlink_type, &comment_object::parent_hashlink>,
-                        member<comment_object, comment_id_type, &comment_object::id>>,
-                    composite_key_compare <std::less<account_name_type>, std::less<hashlink_type>, std::less<comment_id_type>> >
+                        member<comment_object, comment_id_type, &comment_object::id>>>
             >,
             allocator <comment_object>
         >
@@ -294,6 +273,7 @@ namespace golos {
             >,
             allocator<comment_extras_object>
         >;
+
     }
 } // golos::chain
 
@@ -306,4 +286,3 @@ CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_app_object, golos::chain::comment
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_extras_object, golos::chain::comment_extras_index)
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::comment_vote_object, golos::chain::comment_vote_index)
-

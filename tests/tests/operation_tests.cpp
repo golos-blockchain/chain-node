@@ -682,15 +682,17 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             db->modify(mod_sam_comment, [&](comment_object &com) {
                 com.net_rshares = 10;
                 com.abs_rshares = 10;
-                com.children_rshares2 = db->calculate_vshares(10);
+            });
+            db->modify(*db->find_extras(mod_sam_comment.author, mod_sam_comment.hashlink), [&](auto& cfg) {
+                cfg.children_rshares2 = db->calculate_vshares(10);
             });
 
-            db->modify(mod_bob_comment, [&](comment_object &com) {
-                com.children_rshares2 = db->calculate_vshares(10);
+            db->modify(*db->find_extras(mod_bob_comment.author, mod_bob_comment.hashlink), [&](auto& cfg) {
+                cfg.children_rshares2 = db->calculate_vshares(10);
             });
 
-            db->modify(mod_alice_comment, [&](comment_object &com) {
-                com.children_rshares2 = db->calculate_vshares(10);
+            db->modify(*db->find_extras(mod_alice_comment.author, mod_alice_comment.hashlink), [&](auto& cfg) {
+                cfg.children_rshares2 = db->calculate_vshares(10);
             });
 
             db->modify(db->get_dynamic_global_properties(), [&](dynamic_global_property_object &o) {
@@ -1056,7 +1058,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                 tx.sign(sam_private_key, db->get_chain_id());
                 GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
 
-                auto old_rshares2 = db->get_comment_by_perm("alice", string("foo")).children_rshares2;
+                auto get_rshares2 = [&](account_name_type author, std::string permlink) {
+                    const auto& cmt = db->get_comment_by_perm(author, permlink);
+                    const auto& extras = db->get_extras(author, cmt.hashlink);
+                    return extras.children_rshares2;
+                };
+
+                auto old_rshares2 = get_rshares2("alice", string("foo"));
 
                 op.weight = STEEMIT_100_PERCENT;
                 op.voter = "alice";
@@ -1073,8 +1081,8 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
                          used_power) / STEEMIT_100_PERCENT).to_uint64();
 
                 BOOST_CHECK_EQUAL(
-                        db->get_comment_by_perm("alice", string("foo")).children_rshares2,
-                        db->get_comment_by_perm("sam", string("foo")).children_rshares2 + old_rshares2);
+                        get_rshares2("alice", string("foo")),
+                        get_rshares2("sam", string("foo")) + old_rshares2);
                 BOOST_CHECK_EQUAL(
                         db->get_comment_by_perm("alice", string( "foo" )).cashout_time,
                         db->get_comment_by_perm("alice", string( "foo" )).created + STEEMIT_CASHOUT_WINDOW_SECONDS);
@@ -7650,11 +7658,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             generate_blocks(1);
 
             const auto& testref_com = db->get_comment_by_perm("testref", string("foo"));
-            const auto& referrer_find = std::find_if(testref_com.beneficiaries.begin(),
-                    testref_com.beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
+            const auto* testref_bill = db->find_comment_bill(testref_com.id);
+            const auto& referrer_find = std::find_if(testref_bill->beneficiaries.begin(),
+                    testref_bill->beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
                 return benef.account == testref_acc.referrer_account;
             });
-            BOOST_CHECK(referrer_find != testref_com.beneficiaries.end());
+            BOOST_CHECK(referrer_find != testref_bill->beneficiaries.end());
 
             BOOST_TEST_MESSAGE("--- Test breaking of referral account");
 
@@ -7765,11 +7774,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             generate_blocks(1);
 
             const auto& testref_com2 = db->get_comment_by_perm("testref", string("foo2"));
-            const auto& referrer_find2 = std::find_if(testref_com2.beneficiaries.begin(),
-                    testref_com2.beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
+            const auto* testref_bill2 = db->find_comment_bill(testref_com2.id);
+            const auto& referrer_find2 = std::find_if(testref_bill2->beneficiaries.begin(),
+                    testref_bill2->beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
                 return benef.account == testref_acc.referrer_account; // Using account before break
             });
-            BOOST_CHECK(referrer_find2 == testref_com2.beneficiaries.end());
+            BOOST_CHECK(referrer_find2 == testref_bill2->beneficiaries.end());
 
             validate_database();
         }
@@ -7843,11 +7853,12 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
             generate_blocks(1);
 
             const auto& testref_com = db->get_comment_by_perm("testref", string("foo3"));
-            const auto& referrer_find = std::find_if(testref_com.beneficiaries.begin(),
-                    testref_com.beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
+            const auto* testref_bill = db->find_comment_bill(testref_com.id);
+            const auto& referrer_find = std::find_if(testref_bill->beneficiaries.begin(),
+                    testref_bill->beneficiaries.end(), [&testref_acc](const beneficiary_route_type& benef) {
                 return benef.account == testref_acc.referrer_account; // Using account before break
             });
-            BOOST_CHECK(referrer_find == testref_com.beneficiaries.end());
+            BOOST_CHECK(referrer_find == testref_bill->beneficiaries.end());
 
             validate_database();
         }
