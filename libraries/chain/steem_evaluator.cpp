@@ -3033,6 +3033,8 @@ void delegate_vesting_shares(
 #endif
     });
 
+    if (delegation) is_emission = delegation->is_emission;
+
     if (increasing) {
         auto delegated = delegator.delegated_vesting_shares +
             delegator.emission_delegated_vesting_shares;
