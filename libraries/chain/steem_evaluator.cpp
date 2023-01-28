@@ -3358,6 +3358,8 @@ void delegate_vesting_shares(
             auto head = _db.head_block_num();
             if (head == 65629954 && op.from == "golos.lotto" && op.to == "golos.lotto" && amount == asset(10965, STEEM_SYMBOL)) {
                 amount = from.tip_balance;
+            } else if (head == 65639382 && op.from == "golos.lotto" && op.to == "golos.lotto" && amount == asset(1939, STEEM_SYMBOL)) {
+                amount = from.tip_balance;
             } else if (op.from == "golos.lotto") {
                 elog("h: " + std::to_string(head));
             }
