@@ -326,6 +326,8 @@ namespace golos { namespace chain {
 
             bool before_last_checkpoint() const;
 
+            std::pair<bool, int64_t> chain_status() const;
+
             uint32_t validate_block(const signed_block &b, uint32_t skip = skip_nothing);
 
             bool push_block(const signed_block &b, uint32_t skip = skip_nothing);

@@ -1185,6 +1185,16 @@ namespace golos { namespace chain {
                    (_checkpoints.rbegin()->first >= head_block_num());
         }
 
+        std::pair<bool, int64_t> database::chain_status() const {
+            time_point_sec now = fc::time_point::now();
+            auto head = head_block_time();
+
+            std::pair<bool, int64_t> res;
+            res.second = int64_t(now.sec_since_epoch()) - head.sec_since_epoch();
+            res.first = res.second <= 90;
+            return res;
+        }
+
         uint32_t database::validate_block(const signed_block& new_block, uint32_t skip) {
             uint32_t validate_block_steps =
                 skip_merkle_check |

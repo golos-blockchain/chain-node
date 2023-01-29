@@ -32,6 +32,12 @@ namespace golos {
                 map<transaction_id_type, confirmation_callback> _callbacks;
                 map<time_point_sec, vector<transaction_id_type> > _callback_expirations;
                 boost::mutex _mtx;
+                bool stop_broadcast_on_error = false;
+
+                void check_chain_error() const {
+                    if (!stop_broadcast_on_error) return;
+                    GOLOS_CHECK_VALUE(_chain.chain_status().first, "Node is stopped, so cannot broadcast.");
+                }
             };
 
             network_broadcast_api_plugin::network_broadcast_api_plugin() {
@@ -49,6 +55,7 @@ namespace golos {
                 if (n_args >= 2) {
                     GOLOS_CHECK_PARAM(max_block_age, GOLOS_CHECK_VALUE(!check_max_block_age(max_block_age), "Invalid value"));
                 }
+                pimpl->check_chain_error();
                 pimpl->_chain.accept_transaction(trx);
                 pimpl->_p2p.broadcast_transaction(trx);
 
@@ -63,6 +70,8 @@ namespace golos {
                 if (n_args >= 2) {
                     GOLOS_CHECK_PARAM(max_block_age, GOLOS_CHECK_VALUE(!check_max_block_age(max_block_age), "Invalid value"));
                 }
+
+                pimpl->check_chain_error();
 
                 // Delegate connection handlers to callback
                 msg_pack_transfer transfer(args);
@@ -87,6 +96,7 @@ namespace golos {
                 PLUGIN_API_VALIDATE_ARGS(
                     (signed_block, block)
                 );
+                pimpl->check_chain_error();
                 pimpl->_chain.accept_block(block);
                 pimpl->_p2p.broadcast_block(block);
                 return broadcast_block_return();
@@ -105,6 +115,8 @@ namespace golos {
                 }
 
                 trx.validate();
+
+                pimpl->check_chain_error();
 
                 // Delegate connection handlers to callback
                 msg_pack_transfer transfer(args);
@@ -142,6 +154,11 @@ namespace golos {
             }
 
             void network_broadcast_api_plugin::set_program_options(boost::program_options::options_description &cli, boost::program_options::options_description &cfg) {
+                cfg.add_options()
+                (
+                    "stop-broadcast-on-error", bpo::value<bool>()->default_value(false),
+                    "stop broadcasting when chain fails"
+                );
             }
 
             void network_broadcast_api_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
@@ -152,6 +169,7 @@ namespace golos {
                         on_applied_block(b);
                     }
                 );
+                pimpl->stop_broadcast_on_error = options.at("stop-broadcast-on-error").as<bool>();
             }
 
             void network_broadcast_api_plugin::plugin_startup() {

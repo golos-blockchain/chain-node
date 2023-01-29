@@ -17,6 +17,7 @@ namespace golos { namespace api {
         uint32_t head_block_number = 0;
         block_id_type head_block_id;
         time_point_sec time;
+        bool chain_status = true;
         account_name_type current_witness;
         uint64_t total_pow = -1;
         uint32_t num_pow_witnesses = 0;
@@ -58,6 +59,7 @@ FC_REFLECT(
     (head_block_number)
     (head_block_id)
     (time)
+    (chain_status)
     (current_witness)
     (total_pow)
     (num_pow_witnesses)

@@ -78,6 +78,10 @@ namespace golos { namespace plugins { namespace chain {
                     return db().get<ObjectType>(key);
                 }
 
+                std::pair<bool, int64_t> chain_status() const {
+                    return db().chain_status();
+                }
+
                 // Exposed for backwards compatibility. In the future, plugins should manage their own internal database
                 golos::chain::database &db();
 
