@@ -1665,7 +1665,7 @@ namespace golos { namespace chain {
             });
         }
 
-        void database::process_events() {
+        void database::process_events() { try {
             if (!_store_evaluator_events)
                 return;
 
@@ -1683,7 +1683,7 @@ namespace golos { namespace chain {
             // if (itr != idx.end()) {
             //     wlog("process_events scheduled some events to next block");
             // }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         account_name_type database::get_scheduled_witness(uint32_t slot_num) const {
             const dynamic_global_property_object &dpo = get_dynamic_global_properties();
@@ -1870,7 +1870,7 @@ namespace golos { namespace chain {
             }
         }
 
-        void database::check_witness_idleness(bool periodically) {
+        void database::check_witness_idleness(bool periodically) { try {
             if (periodically) {
                 if (head_block_num() % GOLOS_WITNESS_IDLENESS_CHECK_INTERVAL != 0) return;
 
@@ -1912,9 +1912,9 @@ namespace golos { namespace chain {
                     remove(current);
                 }
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::check_account_idleness() {
+        void database::check_account_idleness() { try {
             if (head_block_num() % GOLOS_ACCOUNT_IDLENESS_CHECK_INTERVAL != 0) return;
 
             if (!has_hardfork(STEEMIT_HARDFORK_0_22__78)) return;
@@ -1931,7 +1931,7 @@ namespace golos { namespace chain {
 
             auto min_vs = 30000000000;
 
-            auto process_acc = [&](auto& acc) {
+            auto process_acc = [&](auto& acc) { try {
                 if (!acc.vesting_shares.amount.value || acc.to_withdraw.value) return;
 
                 auto acc_vs = acc.effective_vesting_shares().amount.value;
@@ -1972,7 +1972,7 @@ namespace golos { namespace chain {
                     a.to_withdraw = to_withdraw;
                     a.withdrawn = 0;
                 });
-            };
+            } FC_CAPTURE_AND_RETHROW((acc.name)) };
 
             if (has_hardfork(STEEMIT_HARDFORK_0_27)) {
                 const auto& idx = get_index<account_index, by_proved>();
@@ -1988,9 +1988,9 @@ namespace golos { namespace chain {
                     process_acc(*itr);
                 }
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::check_claim_idleness() {
+        void database::check_claim_idleness() { try {
             if (head_block_num() % GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL != 0) return;
 
             if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
@@ -2015,7 +2015,7 @@ namespace golos { namespace chain {
             if (to_workers.amount != 0) {
                 adjust_balance(get_account(STEEMIT_WORKER_POOL_ACCOUNT), to_workers);
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         void database::update_witness_windows_sec_to_min() {
             const auto& widx = get_index<witness_index, by_vote_name>();
@@ -2033,7 +2033,7 @@ namespace golos { namespace chain {
             });
         }
 
-        void database::update_witness_schedule4() {
+        void database::update_witness_schedule4() { try {
             vector<account_name_type> active_witnesses;
             active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
 
@@ -2265,7 +2265,7 @@ namespace golos { namespace chain {
             });
 
             update_median_witness_props();
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
 
 /**
@@ -2427,7 +2427,7 @@ namespace golos { namespace chain {
             }
         }
 
-        void database::update_median_witness_props() {
+        void database::update_median_witness_props() { try {
             const witness_schedule_object& wso = get_witness_schedule_object();
 
             /// fetch all witness objects
@@ -2578,7 +2578,7 @@ namespace golos { namespace chain {
                 dgpo.sbd_interest_rate = median_props.sbd_interest_rate;
                 dgpo.custom_ops_bandwidth_multiplier = median_props.custom_ops_bandwidth_multiplier;
             });
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         void database::adjust_proxied_witness_votes(const account_object &a,
                 const std::array<share_type,
@@ -2704,7 +2704,7 @@ namespace golos { namespace chain {
             }
         }
 
-        void database::clear_null_account_balance() {
+        void database::clear_null_account_balance() { try {
             if (!has_hardfork(STEEMIT_HARDFORK_0_14__327)) {
                 return;
             }
@@ -2785,7 +2785,7 @@ namespace golos { namespace chain {
                     });
                 }
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
 /**
  * This method recursively tallies children_rshares2 for this post plus all of its parents,
@@ -2826,7 +2826,7 @@ namespace golos { namespace chain {
             return old;
         }
 
-        void database::process_vesting_withdrawals() {
+        void database::process_vesting_withdrawals() { try {
             const auto &widx = get_index<account_index>().indices().get<by_next_vesting_withdrawal>();
             const auto &didx = get_index<withdraw_vesting_route_index>().indices().get<by_withdraw_route>();
             auto current = widx.begin();
@@ -2969,7 +2969,7 @@ namespace golos { namespace chain {
                             asset(to_withdraw, VESTS_SYMBOL), converted_steem));
                 }
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         uint64_t database::pay_delegators(const account_object& delegatee, const comment_vote_object& cvo, uint64_t claim) {
             uint64_t delegators_reward = 0;
@@ -3244,10 +3244,10 @@ namespace golos { namespace chain {
                         });
                     }
                 }
-            } FC_CAPTURE_AND_RETHROW()
+            } FC_CAPTURE_AND_RETHROW((comment.author)(comment.hashlink)(comment.created))
         }
 
-        void database::process_comment_cashout() {
+        void database::process_comment_cashout() { try {
             /// don't allow any content to get paid out until the website is ready to launch
             /// and people have had a week to start posting. The first cashout will be the biggest because it
             /// will represent 2+ months of rewards.
@@ -3280,7 +3280,7 @@ namespace golos { namespace chain {
                 }
                 current = cidx.begin();
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
        /**
         *  At a start overall the network has an inflation rate of 15.15% of virtual golos per year.
@@ -3299,12 +3299,12 @@ namespace golos { namespace chain {
         *
         *  This method pays out vesting, reward shares, witnesses and workers every block.
         */
-        void database::process_funds() {
+        void database::process_funds() { try {
             const auto& wso = get_witness_schedule_object();
             const auto& props = get_dynamic_global_properties();
             const auto& cwit = get_witness(props.current_witness);
             const auto& wacc = get_account(cwit.owner);
-            optional<asset> producer_reward;
+            asset producer_reward;
 
             if (has_hardfork(STEEMIT_HARDFORK_0_16__551)) {
                 /**
@@ -3410,9 +3410,9 @@ namespace golos { namespace chain {
                 });
             }
 
-            if (producer_reward)
-                push_virtual_operation(producer_reward_operation(wacc.name, *producer_reward));
-        }
+            if (producer_reward.amount.value)
+                push_virtual_operation(producer_reward_operation(wacc.name, producer_reward));
+        } FC_CAPTURE_AND_RETHROW() }
 
         asset database::get_min_gp_to_emission() const {
             auto min_golos_power_to_emission = asset(0, VESTS_SYMBOL);
@@ -3427,7 +3427,7 @@ namespace golos { namespace chain {
             return min_golos_power_to_emission;
         }
 
-        void database::process_accumulative_distributions() {
+        void database::process_accumulative_distributions() { try {
             if (!has_hardfork(STEEMIT_HARDFORK_0_23__83)) return;
 
             const auto& props = get_dynamic_global_properties();
@@ -3444,7 +3444,7 @@ namespace golos { namespace chain {
 
             auto distributed_sum = asset(0, STEEM_SYMBOL);
 
-            auto process_acc = [&](const auto& acc) {
+            auto process_acc = [&](const auto& acc) { try {
                 auto stake = asset((uint128_t(props.accumulative_balance.amount.value) * acc.emission_vesting_shares().amount.value / props.total_vesting_shares.amount.value).to_uint64(), STEEM_SYMBOL);
                 modify(acc, [&](auto& a) {
                     if (has_hf27 && (!has_hf28 || acc.vesting_shares >= min_golos_power_to_emission)) {
@@ -3454,7 +3454,7 @@ namespace golos { namespace chain {
                     }
                 });
                 distributed_sum += stake;
-            };
+            } FC_CAPTURE_AND_RETHROW((acc.name)) };
 
             if (!has_hf27) {
                 const auto& acc_idx = get_index<account_index, by_vesting_shares>();
@@ -3479,9 +3479,9 @@ namespace golos { namespace chain {
             if (props.accumulative_remainder.amount.value) {
                 push_virtual_operation(accumulative_remainder_operation(props.accumulative_remainder));
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::auto_claim_accumulatives() {
+        void database::auto_claim_accumulatives() { try {
             if (!has_hardfork(STEEMIT_HARDFORK_0_27__202)) return;
             if (has_hardfork(STEEMIT_HARDFORK_0_28__218)) return;
 
@@ -3497,9 +3497,9 @@ namespace golos { namespace chain {
                     acnt.accumulative_balance.amount = 0;
                 });
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::process_savings_withdraws() {
+        void database::process_savings_withdraws() { try {
             const auto &idx = get_index<savings_withdraw_index>().indices().get<by_complete_from_rid>();
             auto itr = idx.begin();
             while (itr != idx.end()) {
@@ -3517,7 +3517,7 @@ namespace golos { namespace chain {
                 remove(*itr);
                 itr = idx.begin();
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         asset database::get_liquidity_reward() const {
             if (has_hardfork(STEEMIT_HARDFORK_0_12__178)) {
@@ -3593,7 +3593,7 @@ namespace golos { namespace chain {
         }
 
 
-        void database::pay_liquidity_reward() {
+        void database::pay_liquidity_reward() { try {
 #ifdef STEEMIT_BUILD_TESTNET
             if (!liquidity_rewards_enabled) {
                 return;
@@ -3622,7 +3622,7 @@ namespace golos { namespace chain {
                     push_virtual_operation(liquidity_reward_operation(get(itr->owner).name, reward));
                 }
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         uint128_t database::get_content_constant_s() const {
             return uint128_t(uint64_t(2000000000000ll)); // looking good for posters
@@ -3649,7 +3649,7 @@ namespace golos { namespace chain {
  *  the head block time and then converts them to/from steem/sbd at the
  *  current median price feed history price times the premium
  */
-        void database::process_conversions() {
+        void database::process_conversions() { try {
             auto now = head_block_time();
             const auto& request_by_date = get_index<convert_request_index, by_conversion_date>();
             auto itr = request_by_date.begin();
@@ -3702,9 +3702,9 @@ namespace golos { namespace chain {
                 p.virtual_supply += net_steem;
                 p.virtual_supply -= converted_sbd;
             });
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::process_sbd_debt_conversions() {
+        void database::process_sbd_debt_conversions() { try {
             if (!has_hardfork(STEEMIT_HARDFORK_0_22__64) || (head_block_num() % STEEMIT_SBD_DEBT_CONVERT_INTERVAL != 0)) return;
 
             const auto& median_props = get_witness_schedule_object().median_props;
@@ -3838,7 +3838,7 @@ namespace golos { namespace chain {
                 p.virtual_supply += net_steem;
                 p.virtual_supply -= net_sbd * median_history;
             });
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         asset database::to_sbd(const asset &steem) const {
             FC_ASSERT(steem.symbol == STEEM_SYMBOL);
@@ -3898,7 +3898,7 @@ namespace golos { namespace chain {
             } FC_CAPTURE_AND_RETHROW((rshares)(max_steem))
         }
 
-        void database::account_recovery_processing() {
+        void database::account_recovery_processing() { try {
             // Clear expired recovery requests
             const auto& rec_req_idx = get_index<account_recovery_request_index>().indices().get<by_expiration>();
             auto rec_req = rec_req_idx.begin();
@@ -3931,9 +3931,9 @@ namespace golos { namespace chain {
                 remove(*change_req);
                 change_req = change_req_idx.begin();
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::expire_escrow_ratification() {
+        void database::expire_escrow_ratification() { try {
             const auto &escrow_idx = get_index<escrow_index>().indices().get<by_ratification_deadline>();
             auto escrow_itr = escrow_idx.lower_bound(false);
 
@@ -3950,9 +3950,9 @@ namespace golos { namespace chain {
 
                 remove(old_escrow);
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::process_decline_voting_rights() {
+        void database::process_decline_voting_rights() { try {
             const auto &request_idx = get_index<decline_voting_rights_request_index>().indices().get<by_effective_date>();
             auto itr = request_idx.begin();
 
@@ -3979,7 +3979,7 @@ namespace golos { namespace chain {
                 remove(*itr);
                 itr = request_idx.begin();
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         void database::fix_recovery_accounts() {
             const auto& idx = get_index<account_index, by_proved>();
@@ -3993,7 +3993,7 @@ namespace golos { namespace chain {
             }
         }
 
-        void database::process_account_freezing() {
+        void database::process_account_freezing() { try {
             if (!has_hardfork(STEEMIT_HARDFORK_0_27__203)) return;
 
             freezing_utils fru(*this);
@@ -4043,9 +4043,9 @@ namespace golos { namespace chain {
             if (fru.hf_ago_ended_now) {
                 fix_recovery_accounts();
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::process_gbg_payments() {
+        void database::process_gbg_payments() { try {
             if (!has_hardfork(STEEMIT_HARDFORK_0_28__219)) return;
 
             if (head_block_num() % (STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC / 3) != 0) {
@@ -4083,7 +4083,7 @@ namespace golos { namespace chain {
                     pay_savings_interest(acc);
                 });
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         time_point_sec database::head_block_time() const {
             return get_dynamic_global_properties().time;
@@ -5523,7 +5523,7 @@ namespace golos { namespace chain {
         }
 
 
-        void database::clear_expired_transactions() {
+        void database::clear_expired_transactions() { try {
             //Look for expired transactions in the deduplication list, and remove them.
             //Transactions must have expired by at least two forking windows in order to be removed.
             auto &transaction_idx = get_index<transaction_index>();
@@ -5532,9 +5532,9 @@ namespace golos { namespace chain {
                    (head_block_time() > dedupe_index.begin()->expiration)) {
                 remove(*dedupe_index.begin());
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::clear_expired_orders() {
+        void database::clear_expired_orders() { try {
             auto now = head_block_time();
             const auto &orders_by_exp = get_index<limit_order_index>().indices().get<by_expiration>();
             auto itr = orders_by_exp.begin();
@@ -5542,9 +5542,9 @@ namespace golos { namespace chain {
                 cancel_order(*itr);
                 itr = orders_by_exp.begin();
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
-        void database::clear_expired_delegations() {
+        void database::clear_expired_delegations() { try {
             auto now = head_block_time();
             const auto& delegations_by_exp = get_index<vesting_delegation_expiration_index, by_expiration>();
             auto itr = delegations_by_exp.begin();
@@ -5556,7 +5556,7 @@ namespace golos { namespace chain {
                 remove(*itr);
                 itr = delegations_by_exp.begin();
             }
-        }
+        } FC_CAPTURE_AND_RETHROW() }
 
         void database::adjust_balance(const account_object &a, const asset &delta) {
             if (delta.symbol == STEEM_SYMBOL) {
