@@ -63,7 +63,7 @@ namespace golos { namespace chain {
         push_virtual_operation(worker_state_operation(post.author, post.hashlink, closed_state));
     }
 
-    void database::process_worker_votes() {
+    void database::process_worker_votes() { try {
         if (!has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
             return;
         }
@@ -102,9 +102,9 @@ namespace golos { namespace chain {
             });
             send_worker_state(post, worker_request_state::payment);
         }
-    }
+    } FC_CAPTURE_AND_RETHROW() }
 
-    void database::process_worker_cashout() {
+    void database::process_worker_cashout() { try {
         if (head_block_num() % GOLOS_WORKER_CASHOUT_INTERVAL != 0) return;
 
         if (!has_hardfork(STEEMIT_HARDFORK_0_22__8)) {
@@ -160,5 +160,5 @@ namespace golos { namespace chain {
                 send_worker_state(post, worker_request_state::payment_complete);
             }
         }
-    }
+    } FC_CAPTURE_AND_RETHROW() }
 } } // golos::chain

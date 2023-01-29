@@ -61,7 +61,7 @@ namespace golos { namespace chain {
         chainbase::database::remove(p);
     }
 
-    void database::clear_expired_proposals() {
+    void database::clear_expired_proposals() { try {
         const auto& proposal_expiration_index = get_index<proposal_index>().indices().get<by_expiration>();
         const auto now = head_block_time();
 
@@ -81,6 +81,6 @@ namespace golos { namespace chain {
             }
             remove(proposal);
         }
-    }
+    } FC_CAPTURE_AND_RETHROW() }
 
 } } // golos::chain
