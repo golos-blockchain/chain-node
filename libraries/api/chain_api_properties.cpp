@@ -76,6 +76,7 @@ namespace golos { namespace api {
         if (db.has_hardfork(STEEMIT_HARDFORK_0_28)) {
             min_golos_power_to_emission = src.min_golos_power_to_emission;
         }
+        chain_status = db.chain_status().first;
     }
 
 } } // golos::api
