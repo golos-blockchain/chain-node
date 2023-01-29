@@ -1078,7 +1078,7 @@ std::vector<account_balances_map_api_object> plugin::api_impl::get_accounts_bala
         
         auto itr = idx.find(sym);
         uint32_t i = 0;
-        for (; itr != idx.end(); ++itr, ++i) {
+        for (; itr != idx.end() && itr->symbol() == sym; ++itr, ++i) {
             if (itr->balance.amount != 0 || itr->tip_balance.amount != 0
                     || itr->market_balance.amount != 0) {
                 account_balances_map_api_object acc_balances;
