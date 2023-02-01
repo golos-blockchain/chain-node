@@ -3050,6 +3050,8 @@ void delegate_vesting_shares(
 #endif
     });
 
+    if (delegation) is_emission = delegation->is_emission;
+
     if (increasing) {
         auto delegated = delegator.delegated_vesting_shares +
             delegator.emission_delegated_vesting_shares;
@@ -3361,8 +3363,8 @@ void delegate_vesting_shares(
         void transfer_from_tip_evaluator::do_apply(const transfer_from_tip_operation& op) {
             ASSERT_REQ_HF(STEEMIT_HARDFORK_0_23__83, "transfer_from_tip_operation");
 
+            auto amount = op.amount;
             if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
-                auto amount = op.amount;
                 GOLOS_CHECK_PARAM(amount, GOLOS_CHECK_VALUE(amount.symbol == STEEM_SYMBOL, "amount must be GOLOS"));
             }
 
@@ -3370,14 +3372,23 @@ void delegate_vesting_shares(
             const auto& to = op.to.size() ? _db.get_account(op.to)
                                                  : from;
 
-            GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, op.amount);
+            auto head = _db.head_block_num();
+            if (head == 65629954 && op.from == "golos.lotto" && op.to == "golos.lotto" && amount == asset(10965, STEEM_SYMBOL)) {
+                amount = from.tip_balance;
+            } else if (head == 65639382 && op.from == "golos.lotto" && op.to == "golos.lotto" && amount == asset(1939, STEEM_SYMBOL)) {
+                amount = from.tip_balance;
+            } else if (op.from == "golos.lotto") {
+                elog("h: " + std::to_string(head));
+            }
 
-            if (op.amount.symbol == STEEM_SYMBOL) {
-                _db.modify(from, [&](auto& acnt) {acnt.tip_balance -= op.amount;});
-                _db.create_vesting(to, op.amount);
+            GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, amount);
+
+            if (amount.symbol == STEEM_SYMBOL) {
+                _db.modify(from, [&](auto& acnt) {acnt.tip_balance -= amount;});
+                _db.create_vesting(to, amount);
             } else {
-                _db.adjust_account_balance(from.name, asset(0, op.amount.symbol), -op.amount);
-                _db.adjust_account_balance(to.name, op.amount, asset(0, op.amount.symbol));
+                _db.adjust_account_balance(from.name, asset(0, amount.symbol), -amount);
+                _db.adjust_account_balance(to.name, amount, asset(0, amount.symbol));
             }
         }
 
