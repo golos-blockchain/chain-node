@@ -120,7 +120,7 @@ namespace golos { namespace api {
             d.allow_curation_rewards = cbl->bill.allow_curation_rewards;
             d.curation_rewards_percent = cbl->bill.curation_rewards_percent;
             d.percent_steem_dollars = cbl->bill.percent_steem_dollars;
-            d.max_accepted_payout = cbl->bill.max_accepted_payout;
+            d.max_accepted_payout = asset(cbl->bill.max_accepted_payout, SBD_SYMBOL);
             d.min_golos_power_to_curate = asset(cbl->bill.min_golos_power_to_curate, STEEM_SYMBOL);
 
             d.beneficiaries = vector<protocol::beneficiary_route_type>();
@@ -280,7 +280,7 @@ namespace golos { namespace api {
 
         fill_promoted_(db, d);
 
-        if (!!d.max_accepted_payout) {
+        if (!d.max_accepted_payout.valid()) {
             return;
         }
 

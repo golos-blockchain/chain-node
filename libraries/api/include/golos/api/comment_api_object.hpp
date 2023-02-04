@@ -111,12 +111,12 @@ namespace golos { namespace api {
         string root_title;
 
         fc::optional<protocol::asset> max_accepted_payout;
-        fc::optional<uint16_t> percent_steem_dollars = 0;
+        fc::optional<uint16_t> percent_steem_dollars;
         bool allow_replies = true;
         bool allow_votes = 0;
-        fc::optional<bool> allow_curation_rewards = 0;
-        fc::optional<uint16_t> curation_rewards_percent = 0;
-        fc::optional<asset> min_golos_power_to_curate = asset(0, STEEM_SYMBOL);
+        fc::optional<bool> allow_curation_rewards;
+        fc::optional<uint16_t> curation_rewards_percent;
+        fc::optional<asset> min_golos_power_to_curate;
 
         bool has_worker_request = false;
 
