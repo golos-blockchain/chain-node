@@ -150,6 +150,41 @@ namespace golos { namespace plugins { namespace account_by_key {
                                     o.account = account->name;
                                 });
                             }
+                        } else if (op.hardfork_id == STEEMIT_NUM_HARDFORKS) {
+#if defined(STEEMIT_BUILD_LIVETEST) || defined(STEEMIT_BUILD_TESTNET)
+                            auto &db = _plugin.my->database();
+
+                            auto& idx = db.get_index<key_lookup_index, by_key>();
+
+                            for (const auto &account : db.get_index<account_index>().indices()) {
+                                flat_set<public_key_type> keys;
+
+                                keys.insert(account.memo_key);
+
+                                auto acct_itr = db.find<account_authority_object, by_account>(account.name);
+                                if (acct_itr) {
+                                    for (const auto &item : acct_itr->active.key_auths) {
+                                        keys.insert(item.first);
+                                    }
+                                    for (const auto &item : acct_itr->owner.key_auths) {
+                                        keys.insert(item.first);
+                                    }
+                                    for (const auto &item : acct_itr->posting.key_auths) {
+                                        keys.insert(item.first);
+                                    }
+                                }
+
+                                for (const auto& key : keys) {
+                                    if (idx.find(std::make_tuple(key, account.name)) != idx.end()) {
+                                        continue;
+                                    }
+                                    db.create<key_lookup_object>([&](auto& o) {
+                                        o.key = key;
+                                        o.account = account.name;
+                                    });
+                                }
+                            }
+#endif
                         }
                     }
                 };
