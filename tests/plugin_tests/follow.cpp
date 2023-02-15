@@ -14,6 +14,7 @@ using boost::container::flat_set;
 
 using golos::plugins::json_rpc::msg_pack;
 
+using golos::invalid_value;
 using golos::logic_exception;
 using golos::missing_object;
 using golos::protocol::comment_operation;
@@ -91,16 +92,7 @@ BOOST_AUTO_TEST_CASE(follow_apply) {
 
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
 
-    BOOST_TEST_MESSAGE("--- failed when 'blog' & 'ignore' at the same time");
-    op.what = {"blog", "ignore"};
-
-    vec.clear();
-    vec.push_back(op);
-    cop.data = fc::raw::pack(vec);
-
-    GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, cop),
-        CHECK_ERROR(tx_invalid_operation, 0,
-            CHECK_ERROR(logic_exception, logic_errors::cannot_follow_and_ignore_simultaneously)));
+    // ignore is disabled in HF27
 }
 
 BOOST_AUTO_TEST_CASE(reblog_validate) {

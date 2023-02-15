@@ -38,8 +38,10 @@ namespace golos { namespace chain {
             auto weight = calculate_curve(vote);
             bool was_changes = (vote.num_changes != 0 /* no changes */ && vote.num_changes != -1 /* marked for remove */);
 
-            if (weight > 0 && vote.auction_time != comment.auction_window_size) {
-                auto new_weight = (uint128_t(weight) * vote.auction_time / comment.auction_window_size).to_uint64();
+            const auto& cbl = db.get_comment_bill(comment.id);
+
+            if (weight > 0 && vote.auction_time != cbl.auction_window_size) {
+                auto new_weight = (uint128_t(weight) * vote.auction_time / cbl.auction_window_size).to_uint64();
                 auto auction_weight = (weight - new_weight);
 
                 weight = new_weight;
@@ -159,9 +161,10 @@ namespace golos { namespace chain {
     : comment(comment) {
         calculate_weight_helper helper{db, comment};
         curve = helper.detect_curation_curve();
-        if (comment.min_golos_power_to_curate != 0) {
+        const auto& cbl = db.get_comment_bill(comment.id);
+        if (cbl.min_golos_power_to_curate != 0) {
             const auto& v_share_price = db.get_dynamic_global_properties().get_vesting_share_price();
-            min_vesting_shares_to_curate = asset(comment.min_golos_power_to_curate, STEEM_SYMBOL) * v_share_price;
+            min_vesting_shares_to_curate = asset(cbl.min_golos_power_to_curate, STEEM_SYMBOL) * v_share_price;
         }
 
         if (comment.last_payout != fc::time_point_sec() && !full_list) {

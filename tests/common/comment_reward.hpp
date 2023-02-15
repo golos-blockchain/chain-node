@@ -236,7 +236,7 @@ namespace golos { namespace chain {
 
         void calculate_rewards() {
             comment_rewards_ = fund_.claim_comment_reward(comment_).amount.value;
-            vote_rewards_fund_ = comment_rewards_ * comment_.curation_rewards_percent / STEEMIT_100_PERCENT;
+            vote_rewards_fund_ = comment_rewards_ * _db.find_comment_bill(comment_.id)->bill.curation_rewards_percent / STEEMIT_100_PERCENT;
         }
 
         void calculate_vote_payouts() {
@@ -248,7 +248,9 @@ namespace golos { namespace chain {
 
             auto auction_window_reward = (uint128_t(vote_rewards_fund_) * c.auction_window_weight / total_weight).to_uint64();
 
-            auto auw_time = comment_.created + comment_.auction_window_size;
+            const auto& cfg = _db.get_comment_bill(comment_.id);
+
+            auto auw_time = comment_.created + cfg.auction_window_size;
             uint64_t heaviest_vote_after_auw_weight = 0;
             account_id_type heaviest_vote_after_auw_account;
 
@@ -259,7 +261,7 @@ namespace golos { namespace chain {
                 auto weight = u256(itr->weight);
                 uint64_t claim = static_cast<uint64_t>(weight * vote_rewards_fund_ / total_weight);
                 // to_curators case
-                if (comment_.auction_window_reward_destination == protocol::to_curators &&
+                if (cfg.auction_window_reward_destination == protocol::to_curators &&
                     (itr->vote->last_update >= auw_time || _db.get(itr->vote->voter).name == comment_.author)
                 ) {
                     if (!heaviest_vote_after_auw_weight) {
@@ -304,7 +306,7 @@ namespace golos { namespace chain {
 
             uint64_t unclaimed_rewards = vote_rewards_fund_ - total_vote_rewards_ - back_to_fund;
 
-            if (comment_.auction_window_reward_destination == protocol::to_curators && heaviest_vote_after_auw_weight) {
+            if (cfg.auction_window_reward_destination == protocol::to_curators && heaviest_vote_after_auw_weight) {
                 // pay needed claim + rest unclaimed tokens (close to zero value) to curator with greates weight
                 // BTW: it has to be unclaimed_rewards.value not heaviest_vote_after_auw_weight + unclaimed_rewards.value, coz
                 //      unclaimed_rewards already contains this.
@@ -328,7 +330,7 @@ namespace golos { namespace chain {
                 fund_.modify_reward_fund(asset(back_to_fund, STEEM_SYMBOL));
             }
 
-            if (comment_.auction_window_reward_destination != protocol::to_author) {
+            if (cfg.auction_window_reward_destination != protocol::to_author) {
                 comment_rewards_ -= unclaimed_rewards;
                 fund_.modify_reward_fund(asset(unclaimed_rewards, STEEM_SYMBOL));
             }
@@ -339,19 +341,22 @@ namespace golos { namespace chain {
         void calculate_beneficiaries_payout() {
             total_beneficiary_rewards_ = 0;
             total_beneficiary_payouts_ = asset(0, VESTS_SYMBOL);
-            for (auto& route: comment_.beneficiaries) {
-                auto beneficiary = _db.find_account(route.account);
-                BOOST_REQUIRE(beneficiary != nullptr);
-                BOOST_REQUIRE(beneficiary_payout_map_.find(beneficiary->id) == beneficiary_payout_map_.end());
+            const auto* cblo = _db.find_comment_bill(comment_.id);
+            if (cblo) {
+                for (auto& route: cblo->beneficiaries) {
+                    auto beneficiary = _db.find_account(route.account);
+                    BOOST_REQUIRE(beneficiary != nullptr);
+                    BOOST_REQUIRE(beneficiary_payout_map_.find(beneficiary->id) == beneficiary_payout_map_.end());
 
-                int64_t reward = (comment_rewards_ * route.weight) / STEEMIT_100_PERCENT;
+                    int64_t reward = (comment_rewards_ * route.weight) / STEEMIT_100_PERCENT;
 
-                total_beneficiary_rewards_ += reward;
-                BOOST_REQUIRE_LE(total_beneficiary_rewards_, comment_rewards_);
-                
-                auto payout = fund_.create_vesting(asset(reward, STEEM_SYMBOL));
-                beneficiary_payout_map_.emplace(beneficiary->id, payout);
-                total_beneficiary_payouts_ += payout;
+                    total_beneficiary_rewards_ += reward;
+                    BOOST_REQUIRE_LE(total_beneficiary_rewards_, comment_rewards_);
+                    
+                    auto payout = fund_.create_vesting(asset(reward, STEEM_SYMBOL));
+                    beneficiary_payout_map_.emplace(beneficiary->id, payout);
+                    total_beneficiary_payouts_ += payout;
+                }
             }
 
             comment_rewards_ -= total_beneficiary_rewards_;

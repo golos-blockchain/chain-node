@@ -73,36 +73,35 @@ namespace mongo_db {
             format_value(body, "abs_rshares", comment.abs_rshares);
 
             format_value(body, "allow_curation_rewards", comment.allow_curation_rewards);
-            format_value(body, "allow_replies", comment.allow_replies);
             format_value(body, "allow_votes", comment.allow_votes);
             format_value(body, "cashout_time", comment.cashout_time);
             format_value(body, "children", comment.children);
             format_value(body, "children_abs_rshares", comment.children_abs_rshares);
-            format_value(body, "children_rshares2", comment.children_rshares2);
+            //format_value(body, "children_rshares2", comment.children_rshares2);
             format_value(body, "created", comment.created);
             format_value(body, "depth", comment.depth);
             format_value(body, "last_payout", comment.last_payout);
-            format_value(body, "max_accepted_payout", asset(comment.max_accepted_payout, SBD_SYMBOL));
+            //format_value(body, "max_accepted_payout", asset(comment.max_accepted_payout, SBD_SYMBOL));
             format_value(body, "max_cashout_time", comment.max_cashout_time);
             format_value(body, "net_rshares", comment.net_rshares);
             format_value(body, "net_votes", comment.net_votes);
             format_value(body, "parent_author", comment.parent_author);
             format_value(body, "parent_permlink", comment.parent_permlink);
-            format_value(body, "percent_steem_dollars", comment.percent_steem_dollars);
+            //format_value(body, "percent_steem_dollars", comment.percent_steem_dollars);
             format_value(body, "reward_weight", comment.reward_weight);
             // format_value(body, "total_vote_weight", comment.total_vote_weight);
             format_value(body, "vote_rshares", comment.vote_rshares);
 
-            if (!comment.beneficiaries.empty()) {
-                array ben_array;
-                for (auto& b: comment.beneficiaries) {
-                    document tmp;
-                    format_value(tmp, "account", b.account);
-                    format_value(tmp, "weight", b.weight);
-                    ben_array << tmp;
-                }
-                body << "beneficiaries" << ben_array;
-            }
+            // if (!comment.beneficiaries.empty()) {
+            //     array ben_array;
+            //     for (auto& b: comment.beneficiaries) {
+            //         document tmp;
+            //         format_value(tmp, "account", b.account);
+            //         format_value(tmp, "weight", b.weight);
+            //         ben_array << tmp;
+            //     }
+            //     body << "beneficiaries" << ben_array;
+            // }
 
             std::string comment_mode;
             switch (comment.mode) {

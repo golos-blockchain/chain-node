@@ -3,6 +3,7 @@
 #include <golos/api/content_utils.hpp>
 #include <golos/chain/account_object.hpp>
 #include <golos/chain/steem_objects.hpp>
+#include <golos/chain/comment_app_helper.hpp>
 #include <golos/chain/curation_info.hpp>
 #include <fc/io/json.hpp>
 #include <boost/algorithm/string.hpp>
@@ -101,7 +102,6 @@ namespace golos { namespace api {
         d.last_payout = o.last_payout;
         d.depth = o.depth;
         d.children = o.children;
-        d.children_rshares2 = o.children_rshares2;
         d.net_rshares = o.net_rshares;
         d.abs_rshares = o.abs_rshares;
         d.vote_rshares = o.vote_rshares;
@@ -112,19 +112,24 @@ namespace golos { namespace api {
         d.net_votes = o.net_votes;
         d.mode = o.mode;
         d.root_comment = o.root_comment;
-        d.max_accepted_payout = asset(o.max_accepted_payout, SBD_SYMBOL);
-        d.percent_steem_dollars = o.percent_steem_dollars;
-        d.allow_replies = o.allow_replies;
         d.allow_votes = o.allow_votes;
-        d.allow_curation_rewards = o.allow_curation_rewards;
-        d.auction_window_reward_destination = o.auction_window_reward_destination;
-        d.auction_window_size = o.auction_window_size;
-        d.curation_rewards_percent = o.curation_rewards_percent;
-        d.min_golos_power_to_curate = asset(o.min_golos_power_to_curate, STEEM_SYMBOL);
-        d.has_worker_request = o.has_worker_request;
 
-        for (auto& route : o.beneficiaries) {
-            d.beneficiaries.push_back(route);
+        const auto* cbl = database().find_comment_bill(o.id);
+
+        if (cbl) {
+            d.allow_curation_rewards = cbl->bill.allow_curation_rewards;
+            d.curation_rewards_percent = cbl->bill.curation_rewards_percent;
+            d.percent_steem_dollars = cbl->bill.percent_steem_dollars;
+            d.max_accepted_payout = asset(cbl->bill.max_accepted_payout, SBD_SYMBOL);
+            d.min_golos_power_to_curate = asset(cbl->bill.min_golos_power_to_curate, STEEM_SYMBOL);
+
+            d.beneficiaries = vector<protocol::beneficiary_route_type>();
+            for (auto& route : cbl->beneficiaries) {
+                d.beneficiaries->push_back(route);
+            }
+
+            d.auction_window_reward_destination = cbl->bill.auction_window_reward_destination;
+            d.auction_window_size = cbl->bill.auction_window_size;
         }
 
         if (fill_comment_info_) {
@@ -148,6 +153,9 @@ namespace golos { namespace api {
                     d.root_permlink = to_string(root_extras->permlink);
                 }
             }
+            d.app = get_comment_app_by_id(database(), extras->app_id);
+            d.has_worker_request = extras->has_worker_request;
+            d.children_rshares2 = extras->children_rshares2;
         }
     }
 
@@ -259,9 +267,9 @@ namespace golos { namespace api {
 
         curators_tokens -= auction_window_reward;
 
-        if (d.auction_window_reward_destination == to_author) {
+        if (*d.auction_window_reward_destination == to_author) {
             author_tokens += auction_window_reward;
-        } else if (d.auction_window_reward_destination == to_curators &&
+        } else if (*d.auction_window_reward_destination == to_curators &&
                    d.total_vote_weight != d.votes_in_auction_window_weight + d.auction_window_weight) {
             curators_tokens += auction_window_reward;
         }
@@ -271,6 +279,10 @@ namespace golos { namespace api {
         auto& db = database();
 
         fill_promoted_(db, d);
+
+        if (!d.max_accepted_payout.valid()) {
+            return;
+        }
 
         if (d.total_vote_weight == 0) {
             return;
@@ -294,13 +306,13 @@ namespace golos { namespace api {
             r2 *= pot.amount.value;
             r2 /= total_r2;
 
-            const share_type reward_tokens = std::min(share_type(r2), db.to_steem(d.max_accepted_payout).amount);
+            share_type reward_tokens = std::min(reward_tokens, db.to_steem(*d.max_accepted_payout).amount);
 
-            share_type curation_tokens = reward_tokens * d.curation_rewards_percent / STEEMIT_100_PERCENT;
+            share_type curation_tokens = reward_tokens * *d.curation_rewards_percent / STEEMIT_100_PERCENT;
 
             share_type author_tokens = reward_tokens - curation_tokens;
 
-            if (d.allow_curation_rewards) {
+            if (*d.allow_curation_rewards) {
                 distribute_auction_tokens(d, curation_tokens, author_tokens);
 
                 d.pending_curator_payout_value = db.to_sbd(asset(curation_tokens, STEEM_SYMBOL));
@@ -309,7 +321,7 @@ namespace golos { namespace api {
             }
 
             uint32_t benefactor_weights = 0;
-            for (auto &b : d.beneficiaries) {
+            for (auto &b : *d.beneficiaries) {
                 benefactor_weights += b.weight;
             }
 
@@ -321,7 +333,7 @@ namespace golos { namespace api {
                 d.pending_payout_value += d.pending_benefactor_payout_value;
             }
             
-            auto sbd_steem = (author_tokens * d.percent_steem_dollars) / (2 * STEEMIT_100_PERCENT);
+            auto sbd_steem = (author_tokens * *d.percent_steem_dollars) / (2 * STEEMIT_100_PERCENT);
             auto vesting_steem = asset(author_tokens - sbd_steem, STEEM_SYMBOL);
             d.pending_author_payout_gests_value = vesting_steem * props.get_vesting_share_price();
             auto to_sbd = asset((props.sbd_print_rate * sbd_steem) / STEEMIT_100_PERCENT, STEEM_SYMBOL);

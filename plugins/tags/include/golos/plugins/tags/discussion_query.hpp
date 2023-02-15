@@ -22,6 +22,7 @@
 
 namespace golos { namespace plugins { namespace tags {
     using golos::chain::account_object;
+    using golos::chain::comment_app;
     using golos::chain::comment_object;
     using golos::api::opt_prefs;
     using golos::api::comment_api_object;
@@ -83,6 +84,8 @@ namespace golos { namespace plugins { namespace tags {
 
         bool is_good_category(const discussion& d) const;
 
+        bool is_good_app(const comment_app& app) const;
+
         bool has_author_selector() const {
             return !select_author_ids.empty();
         }
@@ -122,7 +125,8 @@ namespace golos { namespace plugins { namespace tags {
 } } } // golos::plugins::tags
 
 FC_REFLECT((golos::plugins::tags::discussion_query),
-        (select_tags)(filter_tags)(filter_tag_masks)(select_categories)(select_category_masks)
+        (select_tags)(filter_tags)(filter_tag_masks)
+        (select_categories)(select_category_masks)
         (select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
         (start_author)(start_permlink)(parent_author)
         (parent_permlink)(comments_only)(limit)(select_languages)(filter_languages)

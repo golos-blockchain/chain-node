@@ -66,10 +66,10 @@ namespace golos { namespace plugins { namespace chain {
         bool store_memo_in_savings_withdraws = true;
         bool store_evaluator_events = false;
         bool store_comment_extras = true;
+        bool clear_old_worker_votes = false;
+        bool clear_comment_bills = true;
 
         boost::asio::deadline_timer transit_timer;
-
-        bool clear_old_worker_votes = false;
 
         impl() : transit_timer(appbase::app().get_io_service()) {
             // get default settings
@@ -336,6 +336,9 @@ namespace golos { namespace plugins { namespace chain {
             ) (
                 "clear-old-worker-votes", bpo::value<bool>()->default_value(false),
                 "if set, remove worker request votes when approving ends"
+            ) (
+                "clear-comment-bills", bpo::value<bool>()->default_value(true),
+                "if set, remove comment bills after cashout"
             );
         //  Do not use bool_switch() in cfg!
         cli.add_options()
@@ -469,6 +472,8 @@ namespace golos { namespace plugins { namespace chain {
         my->store_comment_extras = options.at("store-comment-extras").as<bool>();
 
         my->clear_old_worker_votes = options.at("clear-old-worker-votes").as<bool>();
+
+        my->clear_comment_bills = options.at("clear-comment-bills").as<bool>();
     }
 
     void plugin::plugin_startup() {
@@ -509,6 +514,8 @@ namespace golos { namespace plugins { namespace chain {
         my->db.set_store_comment_extras(my->store_comment_extras);
 
         my->db.set_clear_old_worker_votes(my->clear_old_worker_votes);
+
+        my->db.set_clear_comment_bills(my->clear_comment_bills);
 
         if (my->skip_virtual_ops) {
             my->db.set_skip_virtual_ops();

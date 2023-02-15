@@ -22,6 +22,19 @@ namespace golos { namespace api {
 
     struct content_prefs {
         std::map<account_name_type, bad_action> blockers;
+
+        // These do not using bad_action. Just skipping post
+        std::set<comment_app> filter_apps;
+        std::set<comment_app> select_apps;
+        bool is_good_app(const comment_app& app) const {
+            if (filter_apps.find(app) != filter_apps.end()) {
+                return false;
+            }
+            if (select_apps.size() && select_apps.find(app) == select_apps.end()) {
+                return false;
+            }
+            return true;
+        }
     };
 
     using opt_prefs = fc::optional<content_prefs>;
@@ -87,25 +100,27 @@ namespace golos { namespace api {
         account_name_type root_author;
         std::string root_permlink;     //Not reflected - used only to construct url
 
+        comment_app app;
+
         protocol::curation_curve curation_reward_curve = protocol::curation_curve::detect;
-        auction_window_reward_destination_type auction_window_reward_destination = protocol::to_reward_fund;
-        uint16_t auction_window_size = STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
+        fc::optional<auction_window_reward_destination_type> auction_window_reward_destination;
+        fc::optional<uint16_t> auction_window_size;
         uint64_t auction_window_weight = 0;
         uint64_t votes_in_auction_window_weight = 0;
         
         string root_title;
 
-        protocol::asset max_accepted_payout;
-        uint16_t percent_steem_dollars = 0;
-        bool allow_replies = 0;
+        fc::optional<protocol::asset> max_accepted_payout;
+        fc::optional<uint16_t> percent_steem_dollars;
+        bool allow_replies = true;
         bool allow_votes = 0;
-        bool allow_curation_rewards = 0;
-        uint16_t curation_rewards_percent = 0;
-        asset min_golos_power_to_curate = asset(0, STEEM_SYMBOL);
+        fc::optional<bool> allow_curation_rewards;
+        fc::optional<uint16_t> curation_rewards_percent;
+        fc::optional<asset> min_golos_power_to_curate;
 
         bool has_worker_request = false;
 
-        vector< protocol::beneficiary_route_type > beneficiaries;
+        fc::optional<vector<protocol::beneficiary_route_type>> beneficiaries;
     
         fc::optional<bad_comment> bad;
     };
@@ -119,7 +134,7 @@ FC_REFLECT((golos::api::bad_action),
     (remove)
 )
 FC_REFLECT((golos::api::content_prefs),
-    (blockers)
+    (blockers)(filter_apps)(select_apps)
 )
 
 FC_REFLECT(
@@ -131,7 +146,7 @@ FC_REFLECT(
     (author_rewards)(author_payout_in_golos)(author_gbg_payout_value)(author_golos_payout_value)(author_gests_payout_value)(net_votes)
     (mode)(curation_reward_curve)(auction_window_reward_destination)
     (auction_window_size)(auction_window_weight)(votes_in_auction_window_weight)
-    (root_comment)(root_title)(root_author)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)
+    (root_comment)(root_title)(root_author)(app)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)
     (allow_curation_rewards)(curation_rewards_percent)(min_golos_power_to_curate)
     (has_worker_request)
     (beneficiaries)(bad))
