@@ -306,7 +306,7 @@ namespace golos { namespace api {
             r2 *= pot.amount.value;
             r2 /= total_r2;
 
-            share_type reward_tokens = std::min(reward_tokens, db.to_steem(*d.max_accepted_payout).amount);
+            share_type reward_tokens = std::min(share_type(r2), db.to_steem(*d.max_accepted_payout).amount);
 
             share_type curation_tokens = reward_tokens * *d.curation_rewards_percent / STEEMIT_100_PERCENT;
 
