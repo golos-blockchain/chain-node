@@ -32,7 +32,7 @@ size_t get_used(const database& _db) {
 }
 
 uint64_t print_size(uint64_t size) {
-    return size;
+    return size / (1024 * 1024);
 }
 
 void process_indexes(database& _db) {
@@ -52,7 +52,7 @@ void process_indexes(database& _db) {
         }
         auto after = get_used(_db);
         std::cout << " " << print_size(before - after);
-        std::cout << " B\t\t" << name << std::endl;
+        std::cout << " MB\t\t" << name << std::endl;
     }
 }
 
@@ -80,7 +80,7 @@ void process_op(golos::protocol::operation& op, uint64_t s) {
 void show_ops() {
     for (const auto& op : ops_stat) {
         std::cout << print_size(op.second.total_size);
-        std::cout << " B\t\t" << op.first << " - ";
+        std::cout << " MB\t\t" << op.first << " - ";
         std::cout << op.second.count << " pcs \n";
         std::cout << "heaviest is: " << op.second.heaviest_op << "\n\n";
     }
