@@ -981,14 +981,26 @@ namespace golos { namespace chain {
             }
         }
 
-        void database::update_asset_marketed(asset_symbol_type symbol) {
+        void database::update_asset_depth(asset delta) {
+            auto symbol = delta.symbol;
             FC_ASSERT(symbol != VESTS_SYMBOL && symbol != STMD_SYMBOL);
-            if (symbol == STEEM_SYMBOL || symbol == SBD_SYMBOL)
+            if (symbol == STEEM_SYMBOL || symbol == SBD_SYMBOL) {
+                const auto& dgp = get_dynamic_global_properties();
+                modify(dgp, [&](auto& props) {
+                    if (symbol == STEEM_SYMBOL) {
+                        props.golos_market_depth += delta;
+                    } else {
+                        props.gbg_market_depth += delta;
+                    }
+                });
                 return;
+            }
             const auto& obj = get_asset(symbol);
-            const auto now = head_block_time();
             modify(obj, [&](auto& o) {
-                o.marketed = now;
+                o.market_depth += delta;
+                if (delta.amount >= 0) {
+                    o.marketed = head_block_time();
+                }
             });
         }
 
@@ -5519,6 +5531,8 @@ namespace golos { namespace chain {
                 adjust_market_balance(seller, -pays);
 
                 if (pays == order.amount_for_sale()) {
+                    update_asset_depth(-order.amount_for_sale());
+                    update_asset_depth(-order.amount_to_receive());
                     remove(order);
                     return true;
                 } else {
@@ -5534,6 +5548,9 @@ namespace golos { namespace chain {
                     if (order.amount_to_receive().amount == 0) {
                         cancel_order(order);
                         return true;
+                    } else {
+                        update_asset_depth(-pays);
+                        update_asset_depth(-receives);
                     }
                     return false;
                 }
@@ -5546,6 +5563,8 @@ namespace golos { namespace chain {
             adjust_balance(owner, order.amount_for_sale());
             adjust_market_balance(owner, -order.amount_for_sale());
             push_order_delete_event(order);
+            update_asset_depth(-order.amount_for_sale());
+            update_asset_depth(-order.amount_to_receive());
             remove(order);
         }
 

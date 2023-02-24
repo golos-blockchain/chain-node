@@ -688,6 +688,35 @@ namespace golos {
                 });
             }
 
+            DEFINE_API(market_history_plugin, get_tickers) {
+                PLUGIN_API_VALIDATE_ARGS(
+                    (std::vector<symbol_name_pair>, pairs)
+                );
+                std::vector<market_ticker> result;
+                auto &db = _my->database();
+                for (const auto& pair : pairs) {
+                    auto ticker = db.with_weak_read_lock([&]() {
+                        bool reversed;
+                        auto res = _my->get_ticker(_my->get_symbol_type_pair(pair, &reversed));
+                        if (reversed) {
+                            std::swap(res.latest1, res.latest2);
+
+                            std::swap(res.lowest_ask, res.highest_bid);
+                            _my->reverse_price(res.lowest_ask);
+                            _my->reverse_price(res.highest_bid);
+
+                            std::swap(res.percent_change1, res.percent_change2);
+
+                            std::swap(res.asset1_volume, res.asset2_volume);
+                            std::swap(res.asset1_depth, res.asset2_depth);
+                        }
+                        return res;
+                    });
+                    result.push_back(ticker);
+                }
+                return result;
+            }
+
             DEFINE_API(market_history_plugin, get_volume) {
                 PLUGIN_API_VALIDATE_ARGS(
                     (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))

@@ -293,6 +293,7 @@ namespace golos {
             symbol_set_type symbols_whitelist;
             uint16_t fee_percent = 0;
             shared_string json_metadata;
+            asset market_depth;
 
             asset_symbol_type symbol() const {
                 return supply.symbol;

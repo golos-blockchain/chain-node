@@ -2583,8 +2583,8 @@ namespace golos { namespace chain {
                 GOLOS_CHECK_LOGIC(filled, logic_exception::cancelling_not_filled_order,
                         "Cancelling order because it was not filled.");
 
-            _db.update_asset_marketed(o.amount_to_sell.symbol);
-            _db.update_asset_marketed(o.min_to_receive.symbol);
+            _db.update_asset_depth(o.amount_to_sell);
+            _db.update_asset_depth(o.min_to_receive);
         }
 
         void limit_order_create2_evaluator::do_apply(const limit_order_create2_operation& o) {
@@ -2639,8 +2639,8 @@ namespace golos { namespace chain {
                 GOLOS_CHECK_LOGIC(filled, logic_exception::cancelling_not_filled_order,
                         "Cancelling order because it was not filled.");
 
-            _db.update_asset_marketed(o.amount_to_sell.symbol);
-            _db.update_asset_marketed(o.exchange_rate.quote.symbol);
+            _db.update_asset_depth(o.amount_to_sell);
+            _db.update_asset_depth(order.amount_to_receive());
         }
 
         void limit_order_cancel_evaluator::do_apply(const limit_order_cancel_operation &o) {
@@ -3505,6 +3505,7 @@ void delegate_vesting_shares(
                     from_string(a.json_metadata, op.json_metadata);
                 }
                 a.created = _db.head_block_time();
+                a.market_depth = a.supply;
             });
         }
 
