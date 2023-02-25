@@ -608,8 +608,8 @@ namespace golos {
                     golos::chain::add_plugin_index<bucket_index>(db);
                     golos::chain::add_plugin_index<order_history_index>(db);
 
-                    if (options.count("bucket-size")) {
-                        std::string buckets = options["bucket-size"].as<string>();
+                    if (options.count("market-history-bucket-size")) {
+                        std::string buckets = options["market-history-bucket-size"].as<string>();
                         _my->_tracked_buckets = fc::json::from_string(buckets).as<flat_set<uint32_t>>();
                     }
                     if (options.count("history-per-size")) {
