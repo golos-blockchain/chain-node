@@ -53,8 +53,8 @@ namespace golos {
                 symbol_type_pair get_symbol_type_pair(const symbol_name_pair& pair, bool* pair_reversed = nullptr, bool allow_partial = false) const;
                 void reverse_price(double& price);
 
-                market_ticker get_ticker(const symbol_type_pair& pair) const;
-                market_volume get_volume(const symbol_type_pair& pair) const;
+                market_ticker get_ticker(const symbol_type_pair& pair, uint32_t bucket = 86400) const;
+                market_volume get_volume(const symbol_type_pair& pair, uint32_t bucket = 86400) const;
                 market_depth get_depth(const symbol_type_pair& pair) const;
                 order_book get_order_book(const symbol_type_pair& pair, uint32_t limit) const;
                 order_book_extended get_order_book_extended(const symbol_type_pair& pair, uint32_t limit) const;
@@ -248,13 +248,13 @@ namespace golos {
                 if (price != 0) price = 1 / price;
             }
 
-            market_ticker market_history_plugin::market_history_plugin_impl::get_ticker(const symbol_type_pair& pair) const {
+            market_ticker market_history_plugin::market_history_plugin_impl::get_ticker(const symbol_type_pair& pair, uint32_t bucket) const {
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
-                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, 86400, database().head_block_time() - 86400));
+                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, bucket, database().head_block_time() - bucket));
 
                 market_ticker result;
 
-                if (itr != bucket_idx.end() && itr->seconds == 86400) {
+                if (itr != bucket_idx.end() && itr->seconds == bucket) {
                     auto open1 = (asset(itr->open_asset2, pair.second) /
                                  asset(itr->open_asset1, pair.first)).to_real();
                     result.latest1 = (asset(itr->close_asset2, pair.second) /
@@ -283,7 +283,7 @@ namespace golos {
                     result.lowest_ask = orders.asks[0].price;
                 }
 
-                auto volume = get_volume(pair);
+                auto volume = get_volume(pair, bucket);
                 result.asset1_volume = volume.asset1_volume;
                 result.asset2_volume = volume.asset2_volume;
 
@@ -294,17 +294,17 @@ namespace golos {
                 return result;
             }
 
-            market_volume market_history_plugin::market_history_plugin_impl::get_volume(const symbol_type_pair& pair) const {
+            market_volume market_history_plugin::market_history_plugin_impl::get_volume(const symbol_type_pair& pair, uint32_t bucket) const {
                 market_volume result;
 
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
-                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, 86400, database().head_block_time() - 86400));
+                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, bucket, database().head_block_time() - bucket));
                 result.asset1_volume = asset(0, pair.first);
                 result.asset2_volume = asset(0, pair.second);
 
                 while (itr != bucket_idx.end() &&
                         itr->sym1 == pair.first && itr->sym2 == pair.second &&
-                        itr->seconds == 86400) {
+                        itr->seconds == bucket) {
                     result.asset1_volume.amount += itr->asset1_volume;
                     result.asset2_volume.amount += itr->asset2_volume;
 
@@ -697,7 +697,7 @@ namespace golos {
                 for (const auto& pair : pairs) {
                     auto ticker = db.with_weak_read_lock([&]() {
                         bool reversed;
-                        auto res = _my->get_ticker(_my->get_symbol_type_pair(pair, &reversed));
+                        auto res = _my->get_ticker(_my->get_symbol_type_pair(pair, &reversed), 604800);
                         if (reversed) {
                             std::swap(res.latest1, res.latest2);
 
