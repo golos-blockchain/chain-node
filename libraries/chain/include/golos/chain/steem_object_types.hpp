@@ -81,6 +81,7 @@ namespace golos { namespace chain {
             donate_object_type,
             invite_object_type,
             asset_object_type,
+            market_pair_object_type,
             account_balance_object_type,
             event_object_type,
             account_blocking_object_type
@@ -124,6 +125,7 @@ namespace golos { namespace chain {
         class donate_object;
         class invite_object;
         class asset_object;
+        class market_pair_object;
         class account_balance_object;
         class event_object;
         class account_blocking_object;
@@ -166,6 +168,7 @@ namespace golos { namespace chain {
         typedef object_id<donate_object> donate_object_id_type;
         typedef object_id<invite_object> invite_object_id_type;
         typedef object_id<asset_object> asset_object_id_type;
+        typedef object_id<market_pair_object> market_pair_object_id_type;
         typedef object_id<account_balance_object> asset_balance_object_id_type;
         typedef object_id<event_object> event_object_id_type;
         typedef object_id<account_blocking_object> account_blocking_object_id_type;
@@ -279,6 +282,7 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (donate_object_type)
                 (invite_object_type)
                 (asset_object_type)
+                (market_pair_object_type)
                 (account_balance_object_type)
                 (event_object_type)
                 (account_blocking_object_type)

@@ -144,9 +144,6 @@ namespace golos {
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
 
             asset accumulative_emission_per_day = asset(0, STEEM_SYMBOL);
-
-            asset golos_market_depth{0, STEEM_SYMBOL};
-            asset gbg_market_depth{0, SBD_SYMBOL};
         };
 
         using dynamic_global_property_index = multi_index_container<

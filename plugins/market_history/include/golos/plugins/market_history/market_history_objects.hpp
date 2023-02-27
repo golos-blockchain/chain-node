@@ -173,6 +173,18 @@ namespace golos {
                 asset open_pays;
             };
 
+            struct market_pair_query {
+                bool tickers = false;
+                bool merge = false;
+                uint32_t bucket = 604800;
+            };
+
+            struct market_pair_api_object {
+                asset base_depth;
+                asset quote_depth;
+                fc::optional<market_ticker> ticker;
+            };
+
             struct by_id;
             struct by_bucket;
 
@@ -218,6 +230,10 @@ FC_REFLECT((golos::plugins::market_history::order_book),
            (bids)(asks));
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (id)(date)(current_pays)(open_pays));
+FC_REFLECT((golos::plugins::market_history::market_pair_query),
+           (tickers)(merge)(bucket));
+FC_REFLECT((golos::plugins::market_history::market_pair_api_object),
+           (base_depth)(quote_depth)(ticker));
 
 FC_REFLECT_DERIVED((golos::plugins::market_history::limit_order),((golos::plugins::market_history::limit_order_api_object)) ,(real_price)(rewarded)(asset1)(asset2));
 

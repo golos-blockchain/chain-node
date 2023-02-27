@@ -280,7 +280,8 @@ namespace golos { namespace chain {
             account_balance_object get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const;
             void                   adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip, asset delta_market = asset());
 
-            void update_asset_depth(asset delta);
+            void update_pair_depth(asset base, asset quote);
+            void update_asset_marketed(asset_symbol_type symbol);
 
             const account_authority_object &get_authority(const account_name_type &name) const;
 

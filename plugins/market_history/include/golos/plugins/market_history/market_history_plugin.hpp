@@ -32,10 +32,11 @@ namespace golos {
 
             using plugins::json_rpc::void_type;
             using symbol_type_pair = std::pair<asset_symbol_type, asset_symbol_type>;
+            // In all API requests there are: QUOTE, BASE
             using symbol_name_pair = std::pair<std::string, std::string>;
 
             DEFINE_API_ARGS(get_ticker,                 json_rpc::msg_pack, market_ticker)
-            DEFINE_API_ARGS(get_tickers,                json_rpc::msg_pack, std::vector<market_ticker>)
+            DEFINE_API_ARGS(get_market_pairs,           json_rpc::msg_pack, std::vector<market_pair_api_object>)
             DEFINE_API_ARGS(get_volume,                 json_rpc::msg_pack, market_volume)
             DEFINE_API_ARGS(get_depth,                  json_rpc::msg_pack, market_depth)
             DEFINE_API_ARGS(get_order_book,             json_rpc::msg_pack, order_book)
@@ -72,7 +73,7 @@ namespace golos {
                 uint32_t get_max_history_per_bucket() const;
 
                 DECLARE_API((get_ticker)
-                    (get_tickers)
+                    (get_market_pairs)
                     (get_volume)
                     (get_depth)
                     (get_order_book)

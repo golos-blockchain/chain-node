@@ -981,26 +981,34 @@ namespace golos { namespace chain {
             }
         }
 
-        void database::update_asset_depth(asset delta) {
-            auto symbol = delta.symbol;
-            FC_ASSERT(symbol != VESTS_SYMBOL && symbol != STMD_SYMBOL);
-            if (symbol == STEEM_SYMBOL || symbol == SBD_SYMBOL) {
-                const auto& dgp = get_dynamic_global_properties();
-                modify(dgp, [&](auto& props) {
-                    if (symbol == STEEM_SYMBOL) {
-                        props.golos_market_depth += delta;
-                    } else {
-                        props.gbg_market_depth += delta;
-                    }
+        void database::update_pair_depth(asset base, asset quote) {
+            const auto* p = find<market_pair_object, by_base_quote>(std::make_tuple(base.symbol, quote.symbol));
+            if (p) {
+                auto new_base = p->base_depth + base;
+                auto new_quote = p->quote_depth + quote;
+                if (!new_base.amount.value && !new_quote.amount.value) {
+                    remove(*p);
+                } else {
+                    modify(*p, [&](auto& p) {
+                        p.base_depth = new_base;
+                        p.quote_depth = new_quote;
+                    });
+                }
+            } else {
+                create<market_pair_object>([&](auto& p) {
+                    p.base_depth = base;
+                    p.quote_depth = quote;
                 });
-                return;
             }
+        }
+
+        void database::update_asset_marketed(asset_symbol_type symbol) {
+            FC_ASSERT(symbol != VESTS_SYMBOL && symbol != STMD_SYMBOL);
+            if (symbol == STEEM_SYMBOL || symbol == SBD_SYMBOL)
+                return;
             const auto& obj = get_asset(symbol);
             modify(obj, [&](auto& o) {
-                o.market_depth += delta;
-                if (delta.amount >= 0) {
-                    o.marketed = head_block_time();
-                }
+                o.marketed = head_block_time();
             });
         }
 
@@ -4262,6 +4270,7 @@ namespace golos { namespace chain {
             add_core_index<donate_index>(*this);
             add_core_index<invite_index>(*this);
             add_core_index<asset_index>(*this);
+            add_core_index<market_pair_index>(*this);
             add_core_index<account_balance_index>(*this);
             add_core_index<event_index>(*this);
             add_core_index<account_blocking_index>(*this);
@@ -5531,14 +5540,16 @@ namespace golos { namespace chain {
                 adjust_market_balance(seller, -pays);
 
                 if (pays == order.amount_for_sale()) {
-                    update_asset_depth(-order.amount_for_sale());
-                    update_asset_depth(-order.amount_to_receive());
+                    update_pair_depth(-order.amount_for_sale(), -order.amount_to_receive());
                     remove(order);
                     return true;
                 } else {
+                    auto rec = order.amount_to_receive();
                     modify(order, [&](limit_order_object &b) {
                         b.for_sale -= pays.amount;
                     });
+                    rec = rec - order.amount_to_receive();
+                    update_pair_depth(-pays, -rec);
                     /**
           *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
           *  have hit the limit where the seller is asking for nothing in return. When this
@@ -5548,9 +5559,6 @@ namespace golos { namespace chain {
                     if (order.amount_to_receive().amount == 0) {
                         cancel_order(order);
                         return true;
-                    } else {
-                        update_asset_depth(-pays);
-                        update_asset_depth(-receives);
                     }
                     return false;
                 }
@@ -5563,8 +5571,7 @@ namespace golos { namespace chain {
             adjust_balance(owner, order.amount_for_sale());
             adjust_market_balance(owner, -order.amount_for_sale());
             push_order_delete_event(order);
-            update_asset_depth(-order.amount_for_sale());
-            update_asset_depth(-order.amount_to_receive());
+            update_pair_depth(-order.amount_for_sale(), -order.amount_to_receive());
             remove(order);
         }
 
