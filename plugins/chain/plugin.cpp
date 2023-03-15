@@ -29,6 +29,7 @@ namespace golos { namespace plugins { namespace chain {
         bool readonly = false;
         bool check_locks = false;
         bool validate_invariants = false;
+        bool validate_during_replay = false;
 
         bool serialize_state = false;
         bfs::path serialize_state_path;
@@ -215,7 +216,7 @@ namespace golos { namespace plugins { namespace chain {
         auto from_block_num = force_replay ? 1 : db.head_block_num() + 1;
 
         ilog("Replaying blockchain from block num ${from}.", ("from", from_block_num));
-        db.reindex(data_dir, shared_memory_dir, from_block_num, shared_memory_size);
+        db.reindex(data_dir, shared_memory_dir, from_block_num, shared_memory_size, validate_during_replay);
     };
 
     void plugin::impl::accept_transaction(const protocol::signed_transaction& trx) {
@@ -357,6 +358,9 @@ namespace golos { namespace plugins { namespace chain {
             ) (
                 "validate-database-invariants", bpo::bool_switch()->default_value(false),
                 "Validate all supply invariants check out"
+            ) (
+                "validate-during-replay", bpo::bool_switch()->default_value(false),
+                "Validate signatures from blocklog"
             );
     }
 
@@ -415,6 +419,7 @@ namespace golos { namespace plugins { namespace chain {
         my->resync = options.at("resync-blockchain").as<bool>();
         my->check_locks = options.at("check-locks").as<bool>();
         my->validate_invariants = options.at("validate-database-invariants").as<bool>();
+        my->validate_during_replay = options.at("validate-during-replay").as<bool>();
 
         bool serialize = options.count("serialize-state") > 0;
         if (serialize) {

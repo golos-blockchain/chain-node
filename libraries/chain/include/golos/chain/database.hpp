@@ -125,7 +125,7 @@ namespace golos { namespace chain {
              * replaying blockchain history. When this method exits successfully, the database will be open.
              */
             void reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size = (
-                    1024l * 1024l * 1024l * 8l));
+                    1024l * 1024l * 1024l * 8l), bool validate_during_replay = false);
 
             void set_min_free_shared_memory_size(size_t);
             void set_inc_shared_memory_size(size_t);

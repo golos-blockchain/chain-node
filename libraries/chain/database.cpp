@@ -253,7 +253,7 @@ namespace golos { namespace chain {
             FC_CAPTURE_LOG_AND_RETHROW((data_dir)(shared_mem_dir)(shared_file_size))
         }
 
-        void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size) {
+        void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size, bool validate_during_replay) {
             try {
                 set_reindexing(true);
 
@@ -277,6 +277,10 @@ namespace golos { namespace chain {
                         skip_validate_operations | /// no need to validate operations
                         skip_validate_invariants |
                         skip_block_log;
+                if (validate_during_replay) {
+                    skip_flags = skip_validate_invariants |
+                        skip_block_log;
+                }
 
                 with_strong_write_lock([&]() {
                     auto cur_block_num = from_block_num;
