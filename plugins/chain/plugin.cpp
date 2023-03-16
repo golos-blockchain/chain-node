@@ -340,6 +340,9 @@ namespace golos { namespace plugins { namespace chain {
             ) (
                 "clear-comment-bills", bpo::value<bool>()->default_value(true),
                 "if set, remove comment bills after cashout"
+            ) (
+                "validate-during-replay", bpo::bool_switch()->default_value(false),
+                "Validate signatures from blocklog"
             );
         //  Do not use bool_switch() in cfg!
         cli.add_options()
@@ -358,9 +361,6 @@ namespace golos { namespace plugins { namespace chain {
             ) (
                 "validate-database-invariants", bpo::bool_switch()->default_value(false),
                 "Validate all supply invariants check out"
-            ) (
-                "validate-during-replay", bpo::bool_switch()->default_value(false),
-                "Validate signatures from blocklog"
             );
     }
 
