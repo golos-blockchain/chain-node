@@ -700,6 +700,9 @@ namespace golos {
                 auto &db = _my->database();
                 std::map<symbol_type_pair, market_pair_api_object> result;
                 db.with_weak_read_lock([&]() {
+                    if (query.pair != symbol_name_pair()) {
+                        auto& idx_pair = db.get_index<market_pair_index, golos::chain::by_id>();
+                    }
                     auto& idx = db.get_index<market_pair_index, golos::chain::by_id>();
                     for (auto itr = idx.begin(); itr != idx.end(); ++itr) {
                         market_pair_api_object mp;
