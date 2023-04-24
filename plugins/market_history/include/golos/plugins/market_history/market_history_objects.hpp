@@ -173,10 +173,14 @@ namespace golos {
                 asset open_pays;
             };
 
+            // In all API requests there are: QUOTE, BASE
+            using symbol_name_pair = std::pair<std::string, std::string>;
+
             struct market_pair_query {
                 bool tickers = false;
                 bool merge = false;
                 uint32_t bucket = 604800;
+                symbol_name_pair pair;
             };
 
             struct market_pair_api_object {
@@ -231,7 +235,7 @@ FC_REFLECT((golos::plugins::market_history::order_book),
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (id)(date)(current_pays)(open_pays));
 FC_REFLECT((golos::plugins::market_history::market_pair_query),
-           (tickers)(merge)(bucket));
+           (tickers)(merge)(bucket)(pair));
 FC_REFLECT((golos::plugins::market_history::market_pair_api_object),
            (base_depth)(quote_depth)(ticker));
 
