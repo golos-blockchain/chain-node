@@ -63,7 +63,7 @@ namespace golos { namespace chain {
         auto* extras = _db.find_extras(op.author, post.hashlink);
         if (extras) {
             _db.modify(*extras, [&](auto& o) {
-                o.has_worker_request = false;
+                o.has_worker_request = true;
             });
         }
     }
