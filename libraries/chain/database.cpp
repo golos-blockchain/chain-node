@@ -4980,8 +4980,12 @@ namespace golos { namespace chain {
                         }
                     });
 
-                    if (is_forced_min_price) {
+                    if (has_hardfork(STEEMIT_HARDFORK_0_29)) {
                         modify(gpo, [&](auto& mutable_gpo) {mutable_gpo.is_forced_min_price = is_forced_min_price;});
+                    } else {
+                        if (is_forced_min_price) {
+                            modify(gpo, [&](auto& mutable_gpo) {mutable_gpo.is_forced_min_price = is_forced_min_price;});
+                        }
                     }
                 }
             } FC_CAPTURE_AND_RETHROW()
@@ -5268,11 +5272,15 @@ namespace golos { namespace chain {
                         }
 
                         if (has_hardfork(STEEMIT_HARDFORK_0_22__64)) {
+                            auto supply = dgp.virtual_supply;
+                            if (has_hardfork(STEEMIT_HARDFORK_0_29)) {
+                                supply = dgp.current_supply;
+                            }
                             dgp.sbd_debt_percent = uint16_t((
                                 (fc::uint128_t((dgp.current_sbd_supply *
                                                 get_feed_history().witness_median_history).amount.value) *
                                  STEEMIT_100_PERCENT)
-                                / dgp.virtual_supply.amount.value).to_uint64());
+                                / supply.amount.value).to_uint64());
                         }
                     }
                 });
