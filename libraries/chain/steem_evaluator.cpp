@@ -3173,7 +3173,7 @@ void delegate_vesting_shares(
             if (is_emission) {
                 GOLOS_CHECK_PARAM(op.interest_rate,
                     GOLOS_CHECK_VALUE(op.interest_rate == STEEMIT_100_PERCENT, "interest_rate should be 10000 for emission interest"));
-            } else {
+            } else if (!_db.has_hardfork(STEEMIT_HARDFORK_0_29) || op.vesting_shares.amount > 0) {
                 GOLOS_CHECK_LIMIT_PARAM(op.interest_rate, median_props.max_delegated_vesting_interest_rate);
             }
 
