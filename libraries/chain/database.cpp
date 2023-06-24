@@ -5100,11 +5100,16 @@ namespace golos { namespace chain {
                     uint32_t slot_num = get_slot_at_time(next_block.timestamp);
                     FC_ASSERT(slot_num > 0);
 
-                    string scheduled_witness = get_scheduled_witness(slot_num);
+                    auto num = next_block.block_num();
+                    // 2023-01-21, 2023-01-31
+                    // 65693821 is exact
+                    if (num < 65693821 || num > 65893852) {
+                        string scheduled_witness = get_scheduled_witness(slot_num);
 
-                    FC_ASSERT(witness.owner ==
-                              scheduled_witness, "Witness produced block at wrong time",
+                        FC_ASSERT(witness.owner ==
+                            scheduled_witness, "Witness produced block at wrong time",
                             ("block witness", next_block.witness)("scheduled", scheduled_witness)("slot_num", slot_num));
+                    }
                 }
 
                 return witness;
