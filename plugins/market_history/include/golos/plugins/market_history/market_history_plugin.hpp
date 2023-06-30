@@ -34,7 +34,7 @@ namespace golos {
             using symbol_type_pair = std::pair<asset_symbol_type, asset_symbol_type>;
 
             DEFINE_API_ARGS(get_ticker,                 json_rpc::msg_pack, market_ticker)
-            DEFINE_API_ARGS(get_market_pairs,           json_rpc::msg_pack, std::vector<market_pair_api_object>)
+            DEFINE_API_ARGS(get_market_pairs,           json_rpc::msg_pack, fc::mutable_variant_object)
             DEFINE_API_ARGS(get_volume,                 json_rpc::msg_pack, market_volume)
             DEFINE_API_ARGS(get_depth,                  json_rpc::msg_pack, market_depth)
             DEFINE_API_ARGS(get_order_book,             json_rpc::msg_pack, order_book)

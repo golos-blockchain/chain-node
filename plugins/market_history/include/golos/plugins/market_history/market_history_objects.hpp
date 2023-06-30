@@ -179,6 +179,7 @@ namespace golos {
             struct market_pair_query {
                 bool tickers = false;
                 bool merge = false;
+                bool as_map = false;
                 uint32_t bucket = 604800;
                 symbol_name_pair pair;
             };
@@ -235,7 +236,7 @@ FC_REFLECT((golos::plugins::market_history::order_book),
 FC_REFLECT((golos::plugins::market_history::market_trade),
            (id)(date)(current_pays)(open_pays));
 FC_REFLECT((golos::plugins::market_history::market_pair_query),
-           (tickers)(merge)(bucket)(pair));
+           (tickers)(merge)(as_map)(bucket)(pair));
 FC_REFLECT((golos::plugins::market_history::market_pair_api_object),
            (base_depth)(quote_depth)(ticker));
 

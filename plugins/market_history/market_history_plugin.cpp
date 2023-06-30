@@ -698,11 +698,8 @@ namespace golos {
                     (market_pair_query, query)
                 );
                 auto &db = _my->database();
-                std::map<symbol_type_pair, market_pair_api_object> result;
+                std::map<symbol_type_pair, market_pair_api_object> pairs;
                 db.with_weak_read_lock([&]() {
-                    if (query.pair != symbol_name_pair()) {
-                        auto& idx_pair = db.get_index<market_pair_index, golos::chain::by_id>();
-                    }
                     auto& idx = db.get_index<market_pair_index, golos::chain::by_id>();
                     for (auto itr = idx.begin(); itr != idx.end(); ++itr) {
                         market_pair_api_object mp;
@@ -712,8 +709,8 @@ namespace golos {
                         auto pair = symbol_type_pair(itr->base(), itr->quote());
                         if (query.merge) {
                             auto rev_pair = symbol_type_pair(itr->quote(), itr->base());
-                            auto itr = result.find(rev_pair);
-                            if (itr != result.end()) {
+                            auto itr = pairs.find(rev_pair);
+                            if (itr != pairs.end()) {
                                 itr->second.base_depth += mp.quote_depth;
                                 itr->second.quote_depth += mp.base_depth;
                                 continue;
@@ -724,15 +721,27 @@ namespace golos {
                             symbol_name_pair spair(mp.quote_depth.symbol_name(), mp.base_depth.symbol_name());
                             mp.ticker = _my->get_ticker(spair, query.bucket);
                         }
-                        result[pair] = std::move(mp);
+                        pairs[pair] = std::move(mp);
                     }
                 });
 
-                std::vector<market_pair_api_object> vec;
-                for (const auto& p : result) {
-                    vec.push_back(p.second);
+                fc::mutable_variant_object result;
+                if (query.as_map) {
+                    std::map<symbol_name_pair, market_pair_api_object> kv;
+                    for (const auto& p : pairs) {
+                        const auto& mp = p.second;
+                        symbol_name_pair k(mp.quote_depth.symbol_name(), mp.base_depth.symbol_name());
+                        kv[k] = mp;
+                    }
+                    result["data"] = kv;
+                } else {
+                    std::vector<market_pair_api_object> vec;
+                    for (const auto& p : pairs) {
+                        vec.push_back(p.second);
+                    }
+                    result["data"] = vec;
                 }
-                return vec;
+                return result;
             }
 
             DEFINE_API(market_history_plugin, get_volume) {
