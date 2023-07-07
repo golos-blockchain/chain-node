@@ -249,7 +249,7 @@
 
 #define STEEMIT_SBD_DEBT_CONVERT_THRESHOLD      (20*STEEMIT_1_PERCENT) ///< Start force conversion SBD debt to GOLOS on account balances at 20% Market Cap
 #define STEEMIT_SBD_DEBT_CONVERT_RATE           (STEEMIT_1_PERCENT) ///< Convert 1% of account balance (incl. savings) on each SBD debt conversion
-#define STEEMIT_SBD_DEBT_CONVERT_INTERVAL       (STEEMIT_BLOCKS_PER_HOUR*24) ///< 1 day
+#define STEEMIT_SBD_DEBT_CONVERT_INTERVAL       (5) ///< 1 day
 
 #define GOLOS_MIN_WITNESS_SKIPPING_RESET_TIME   (60*60*1) ///< 1 hour
 #define GOLOS_DEF_WITNESS_SKIPPING_RESET_TIME   (60*60*6) ///< 6 hours

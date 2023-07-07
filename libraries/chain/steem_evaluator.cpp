@@ -2585,6 +2585,7 @@ namespace golos { namespace chain {
 
             _db.update_asset_marketed(o.amount_to_sell.symbol);
             _db.update_asset_marketed(o.min_to_receive.symbol);
+            _db.update_pair_depth(o.amount_to_sell, o.min_to_receive);
         }
 
         void limit_order_create2_evaluator::do_apply(const limit_order_create2_operation& o) {
@@ -2641,6 +2642,7 @@ namespace golos { namespace chain {
 
             _db.update_asset_marketed(o.amount_to_sell.symbol);
             _db.update_asset_marketed(o.exchange_rate.quote.symbol);
+            _db.update_pair_depth(o.amount_to_sell, order.amount_to_receive());
         }
 
         void limit_order_cancel_evaluator::do_apply(const limit_order_cancel_operation &o) {
@@ -3171,7 +3173,7 @@ void delegate_vesting_shares(
             if (is_emission) {
                 GOLOS_CHECK_PARAM(op.interest_rate,
                     GOLOS_CHECK_VALUE(op.interest_rate == STEEMIT_100_PERCENT, "interest_rate should be 10000 for emission interest"));
-            } else {
+            } else if (!_db.has_hardfork(STEEMIT_HARDFORK_0_29) || op.vesting_shares.amount > 0) {
                 GOLOS_CHECK_LIMIT_PARAM(op.interest_rate, median_props.max_delegated_vesting_interest_rate);
             }
 
@@ -3377,8 +3379,6 @@ void delegate_vesting_shares(
                 amount = from.tip_balance;
             } else if (head == 65639382 && op.from == "golos.lotto" && op.to == "golos.lotto" && amount == asset(1939, STEEM_SYMBOL)) {
                 amount = from.tip_balance;
-            } else if (op.from == "golos.lotto") {
-                elog("h: " + std::to_string(head));
             }
 
             GOLOS_CHECK_BALANCE(_db, from, TIP_BALANCE, amount);

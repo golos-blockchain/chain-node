@@ -307,6 +307,28 @@ namespace golos {
             }
         };
 
+        class market_pair_object: public object<market_pair_object_type, market_pair_object> {
+        public:
+            market_pair_object() = delete;
+
+            template<typename Constructor, typename Allocator>
+            market_pair_object(Constructor&& c, allocator<Allocator> a) {
+                c(*this);
+            }
+
+            id_type id;
+            asset base_depth;
+            asset quote_depth;
+
+            asset_symbol_type base() const {
+                return base_depth.symbol;
+            }
+
+            asset_symbol_type quote() const {
+                return quote_depth.symbol;
+            }
+        };
+
         struct by_price;
         struct by_expiration;
         struct by_account;
@@ -577,6 +599,21 @@ namespace golos {
                     std::greater<asset_object_id_type>
                 >>
             >, allocator<asset_object>>;
+
+        struct by_base_quote;
+        using market_pair_index = multi_index_container<
+            market_pair_object,
+            indexed_by<
+                ordered_unique<tag<by_id>,
+                    member<market_pair_object, market_pair_object_id_type, &market_pair_object::id>
+                >,
+                ordered_unique<tag<by_base_quote>, composite_key<market_pair_object,
+                    const_mem_fun<market_pair_object, asset_symbol_type, &market_pair_object::base>,
+                    const_mem_fun<market_pair_object, asset_symbol_type, &market_pair_object::quote>
+                >>
+            >,
+            allocator<market_pair_object>
+        >;
     }
 } // golos::chain
 
@@ -622,3 +659,7 @@ CHAINBASE_SET_INDEX_TYPE(golos::chain::decline_voting_rights_request_object, gol
 CHAINBASE_SET_INDEX_TYPE(golos::chain::donate_object, golos::chain::donate_index)
 
 CHAINBASE_SET_INDEX_TYPE(golos::chain::asset_object, golos::chain::asset_index)
+
+FC_REFLECT((golos::chain::market_pair_object),
+        (base_depth)(quote_depth))
+CHAINBASE_SET_INDEX_TYPE(golos::chain::market_pair_object, golos::chain::market_pair_index)

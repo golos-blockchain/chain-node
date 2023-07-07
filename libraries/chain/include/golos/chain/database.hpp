@@ -125,7 +125,7 @@ namespace golos { namespace chain {
              * replaying blockchain history. When this method exits successfully, the database will be open.
              */
             void reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size = (
-                    1024l * 1024l * 1024l * 8l));
+                    1024l * 1024l * 1024l * 8l), bool validate_during_replay = false);
 
             void set_min_free_shared_memory_size(size_t);
             void set_inc_shared_memory_size(size_t);
@@ -280,6 +280,7 @@ namespace golos { namespace chain {
             account_balance_object get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const;
             void                   adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip, asset delta_market = asset());
 
+            void update_pair_depth(asset base, asset quote);
             void update_asset_marketed(asset_symbol_type symbol);
 
             const account_authority_object &get_authority(const account_name_type &name) const;

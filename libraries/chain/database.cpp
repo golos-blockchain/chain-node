@@ -253,7 +253,7 @@ namespace golos { namespace chain {
             FC_CAPTURE_LOG_AND_RETHROW((data_dir)(shared_mem_dir)(shared_file_size))
         }
 
-        void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size) {
+        void database::reindex(const fc::path &data_dir, const fc::path &shared_mem_dir, uint32_t from_block_num, uint64_t shared_file_size, bool validate_during_replay) {
             try {
                 set_reindexing(true);
 
@@ -277,6 +277,10 @@ namespace golos { namespace chain {
                         skip_validate_operations | /// no need to validate operations
                         skip_validate_invariants |
                         skip_block_log;
+                if (validate_during_replay) {
+                    skip_flags = skip_validate_invariants |
+                        skip_block_log;
+                }
 
                 with_strong_write_lock([&]() {
                     auto cur_block_num = from_block_num;
@@ -981,14 +985,34 @@ namespace golos { namespace chain {
             }
         }
 
+        void database::update_pair_depth(asset base, asset quote) {
+            const auto* p = find<market_pair_object, by_base_quote>(std::make_tuple(base.symbol, quote.symbol));
+            if (p) {
+                auto new_base = p->base_depth + base;
+                auto new_quote = p->quote_depth + quote;
+                if (!new_base.amount.value && !new_quote.amount.value) {
+                    remove(*p);
+                } else {
+                    modify(*p, [&](auto& p) {
+                        p.base_depth = new_base;
+                        p.quote_depth = new_quote;
+                    });
+                }
+            } else {
+                create<market_pair_object>([&](auto& p) {
+                    p.base_depth = base;
+                    p.quote_depth = quote;
+                });
+            }
+        }
+
         void database::update_asset_marketed(asset_symbol_type symbol) {
             FC_ASSERT(symbol != VESTS_SYMBOL && symbol != STMD_SYMBOL);
             if (symbol == STEEM_SYMBOL || symbol == SBD_SYMBOL)
                 return;
             const auto& obj = get_asset(symbol);
-            const auto now = head_block_time();
             modify(obj, [&](auto& o) {
-                o.marketed = now;
+                o.marketed = head_block_time();
             });
         }
 
@@ -4250,6 +4274,7 @@ namespace golos { namespace chain {
             add_core_index<donate_index>(*this);
             add_core_index<invite_index>(*this);
             add_core_index<asset_index>(*this);
+            add_core_index<market_pair_index>(*this);
             add_core_index<account_balance_index>(*this);
             add_core_index<event_index>(*this);
             add_core_index<account_blocking_index>(*this);
@@ -4955,8 +4980,12 @@ namespace golos { namespace chain {
                         }
                     });
 
-                    if (is_forced_min_price) {
+                    if (has_hardfork(STEEMIT_HARDFORK_0_29)) {
                         modify(gpo, [&](auto& mutable_gpo) {mutable_gpo.is_forced_min_price = is_forced_min_price;});
+                    } else {
+                        if (is_forced_min_price) {
+                            modify(gpo, [&](auto& mutable_gpo) {mutable_gpo.is_forced_min_price = is_forced_min_price;});
+                        }
                     }
                 }
             } FC_CAPTURE_AND_RETHROW()
@@ -5071,11 +5100,16 @@ namespace golos { namespace chain {
                     uint32_t slot_num = get_slot_at_time(next_block.timestamp);
                     FC_ASSERT(slot_num > 0);
 
-                    string scheduled_witness = get_scheduled_witness(slot_num);
+                    auto num = next_block.block_num();
+                    // 2023-01-21, 2023-01-31
+                    // 65693821 is exact
+                    if (num < 65693821 || num > 65893852) {
+                        string scheduled_witness = get_scheduled_witness(slot_num);
 
-                    FC_ASSERT(witness.owner ==
-                              scheduled_witness, "Witness produced block at wrong time",
+                        FC_ASSERT(witness.owner ==
+                            scheduled_witness, "Witness produced block at wrong time",
                             ("block witness", next_block.witness)("scheduled", scheduled_witness)("slot_num", slot_num));
+                    }
                 }
 
                 return witness;
@@ -5243,11 +5277,15 @@ namespace golos { namespace chain {
                         }
 
                         if (has_hardfork(STEEMIT_HARDFORK_0_22__64)) {
+                            auto supply = dgp.virtual_supply;
+                            if (has_hardfork(STEEMIT_HARDFORK_0_29)) {
+                                supply = dgp.current_supply;
+                            }
                             dgp.sbd_debt_percent = uint16_t((
                                 (fc::uint128_t((dgp.current_sbd_supply *
                                                 get_feed_history().witness_median_history).amount.value) *
                                  STEEMIT_100_PERCENT)
-                                / dgp.virtual_supply.amount.value).to_uint64());
+                                / supply.amount.value).to_uint64());
                         }
                     }
                 });
@@ -5519,12 +5557,16 @@ namespace golos { namespace chain {
                 adjust_market_balance(seller, -pays);
 
                 if (pays == order.amount_for_sale()) {
+                    update_pair_depth(-order.amount_for_sale(), -order.amount_to_receive());
                     remove(order);
                     return true;
                 } else {
+                    auto rec = order.amount_to_receive();
                     modify(order, [&](limit_order_object &b) {
                         b.for_sale -= pays.amount;
                     });
+                    rec = rec - order.amount_to_receive();
+                    update_pair_depth(-pays, -rec);
                     /**
           *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
           *  have hit the limit where the seller is asking for nothing in return. When this
@@ -5546,6 +5588,7 @@ namespace golos { namespace chain {
             adjust_balance(owner, order.amount_for_sale());
             adjust_market_balance(owner, -order.amount_for_sale());
             push_order_delete_event(order);
+            update_pair_depth(-order.amount_for_sale(), -order.amount_to_receive());
             remove(order);
         }
 
