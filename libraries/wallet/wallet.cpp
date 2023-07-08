@@ -3557,6 +3557,89 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 
             return my->sign_transaction(tx, broadcast);
         }
+
+        annotated_signed_transaction wallet_api::paid_subscription(const string& author, paid_subscription_id oid, const asset& cost, bool tip_cost, uint32_t interval, uint32_t executions, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            paid_subscription_create_operation op;
+            op.author = author;
+            op.oid = oid;
+            op.cost = cost;
+            op.tip_cost = tip_cost;
+            op.interval = interval;
+            op.executions = executions;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::update_paid_subscription(const string& author, paid_subscription_id oid, const asset& cost, bool tip_cost, uint32_t interval, uint32_t executions, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            paid_subscription_update_operation op;
+            op.author = author;
+            op.oid = oid;
+            op.cost = cost;
+            op.tip_cost = tip_cost;
+            op.interval = interval;
+            op.executions = executions;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::delete_paid_subscription(const string& author, paid_subscription_id oid, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            paid_subscription_delete_operation op;
+            op.author = author;
+            op.oid = oid;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::buy_paid_subscription(const string& from, const string& to, paid_subscription_id oid, const asset& amount, const std::string& memo, bool from_tip, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            paid_subscription_transfer_operation op;
+            op.from = from;
+            op.to = to;
+            op.oid = oid;
+            op.amount = amount;
+            op.memo = memo;
+            op.from_tip = from_tip;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
+
+        annotated_signed_transaction wallet_api::cancel_paid_subscription(const string& subscriber, const string& author, paid_subscription_id oid, bool broadcast)
+        {
+            WALLET_CHECK_UNLOCKED();
+            paid_subscription_cancel_operation op;
+            op.subscriber = subscriber;
+            op.author = author;
+            op.oid = oid;
+
+            signed_transaction tx;
+            tx.operations.push_back(op);
+            tx.validate();
+
+            return my->sign_transaction(tx, broadcast);
+        }
 } } // golos::wallet
 
 FC_REFLECT_ENUM(golos::wallet::logic_errors::types,

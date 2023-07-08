@@ -1523,6 +1523,11 @@ namespace golos { namespace wallet {
             annotated_signed_transaction unblock_user(const string& me, const string& user, bool broadcast);
             annotated_signed_transaction do_not_bother(const string& me, bool do_not_bother, bool broadcast);
 
+            annotated_signed_transaction paid_subscription(const string& author, paid_subscription_id oid, const asset& cost, bool tip_cost, uint32_t interval, uint32_t executions, bool broadcast = false);
+            annotated_signed_transaction update_paid_subscription(const string& author, paid_subscription_id oid, const asset& cost, bool tip_cost, uint32_t interval, uint32_t executions, bool broadcast = false);
+            annotated_signed_transaction delete_paid_subscription(const string& author, paid_subscription_id oid, bool broadcast = false);
+            annotated_signed_transaction buy_paid_subscription(const string& from, const string& to, paid_subscription_id oid, const asset& amount, const std::string& memo, bool from_tip, bool broadcast = false);
+            annotated_signed_transaction cancel_paid_subscription(const string& subscriber, const string& author, paid_subscription_id oid, bool broadcast = false);
         private:
             void decrypt_history_memos(history_operations& result);
 
@@ -1689,6 +1694,12 @@ FC_API( golos::wallet::wallet_api,
                 (block_user)
                 (unblock_user)
                 (do_not_bother)
+
+                (paid_subscription)
+                (update_paid_subscription)
+                (delete_paid_subscription)
+                (buy_paid_subscription)
+                (cancel_paid_subscription)
 )
 
 FC_REFLECT((golos::wallet::memo_data), (from)(to)(nonce)(check)(encrypted))

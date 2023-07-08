@@ -4220,6 +4220,11 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<invite_transfer_evaluator>();
             _my->_evaluator_registry.register_evaluator<limit_order_cancel_ex_evaluator>();
             _my->_evaluator_registry.register_evaluator<account_setup_evaluator>();
+            _my->_evaluator_registry.register_evaluator<paid_subscription_create_evaluator>();
+            _my->_evaluator_registry.register_evaluator<paid_subscription_update_evaluator>();
+            _my->_evaluator_registry.register_evaluator<paid_subscription_delete_evaluator>();
+            _my->_evaluator_registry.register_evaluator<paid_subscription_transfer_evaluator>();
+            _my->_evaluator_registry.register_evaluator<paid_subscription_cancel_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -4278,6 +4283,8 @@ namespace golos { namespace chain {
             add_core_index<account_balance_index>(*this);
             add_core_index<event_index>(*this);
             add_core_index<account_blocking_index>(*this);
+            add_core_index<paid_subscription_index>(*this);
+            add_core_index<paid_subscriber_index>(*this);
 
             _plugin_index_signal();
         }
@@ -4851,6 +4858,8 @@ namespace golos { namespace chain {
                 process_account_freezing();
 
                 process_gbg_payments();
+
+                process_paid_subscribers();
 
                 // notify observers that the block has been applied
                 notify_applied_block(next_block);
@@ -6309,6 +6318,16 @@ namespace golos { namespace chain {
                         total_sbd += itr->amount;
                     } else
                         FC_ASSERT(false, "found savings withdraw that is not SBD or STEEM");
+                }
+
+                const auto& psro_idx = get_index<paid_subscriber_index, by_id>();
+                for (auto itr = psro_idx.begin();
+                     itr != psro_idx.end(); ++itr) {
+                    if (itr->prepaid.symbol == STEEM_SYMBOL) {
+                        total_supply += itr->prepaid;
+                    } else if (itr->prepaid.symbol == SBD_SYMBOL) {
+                        total_sbd += itr->prepaid;
+                    }
                 }
 
                 fc::uint128_t total_rshares2;

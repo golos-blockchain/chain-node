@@ -1,6 +1,8 @@
 #ifndef STEEMIT_HARDFORK_0_29
 #define STEEMIT_HARDFORK_0_29 29
 
+#define STEEMIT_HARDFORK_0_29__230 (STEEMIT_HARDFORK_0_29) // Paid subscriptions (recurrent payments)
+
 #ifdef STEEMIT_BUILD_TESTNET
 #define STEEMIT_HARDFORK_0_29_TIME  1668531600 // 15 nov 2022 20:00:00 MSK
 #else

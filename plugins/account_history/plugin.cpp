@@ -365,6 +365,14 @@ if (options.count(name)) { \
         void operator()(const order_delete_operation& op) {
         }
 
+        void operator()(const subscription_payment_operation& op) {
+            insert_pair(op.subscriber, op.author);
+        }
+
+        void operator()(const subscription_payment_failure_operation& op) {
+            insert_pair(op.subscriber, op.author);
+        }
+
         void operator()(const comment_operation& op) {
             insert_pair(op.author, op.parent_author, op.parent_author.size());
         }
@@ -662,6 +670,26 @@ if (options.count(name)) { \
         }
 
         void operator()(const invite_transfer_operation& op) {
+        }
+
+        void operator()(const paid_subscription_create_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const paid_subscription_update_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const paid_subscription_delete_operation& op) {
+            insert_dual(op.author);
+        }
+
+        void operator()(const paid_subscription_transfer_operation& op) {
+            insert_pair(op.from, op.to);
+        }
+
+        void operator()(const paid_subscription_cancel_operation& op) {
+            insert_pair(op.subscriber, op.author);
         }
 
         struct account_setup_visitor {

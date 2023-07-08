@@ -38,7 +38,9 @@ if(BUILD_SHARED_LIBRARIES)
             database_worker_objects.cpp
             database_market_events.cpp
             database_comment_bill.cpp
+            database_paid_subscription_objects.cpp
             comment_app_helper.cpp
+            paid_subscription_evaluators.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
@@ -73,6 +75,7 @@ if(BUILD_SHARED_LIBRARIES)
             include/golos/chain/curation_info.hpp
             include/golos/chain/worker_objects.hpp
             include/golos/chain/event_objects.hpp
+            include/golos/chain/paid_subscription_objects.hpp
 
             ${hardfork_hpp_file}
             "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
@@ -102,7 +105,9 @@ else()
             database_worker_objects.cpp
             database_market_events.cpp
             database_comment_bill.cpp
+            database_paid_subscription_objects.cpp
             comment_app_helper.cpp
+            paid_subscription_evaluators.cpp
 
             include/golos/chain/account_object.hpp
             include/golos/chain/block_log.hpp
@@ -137,6 +142,7 @@ else()
             include/golos/chain/curation_info.hpp
             include/golos/chain/worker_objects.hpp
             include/golos/chain/event_objects.hpp
+            include/golos/chain/paid_subscription_objects.hpp
 
             ${hardfork_hpp_file}
             "${CMAKE_CURRENT_BINARY_DIR}/include/golos/chain/hardfork.hpp"

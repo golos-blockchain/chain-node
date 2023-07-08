@@ -4,6 +4,7 @@
 #include <golos/protocol/block_header.hpp>
 #include <golos/protocol/asset.hpp>
 #include <golos/protocol/worker_operations.hpp>
+#include <golos/protocol/paid_subscription_operations.hpp>
 
 #include <fc/utf8.hpp>
 
@@ -504,6 +505,40 @@ namespace golos { namespace protocol {
             std::string id3;
             std::string id4;
         };
+
+        struct subscription_payment_operation : public virtual_operation {
+            subscription_payment_operation() {
+            }
+
+            subscription_payment_operation(const account_name_type& s, const account_name_type& au,
+                const paid_subscription_id& o, const asset& ap, const asset& a, const asset& r, bool ft, const std::string& e) :
+                subscriber(s), author(au), oid(o), amount_prepaid(ap), amount(a), rest(r), from_tip(ft), extra(e) {
+            }
+
+            account_name_type subscriber;
+            account_name_type author;
+            paid_subscription_id oid;
+            asset amount_prepaid;
+            asset amount;
+            asset rest; // if subscriber paid more than need. will be sent to author
+            bool from_tip = false;
+            std::string extra;
+        };
+
+        struct subscription_payment_failure_operation : public virtual_operation {
+            subscription_payment_failure_operation() {
+            }
+
+            subscription_payment_failure_operation(const account_name_type& s, const account_name_type& au,
+                const paid_subscription_id& o, const std::string& e) :
+                subscriber(s), author(au), oid(o), extra(e) {
+            }
+
+            account_name_type subscriber;
+            account_name_type author;
+            paid_subscription_id oid;
+            std::string extra;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(hashlink)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -538,3 +573,5 @@ FC_REFLECT((golos::protocol::authority_updated_operation), (account)(owner)(acti
 FC_REFLECT((golos::protocol::account_freeze_operation), (account)(frozen)(unfreeze_fee))
 FC_REFLECT((golos::protocol::unwanted_cost_operation), (blocker)(blocking)(amount)(target)(burn_fee))
 FC_REFLECT((golos::protocol::unlimit_cost_operation), (account)(amount)(limit_type)(target_type)(id1)(id2)(id3)(id4))
+FC_REFLECT((golos::protocol::subscription_payment_operation), (subscriber)(author)(oid)(amount_prepaid)(amount)(rest)(from_tip)(extra))
+FC_REFLECT((golos::protocol::subscription_payment_failure_operation), (subscriber)(author)(oid)(extra))

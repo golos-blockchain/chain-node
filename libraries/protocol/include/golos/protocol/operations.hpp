@@ -4,6 +4,7 @@
 #include <golos/protocol/proposal_operations.hpp>
 #include <golos/protocol/steem_operations.hpp>
 #include <golos/protocol/worker_operations.hpp>
+#include <golos/protocol/paid_subscription_operations.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
 #include <golos/protocol/market_events.hpp>
 
@@ -91,6 +92,11 @@ namespace golos { namespace protocol {
                 invite_transfer_operation,
                 limit_order_cancel_ex_operation,
                 account_setup_operation,
+                paid_subscription_create_operation,
+                paid_subscription_update_operation,
+                paid_subscription_delete_operation,
+                paid_subscription_transfer_operation,
+                paid_subscription_cancel_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,
@@ -126,7 +132,9 @@ namespace golos { namespace protocol {
                 unwanted_cost_operation,
                 unlimit_cost_operation,
                 order_create_operation,
-                order_delete_operation
+                order_delete_operation,
+                subscription_payment_operation,
+                subscription_payment_failure_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

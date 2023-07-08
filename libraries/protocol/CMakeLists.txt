@@ -25,6 +25,7 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
         include/golos/protocol/version.hpp
         include/golos/protocol/reward_curve.hpp
         include/golos/protocol/donate_targets.hpp
+        include/golos/protocol/paid_subscription_operations.hpp
         )
 
 list(APPEND ${CURRENT_TARGET}_SOURCES
@@ -42,6 +43,7 @@ list(APPEND ${CURRENT_TARGET}_SOURCES
         types.cpp
         version.cpp
         donate_targets.cpp
+        paid_subscription_operations.cpp
         )
 
 if(BUILD_SHARED_LIBRARIES)

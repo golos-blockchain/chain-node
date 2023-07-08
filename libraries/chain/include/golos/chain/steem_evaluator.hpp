@@ -101,4 +101,10 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(worker_request_delete)
         DEFINE_EVALUATOR(worker_request_vote)
 
+        DEFINE_EVALUATOR(paid_subscription_create)
+        DEFINE_EVALUATOR(paid_subscription_update)
+        DEFINE_EVALUATOR(paid_subscription_delete)
+        DEFINE_EVALUATOR(paid_subscription_transfer)
+        DEFINE_EVALUATOR(paid_subscription_cancel)
+
 } } // golos::chain

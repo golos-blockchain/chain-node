@@ -4,6 +4,7 @@
 #include <golos/chain/node_property_object.hpp>
 #include <golos/chain/worker_objects.hpp>
 #include <golos/chain/event_objects.hpp>
+#include <golos/chain/paid_subscription_objects.hpp>
 #include <golos/chain/comment_bill.hpp>
 #include <golos/chain/fork_database.hpp>
 #include <golos/chain/block_log.hpp>
@@ -280,6 +281,14 @@ namespace golos { namespace chain {
             account_balance_object get_or_default_account_balance(const account_name_type& account, const asset_symbol_type& symbol) const;
             void                   adjust_account_balance(const account_name_type& account, const asset& delta, const asset& delta_tip, asset delta_market = asset());
 
+            const paid_subscription_object&  get_paid_subscription(const account_name_type& author, const paid_subscription_id& id) const;
+            const paid_subscription_object*  find_paid_subscription(const account_name_type& author, const paid_subscription_id& id) const;
+            void                             throw_if_exists_paid_subscription(const account_name_type& author, const paid_subscription_id& id) const;
+
+            const paid_subscriber_object&  get_paid_subscriber(const account_name_type& subscriber, const account_name_type& author, const paid_subscription_id& id) const;
+            const paid_subscriber_object*  find_paid_subscriber(const account_name_type& subscriber, const account_name_type& author, const paid_subscription_id& id) const;
+            void                             throw_if_exists_paid_subscriber(const account_name_type& subscriber, const account_name_type& author, const paid_subscription_id& id) const;
+
             void update_pair_depth(asset base, asset quote);
             void update_asset_marketed(asset_symbol_type symbol);
 
@@ -393,6 +402,14 @@ namespace golos { namespace chain {
             void push_order_create_event(const limit_order_object& order);
 
             void push_order_delete_event(const limit_order_object& order);
+
+            bool claim_for_subscription(const account_object& subscriber, const asset& amount, bool from_tip);
+
+            void pay_for_subscription(const account_object& author, const asset& amount, bool to_tip);
+
+            void push_payment_event(const paid_subscriber_object& psro, asset prepaid, asset amount, asset rest);
+
+            void process_paid_subscribers();
 
             bool is_account_vote(const vote_operation& op) const {
                 // Check if it is account vote, not comment vote

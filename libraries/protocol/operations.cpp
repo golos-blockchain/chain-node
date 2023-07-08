@@ -52,6 +52,14 @@ namespace golos {
             bool operator()(const invite_transfer_operation &) const {
                 return true;
             }
+
+            bool operator()(const paid_subscription_create_operation &) const {
+                return true;
+            }
+
+            bool operator()(const paid_subscription_transfer_operation &) const {
+                return true;
+            }
         };
 
         bool is_market_operation(const operation &op) {
