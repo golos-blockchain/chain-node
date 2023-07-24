@@ -44,7 +44,7 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
         last_owner_proved(a.last_owner_proved), last_active_proved(a.last_active_proved),
         recovery_account(a.recovery_account), reset_account(a.reset_account),
         last_account_recovery(a.last_account_recovery), comment_count(a.comment_count),
-        lifetime_vote_count(a.lifetime_vote_count), post_count(a.post_count),
+        lifetime_vote_count(a.lifetime_vote_count), post_count(a.post_count), sponsor_count(a.sponsor_count),
         posts_capacity(a.posts_capacity), comments_capacity(a.comments_capacity), voting_capacity(a.voting_capacity),
         can_vote(a.can_vote),
         voting_power(a.voting_power), last_vote_time(a.last_vote_time),

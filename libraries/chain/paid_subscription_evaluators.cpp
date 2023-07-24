@@ -80,6 +80,7 @@ namespace golos { namespace chain {
         const auto& pso = _db.get_paid_subscription(op.author, op.oid);
 
         const auto& idx = _db.get_index<paid_subscriber_index, by_author_oid_subscriber>();
+        uint32_t removed_subscribers = 0;
         for (auto itr = idx.find(std::make_tuple(op.author, op.oid));
             itr != idx.end() && itr->author == op.author && itr->oid == op.oid;) {
             const auto& current = *itr;
@@ -89,9 +90,14 @@ namespace golos { namespace chain {
 
             ++itr;
             _db.remove(current);
+            ++removed_subscribers;
         }
 
         _db.remove(pso);
+
+        _db.modify(_db.get_account(op.author), [&](auto& acc) {
+            acc.sponsor_count -= removed_subscribers;
+        });
     }
 
     void paid_subscription_transfer_evaluator::do_apply(const paid_subscription_transfer_operation& op) {
@@ -128,8 +134,10 @@ namespace golos { namespace chain {
 
         const auto* psro = _db.find_paid_subscriber(op.from, op.to, op.oid);
         if (!psro) {
+            const auto& to_account = _db.get_account(op.to);
+
             auto pay_now = pso.executions == 0 ? op.amount : pso.cost;
-            _db.pay_for_subscription(_db.get_account(op.to), pay_now, op.from_tip);
+            _db.pay_for_subscription(to_account, pay_now, op.from_tip);
 
             const auto& psro = _db.create<paid_subscriber_object>([&](auto& psro) {
                 psro.subscriber = op.from;
@@ -159,6 +167,10 @@ namespace golos { namespace chain {
             _db.modify(pso, [&](auto& pso) {
                 ++pso.subscribers;
                 ++pso.active_subscribers;
+            });
+
+            _db.modify(to_account, [&](auto& acc) {
+                ++acc.sponsor_count;
             });
         } else {
             GOLOS_CHECK_VALUE(pso.executions != 0, "You do not need to prolong single-executed subscription");
@@ -214,6 +226,10 @@ namespace golos { namespace chain {
 
         _db.modify(pso, [&](auto& pso) {
             --pso.subscribers;
+        });
+
+        _db.modify(_db.get_account(op.author), [&](auto& acc) {
+            --acc.sponsor_count;
         });
     }
 
