@@ -55,6 +55,7 @@ public:
         auto push_it = [&](paid_subscriber_object psro) {
             if (query.state == paid_subscribers_state::active_only && !psro.active) return;
             if (query.state == paid_subscribers_state::inactive_only && psro.active) return;
+            if (!query.is_good_one(psro.subscriber)) return;
             if (psro.executions == 0) {
                 psro.prepaid_until = time_point_sec::maximum();
             } else {

@@ -40,6 +40,12 @@ struct paid_subscribers_query {
 
     paid_subscribers_sort sort = paid_subscribers_sort::by_name;
     paid_subscribers_state state = paid_subscribers_state::active_inactive;
+
+    std::set<account_name_type> select_subscribers;
+
+    bool is_good_one(const account_name_type& subscriber) const {
+        return !select_subscribers.size() || select_subscribers.find(subscriber) != select_subscribers.end();
+    }
 };
 
 enum class paid_subscriptions_sort : uint8_t {
@@ -88,7 +94,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::paid_subscription_api::paid_subscribers_query),
-    (author)(oid)(from)(limit)(sort)(state)
+    (author)(oid)(from)(limit)(sort)(state)(select_subscribers)
 )
 
 FC_REFLECT_ENUM(
