@@ -94,15 +94,34 @@ public:
     }
 
     std::vector<paid_subscriber_object> get_paid_subscriptions(
-        const paid_subscriptions_query& query
+        const paid_subscriptions_query& query,
+        const std::set<std::pair<account_name_type, paid_subscription_id>>& select_items,
+        const paid_subscription_id& select_oid
     ) {
         std::vector<paid_subscriber_object> result;
 
         GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
 
+        auto is_good_one = [&](const account_name_type& author, const paid_subscription_id& id) {
+            if (!select_items.size()) return true;
+            if (!select_oid.empty() && id != select_oid) return false;
+
+            auto itr = select_items.lower_bound(std::make_pair(author, paid_subscription_id()));
+            while (itr != select_items.end() && itr->first == author) {
+                if (itr->second.empty() || itr->second == id) {
+                    if (select_oid.empty() || select_oid == id) {
+                        return true;
+                    }
+                }
+                ++itr;
+            }
+            return false;
+        };
+
         auto push_it = [&](paid_subscriber_object psro) {
             if (query.state == paid_subscribers_state::active_only && !psro.active) return;
             if (query.state == paid_subscribers_state::inactive_only && psro.active) return;
+            if (!is_good_one(psro.author, psro.oid)) return;
             if (psro.executions == 0) {
                 psro.prepaid_until = time_point_sec::maximum();
             } else {
@@ -217,8 +236,22 @@ DEFINE_API(paid_subscription_api_plugin, get_paid_subscriptions) {
     PLUGIN_API_VALIDATE_ARGS(
         (paid_subscriptions_query, query)
     )
+
+    GOLOS_CHECK_LIMIT_PARAM(query.select_items.size(), 200); 
+
+    std::set<std::pair<account_name_type, paid_subscription_id>> select_items;
+
+    for (const auto& p : query.select_items) {
+        if (p.second.is_null() || !p.second.is_object()) {
+            select_items.insert(std::make_pair(p.first, paid_subscription_id()));
+            continue;
+        }
+        auto oid = p.second.as<paid_subscription_id>();
+        select_items.insert(std::make_pair(p.first, oid));
+    }
+
     return my->_db.with_weak_read_lock([&](){
-        return my->get_paid_subscriptions(query);
+        return my->get_paid_subscriptions(query, select_items, query.select_oid);
     });
 }
 

@@ -62,6 +62,9 @@ struct paid_subscriptions_query {
 
     paid_subscriptions_sort sort = paid_subscriptions_sort::by_author_oid;
     paid_subscribers_state state = paid_subscribers_state::active_inactive;
+
+    std::vector<std::pair<account_name_type, fc::variant>> select_items;
+    paid_subscription_id select_oid;
 };
 
 struct paid_subscribe_query {
@@ -104,7 +107,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::paid_subscription_api::paid_subscriptions_query),
-    (subscriber)(start_author)(start_oid)(limit)(sort)(state)
+    (subscriber)(start_author)(start_oid)(limit)(sort)(state)(select_items)(select_oid)
 )
 
 FC_REFLECT(

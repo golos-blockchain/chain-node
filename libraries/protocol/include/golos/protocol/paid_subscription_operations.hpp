@@ -27,6 +27,16 @@ namespace golos { namespace protocol {
                    (version == o.version);
         }
 
+        bool operator!=(const paid_subscription_id& o) const {
+            return (app != o.app) ||
+                   (name != o.name) ||
+                   (version != o.version);
+        }
+
+        bool empty() const {
+            return app == account_name_type() && name == account_name_type() && version == 1;
+        }
+
         void validate() const;
     };
 
