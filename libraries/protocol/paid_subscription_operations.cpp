@@ -7,6 +7,9 @@ namespace golos { namespace protocol {
     void paid_subscription_id::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(app);
         GOLOS_CHECK_PARAM_ACCOUNT(name);
+        GOLOS_CHECK_PARAM(version, {
+            GOLOS_CHECK_VALUE(version >= 1, "Version should be at least 1");
+        });
     }
 
     void paid_subscription_create_operation::validate() const {
@@ -56,6 +59,10 @@ namespace golos { namespace protocol {
         oid.validate();
         GOLOS_CHECK_PARAM(amount, {
             GOLOS_CHECK_VALUE(amount.amount > 0, "Cannot transfer a negative amount (aka: stealing)");
+            GOLOS_CHECK_VALUE(amount.symbol != VESTS_SYMBOL, "Amount cannot be GESTS");
+            if (from_tip) {
+                GOLOS_CHECK_VALUE(amount.symbol != SBD_SYMBOL, "Amount cannot be GBG, if from_tip is true");
+            }
         });
         GOLOS_CHECK_PARAM(memo, {
             GOLOS_CHECK_VALUE(memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large");

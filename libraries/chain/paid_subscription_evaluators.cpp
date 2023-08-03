@@ -220,17 +220,20 @@ namespace golos { namespace chain {
             _db.pay_for_subscription(_db.get_account(op.subscriber), psro.prepaid, psro.tip_cost);
         }
 
-        _db.remove(psro);
-
         const auto& pso = _db.get_paid_subscription(op.author, op.oid);
 
         _db.modify(pso, [&](auto& pso) {
             --pso.subscribers;
+            if (psro.active) {
+                --pso.active_subscribers;
+            }
         });
 
         _db.modify(_db.get_account(op.author), [&](auto& acc) {
             --acc.sponsor_count;
         });
+
+        _db.remove(psro);
     }
 
 } } // golos::chain
