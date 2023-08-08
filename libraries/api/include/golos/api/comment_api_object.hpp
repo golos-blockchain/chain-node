@@ -1,6 +1,7 @@
 #ifndef GOLOS_COMMENT_API_OBJ_H
 #define GOLOS_COMMENT_API_OBJ_H
 
+#include <boost/algorithm/string.hpp>
 #include <golos/chain/comment_object.hpp>
 #include <golos/chain/database.hpp>
 #include <vector>
@@ -35,6 +36,7 @@ namespace golos { namespace api {
             }
             return true;
         }
+        bool filter_special = false;
     };
 
     using opt_prefs = fc::optional<content_prefs>;
@@ -123,6 +125,10 @@ namespace golos { namespace api {
         fc::optional<vector<protocol::beneficiary_route_type>> beneficiaries;
     
         fc::optional<bad_comment> bad;
+
+        bool is_special() const {
+            return boost::algorithm::starts_with(body, "{\"t\":");
+        }
     };
 
 } } // golos::api
@@ -134,7 +140,7 @@ FC_REFLECT((golos::api::bad_action),
     (remove)
 )
 FC_REFLECT((golos::api::content_prefs),
-    (blockers)(filter_apps)(select_apps)
+    (blockers)(filter_apps)(select_apps)(filter_special)
 )
 
 FC_REFLECT(

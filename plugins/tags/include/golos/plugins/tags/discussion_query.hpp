@@ -47,6 +47,7 @@ namespace golos { namespace plugins { namespace tags {
         std::set<std::string>             select_languages; ///< list of language to select
         std::set<std::string>             filter_languages; ///< list of language to filter
         uint32_t                          truncate_body = 0; ///< the amount of bytes of the post body to return, 0 for all
+        bool                              truncate_special = true;
         uint32_t                          vote_limit = DEFAULT_VOTE_LIMIT; ///< limit for active votes
         uint32_t                          vote_offset = 0; ///< an amount of skipping votes
         std::set<std::string>             select_authors; ///< list of authors to select
@@ -127,7 +128,7 @@ namespace golos { namespace plugins { namespace tags {
 FC_REFLECT((golos::plugins::tags::discussion_query),
         (select_tags)(filter_tags)(filter_tag_masks)
         (select_categories)(select_category_masks)
-        (select_authors)(filter_authors)(truncate_body)(vote_limit)(vote_offset)
+        (select_authors)(filter_authors)(truncate_body)(truncate_special)(vote_limit)(vote_offset)
         (start_author)(start_permlink)(parent_author)
         (parent_permlink)(comments_only)(limit)(select_languages)(filter_languages)
         (prefs)

@@ -102,7 +102,8 @@ namespace golos { namespace plugins { namespace social_network {
 
         std::vector<discussion> get_content_previews(
             const std::vector<author_hashlink>& ids,
-            uint32_t truncate_body
+            uint32_t truncate_body,
+            bool truncate_special = true
         ) const;
 
         std::vector<discussion> get_content_replies(
@@ -885,15 +886,17 @@ namespace golos { namespace plugins { namespace social_network {
         PLUGIN_API_VALIDATE_ARGS(
             (std::vector<author_hashlink>, ids)
             (uint32_t, truncate_body, 1024)
+            (bool, truncate_special, false)
         );
         return pimpl->db.with_weak_read_lock([&]() {
-            return pimpl->get_content_previews(ids, truncate_body);
+            return pimpl->get_content_previews(ids, truncate_body, truncate_special);
         });
     }
 
     std::vector<discussion> social_network::impl::get_content_previews(
         const std::vector<author_hashlink>& ids,
-        uint32_t truncate_body
+        uint32_t truncate_body,
+        bool truncate_special
     ) const {
         std::vector<discussion> result;
         for (const auto& id : ids) {
@@ -902,11 +905,13 @@ namespace golos { namespace plugins { namespace social_network {
                 auto dis = get_discussion(*comment, DEFAULT_VOTE_LIMIT, 0);
 
                 if (dis.body.size() > truncate_body) {
-                    dis.body.erase(truncate_body);
-                    if (!fc::is_utf8(dis.body)) {
-                        dis.body = fc::prune_invalid_utf8(dis.body);
+                    if (truncate_special || !dis.is_special()) {
+                        dis.body.erase(truncate_body);
+                        if (!fc::is_utf8(dis.body)) {
+                            dis.body = fc::prune_invalid_utf8(dis.body);
+                        }
+                        dis.body += "...";
                     }
-                    dis.body += "...";
                 }
 
                 result.emplace_back(dis);
@@ -1247,9 +1252,11 @@ namespace golos { namespace plugins { namespace social_network {
                     ++itr;
                     continue;
                 }
-                if (!!prefs && !prefs->is_good_app(d.app)) {
-                    ++itr;
-                    continue;
+                if (!!prefs) {
+                    if (!prefs->is_good_app(d.app) || (prefs->filter_special && d.is_special())) {
+                        ++itr;
+                        continue;
+                    }
                 }
                 unordered.emplace_back(d);
 

@@ -132,16 +132,17 @@ namespace golos { namespace plugins { namespace tags {
 
         d.body_length = static_cast<uint32_t>(d.body.size());
         if (query.truncate_body) {
-            if (d.body.size() > query.truncate_body) {
-                d.body.erase(query.truncate_body);
+            if (query.truncate_special || !d.is_special()) {
+                if (d.body.size() > query.truncate_body) {
+                    d.body.erase(query.truncate_body);
+                }
+                if (!fc::is_utf8(d.body)) {
+                    d.body = fc::prune_invalid_utf8(d.body);
+                }
             }
 
             if (!fc::is_utf8(d.title)) {
                 d.title = fc::prune_invalid_utf8(d.title);
-            }
-
-            if (!fc::is_utf8(d.body)) {
-                d.body = fc::prune_invalid_utf8(d.body);
             }
 
             if (!fc::is_utf8(d.json_metadata)) {
@@ -374,6 +375,9 @@ namespace golos { namespace plugins { namespace tags {
                 if (!query.is_good_app(d.app)) {
                     continue;
                 }
+                if (!!query.prefs && query.prefs->filter_special && d.is_special()) {
+                    continue;
+                }
 
                 fill_discussion(d, query);
                 if (!!d.bad && d.bad->to_remove) {
@@ -424,6 +428,9 @@ namespace golos { namespace plugins { namespace tags {
                 continue;
             }
             if (!query.is_good_app(d.app)) {
+                continue;
+            }
+            if (!!query.prefs && query.prefs->filter_special && d.is_special()) {
                 continue;
             }
 
@@ -671,6 +678,9 @@ namespace golos { namespace plugins { namespace tags {
                         !query.is_good_author(p.author) ||
                         !query.is_good_app(p.app)
                     ) {
+                        continue;
+                    }
+                    if (!!query.prefs && query.prefs->filter_special && p.is_special()) {
                         continue;
                     }
                     discussion d;
