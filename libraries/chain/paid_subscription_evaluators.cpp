@@ -189,21 +189,29 @@ namespace golos { namespace chain {
                 });
             }
 
+            if (psro->prepaid.amount > 0 && psro->prepaid.symbol != pso.cost.symbol) {
+                _db.pay_for_subscription(_db.get_account(op.from), psro->prepaid, psro->tip_cost);
+            }
+
             _db.modify(*psro, [&](auto& psro) {
                 if (!psro.active) {
                     psro.active = true;
 
+                    psro.interval = pso.interval;
+                    psro.executions = pso.executions;
+
+                    psro.next_payment = now + fc::seconds(psro.interval);
+                }
+                if (pso.allow_prepaid) {
                     psro.cost = pso.cost;
                     psro.tip_cost = pso.tip_cost;
                     psro.interval = pso.interval;
                     psro.executions = pso.executions;
 
-                    FC_ASSERT(psro.prepaid.amount == 0, "Inactive subscription should not have a prepaid");
-                    psro.prepaid = asset(0, pso.cost.symbol); // Update symbol if author changed it
+                    if (psro.prepaid.symbol != pso.cost.symbol) {
+                        psro.prepaid = asset(0, pso.cost.symbol); // Update symbol if author changed it
+                    }
 
-                    psro.next_payment = now + fc::seconds(psro.interval);
-                }
-                if (pso.allow_prepaid) {
                     psro.prepaid += op.amount;
                 }
                 psro.executions_left = psro.executions;

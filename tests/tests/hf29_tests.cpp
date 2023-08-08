@@ -819,7 +819,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
     } FC_LOG_AND_RETHROW() }
 
-    /*BOOST_AUTO_TEST_CASE(paid_subscription_update) { try {
+    BOOST_AUTO_TEST_CASE(paid_subscription_update) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscription_update");
 
         ACTORS((alice)(carol))
@@ -840,7 +840,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, pscop));
         generate_block();
 
-        BOOST_TEST_MESSAGE("-- Subscribe by carol, dave");
+        BOOST_TEST_MESSAGE("-- Subscribe by carol");
 
         fund("carol", ASSET("10.000 GBG"));
 
@@ -858,12 +858,14 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
+        fc::time_point_sec next_payment;
         {
             const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(1510, SBD_SYMBOL));
             BOOST_CHECK_EQUAL(carol->next_payment, created + fc::seconds(30));
+            next_payment = carol->next_payment;
         }
 
         validate_database();
@@ -897,7 +899,6 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, pstop));
 
-        auto updated = db->head_block_time();
         generate_block();
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
@@ -907,7 +908,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(10, STEEM_SYMBOL));
-            BOOST_CHECK_EQUAL(carol->next_payment, updated + fc::seconds(30));
+            BOOST_CHECK_EQUAL(carol->next_payment, next_payment);
         }
 
         BOOST_TEST_MESSAGE("-- Wait for next payment");
@@ -921,19 +922,129 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(9, STEEM_SYMBOL));
-            BOOST_CHECK_EQUAL(carol->next_payment, updated + fc::seconds(30 * 2));
+            BOOST_CHECK_EQUAL(carol->next_payment, next_payment + fc::seconds(30));
         }
 
-        BOOST_TEST_MESSAGE("-- Check balances");
+        BOOST_TEST_MESSAGE("-- Check balances (incl. check GBG moneyback)");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("carol").balance, asset(9990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 510, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(db->get_account("carol").balance, asset(9990, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
         BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(1, STEEM_SYMBOL));
 
         validate_database();
 
-    } FC_LOG_AND_RETHROW() }*/
+    } FC_LOG_AND_RETHROW() }
+
+    BOOST_AUTO_TEST_CASE(paid_subscription_inactive) { try {
+        BOOST_TEST_MESSAGE("Testing: paid_subscription_inactive");
+
+        ACTORS((alice)(carol))
+        generate_block();
+
+        signed_transaction tx;
+
+        BOOST_TEST_MESSAGE("-- Create periodic paid subscription by alice");
+
+        paid_subscription_create_operation pscop;
+        pscop.author = "alice";
+        pscop.oid = paid_subscription_id{"alicegram", "hugs", 1};
+        pscop.cost = asset(500, SBD_SYMBOL);
+        pscop.tip_cost = false;
+        pscop.allow_prepaid = true;
+        pscop.interval = 30;
+        pscop.executions = 10;
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, pscop));
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Subscribe by carol");
+
+        fund("carol", ASSET("2.020 GBG"));
+
+        paid_subscription_transfer_operation pstop;
+        pstop.from = "carol";
+        pstop.to = "alice";
+        pstop.oid = pscop.oid;
+        pstop.amount = asset(2010, SBD_SYMBOL);
+        pstop.from_tip = false;
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, pstop));
+
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Wait for next payment");
+
+        generate_blocks(30 / STEEMIT_BLOCK_INTERVAL - 1);
+
+        BOOST_TEST_MESSAGE("-- Check subscriptions");
+
+        {
+            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            BOOST_CHECK_EQUAL(carol->active, true);
+            BOOST_CHECK_EQUAL(carol->prepaid, asset(1010, SBD_SYMBOL));
+        }
+
+        BOOST_TEST_MESSAGE("-- Wait for next payment #2");
+
+        generate_blocks(30 / STEEMIT_BLOCK_INTERVAL);
+
+        BOOST_TEST_MESSAGE("-- Check subscriptions");
+
+        {
+            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            BOOST_CHECK_EQUAL(carol->active, true);
+            BOOST_CHECK_EQUAL(carol->prepaid, asset(510, SBD_SYMBOL));
+        }
+
+        BOOST_TEST_MESSAGE("-- Wait for next payment #3");
+
+        generate_blocks(30 / STEEMIT_BLOCK_INTERVAL);
+
+        BOOST_TEST_MESSAGE("-- Check subscriptions");
+
+        {
+            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            BOOST_CHECK_EQUAL(carol->active, true);
+            BOOST_CHECK_EQUAL(carol->prepaid, asset(10, SBD_SYMBOL));
+        }
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Wait for next payment #4");
+
+        generate_blocks(30 / STEEMIT_BLOCK_INTERVAL);
+
+        BOOST_TEST_MESSAGE("-- Check subscriptions");
+
+        {
+            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            BOOST_CHECK(carol != nullptr);
+            BOOST_CHECK_EQUAL(carol->active, false);
+            BOOST_CHECK_EQUAL(carol->prepaid, asset(10, SBD_SYMBOL));
+            BOOST_CHECK_EQUAL(carol->next_payment, fc::time_point_sec(0));
+        }
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Wait another interval (nothing should happen)");
+
+        generate_blocks(30 / STEEMIT_BLOCK_INTERVAL);
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Prolong subscription");
+
+        fund("carol", ASSET("2.010 GBG"));
+
+        pstop.from = "carol";
+        pstop.to = "alice";
+        pstop.oid = pscop.oid;
+        pstop.amount = asset(2010, SBD_SYMBOL);
+        pstop.from_tip = false;
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, pstop));
+
+    } FC_LOG_AND_RETHROW() }
 
     BOOST_AUTO_TEST_CASE(paid_subscription_cancel_delete) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscription_cancel_delete");
