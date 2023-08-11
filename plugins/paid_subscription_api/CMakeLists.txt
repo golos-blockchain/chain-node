@@ -2,6 +2,8 @@ set(CURRENT_TARGET paid_subscription_api)
 
 list(APPEND CURRENT_TARGET_HEADERS
     include/golos/plugins/paid_subscription_api/paid_subscription_api.hpp
+    include/golos/plugins/paid_subscription_api/paid_subscription_api_queries.hpp
+    include/golos/plugins/paid_subscription_api/paid_subscription_api_objects.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES

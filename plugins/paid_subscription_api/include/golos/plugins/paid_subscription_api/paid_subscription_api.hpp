@@ -5,6 +5,7 @@
 #include <appbase/plugin.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
+#include <golos/plugins/paid_subscription_api/paid_subscription_api_objects.hpp>
 
 namespace golos { namespace plugins { namespace paid_subscription_api {
 
@@ -15,7 +16,7 @@ DEFINE_API_ARGS(get_paid_subscriptions_by_author, json_rpc::msg_pack, std::vecto
 DEFINE_API_ARGS(get_paid_subscription_options, json_rpc::msg_pack, paid_subscription_object)
 DEFINE_API_ARGS(get_paid_subscribers, json_rpc::msg_pack, std::vector<paid_subscriber_object>)
 DEFINE_API_ARGS(get_paid_subscriptions, json_rpc::msg_pack, std::vector<paid_subscriber_object>)
-DEFINE_API_ARGS(get_paid_subscribe, json_rpc::msg_pack, paid_subscriber_object)
+DEFINE_API_ARGS(get_paid_subscribe, json_rpc::msg_pack, paid_subscribe_result)
 
 class paid_subscription_api_plugin final : public appbase::plugin<paid_subscription_api_plugin> {
 public:

@@ -159,19 +159,25 @@ public:
         return result;
     }
 
-    paid_subscriber_object get_paid_subscribe(
+    paid_subscribe_result get_paid_subscribe(
         const paid_subscribe_query& query
     ) {
         _db.get_account(query.subscriber);
         _db.get_account(query.author);
 
-        const auto* psro = _db.find_paid_subscriber(query.subscriber, query.author, query.oid);
+        paid_subscribe_result res;
 
+        const auto* psro = _db.find_paid_subscriber(query.subscriber, query.author, query.oid);
         if (psro) {
-            return *psro;
-        } else {
-            return paid_subscriber_object();
+            res.subscribe = *psro;
         }
+
+        const auto* pso = _db.find_paid_subscription(query.author, query.oid);
+        if (pso) {
+            res.subscription = *pso;
+        }
+
+        return res;
     }
 
     database& _db;
