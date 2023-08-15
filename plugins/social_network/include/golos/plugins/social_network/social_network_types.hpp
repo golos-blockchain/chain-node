@@ -85,6 +85,7 @@ namespace golos { namespace plugins { namespace social_network {
     struct by_last_update; /// parent_auth, last_update
     struct by_author_last_update;
     struct by_parent;
+    struct by_parent_active;
 
     using comment_last_update_index = multi_index_container<
         comment_last_update_object,
@@ -111,10 +112,19 @@ namespace golos { namespace plugins { namespace social_network {
             ordered_non_unique <
                 tag<by_parent>,
                     composite_key<comment_last_update_object,
-                    member <comment_last_update_object, account_name_type, &comment_last_update_object::parent_author>,
-                    member<comment_last_update_object, shared_string, &comment_last_update_object::parent_permlink>,
-                    member<comment_last_update_object, comment_id_type, &comment_last_update_object::comment>>,
-                composite_key_compare <std::less<account_name_type>, strcmp_less, std::greater<comment_id_type>> >
+                        member <comment_last_update_object, account_name_type, &comment_last_update_object::parent_author>,
+                        member<comment_last_update_object, shared_string, &comment_last_update_object::parent_permlink>,
+                        member<comment_last_update_object, comment_id_type, &comment_last_update_object::comment>>,
+                    composite_key_compare <std::less<account_name_type>, strcmp_less, std::greater<comment_id_type>>
+            >,
+            ordered_non_unique <
+                tag<by_parent_active>,
+                    composite_key<comment_last_update_object,
+                        member <comment_last_update_object, account_name_type, &comment_last_update_object::parent_author>,
+                        member<comment_last_update_object, shared_string, &comment_last_update_object::parent_permlink>,
+                        member<comment_last_update_object, time_point_sec, &comment_last_update_object::active>>,
+                    composite_key_compare <std::less<account_name_type>, strcmp_less, std::greater<time_point_sec>>
+            >
         >,
         allocator<comment_last_update_object>
     >;
