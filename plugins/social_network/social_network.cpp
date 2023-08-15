@@ -1210,7 +1210,7 @@ namespace golos { namespace plugins { namespace social_network {
             return result;
         }
 
-        const auto& idx = db.get_index<comment_last_update_index, by_parent>();
+        const auto& idx = db.get_index<comment_last_update_index, by_parent_active>();
 
         bool has_start = start_author.size() && start_permlink.size();
 
@@ -1255,10 +1255,6 @@ namespace golos { namespace plugins { namespace social_network {
 
                 ++itr;
             }
-
-            std::sort(unordered.begin(), unordered.end(), [&](auto& lhs, auto& rhs) {
-                return *lhs.active > *rhs.active;
-            });
 
             auto& vec = result[category_prefix];
 
@@ -1341,11 +1337,6 @@ namespace golos { namespace plugins { namespace social_network {
 
                     ++itr;
                 }
-
-                auto& vec = result[category];
-                std::sort(vec.begin(), vec.end(), [&](auto& lhs, auto& rhs) {
-                    return *lhs.active > *rhs.active;
-                });
             }
         }
 
