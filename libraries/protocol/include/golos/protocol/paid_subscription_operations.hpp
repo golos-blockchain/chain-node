@@ -125,6 +125,14 @@ namespace golos { namespace protocol {
         }
     };
 
+    enum class psro_inactive_reason {
+        none,
+        subscription_update,
+        insufficient_funds,
+        executions_end,
+        _size
+    };
+
 } } // golos::protocol
 
 FC_REFLECT(
@@ -150,3 +158,7 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::protocol::paid_subscription_cancel_operation),
     (subscriber)(author)(oid)(extensions))
+
+FC_REFLECT_ENUM(
+    golos::protocol::psro_inactive_reason,
+    (none)(subscription_update)(insufficient_funds)(executions_end)(_size))

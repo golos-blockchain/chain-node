@@ -212,6 +212,20 @@ namespace detail_ns {
     };
 
     template<>
+    struct js_name<sponsor_payment> {
+        static std::string name() {
+            return "sponsor_payment";
+        }
+    };
+
+    template<>
+    struct js_name<psro_inactive_reason> {
+        static std::string name() {
+            return "psro_inactive_reason";
+        }
+    };
+
+    template<>
     struct js_name<curation_curve> {
         static std::string name() {
             return "curation_curve";
@@ -469,6 +483,44 @@ namespace detail_ns {
             std::cout << "ChainTypes." << js_name<worker_request_state>::name() << " =\n";
             for (uint8_t i = uint8_t(worker_request_state::created); i < uint8_t(worker_request_state::_size); ++i) {
                 std::cout << "    " << fc::json::to_string(worker_request_state(i)) << ": " << int(i) << "\n";
+            }
+            std::cout << "\n";
+        }
+    };
+
+    template<>
+    struct serializer<sponsor_payment, true> {
+        static void init() {
+            static bool init = false;
+            if (!init) {
+                init = true;
+                register_serializer(js_name<sponsor_payment>::name(), [=]() { generate(); });
+            }
+        }
+
+        static void generate() {
+            std::cout << "ChainTypes." << js_name<sponsor_payment>::name() << " =\n";
+            for (uint8_t i = uint8_t(sponsor_payment::first); i < uint8_t(sponsor_payment::_size); ++i) {
+                std::cout << "    " << fc::json::to_string(sponsor_payment(i)) << ": " << int(i) << "\n";
+            }
+            std::cout << "\n";
+        }
+    };
+
+    template<>
+    struct serializer<psro_inactive_reason, true> {
+        static void init() {
+            static bool init = false;
+            if (!init) {
+                init = true;
+                register_serializer(js_name<psro_inactive_reason>::name(), [=]() { generate(); });
+            }
+        }
+
+        static void generate() {
+            std::cout << "ChainTypes." << js_name<psro_inactive_reason>::name() << " =\n";
+            for (uint8_t i = uint8_t(psro_inactive_reason::none); i < uint8_t(psro_inactive_reason::_size); ++i) {
+                std::cout << "    " << fc::json::to_string(psro_inactive_reason(i)) << ": " << int(i) << "\n";
             }
             std::cout << "\n";
         }

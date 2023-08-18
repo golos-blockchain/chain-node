@@ -407,7 +407,7 @@ namespace golos { namespace chain {
 
             void pay_for_subscription(const account_object& author, const asset& amount, bool to_tip);
 
-            void push_payment_event(const paid_subscriber_object& psro, asset prepaid, asset amount, asset rest);
+            void push_payment_event(const paid_subscriber_object& psro, const sponsor_payment& payment_type, asset prepaid, asset amount, asset rest, asset to_prepaid);
 
             void process_paid_subscribers();
 

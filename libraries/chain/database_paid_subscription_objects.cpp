@@ -71,9 +71,10 @@ void database::pay_for_subscription(const account_object& author, const asset& a
     }
 }
 
-void database::push_payment_event(const paid_subscriber_object& psro, asset prepaid, asset amount, asset rest) {
+void database::push_payment_event(const paid_subscriber_object& psro, const sponsor_payment& payment_type,
+        asset prepaid, asset amount, asset rest, asset to_prepaid) {
     push_event(subscription_payment_operation(psro.subscriber, psro.author, psro.oid,
-        prepaid, amount, rest, psro.tip_cost, "{}"));
+        payment_type, prepaid, amount, rest, to_prepaid, psro.tip_cost, "{}"));
 }
 
 void database::process_paid_subscribers() { try {
@@ -94,6 +95,7 @@ void database::process_paid_subscribers() { try {
             modify(psro, [&](auto& psro) {
                 psro.active = false;
                 psro.next_payment = time_point_sec(0);
+                psro.inactive_reason = psro_inactive_reason::executions_end;
             });
 
             const auto& pso = get_paid_subscription(psro.author, psro.oid);
@@ -113,6 +115,7 @@ void database::process_paid_subscribers() { try {
                 modify(psro, [&](auto& psro) {
                     psro.active = false;
                     psro.next_payment = time_point_sec(0);
+                    psro.inactive_reason = psro_inactive_reason::insufficient_funds;
                 });
 
                 const auto& pso = get_paid_subscription(psro.author, psro.oid);
@@ -120,7 +123,8 @@ void database::process_paid_subscribers() { try {
                     --pso.active_subscribers;
                 });
 
-                push_virtual_operation(subscription_payment_failure_operation(psro.subscriber, psro.author, psro.oid, "{}"));
+                push_event(subscription_inactive_operation(psro.subscriber, psro.author, psro.oid,
+                    psro_inactive_reason::insufficient_funds, "{}"));
                 continue;
             }
         }
@@ -132,7 +136,7 @@ void database::process_paid_subscribers() { try {
 
         pay_for_subscription(get_account(psro.author), prepaid + amount + rest, psro.tip_cost);
 
-        push_payment_event(psro, prepaid, amount, rest);
+        push_payment_event(psro, sponsor_payment::regular, prepaid, amount, rest, asset(0, amount.symbol));
 
         ++itr;
 

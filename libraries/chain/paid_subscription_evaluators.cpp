@@ -49,6 +49,8 @@ namespace golos { namespace chain {
             GOLOS_CHECK_VALUE(op.executions > 0, "You cannot make subscription single-executed");
         }
 
+        uint32_t inactivated_subscribers = 0;
+
         if (!pso.allow_prepaid) {
             GOLOS_CHECK_VALUE(op.tip_cost == pso.tip_cost, "Subscription not supports prepaid, so you cannot change tip_cost");
             GOLOS_CHECK_VALUE(op.interval == pso.interval, "Subscription not supports prepaid, so you cannot change interval");
@@ -57,11 +59,23 @@ namespace golos { namespace chain {
             const auto& idx = _db.get_index<paid_subscriber_index, by_author_oid_subscriber>();
             auto itr = idx.find(std::make_tuple(op.author, op.oid));
             for (; itr != idx.end() && itr->author == op.author && itr->oid == op.oid; ++itr) {
+                if (itr->active) {
+                    _db.push_event(subscription_inactive_operation(itr->subscriber, itr->author, itr->oid,
+                        psro_inactive_reason::subscription_update, "{}"));
+                }
+
                 _db.modify(*itr, [&](auto& psro) {
                     if (op.cost.symbol != psro.cost.symbol) {
                         psro.prepaid = asset(0, op.cost.symbol);
                     }
                     psro.cost = op.cost;
+
+                    if (psro.active) {
+                        psro.active = false;
+                        psro.inactive_reason = psro_inactive_reason::subscription_update;
+                        psro.next_payment = time_point_sec(0);
+                        ++inactivated_subscribers;
+                    }
                 });
             }
         }
@@ -71,6 +85,8 @@ namespace golos { namespace chain {
             pso.tip_cost = op.tip_cost;
             pso.interval = op.interval;
             pso.executions = op.executions;
+
+            pso.active_subscribers -= inactivated_subscribers;
         });
     }
 
@@ -139,6 +155,8 @@ namespace golos { namespace chain {
             auto pay_now = pso.executions == 0 ? op.amount : pso.cost;
             _db.pay_for_subscription(to_account, pay_now, op.from_tip);
 
+            auto to_prepaid = op.amount - pay_now;
+
             const auto& psro = _db.create<paid_subscriber_object>([&](auto& psro) {
                 psro.subscriber = op.from;
                 psro.subscribed = now;
@@ -151,7 +169,7 @@ namespace golos { namespace chain {
                 psro.executions = pso.executions;
                 psro.executions_left = psro.executions;
 
-                psro.prepaid = op.amount - pay_now;
+                psro.prepaid = to_prepaid;
 
                 if (pso.executions > 0) {
                     psro.next_payment = now + fc::seconds(psro.interval);
@@ -162,7 +180,7 @@ namespace golos { namespace chain {
             if (pso.executions == 0) {
                 rest = op.amount - pso.cost;
             }
-            _db.push_payment_event(psro, asset(0, op.amount.symbol), pso.cost, rest);
+            _db.push_payment_event(psro, sponsor_payment::first, asset(0, op.amount.symbol), pso.cost, rest, to_prepaid);
 
             _db.modify(pso, [&](auto& pso) {
                 ++pso.subscribers;
@@ -180,7 +198,12 @@ namespace golos { namespace chain {
 
                 _db.pay_for_subscription(_db.get_account(op.to), op.amount, op.from_tip);
 
-                _db.push_payment_event(*psro, asset(0, op.amount.symbol), pso.cost, op.amount - pso.cost);
+                _db.push_payment_event(*psro, sponsor_payment::prolong,
+                    asset(0, op.amount.symbol), pso.cost, op.amount - pso.cost, asset(0, op.amount.symbol));
+            } else {
+                auto e_type = psro->active ? sponsor_payment::increase_prepaid : sponsor_payment::prolong;
+                _db.push_payment_event(*psro, e_type,
+                    op.amount, asset(0, op.amount.symbol), asset(0, op.amount.symbol), asset(0, op.amount.symbol));
             }
 
             if (!psro->active) {
@@ -191,11 +214,15 @@ namespace golos { namespace chain {
 
             if (psro->prepaid.amount > 0 && psro->prepaid.symbol != pso.cost.symbol) {
                 _db.pay_for_subscription(_db.get_account(op.from), psro->prepaid, psro->tip_cost);
+
+                _db.push_event(subscription_prepaid_return_operation(op.from, op.to, op.oid,
+                    psro->prepaid, psro->tip_cost, "{}"));
             }
 
             _db.modify(*psro, [&](auto& psro) {
                 if (!psro.active) {
                     psro.active = true;
+                    psro.inactive_reason = psro_inactive_reason::none;
 
                     psro.interval = pso.interval;
                     psro.executions = pso.executions;
@@ -226,6 +253,9 @@ namespace golos { namespace chain {
 
         if (psro.prepaid.amount != 0) {
             _db.pay_for_subscription(_db.get_account(op.subscriber), psro.prepaid, psro.tip_cost);
+        
+            _db.push_event(subscription_prepaid_return_operation(op.subscriber, op.author, op.oid,
+                psro.prepaid, psro.tip_cost, "{}"));
         }
 
         const auto& pso = _db.get_paid_subscription(op.author, op.oid);

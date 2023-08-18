@@ -369,8 +369,12 @@ if (options.count(name)) { \
             insert_pair(op.subscriber, op.author);
         }
 
-        void operator()(const subscription_payment_failure_operation& op) {
+        void operator()(const subscription_inactive_operation& op) {
             insert_pair(op.subscriber, op.author);
+        }
+
+        void operator()(const subscription_prepaid_return_operation& op) {
+            insert_dual(op.subscriber);
         }
 
         void operator()(const comment_operation& op) {

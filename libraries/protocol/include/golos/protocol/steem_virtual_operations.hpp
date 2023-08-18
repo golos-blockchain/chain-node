@@ -506,37 +506,70 @@ namespace golos { namespace protocol {
             std::string id4;
         };
 
+        enum class sponsor_payment {
+            first,
+            prolong,
+            increase_prepaid,
+            regular,
+            _size
+        };
+
         struct subscription_payment_operation : public virtual_operation {
             subscription_payment_operation() {
             }
 
-            subscription_payment_operation(const account_name_type& s, const account_name_type& au,
-                const paid_subscription_id& o, const asset& ap, const asset& a, const asset& r, bool ft, const std::string& e) :
-                subscriber(s), author(au), oid(o), amount_prepaid(ap), amount(a), rest(r), from_tip(ft), extra(e) {
+            subscription_payment_operation(const account_name_type& s, const account_name_type& au, const paid_subscription_id& o,
+                const sponsor_payment& sp,
+                const asset& ap, const asset& a, const asset& r, const asset& tp,
+                bool ft, const std::string& e
+            ) :
+                subscriber(s), author(au), oid(o),
+                payment_type(sp),
+                amount_prepaid(ap), amount(a), rest(r), to_prepaid(tp), from_tip(ft), extra(e) {
             }
 
             account_name_type subscriber;
             account_name_type author;
             paid_subscription_id oid;
+            sponsor_payment payment_type;
             asset amount_prepaid;
             asset amount;
             asset rest; // if subscriber paid more than need. will be sent to author
+            asset to_prepaid;
             bool from_tip = false;
             std::string extra;
         };
 
-        struct subscription_payment_failure_operation : public virtual_operation {
-            subscription_payment_failure_operation() {
+        struct subscription_inactive_operation : public virtual_operation {
+            subscription_inactive_operation() {
             }
 
-            subscription_payment_failure_operation(const account_name_type& s, const account_name_type& au,
-                const paid_subscription_id& o, const std::string& e) :
-                subscriber(s), author(au), oid(o), extra(e) {
+            subscription_inactive_operation(const account_name_type& s, const account_name_type& au,
+                const paid_subscription_id& o, const psro_inactive_reason& r, const std::string& e) :
+                subscriber(s), author(au), oid(o), reason(r), extra(e) {
             }
 
             account_name_type subscriber;
             account_name_type author;
             paid_subscription_id oid;
+            psro_inactive_reason reason;
+            std::string extra;
+        };
+
+        struct subscription_prepaid_return_operation : public virtual_operation {
+            subscription_prepaid_return_operation() {
+            }
+
+            subscription_prepaid_return_operation(const account_name_type& s, const account_name_type& au,
+                const paid_subscription_id& o, const asset& a, bool tt, const std::string& e) :
+                subscriber(s), author(au), oid(o), amount(a), to_tip(tt), extra(e) {
+            }
+
+            account_name_type subscriber;
+            account_name_type author;
+            paid_subscription_id oid;
+            asset amount;
+            bool to_tip = false;
             std::string extra;
         };
 } } //golos::protocol
@@ -573,5 +606,10 @@ FC_REFLECT((golos::protocol::authority_updated_operation), (account)(owner)(acti
 FC_REFLECT((golos::protocol::account_freeze_operation), (account)(frozen)(unfreeze_fee))
 FC_REFLECT((golos::protocol::unwanted_cost_operation), (blocker)(blocking)(amount)(target)(burn_fee))
 FC_REFLECT((golos::protocol::unlimit_cost_operation), (account)(amount)(limit_type)(target_type)(id1)(id2)(id3)(id4))
-FC_REFLECT((golos::protocol::subscription_payment_operation), (subscriber)(author)(oid)(amount_prepaid)(amount)(rest)(from_tip)(extra))
-FC_REFLECT((golos::protocol::subscription_payment_failure_operation), (subscriber)(author)(oid)(extra))
+
+FC_REFLECT_ENUM(
+    golos::protocol::sponsor_payment,
+    (first)(prolong)(increase_prepaid)(regular)(_size))
+FC_REFLECT((golos::protocol::subscription_payment_operation), (subscriber)(author)(oid)(payment_type)(amount_prepaid)(amount)(rest)(to_prepaid)(from_tip)(extra))
+FC_REFLECT((golos::protocol::subscription_inactive_operation), (subscriber)(author)(oid)(reason)(extra))
+FC_REFLECT((golos::protocol::subscription_prepaid_return_operation), (subscriber)(author)(oid)(amount)(to_tip)(extra))

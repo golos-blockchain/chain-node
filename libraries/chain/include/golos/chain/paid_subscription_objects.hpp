@@ -60,6 +60,7 @@ namespace golos { namespace chain {
         time_point_sec prepaid_until; // API only
         time_point_sec next_payment;
         bool active = true;
+        psro_inactive_reason inactive_reason = psro_inactive_reason::none;
     };
 
     struct by_author_oid;
@@ -172,5 +173,5 @@ FC_REFLECT((golos::chain::paid_subscription_object),
 FC_REFLECT((golos::chain::paid_subscriber_object),
     (id)(subscriber)(subscribed)
     (author)(oid)(cost)(tip_cost)(interval)(executions)
-    (executions_left)(prepaid)(prepaid_until)(next_payment)(active)
+    (executions_left)(prepaid)(prepaid_until)(next_payment)(active)(inactive_reason)
 )
