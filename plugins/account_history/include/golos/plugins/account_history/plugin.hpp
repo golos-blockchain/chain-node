@@ -36,9 +36,13 @@
 
 
 namespace golos { namespace plugins { namespace account_history {
+    using namespace golos::protocol;
     using namespace chain;
     using golos::plugins::operation_history::applied_operation;
     using plugins::json_rpc::msg_pack;
+
+    using impacted_accounts = fc::flat_map<golos::chain::account_name_type, operation_direction>;
+    void operation_get_impacted_accounts(const operation& op, impacted_accounts& result);
 
     using history_operations = std::map<uint32_t, applied_operation>;
 

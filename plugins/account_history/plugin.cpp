@@ -19,11 +19,8 @@ namespace golos { namespace plugins { namespace account_history {
 using namespace golos::protocol;
 using namespace golos::chain;
 namespace bpo = boost::program_options;
-using impacted_accounts = fc::flat_map<golos::chain::account_name_type, operation_direction>;
 
 struct operation_visitor_filter;
-void operation_get_impacted_accounts(const operation& op, impacted_accounts& result);
-
 
 template<typename T>
 T dejsonify(const string &s) {

@@ -29,6 +29,7 @@ target_link_libraries (
     golos_${CURRENT_TARGET}
     golos_chain
     golos_chain_plugin
+    golos::account_history
     golos_protocol
     appbase
     golos_json_rpc
