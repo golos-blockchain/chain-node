@@ -1,6 +1,7 @@
 #include <golos/plugins/operation_history/plugin.hpp>
 #include <golos/plugins/operation_history/history_object.hpp>
 
+#include <golos/plugins/account_history/plugin.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/protocol/exceptions.hpp>
 #include <golos/chain/operation_notification.hpp>
@@ -91,27 +92,46 @@ namespace golos { namespace plugins { namespace operation_history {
             golos::chain::database& db,
             golos::chain::operation_notification& note,
             const fc::flat_set<std::string>& ops_list,
+            const fc::flat_set<std::string>& tracked_accounts,
             bool is_blacklist,
             uint32_t block)
             : operation_visitor(db, note, block),
               filter(ops_list),
+              tracked_accounts(tracked_accounts),
               blacklist(is_blacklist),
               start_block(block) {
         }
 
         const fc::flat_set<std::string>& filter;
+        const fc::flat_set<std::string>& tracked_accounts;
         bool blacklist;
         uint32_t start_block;
 
         template <typename T>
         void operator()(const T& op) const {
+            auto proceed_op = [&]() {
+                bool write = true;
+                if (tracked_accounts.size()) {
+                    write = false;
+                    account_history::impacted_accounts accs;
+                    account_history::operation_get_impacted_accounts(op, accs);
+                    for (const auto& pair : accs) {
+                        if (tracked_accounts.count(pair.first)) {
+                            write = true;
+                            break;
+                        }
+                    }
+                }
+                if (write)
+                    operation_visitor::operator()(op);
+            };
             if (filter.find(fc::get_typename<T>::name()) != filter.end()) {
                 if (!blacklist) {
-                    operation_visitor::operator()(op);
+                    proceed_op();
                 }
             } else {
                 if (blacklist) {
-                   operation_visitor::operator()(op);
+                   proceed_op();
                 }
             }
         }
@@ -141,7 +161,7 @@ namespace golos { namespace plugins { namespace operation_history {
 
         void on_operation(golos::chain::operation_notification& note) {
             if (filter_content) {
-                note.op.visit(operation_visitor_filter(database, note, ops_list, blacklist, start_block));
+                note.op.visit(operation_visitor_filter(database, note, ops_list, tracked_accounts, blacklist, start_block));
             } else {
                 note.op.visit(operation_visitor(database, note, start_block));
             }
@@ -210,6 +230,7 @@ namespace golos { namespace plugins { namespace operation_history {
         uint32_t history_blocks = UINT32_MAX;
         bool blacklist = true;
         fc::flat_set<std::string> ops_list;
+        fc::flat_set<std::string> tracked_accounts;
         golos::chain::database& database;
     };
 
@@ -326,6 +347,20 @@ namespace golos { namespace plugins { namespace operation_history {
             pimpl->history_blocks = UINT32_MAX;
         }
         ilog("operation_history: history-blocks ${s}", ("s", pimpl->history_blocks));
+
+        if (options.count("track-account") > 0) {
+            auto accounts = options.at("track-account").as<std::vector<std::string>>();
+            for (auto& a : accounts) {
+                std::vector<std::string> names;
+                boost::split(names, a, boost::is_any_of(" \t,"));
+                for (auto& n : names) {
+                    if (!n.empty()) {
+                        pimpl->tracked_accounts.insert(n);
+                    }
+                }
+            }
+            pimpl->filter_content = true;
+        }
 
         JSON_RPC_REGISTER_API(name());
         ilog("operation_history plugin: plugin_initialize() end");
