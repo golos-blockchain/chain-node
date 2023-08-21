@@ -4979,7 +4979,11 @@ namespace golos { namespace chain {
                             }
 #endif
                             if (has_hardfork(STEEMIT_HARDFORK_0_14__230)) {
-                                price min_price(asset(9 * gpo.current_sbd_supply.amount, SBD_SYMBOL), gpo.current_supply); // This price limits SBD to 10% market cap
+                                price min_price(asset(10 * gpo.current_sbd_supply.amount, SBD_SYMBOL), gpo.current_supply); // This price limits SBD to 10% market cap
+
+                                if (!has_hardfork(STEEMIT_HARDFORK_0_29)) {
+                                    min_price = price(asset(9 * gpo.current_sbd_supply.amount, SBD_SYMBOL), gpo.current_supply);
+                                }
 
                                 is_forced_min_price = min_price > fho.current_median_history;
                                 if (is_forced_min_price) {
