@@ -1,5 +1,6 @@
 #include <golos/plugins/operation_history/plugin.hpp>
 #include <golos/plugins/operation_history/history_object.hpp>
+#include <golos/plugins/operation_history/history_queries.hpp>
 
 #include <golos/plugins/account_history/plugin.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
@@ -38,10 +39,9 @@ namespace golos { namespace plugins { namespace operation_history {
         uint32_t start_block;
 
         template<typename Op>
-        void operator()(Op&&) const {
+        void write_operation(const Op&, uint32_t nft_token_id = 0) const {
             if (start_block <= database.head_block_num()) {
                 note.stored_in_db = true;
-
                 operation opv;
                 operation_history_extender extender(database, opv);
                 bool extended = note.op.visit(extender);
@@ -54,6 +54,7 @@ namespace golos { namespace plugins { namespace operation_history {
                     obj.trx_in_block = note.trx_in_block;
                     obj.op_in_trx = note.op_in_trx;
                     obj.virtual_op = note.virtual_op;
+                    obj.nft_token_id = nft_token_id;
                     obj.timestamp = database.head_block_time();
 
                     size_t size = 0;
@@ -71,6 +72,27 @@ namespace golos { namespace plugins { namespace operation_history {
                     }
                 });
             }
+        }
+
+        template<typename Op>
+        void operator()(const Op& op) const {
+            write_operation(op);
+        }
+
+        void operator()(const nft_token_operation& op) const {
+            write_operation(op, op.token_id);
+        }
+
+        void operator()(const nft_transfer_operation& op) const {
+            write_operation(op, op.token_id);
+        }
+
+        void operator()(const nft_sell_operation& op) const {
+            write_operation(op, op.token_id);
+        }
+
+        void operator()(const nft_buy_operation& op) const {
+            write_operation(op, op.token_id);
         }
 
         // available only in event_plugin and account_history
@@ -210,6 +232,38 @@ namespace golos { namespace plugins { namespace operation_history {
             return result;
         }
 
+        fc::mutable_variant_object get_nft_token_ops(
+            const nft_token_ops_query& query
+        ) {
+            fc::mutable_variant_object res;
+            const auto& idx = database.get_index<operation_index, by_nft_token_id>();
+            for (auto token_id : query.token_ids) {
+                std::vector<applied_operation> vec;
+                uint32_t i = 0;
+                auto itr = idx.find(token_id);
+                if (query.reverse_sort) {
+                    auto ritr = boost::make_reverse_iterator(itr);
+                    for (; ritr != idx.rend() && i < query.from; ++ritr) {
+                        ++i;
+                    }
+                    for (; ritr != idx.rend() && vec.size() < query.limit; ++ritr) {
+                        applied_operation operation(*ritr);
+                        vec.push_back(std::move(operation));
+                    }
+                } else {
+                    for (; itr != idx.end() && i < query.from; ++itr) {
+                        ++i;
+                    }
+                    for (; itr != idx.end() && vec.size() < query.limit; ++itr) {
+                        applied_operation operation(*itr);
+                        vec.push_back(std::move(operation));
+                    }
+                }
+                res[std::to_string(token_id)] = std::move(vec);
+            }
+            return res;
+        }
+
         annotated_signed_transaction get_transaction(transaction_id_type id) {
             const auto &idx = database.get_index<operation_index>().indices().get<by_transaction_id>();
             auto itr = idx.lower_bound(id);
@@ -250,6 +304,15 @@ namespace golos { namespace plugins { namespace operation_history {
         );
         return pimpl->database.with_weak_read_lock([&](){
             return pimpl->get_ops_in_block(block_num, only_virtual);
+        });
+    }
+
+    DEFINE_API(plugin, get_nft_token_ops) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (nft_token_ops_query, query)
+        );
+        return pimpl->database.with_weak_read_lock([&](){
+            return pimpl->get_nft_token_ops(query);
         });
     }
 

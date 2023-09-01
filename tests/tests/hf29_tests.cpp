@@ -1180,4 +1180,295 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
     } FC_LOG_AND_RETHROW() }
 
+    BOOST_AUTO_TEST_CASE(nft_collection) { try {
+        BOOST_TEST_MESSAGE("Testing: nft_collection");
+
+        ACTORS((alice))
+        generate_block();
+
+        signed_transaction tx;
+
+        BOOST_TEST_MESSAGE("-- Check wrong collection name");
+
+        nft_collection_operation ncop;
+        ncop.creator = "alice";
+        ncop.name = "ABCDEFGHJKLMNOPQR";
+        ncop.json_metadata = "{}";
+        ncop.max_token_count = 4294967295;
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, ncop),
+            CHECK_ERROR(tx_invalid_operation, 0,
+                    CHECK_ERROR(invalid_parameter, "name")));
+
+        BOOST_TEST_MESSAGE("-- Check wrong collection name #2");
+
+        ncop.name = " COOLCAT";
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, ncop),
+            CHECK_ERROR(tx_invalid_operation, 0,
+                    CHECK_ERROR(invalid_parameter, "name")));
+
+        BOOST_TEST_MESSAGE("-- Check wrong collection name #3");
+
+        ncop.name = "COOLCAT ";
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, ncop),
+            CHECK_ERROR(tx_invalid_operation, 0,
+                    CHECK_ERROR(invalid_parameter, "name")));
+
+        BOOST_TEST_MESSAGE("-- Check wrong collection name #4");
+
+        ncop.name = "\tCOOLCAT";
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, ncop),
+            CHECK_ERROR(tx_invalid_operation, 0,
+                    CHECK_ERROR(invalid_parameter, "name")));
+
+        BOOST_TEST_MESSAGE("-- Check wrong collection name #5");
+
+        ncop.name = "\0COOLCAT";
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, ncop),
+            CHECK_ERROR(tx_invalid_operation, 0,
+                    CHECK_ERROR(invalid_parameter, "name")));
+
+        BOOST_TEST_MESSAGE("-- Check wrong max_token_count");
+
+        ncop.name = "COOLCAT";
+        ncop.max_token_count = 0;
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, ncop),
+            CHECK_ERROR(tx_invalid_operation, 0,
+                    CHECK_ERROR(invalid_parameter, "max_token_count")));
+
+        BOOST_TEST_MESSAGE("-- Check wrong json_metadata");
+
+        ncop.max_token_count = 5;
+        ncop.json_metadata = "{";
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, ncop),
+            CHECK_ERROR(tx_invalid_operation, 0,
+                    CHECK_ERROR(invalid_parameter, "json_metadata")));
+
+        BOOST_TEST_MESSAGE("-- Check correct way");
+
+        ncop.json_metadata = "";
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, ncop));
+
+        validate_database();
+
+    } FC_LOG_AND_RETHROW() }
+
+    BOOST_AUTO_TEST_CASE(nft_test) { try {
+        BOOST_TEST_MESSAGE("Testing: nft_test");
+
+        ACTORS((alice)(bob)(carol))
+        generate_block();
+
+        signed_transaction tx;
+
+        BOOST_TEST_MESSAGE("-- Create NFT collection");
+
+        nft_collection_operation ncop;
+        ncop.creator = "alice";
+        ncop.name = "COOLGAME";
+        ncop.json_metadata = "{}";
+        ncop.max_token_count = 4294967295;
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, ncop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Delete NFT collection");
+
+        nft_collection_delete_operation ncdop;
+        ncdop.creator = "alice";
+        ncdop.name = "COOLGAME";
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, ncdop));
+
+        validate_database();
+
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Create NFT collection again");
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, ncop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Issue NFT");
+
+        fund("alice", ASSET("20.000 GBG"));
+
+        nft_issue_operation niop;
+        niop.creator = "alice";
+        niop.name = "COOLGAME";
+        niop.to = "bob";
+        niop.json_metadata = "{\"health\":10}";
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, niop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Transfer NFT to carol");
+
+        nft_transfer_operation ntop;
+        ntop.from = "bob";
+        ntop.to = "carol";
+        ntop.token_id = 1;
+        ntop.memo = "";
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, ntop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Sell NFT");
+
+        nft_sell_operation nsop;
+        nsop.seller = "carol";
+        nsop.token_id = 1;
+        nsop.buyer = "";
+        nsop.price = asset(1000, SBD_SYMBOL);
+        nsop.order_id = 2;
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, nsop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Cancel NFT order");
+
+        nft_cancel_order_operation ncoop;
+        ncoop.owner = "carol";
+        ncoop.order_id = 2;
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, ncoop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Sell NFT again");
+
+        generate_block();
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, nsop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Buy NFT");
+
+        nft_buy_operation nbop;
+        nbop.buyer = "bob";
+        nbop.name = "";
+        nbop.token_id = 1;
+        nbop.order_id = 2;
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, nbop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Transfer NFT to null - burn it");
+
+        nft_transfer_operation ntop2;
+        ntop2.from = "bob";
+        ntop2.to = "null";
+        ntop2.token_id = 1;
+        ntop2.memo = "";
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, ntop2));
+
+        validate_database();
+
+    } FC_LOG_AND_RETHROW() }
+
+    BOOST_AUTO_TEST_CASE(nft_test_buy_first) { try {
+        BOOST_TEST_MESSAGE("Testing: nft_test_buy_first");
+
+        ACTORS((alice)(bob)(carol))
+        generate_block();
+
+        signed_transaction tx;
+
+        BOOST_TEST_MESSAGE("-- Create NFT collection");
+
+        nft_collection_operation ncop;
+        ncop.creator = "alice";
+        ncop.name = "COOLGAME";
+        ncop.json_metadata = "{}";
+        ncop.max_token_count = 4294967295;
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, ncop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Delete NFT collection");
+
+        nft_collection_delete_operation ncdop;
+        ncdop.creator = "alice";
+        ncdop.name = "COOLGAME";
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, ncdop));
+
+        validate_database();
+
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Create NFT collection again");
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, ncop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Issue NFT");
+
+        fund("alice", ASSET("20.000 GBG"));
+
+        nft_issue_operation niop;
+        niop.creator = "alice";
+        niop.name = "COOLGAME";
+        niop.to = "bob";
+        niop.json_metadata = "{\"health\":10}";
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, niop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Transfer NFT to carol");
+
+        nft_transfer_operation ntop;
+        ntop.from = "bob";
+        ntop.to = "carol";
+        ntop.token_id = 1;
+        ntop.memo = "";
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, ntop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Buy NFT");
+
+        nft_buy_operation nbop;
+        nbop.buyer = "bob";
+        nbop.name = "COOLGAME";
+        nbop.price = asset(2000, SBD_SYMBOL);
+        nbop.order_id = 2;
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, nbop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Sell NFT");
+
+        nft_sell_operation nsop;
+        nsop.seller = "carol";
+        nsop.token_id = 1;
+        nsop.buyer = "bob";
+        nsop.price = asset(1000, SBD_SYMBOL);
+        nsop.order_id = 2;
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, nsop));
+
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Transfer NFT to null - burn it");
+
+        nft_transfer_operation ntop2;
+        ntop2.from = "bob";
+        ntop2.to = "null";
+        ntop2.token_id = 1;
+        ntop2.memo = "";
+
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, ntop2));
+
+        validate_database();
+
+    } FC_LOG_AND_RETHROW() }
 BOOST_AUTO_TEST_SUITE_END()

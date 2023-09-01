@@ -26,6 +26,7 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
         include/golos/protocol/reward_curve.hpp
         include/golos/protocol/donate_targets.hpp
         include/golos/protocol/paid_subscription_operations.hpp
+        include/golos/protocol/nft_operations.hpp
         )
 
 list(APPEND ${CURRENT_TARGET}_SOURCES
@@ -44,6 +45,7 @@ list(APPEND ${CURRENT_TARGET}_SOURCES
         version.cpp
         donate_targets.cpp
         paid_subscription_operations.cpp
+        nft_operations.cpp
         )
 
 if(BUILD_SHARED_LIBRARIES)

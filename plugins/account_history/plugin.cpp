@@ -693,6 +693,38 @@ if (options.count(name)) { \
             insert_pair(op.subscriber, op.author);
         }
 
+        void operator()(const nft_collection_operation& op) {
+            insert_dual(op.creator);
+        }
+
+        void operator()(const nft_collection_delete_operation& op) {
+            insert_dual(op.creator);
+        }
+
+        void operator()(const nft_issue_operation& op) {
+            insert_pair(op.creator, op.to);
+        }
+
+        void operator()(const nft_token_operation& op) {
+            insert_pair(op.creator, op.to);
+        }
+
+        void operator()(const nft_transfer_operation& op) {
+            insert_pair(op.from, op.to);
+        }
+
+        void operator()(const nft_sell_operation& op) {
+            insert_dual(op.seller);
+        }
+
+        void operator()(const nft_cancel_order_operation& op) {
+            insert_dual(op.owner);
+        }
+
+        void operator()(const nft_buy_operation& op) {
+            insert_dual(op.buyer);
+        }
+
         struct account_setup_visitor {
             using result_type = void;
 

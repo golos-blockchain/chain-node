@@ -60,6 +60,34 @@ namespace golos {
             bool operator()(const paid_subscription_transfer_operation &) const {
                 return true;
             }
+
+            bool operator()(const nft_collection_operation &) const {
+                return true;
+            }
+
+            bool operator()(const nft_collection_delete_operation &) const {
+                return true;
+            }
+
+            bool operator()(const nft_issue_operation &) const {
+                return true;
+            }
+
+            bool operator()(const nft_transfer_operation &) const {
+                return true;
+            }
+
+            bool operator()(const nft_sell_operation &) const {
+                return true;
+            }
+
+            bool operator()(const nft_buy_operation &) const {
+                return true;
+            }
+
+            bool operator()(const nft_cancel_order_operation &) const {
+                return true;
+            }
         };
 
         bool is_market_operation(const operation &op) {

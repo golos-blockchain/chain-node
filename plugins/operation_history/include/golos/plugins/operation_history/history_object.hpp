@@ -53,6 +53,7 @@ namespace golos { namespace plugins { namespace operation_history {
         uint32_t trx_in_block = 0;
         uint16_t op_in_trx = 0;
         uint32_t virtual_op = 0;
+        uint32_t nft_token_id = 0;
         time_point_sec timestamp;
         buffer_type serialized_op;
     };
@@ -61,12 +62,14 @@ namespace golos { namespace plugins { namespace operation_history {
 
     struct by_location;
     struct by_transaction_id;
+    struct by_nft_token_id;
     using operation_index = multi_index_container<
         operation_object,
         indexed_by<
             ordered_unique<
                 tag<by_id>,
-                member<operation_object, operation_id_type, &operation_object::id>>,
+                member<operation_object, operation_id_type, &operation_object::id>
+            >,
             ordered_unique<
                 tag<by_location>,
                 composite_key<
@@ -75,14 +78,32 @@ namespace golos { namespace plugins { namespace operation_history {
                     member<operation_object, uint32_t, &operation_object::trx_in_block>,
                     member<operation_object, uint16_t, &operation_object::op_in_trx>,
                     member<operation_object, uint32_t, &operation_object::virtual_op>,
-                    member<operation_object, operation_id_type, &operation_object::id>>>,
+                    member<operation_object, operation_id_type, &operation_object::id>
+                >
+            >,
             ordered_unique<
                 tag<by_transaction_id>,
                 composite_key<
                     operation_object,
                     member<operation_object, transaction_id_type, &operation_object::trx_id>,
-                    member<operation_object, operation_id_type, &operation_object::id>>>>,
-        allocator<operation_object>>;
+                    member<operation_object, operation_id_type, &operation_object::id>
+                >
+            >,
+            ordered_non_unique<
+                tag<by_nft_token_id>,
+                composite_key<
+                    operation_object,
+                    member<operation_object, uint32_t, &operation_object::nft_token_id>,
+                    member<operation_object, time_point_sec, &operation_object::timestamp>
+                >,
+                composite_key_compare<
+                    std::less<uint32_t>,
+                    std::greater<time_point_sec>
+                >
+            >
+        >,
+        allocator<operation_object>
+    >;
 
 } } } // golos::plugins::operation_history
 

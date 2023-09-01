@@ -141,6 +141,13 @@ namespace golos { namespace chain {
             _wprops = props;
         }
 
+        result_type operator()(const chain_properties_29& props) const {
+            ASSERT_REQ_HF(STEEMIT_HARDFORK_0_29, "chain_properties_29");
+            hf23_check(props);
+            hf26_check(props);
+            _wprops = props;
+        }
+
         template<typename Props>
         result_type operator()(Props&& props) const {
             _wprops = props;

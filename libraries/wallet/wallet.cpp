@@ -388,6 +388,12 @@ namespace golos { namespace wallet {
                         result["unwanted_operation_cost"] = median_props.unwanted_operation_cost;
                         result["unlimit_operation_cost"] = median_props.unlimit_operation_cost;
                     }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_28)) {
+                        result["min_golos_power_to_emission"] = median_props.min_golos_power_to_emission;
+                    }
+                    if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_29)) {
+                        result["nft_issue_cost"] = median_props.nft_issue_cost;
+                    }
 
                     return result;
                 }
@@ -2313,7 +2319,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             signed_transaction tx;
             chain_properties_update_operation op;
             chain_api_properties ap;
-            chain_properties_27 p;
+            chain_properties_28 p;
 
             // copy defaults in case of missing witness object
             ap.account_creation_fee = p.account_creation_fee;
@@ -2375,13 +2381,14 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
             p.claim_idleness_time = 0;
             SET_PROP(p, unwanted_operation_cost);
             SET_PROP(p, unlimit_operation_cost);
+            SET_PROP(p, min_golos_power_to_emission);
             op.props = p;
             auto hf = my->_remote_database_api->get_hardfork_version();
-            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_28)) {
-                chain_properties_28 p28;
-                SET_PROP(p28, min_golos_power_to_emission);
-                p28 = p;
-                op.props = p28;
+            if (hf >= hardfork_version(0, STEEMIT_HARDFORK_0_29)) {
+                chain_properties_29 p29;
+                SET_PROP(p29, nft_issue_cost);
+                p29 = p;
+                op.props = p29;
             }
 #undef SET_PROP
 

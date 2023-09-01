@@ -572,6 +572,22 @@ namespace golos { namespace protocol {
             bool to_tip = false;
             std::string extra;
         };
+
+        struct nft_token_operation : public virtual_operation {
+            nft_token_operation() {
+            }
+
+            nft_token_operation(const account_name_type& c, const std::string& n, const account_name_type& to,
+                    uint32_t t, asset ic) :
+                creator(c), name(n), to(to), token_id(t), issue_cost(ic) {
+            }
+
+            account_name_type creator;
+            std::string name;
+            account_name_type to;
+            uint32_t token_id = 0;
+            asset issue_cost;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(hashlink)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -613,3 +629,4 @@ FC_REFLECT_ENUM(
 FC_REFLECT((golos::protocol::subscription_payment_operation), (subscriber)(author)(oid)(payment_type)(amount_prepaid)(amount)(rest)(to_prepaid)(from_tip)(extra))
 FC_REFLECT((golos::protocol::subscription_inactive_operation), (subscriber)(author)(oid)(reason)(extra))
 FC_REFLECT((golos::protocol::subscription_prepaid_return_operation), (subscriber)(author)(oid)(amount)(to_tip)(extra))
+FC_REFLECT((golos::protocol::nft_token_operation), (creator)(name)(to)(token_id)(issue_cost))

@@ -46,6 +46,7 @@ target_link_libraries(
         golos::event_plugin
         golos::account_relations
         golos::paid_subscription_api
+        golos::nft_api
         ${MONGO_LIB}
         golos_protocol
         fc

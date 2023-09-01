@@ -2472,7 +2472,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_28 median_props;
+            chain_properties_29 median_props;
 
             auto median = active.size() / 2;
 
@@ -2601,6 +2601,7 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_27::unwanted_operation_cost);
             calc_median(&chain_properties_27::unlimit_operation_cost);
             calc_median(&chain_properties_28::min_golos_power_to_emission);
+            calc_median(&chain_properties_29::nft_issue_cost);
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -4225,6 +4226,13 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<paid_subscription_delete_evaluator>();
             _my->_evaluator_registry.register_evaluator<paid_subscription_transfer_evaluator>();
             _my->_evaluator_registry.register_evaluator<paid_subscription_cancel_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_collection_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_collection_delete_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_issue_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_transfer_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_sell_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_buy_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_cancel_order_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -4285,6 +4293,9 @@ namespace golos { namespace chain {
             add_core_index<account_blocking_index>(*this);
             add_core_index<paid_subscription_index>(*this);
             add_core_index<paid_subscriber_index>(*this);
+            add_core_index<nft_collection_index>(*this);
+            add_core_index<nft_index>(*this);
+            add_core_index<nft_order_index>(*this);
 
             _plugin_index_signal();
         }

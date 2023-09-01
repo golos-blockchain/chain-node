@@ -5,6 +5,7 @@
 #include <golos/protocol/steem_operations.hpp>
 #include <golos/protocol/worker_operations.hpp>
 #include <golos/protocol/paid_subscription_operations.hpp>
+#include <golos/protocol/nft_operations.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
 #include <golos/protocol/market_events.hpp>
 
@@ -97,6 +98,13 @@ namespace golos { namespace protocol {
                 paid_subscription_delete_operation,
                 paid_subscription_transfer_operation,
                 paid_subscription_cancel_operation,
+                nft_collection_operation,
+                nft_collection_delete_operation,
+                nft_issue_operation,
+                nft_transfer_operation,
+                nft_sell_operation,
+                nft_buy_operation,
+                nft_cancel_order_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,
@@ -135,7 +143,8 @@ namespace golos { namespace protocol {
                 order_delete_operation,
                 subscription_payment_operation,
                 subscription_inactive_operation,
-                subscription_prepaid_return_operation
+                subscription_prepaid_return_operation,
+                nft_token_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

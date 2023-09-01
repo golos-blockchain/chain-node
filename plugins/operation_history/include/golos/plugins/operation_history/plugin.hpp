@@ -49,6 +49,7 @@ namespace golos { namespace plugins { namespace operation_history {
 
     DEFINE_API_ARGS(get_block_with_virtual_ops, msg_pack, annotated_signed_block)
     DEFINE_API_ARGS(get_ops_in_block, msg_pack, std::vector<applied_operation>)
+    DEFINE_API_ARGS(get_nft_token_ops, msg_pack, fc::mutable_variant_object)
     DEFINE_API_ARGS(get_transaction,  msg_pack, annotated_signed_transaction)
 
     /**
@@ -85,6 +86,8 @@ namespace golos { namespace plugins { namespace operation_history {
              *  @return sequence of operations included/generated within the block
              */
             (get_ops_in_block)
+
+            (get_nft_token_ops)
 
             (get_transaction)
         )

@@ -103,6 +103,8 @@ namespace golos { namespace wallet {
             fc::optional<asset> unlimit_operation_cost;
 
             fc::optional<asset> min_golos_power_to_emission;
+
+            fc::optional<asset> nft_issue_cost;
         };
 
         struct optional_private_box_query {
@@ -1740,6 +1742,7 @@ FC_REFLECT((golos::wallet::optional_chain_props),
     (negrep_posting_window)(negrep_posting_per_window)
     (unwanted_operation_cost)(unlimit_operation_cost)
     (min_golos_power_to_emission)
+    (nft_issue_cost)
 )
 
 FC_REFLECT(

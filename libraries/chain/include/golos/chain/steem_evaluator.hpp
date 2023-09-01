@@ -107,4 +107,12 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(paid_subscription_transfer)
         DEFINE_EVALUATOR(paid_subscription_cancel)
 
+        DEFINE_EVALUATOR(nft_collection)
+        DEFINE_EVALUATOR(nft_collection_delete)
+        DEFINE_EVALUATOR(nft_issue)
+        DEFINE_EVALUATOR(nft_transfer)
+        DEFINE_EVALUATOR(nft_sell)
+        DEFINE_EVALUATOR(nft_cancel_order)
+        DEFINE_EVALUATOR(nft_buy)
+
 } } // golos::chain

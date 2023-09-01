@@ -31,6 +31,7 @@
 #include <golos/plugins/event_plugin/event_plugin.hpp>
 #include <golos/plugins/account_relations/account_relations.hpp>
 #include <golos/plugins/paid_subscription_api/paid_subscription_api.hpp>
+#include <golos/plugins/nft_api/nft_api.hpp>
 #ifdef MONGODB_PLUGIN_BUILT
     #include <golos/plugins/mongo_db/mongo_db_plugin.hpp>
 #endif
@@ -94,6 +95,7 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::event_plugin::event_plugin>();
             appbase::app().register_plugin<golos::plugins::account_relations::account_relations>();
             appbase::app().register_plugin<golos::plugins::paid_subscription_api::paid_subscription_api_plugin>();
+            appbase::app().register_plugin<golos::plugins::nft_api::nft_api_plugin>();
             #ifdef MONGODB_PLUGIN_BUILT
                 appbase::app().register_plugin<golos::plugins::mongo_db::mongo_db_plugin>();
             #endif

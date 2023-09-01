@@ -76,6 +76,9 @@ namespace golos { namespace api {
         if (db.has_hardfork(STEEMIT_HARDFORK_0_28)) {
             min_golos_power_to_emission = src.min_golos_power_to_emission;
         }
+        if (db.has_hardfork(STEEMIT_HARDFORK_0_29)) {
+            nft_issue_cost = src.nft_issue_cost;
+        }
         chain_status = db.chain_status().first;
     }
 

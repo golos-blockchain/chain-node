@@ -5,6 +5,7 @@
 #include <golos/chain/worker_objects.hpp>
 #include <golos/chain/event_objects.hpp>
 #include <golos/chain/paid_subscription_objects.hpp>
+#include <golos/chain/nft_objects.hpp>
 #include <golos/chain/comment_bill.hpp>
 #include <golos/chain/fork_database.hpp>
 #include <golos/chain/block_log.hpp>
@@ -288,6 +289,23 @@ namespace golos { namespace chain {
             const paid_subscriber_object&  get_paid_subscriber(const account_name_type& subscriber, const account_name_type& author, const paid_subscription_id& id) const;
             const paid_subscriber_object*  find_paid_subscriber(const account_name_type& subscriber, const account_name_type& author, const paid_subscription_id& id) const;
             void                             throw_if_exists_paid_subscriber(const account_name_type& subscriber, const account_name_type& author, const paid_subscription_id& id) const;
+
+            const nft_collection_object&  get_nft_collection(asset_symbol_type name) const;
+            const nft_collection_object*  find_nft_collection(asset_symbol_type name) const;
+            void                     throw_if_exists_nft_collection(asset_symbol_type name) const;
+
+            const nft_object&  get_nft(asset_symbol_type name, const account_name_type& owner) const;
+            const nft_object*  find_nft(asset_symbol_type name, const account_name_type& owner) const;
+
+            const nft_object&  get_nft(uint32_t token_id) const;
+            const nft_object*  find_nft(uint32_t token_id) const;
+
+            const nft_order_object& get_nft_order(uint32_t token_id) const;
+            const nft_order_object& get_nft_order(account_name_type seller, uint32_t order_id) const;
+            const nft_order_object* find_nft_order(uint32_t token_id) const;
+            const nft_order_object* find_nft_order(account_name_type seller, uint32_t order_id) const;
+            void               throw_if_exists_nft_order(uint32_t token_id) const;
+            void               throw_if_exists_nft_order(const account_name_type& seller, uint32_t order_id) const;
 
             void update_pair_depth(asset base, asset quote);
             void update_asset_marketed(asset_symbol_type symbol);
