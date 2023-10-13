@@ -191,7 +191,9 @@ namespace golos { namespace chain {
                 ++acc.sponsor_count;
             });
         } else {
-            GOLOS_CHECK_VALUE(pso.executions != 0, "You do not need to prolong single-executed subscription");
+            if (psro->active) {
+                GOLOS_CHECK_VALUE(pso.executions != 0, "You do not need to prolong single-executed subscription");
+            }
 
             if (!pso.allow_prepaid) {
                 GOLOS_CHECK_VALUE(!psro->active, "Subscription forbids prepayment, and it is active, so you cannot transfer tokens onto it");
@@ -227,7 +229,8 @@ namespace golos { namespace chain {
                     psro.interval = pso.interval;
                     psro.executions = pso.executions;
 
-                    psro.next_payment = now + fc::seconds(psro.interval);
+                    if (pso.executions > 0)
+                        psro.next_payment = now + fc::seconds(psro.interval);
                 }
                 if (pso.allow_prepaid) {
                     psro.cost = pso.cost;
