@@ -51,11 +51,6 @@ namespace golos { namespace chain {
 
         const auto& nft_coll = _db.get_nft_collection(name);
 
-        uint32_t token_id = 1;
-        const auto& idx = _db.get_index<nft_index, by_token_id>();
-        auto itr = idx.begin();
-        if (itr != idx.end()) token_id = itr->token_id + 1;
-
         _db.get_account(op.to);
 
         auto fee = _db.get_witness_schedule_object().median_props.nft_issue_cost;
@@ -73,6 +68,14 @@ namespace golos { namespace chain {
 
         auto now = _db.head_block_time();
 
+        uint32_t token_id = 1;
+
+        _db.modify(nft_coll, [&](auto& nco) {
+            ++nco.token_count;
+            ++nco.last_token_id;
+            token_id = nco.last_token_id;
+        });
+
         _db.create<nft_object>([&](auto& no) {
             no.creator = op.creator;
             no.name = name;
@@ -84,10 +87,6 @@ namespace golos { namespace chain {
             from_string(no.json_metadata, op.json_metadata);
             no.issued = now;
             no.last_update = now;
-        });
-
-        _db.modify(nft_coll, [&](auto& nco) {
-            ++nco.token_count;
         });
 
         _db.push_event(nft_token_operation(op.creator, op.name, op.to, token_id, fee));
