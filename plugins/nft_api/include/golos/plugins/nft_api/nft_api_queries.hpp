@@ -56,6 +56,17 @@ enum class nft_token_illformed : uint8_t {
     nothing
 };
 
+enum class nft_token_selling : uint8_t {
+    nothing,
+    sort_up,
+    sort_up_by_price,
+};
+
+enum class nft_token_sorting_priority : uint8_t {
+    illformed,
+    selling,
+};
+
 struct nft_tokens_query {
     account_name_type owner;
     std::set<std::string> select_collections;
@@ -96,6 +107,14 @@ struct nft_tokens_query {
     bool reverse_sort = false;
 
     nft_token_illformed illformed = nft_token_illformed::sort_down;
+
+    nft_token_selling selling_sorting = nft_token_selling::nothing;
+
+    bool sort_selling() const {
+        return selling_sorting != nft_token_selling::nothing;
+    }
+
+    nft_token_sorting_priority sorting_priority = nft_token_sorting_priority::selling;
 };
 
 enum nft_order_type : uint8_t {
@@ -175,12 +194,22 @@ FC_REFLECT_ENUM(
     (sort_down)(ignore)(nothing)
 )
 
+FC_REFLECT_ENUM(
+    golos::plugins::nft_api::nft_token_selling,
+    (nothing)(sort_up)(sort_up_by_price)
+)
+
+FC_REFLECT_ENUM(
+    golos::plugins::nft_api::nft_token_sorting_priority,
+    (illformed)(selling)
+)
+
 FC_REFLECT(
     (golos::plugins::nft_api::nft_tokens_query),
     (owner)(select_collections)(collection_limit)
     (collections)(orders)(start_token_id)(limit)(select_token_ids)
     (filter_creators)(filter_names)(filter_token_ids)(state)
-    (sort)(reverse_sort)(illformed)
+    (sort)(reverse_sort)(illformed)(selling_sorting)(sorting_priority)
 )
 
 FC_REFLECT_ENUM(

@@ -94,7 +94,7 @@ public:
             } else if (query.sort == nft_collection_sort::by_market_volume) {
                 return get_nft_collections_by_index<by_market_volume>(query);
             } else {
-                return get_nft_collections_by_index<by_name>(query);
+                return get_nft_collections_by_index<by_name_str>(query);
             }
         }
 
@@ -168,16 +168,16 @@ public:
 
         std::map<asset_symbol_type, uint32_t> collection_count;
 
-        auto push = [&](const nft_api_object& obj) {
-            nft_extended_api_object res(obj, _db, query.collections, query.orders);
-            result.push_back(std::move(res));
+        auto push = [&](nft_extended_api_object& obj) {
+            obj.fill_extensions(_db, query.collections, query.orders);
+            result.push_back(std::move(obj));
         };
 
         if (query.select_token_ids.size()) {
             for (const auto& token_id : query.select_token_ids) {
                 const auto* no = _db.find_nft(token_id);
                 if (no) {
-                    auto obj = nft_api_object(*no);
+                    nft_extended_api_object obj = nft_api_object(*no);
                     if (query.illformed == nft_token_illformed::ignore) {
                         obj.check_illformed();
                     }
@@ -185,53 +185,112 @@ public:
                         push(obj);
                     }
                 } else {
-                    push(nft_api_object());
+                    nft_extended_api_object empty;
+                    push(empty);
                 }
             }
         } else {
-            std::vector<nft_api_object> unsorted;
+            std::vector<nft_extended_api_object> unsorted;
 
-            if (query.owner != account_name_type()) {
+            // slow implementation, but rich behaviour
+            if (query.owner.size() ||
+                    query.sort_selling() ||
+                    query.illformed == nft_token_illformed::sort_down) {
                 const auto& idx = _db.get_index<nft_index, by_owner>();
-                for (auto itr = idx.lower_bound(query.owner); itr != idx.end() && itr->owner == query.owner; ++itr) {
-                    nft_api_object obj = *itr;
+                auto nitr = idx.begin();
+                if (query.owner.size()) {
+                    nitr = idx.lower_bound(query.owner);
+                }
+                for (; nitr != idx.end(); ++nitr) {
+                    if (query.owner.size() && nitr->owner != query.owner) {
+                        break;
+                    }
+
+                    nft_extended_api_object obj = nft_api_object(*nitr);
                     if (query.illformed != nft_token_illformed::nothing) {
                         obj.check_illformed();
                     }
                     if (query.is_good(obj) &&
-                        good_collection_count(itr->name, collection_count, query.collection_limit)) {
+                        good_collection_count(nitr->name, collection_count, query.collection_limit)) {
+                        if (query.sort == nft_tokens_sort::by_last_price || query.sort_selling()) {
+                            obj.fill_order(_db);
+                        }
                         unsorted.push_back(std::move(obj));
                     }
                 }
 
+                auto compare_illformeds = [&](nft_extended_api_object& lhs, nft_extended_api_object& rhs) -> fc::optional<bool> {
+                    if (!lhs.illformed && rhs.illformed) return true;
+                    if (lhs.illformed && !rhs.illformed) return false;
+
+                    return fc::optional<bool>();
+                };
+
+                auto compare_sellings = [&](nft_extended_api_object& lhs, nft_extended_api_object& rhs) -> fc::optional<bool> {
+                    auto lpr = lhs.current_price_real();
+                    auto rpr = rhs.current_price_real();
+
+                    if (query.selling_sorting == nft_token_selling::sort_up_by_price) {
+                        if (query.reverse_sort) {
+                            if (lpr || rpr) return lpr < rpr;
+                            return fc::optional<bool>();
+                        }
+
+                       if (lpr || rpr) return lpr > rpr;
+                    } else if (query.selling_sorting == nft_token_selling::sort_up) {
+                        if (lpr && !rpr) return true;
+                        if (!lpr && rpr) return false;
+                    }
+
+                    return fc::optional<bool>();
+                };
+
+                auto compare_sortings = [&](nft_extended_api_object& lhs, nft_extended_api_object& rhs) -> fc::optional<bool> {
+                    if (query.sorting_priority == nft_token_sorting_priority::illformed) {
+                        auto ic = compare_illformeds(lhs, rhs);
+                        if (!!ic) return *ic;
+
+                        auto sc = compare_sellings(lhs, rhs);
+                        if (!!sc) return *sc;
+                    } else {
+                        auto sc = compare_sellings(lhs, rhs);
+                        if (!!sc) return *sc;
+
+                        auto ic = compare_illformeds(lhs, rhs);
+                        if (!!ic) return *ic;
+                    }
+
+                    return fc::optional<bool>();
+                };
+
                 if (query.sort == nft_tokens_sort::by_name)
                     std::sort(unsorted.begin(), unsorted.end(), [&](auto& lhs, auto& rhs) {
-                        if (!lhs.illformed && rhs.illformed) return true;
-                        if (lhs.illformed && !rhs.illformed) return false;
+                        auto sc = compare_sortings(lhs, rhs);
+                        if (!!sc) return *sc;
 
                         if (query.reverse_sort) return lhs.name > rhs.name;
                         return lhs.name < rhs.name;
                     });
                 else if (query.sort == nft_tokens_sort::by_last_price)
                     std::sort(unsorted.begin(), unsorted.end(), [&](auto& lhs, auto& rhs) {
-                        if (!lhs.illformed && rhs.illformed) return true;
-                        if (lhs.illformed && !rhs.illformed) return false;
+                        auto sc = compare_sortings(lhs, rhs);
+                        if (!!sc) return *sc;
 
                         if (query.reverse_sort) return lhs.price_real() < rhs.price_real();
                         return lhs.price_real() > rhs.price_real();
                     });
                 else if (query.sort == nft_tokens_sort::by_last_update)
                     std::sort(unsorted.begin(), unsorted.end(), [&](auto& lhs, auto& rhs) {
-                        if (!lhs.illformed && rhs.illformed) return true;
-                        if (lhs.illformed && !rhs.illformed) return false;
+                        auto sc = compare_sortings(lhs, rhs);
+                        if (!!sc) return *sc;
 
                         if (query.reverse_sort) return lhs.last_update < rhs.last_update;
                         return lhs.last_update > rhs.last_update;
                     });
                 else
                     std::sort(unsorted.begin(), unsorted.end(), [&](auto& lhs, auto& rhs) {
-                        if (!lhs.illformed && rhs.illformed) return true;
-                        if (lhs.illformed && !rhs.illformed) return false;
+                        auto sc = compare_sortings(lhs, rhs);
+                        if (!!sc) return *sc;
 
                         if (query.reverse_sort) return lhs.issued < rhs.issued;
                         return lhs.issued > rhs.issued;
@@ -249,9 +308,9 @@ public:
                 for (; itr != unsorted.end() && result.size() < query.limit; ++itr) {
                     push(*itr);
                 }
-            } else {
+            } else { // fast, but poor :)
                 if (query.sort == nft_tokens_sort::by_name) {
-                    return get_nft_tokens_by_index<by_asset_owner>(query);
+                    return get_nft_tokens_by_index<by_asset_str_owner>(query);
                 } else if (query.sort == nft_tokens_sort::by_issued) {
                     return get_nft_tokens_by_index<by_issued>(query);
                 } else if (query.sort == nft_tokens_sort::by_last_price) {
@@ -279,7 +338,12 @@ public:
             if (!query.is_good(no) || !good_collection_count(no.name, collection_count, query.collection_limit)) {
                 return;
             }
-            result.push_back(std::move(no));
+            nft_order_api_object obj = std::move(no);
+            if (query.tokens) {
+                const auto& no = _db.get_nft(obj.token_id);
+                obj.token = no;
+            }
+            result.push_back(std::move(obj));
         };
 
         auto itr = query.reverse_sort ? idx.end() : idx.begin();
@@ -341,7 +405,12 @@ public:
             }
 
             for (; itr != unsorted.end() && result.size() < query.limit; ++itr) {
-                result.push_back(*itr);
+                nft_order_api_object obj = *itr;
+                if (query.tokens) {
+                    const auto& no = _db.get_nft(obj.token_id);
+                    obj.token = no;
+                }
+                result.push_back(std::move(obj));
             }
         } else {
             if (query.sort == nft_orders_sort::by_price) {

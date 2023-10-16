@@ -243,18 +243,18 @@ namespace golos { namespace plugins { namespace operation_history {
                 auto itr = idx.find(token_id);
                 if (query.reverse_sort) {
                     auto ritr = boost::make_reverse_iterator(itr);
-                    for (; ritr != idx.rend() && i < query.from; ++ritr) {
+                    for (; ritr != idx.rend() && ritr->nft_token_id == token_id && i < query.from; ++ritr) {
                         ++i;
                     }
-                    for (; ritr != idx.rend() && vec.size() < query.limit; ++ritr) {
+                    for (; ritr != idx.rend() && ritr->nft_token_id == token_id && vec.size() < query.limit; ++ritr) {
                         applied_operation operation(*ritr);
                         vec.push_back(std::move(operation));
                     }
                 } else {
-                    for (; itr != idx.end() && i < query.from; ++itr) {
+                    for (; itr != idx.end() && i < query.from && itr->nft_token_id == token_id; ++itr) {
                         ++i;
                     }
-                    for (; itr != idx.end() && vec.size() < query.limit; ++itr) {
+                    for (; itr != idx.end() && itr->nft_token_id == token_id && vec.size() < query.limit; ++itr) {
                         applied_operation operation(*itr);
                         vec.push_back(std::move(operation));
                     }

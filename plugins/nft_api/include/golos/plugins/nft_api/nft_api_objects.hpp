@@ -127,20 +127,43 @@ struct nft_order_api_object {
 };
 
 struct nft_extended_api_object : nft_api_object {
+    nft_extended_api_object(const nft_api_object& nao) : nft_api_object(nao) {}
+
     nft_extended_api_object(const nft_api_object& nao, const database& _db, bool collections = true, bool orders = true)
             : nft_api_object(nao) {
+        fill_extensions(_db, collections, orders);
+    }
+
+    nft_extended_api_object() {}
+
+    void fill_collection(const database& _db) {
+        collection = _db.get_nft_collection(nft_name_from_string(name));
+    }
+
+    void fill_order(const database& _db) {
+        const auto* ord = _db.find_nft_order(token_id);
+        if (ord) {
+            order = nft_order_api_object(*ord);
+        }
+    }
+
+    void fill_extensions(const database& _db, bool collections = true, bool orders = true) {
         if (!name.size() && !token_id) {
             return;
         }
-        if (collections) {
-            collection = _db.get_nft_collection(nft_name_from_string(name));
+        if (collections && !collection) {
+            fill_collection(_db);
         }
-        if (orders) {
-            const auto* ord = _db.find_nft_order(token_id);
-            if (ord) {
-                order = nft_order_api_object(*ord);
-            }
+        if (orders && !order) {
+            fill_order(_db);
         }
+    }
+
+    double current_price_real() const {
+        if (!!order) {
+            return order->price_real();
+        }
+        return 0;
     }
 
     fc::optional<nft_collection_api_object> collection;

@@ -144,6 +144,8 @@ namespace golos {
             fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
 
             asset accumulative_emission_per_day = asset(0, STEEM_SYMBOL);
+
+            uint32_t last_nft_token_id = 0;
         };
 
         using dynamic_global_property_index = multi_index_container<
@@ -193,5 +195,6 @@ FC_REFLECT((golos::chain::dynamic_global_property_object),
                 (transit_block_num)
                 (transit_witnesses)
                 (accumulative_emission_per_day)
+                (last_nft_token_id)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::dynamic_global_property_object, golos::chain::dynamic_global_property_index)

@@ -68,12 +68,15 @@ namespace golos { namespace chain {
 
         auto now = _db.head_block_time();
 
-        uint32_t token_id = 1;
+        const auto& gpo = _db.get_dynamic_global_properties();
+        uint32_t token_id = gpo.last_nft_token_id + 1;
+
+        _db.modify(gpo, [&](auto& gpo) {
+            gpo.last_nft_token_id = token_id;
+        });
 
         _db.modify(nft_coll, [&](auto& nco) {
             ++nco.token_count;
-            ++nco.last_token_id;
-            token_id = nco.last_token_id;
         });
 
         _db.create<nft_object>([&](auto& no) {
@@ -98,6 +101,7 @@ namespace golos { namespace chain {
         const auto& no = _db.get_nft(op.token_id);
         GOLOS_CHECK_VALUE(op.from == no.owner, "Cannot transfer not your token.");
         GOLOS_CHECK_VALUE(!no.burnt, "Cannot transfer burnt token.");
+        GOLOS_CHECK_VALUE(!no.selling, "Cannot transfer selling token.");
 
         _db.get_account(op.to);
 

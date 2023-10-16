@@ -36,6 +36,10 @@ namespace golos { namespace chain {
         double price_real() const {
             return last_buy_price.to_real();
         }
+
+        std::string name_str() const {
+            return nft_name_to_string(name);
+        }
     };
 
     class nft_object : public object<nft_object_type, nft_object> {
@@ -66,6 +70,10 @@ namespace golos { namespace chain {
 
         double price_real() const {
             return last_buy_price.to_real();
+        }
+
+        std::string name_str() const {
+            return nft_name_to_string(name);
         }
     };
 
@@ -98,6 +106,7 @@ namespace golos { namespace chain {
     };
 
     struct by_name;
+    struct by_name_str;
     struct by_creator_name;
     struct by_created;
     struct by_last_price;
@@ -116,6 +125,10 @@ namespace golos { namespace chain {
             ordered_unique<
                 tag<by_name>,
                 member<nft_collection_object, asset_symbol_type, &nft_collection_object::name>
+            >,
+            ordered_non_unique<
+                tag<by_name_str>,
+                const_mem_fun<nft_collection_object, std::string, &nft_collection_object::name_str>
             >,
             ordered_unique<
                 tag<by_creator_name>,
@@ -161,6 +174,7 @@ namespace golos { namespace chain {
 
     struct by_token_id;
     struct by_asset_owner;
+    struct by_asset_str_owner;
     struct by_owner;
     struct by_issued;
     struct by_last_update;
@@ -182,6 +196,14 @@ namespace golos { namespace chain {
                 composite_key<
                     nft_object,
                     member<nft_object, asset_symbol_type, &nft_object::name>,
+                    member<nft_object, account_name_type, &nft_object::owner>
+                >
+            >,
+            ordered_non_unique<
+                tag<by_asset_str_owner>,
+                composite_key<
+                    nft_object,
+                    const_mem_fun<nft_object, std::string, &nft_object::name_str>,
                     member<nft_object, account_name_type, &nft_object::owner>
                 >
             >,
