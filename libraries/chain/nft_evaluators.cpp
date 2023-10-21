@@ -207,6 +207,8 @@ namespace golos { namespace chain {
             no.last_buy_price = price;
         });
 
+        _db.push_event(nft_token_sold_operation(op.seller, noo.owner, op.token_id, price));
+
         _db.remove(noo);
 
         auto price_real = price.to_real();
@@ -254,6 +256,8 @@ namespace golos { namespace chain {
             });
 
             const auto& nco = _db.get_nft_collection(no.name);
+
+            _db.push_event(nft_token_sold_operation(noo.owner, op.buyer, op.token_id, price));
 
             _db.remove(noo);
 

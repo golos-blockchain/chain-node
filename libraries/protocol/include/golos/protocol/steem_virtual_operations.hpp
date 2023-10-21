@@ -588,6 +588,21 @@ namespace golos { namespace protocol {
             uint32_t token_id = 0;
             asset issue_cost;
         };
+
+        struct nft_token_sold_operation : public virtual_operation {
+            nft_token_sold_operation() {
+            }
+
+            nft_token_sold_operation(const account_name_type& s, const account_name_type& b,
+                    uint32_t t, asset p) :
+                seller(s), buyer(b), token_id(t), price(p) {
+            }
+
+            account_name_type seller;
+            account_name_type buyer;
+            uint32_t token_id = 0;
+            asset price;
+        };
 } } //golos::protocol
 
 FC_REFLECT((golos::protocol::author_reward_operation), (author)(hashlink)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
@@ -630,3 +645,4 @@ FC_REFLECT((golos::protocol::subscription_payment_operation), (subscriber)(autho
 FC_REFLECT((golos::protocol::subscription_inactive_operation), (subscriber)(author)(oid)(reason)(extra))
 FC_REFLECT((golos::protocol::subscription_prepaid_return_operation), (subscriber)(author)(oid)(amount)(to_tip)(extra))
 FC_REFLECT((golos::protocol::nft_token_operation), (creator)(name)(to)(token_id)(issue_cost))
+FC_REFLECT((golos::protocol::nft_token_sold_operation), (seller)(buyer)(token_id)(price))
