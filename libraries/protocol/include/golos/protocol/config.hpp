@@ -291,7 +291,7 @@
 #define GOLOS_DEF_UNLIMIT_OPERATION_COST        asset(10000, STEEM_SYMBOL)
 
 #define GOLOS_MIN_NFT_ISSUE_COST                0
-#define GOLOS_DEF_NFT_ISSUE_COST                asset(15000, SBD_SYMBOL)
+#define GOLOS_DEF_NFT_ISSUE_COST                asset(5000, SBD_SYMBOL)
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
@@ -609,7 +609,7 @@
 #define GOLOS_DEF_UNLIMIT_OPERATION_COST        asset(10000, STEEM_SYMBOL)
 
 #define GOLOS_MIN_NFT_ISSUE_COST                0
-#define GOLOS_DEF_NFT_ISSUE_COST                asset(15000, SBD_SYMBOL)
+#define GOLOS_DEF_NFT_ISSUE_COST                asset(5000, SBD_SYMBOL)
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
