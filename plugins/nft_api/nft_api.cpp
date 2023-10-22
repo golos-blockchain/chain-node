@@ -350,13 +350,13 @@ public:
         if (query.reverse_sort) {
             auto ritr = boost::make_reverse_iterator(itr);
 
-            for (; ritr != idx.rend() && ritr->order_id < query.start_order_id; ++ritr) {}
+            for (; ritr != idx.rend() && (query.start_order_id && ritr->order_id != query.start_order_id); ++ritr) {}
 
             for (; ritr != idx.rend() && result.size() < query.limit; ++ritr) {
                 handle(*ritr);
             }
         } else {
-            for (; itr != idx.end() && itr->order_id < query.start_order_id; ++itr) {}
+            for (; itr != idx.end() && (query.start_order_id && itr->order_id != query.start_order_id); ++itr) {}
 
             for (; itr != idx.end() && result.size() < query.limit; ++itr) {
                 handle(*itr);
@@ -398,11 +398,12 @@ public:
 
             auto itr = unsorted.begin();
 
-            for (; itr != unsorted.end(); ++itr) {
-                if (itr->order_id >= query.start_order_id) {
-                    break;
+            if (query.start_order_id)
+                for (; itr != unsorted.end(); ++itr) {
+                    if (itr->order_id == query.start_order_id) {
+                        break;
+                    }
                 }
-            }
 
             for (; itr != unsorted.end() && result.size() < query.limit; ++itr) {
                 nft_order_api_object obj = *itr;
