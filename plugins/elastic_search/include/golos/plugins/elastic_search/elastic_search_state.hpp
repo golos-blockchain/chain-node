@@ -260,11 +260,11 @@ public:
     }
 
     result_type operator()(const comment_reward_operation& op) {
-#ifndef STEEMIT_BUILD_TESTNET
-        if (_db.head_block_num() < 35000000) { // Speed up replay
-            return;
-        }
-#endif
+// #ifndef STEEMIT_BUILD_TESTNET
+//         if (_db.head_block_num() < 35000000) { // Speed up replay
+//             return;
+//         }
+// #endif
         const auto& cmt = _db.get_comment(op.author, op.hashlink);
         const auto* extras = _db.find_extras(op.author, op.hashlink);
 
