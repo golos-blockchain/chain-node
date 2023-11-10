@@ -1215,12 +1215,12 @@ namespace golos { namespace plugins { namespace social_network {
             return result;
         }
 
-        const auto& idx = db.get_index<comment_last_update_index, by_parent_active>();
-
         bool has_start = start_author.size() && start_permlink.size();
 
         if (category_prefix.size()) {
             std::vector<discussion> unordered;
+
+            const auto& idx = db.get_index<comment_last_update_index, by_parent>();
 
             auto itr = idx.lower_bound(std::make_tuple(STEEMIT_ROOT_POST_PARENT, category_prefix));
             while (itr != idx.end() && itr->parent_author == STEEMIT_ROOT_POST_PARENT) {
@@ -1263,6 +1263,10 @@ namespace golos { namespace plugins { namespace social_network {
                 ++itr;
             }
 
+            std::sort(unordered.begin(), unordered.end(), [&](auto& lhs, auto& rhs) {
+                return *lhs.active > *rhs.active;
+            });
+
             auto& vec = result[category_prefix];
 
             bool reached_start = !has_start;
@@ -1283,6 +1287,8 @@ namespace golos { namespace plugins { namespace social_network {
                 if (vec.size() == limit) break;
             }
         } else {
+            const auto& idx = db.get_index<comment_last_update_index, by_parent_active>();
+
             for (const auto& category : categories) {
                 size_t i = 0;
                 bool reached_start = false;
