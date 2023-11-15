@@ -140,6 +140,12 @@ namespace golos { namespace plugins { namespace social_network {
             const opt_prefs& prefs
         ) const;
 
+        template<typename SortIndex>
+        std::vector<account_referral_object> get_referrals(const referrals_query& query) const;
+
+        template<typename SortIndex>
+        std::vector<account_referral_object> get_referrers(const referrers_query& query) const;
+
         discussion get_content(const std::string& author, const std::string& permlink, uint32_t limit, uint32_t offset) const;
 
         discussion get_discussion(const comment_object& c, uint32_t vote_limit, uint32_t vote_offset, opt_prefs prefs = opt_prefs()) const;
@@ -147,6 +153,12 @@ namespace golos { namespace plugins { namespace social_network {
         void set_depth_parameters(const comment_depth_params& params);
 
         fc::sha256 get_donate_target_id(const fc::variant_object& target) const;
+
+        void upsert_referrer(account_name_type referrer, auto&& modifier);
+
+        asset count_referrals_vesting(account_name_type referrer);
+
+        void update_referral_vesting(account_name_type referral_name);
 
         // Looks for a comment_operation, fills the comment_content state objects.
         void pre_operation(const operation_notification& o);
@@ -429,6 +441,8 @@ namespace golos { namespace plugins { namespace social_network {
                 return;
             }
 
+            bool edit_case = false;
+
             const auto& dp = depth_parameters;
             if (!dp.miss_content()) {
                 const auto comment_content = impl.find_comment_content(comment->id);
@@ -469,6 +483,7 @@ namespace golos { namespace plugins { namespace social_network {
                             con.block_number = db.head_block_num();
                         }
                     });
+                    edit_case = true;
                 } else {
                     // Creation case
                     db.create<comment_content_object>([&](comment_content_object& con) {
@@ -494,6 +509,52 @@ namespace golos { namespace plugins { namespace social_network {
                 auto now = db.head_block_time();
                 if (!impl.set_comment_update(*comment, now, true)) { // If create case
                     impl.activate_parent_comments(*comment);
+                } else {
+                    edit_case = true;
+                }
+            }
+
+            if (db.has_index<account_referral_index>()) {
+                if (!edit_case) {
+                    const auto& idx = db.get_index<account_referral_index, by_account_name>();
+                    const auto& author = db.get_account(o.author);
+                    if (author.referrer_account != account_name_type()) {
+                        auto itr = idx.find(author.referrer_account);
+                        if (itr != idx.end()) {
+                            db.modify(*itr, [&](auto& aro) {
+                                if (o.parent_author == STEEMIT_ROOT_POST_PARENT) {
+                                    ++aro.referral_post_count;
+                                } else {
+                                    ++aro.referral_comment_count;
+                                }
+                            });
+                        }
+                    } else {
+                        auto itr = idx.find(o.author);
+                        if (itr != idx.end() && itr->active_referral) {
+                            auto referrer = itr->referrer;
+
+                            db.modify(*itr, [&](auto& aro) {
+                                aro.active_referral = false;
+                            });
+
+                            if (referrer != account_name_type()) {
+                                auto itr2 = idx.find(referrer);
+                                if (itr2 != idx.end()) {
+                                    if (itr2->referral_count > 1 || itr2->is_referral()) {
+                                        db.modify(*itr2, [&](auto& aro) {
+                                            --aro.referral_count;
+                                            aro.total_referral_vesting = impl.count_referrals_vesting(referrer);
+                                            aro.referral_post_count = std::max(int64_t(aro.referral_post_count) - author.post_count, int64_t(0));
+                                            aro.referral_comment_count = std::max(int64_t(aro.referral_comment_count) - author.comment_count, int64_t(0));
+                                        });
+                                    } else {
+                                        db.remove(*itr2);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -506,6 +567,14 @@ namespace golos { namespace plugins { namespace social_network {
             const auto* comment = db.find_comment_by_perm(op.author, op.permlink);
             if (comment == nullptr) {
                 return;
+            }
+
+            // TODO: trick, because counting of VS is wrong
+            const auto& voter = db.get_account(op.voter);
+            if (voter.referral_count && db.has_index<account_referral_index>()) {
+                impl.upsert_referrer(op.voter, [&](auto& aro) {
+                    aro.total_referral_vesting = impl.count_referrals_vesting(aro.account);
+                });
             }
 
             const auto* comment_content = impl.find_comment_content(comment->id);
@@ -524,6 +593,8 @@ namespace golos { namespace plugins { namespace social_network {
             impl.author_gbg_payout_value += op.sbd_payout;
             impl.author_golos_payout_value += op.steem_payout;
             impl.author_gests_payout_value += op.vesting_payout;
+
+            impl.update_referral_vesting(op.author);
         }
 
         result_type operator()(const comment_payout_update_operation& op) const {
@@ -597,6 +668,8 @@ namespace golos { namespace plugins { namespace social_network {
             }
 
             impl.curator_payout_gests += op.reward;
+
+            impl.update_referral_vesting(op.curator);
         }
 
         result_type operator()(const comment_benefactor_reward_operation& op) const {
@@ -605,6 +678,61 @@ namespace golos { namespace plugins { namespace social_network {
             }
 
             impl.benef_payout_gests += op.reward;
+
+            impl.update_referral_vesting(op.benefactor);
+
+            if (db.has_index<account_referral_index>()) {
+                const auto& idx = db.get_index<account_referral_index, by_account_name>();
+                auto itr = idx.find(op.author);
+                if (itr != idx.end() && itr->referrer == op.benefactor) {
+                    db.modify(*itr, [&](auto& aro) {
+                        aro.referrer_rewards += op.reward_in_golos;
+                    });
+                }
+            }
+        }
+
+        result_type operator()(const delegation_reward_operation& op) const {
+            impl.update_referral_vesting(op.delegator);
+        }
+
+        result_type operator()(const producer_reward_operation& op) const {
+            impl.update_referral_vesting(op.producer);
+        }
+
+        result_type operator()(const transfer_to_vesting_operation& op) const {
+            impl.update_referral_vesting(op.to.size() ? op.to : op.from);
+        }
+
+        result_type operator()(const claim_operation& op) const {
+            if (op.to_vesting) {
+                impl.update_referral_vesting(op.to.size() ? op.to : op.from);
+            }
+        }
+
+        result_type operator()(const transfer_from_tip_operation& op) const {
+            if (op.amount.symbol == STEEM_SYMBOL) {
+                impl.update_referral_vesting(op.to.size() ? op.to : op.from);
+            }
+        }
+
+        result_type operator()(const delegate_vesting_shares_with_interest_operation& op) const {
+            impl.update_referral_vesting(op.delegator);
+            impl.update_referral_vesting(op.delegatee);
+        }
+
+        result_type operator()(const delegate_vesting_shares_operation& op) const {
+            impl.update_referral_vesting(op.delegator);
+            impl.update_referral_vesting(op.delegatee);
+        }
+
+        result_type operator()(const return_vesting_delegation_operation& op) const {
+            impl.update_referral_vesting(op.account);
+        }
+
+        result_type operator()(const fill_vesting_withdraw_operation& op) const {
+            impl.update_referral_vesting(op.from_account);
+            impl.update_referral_vesting(op.to_account);
         }
 
         result_type operator()(const donate_operation& op) const {
@@ -626,6 +754,24 @@ namespace golos { namespace plugins { namespace social_network {
                 don.time = db.head_block_time();
                 don.wrong = false;
             });
+
+            const auto& to = db.get_account(op.to);
+            if (to.referrer_account != account_name_type() && db.has_index<account_referral_index>()) {
+                auto ref_amount = asset(
+                    (uint128_t(op.amount.amount.value) * to.referrer_interest_rate / STEEMIT_100_PERCENT).to_uint64(),
+                    op.amount.symbol);
+                const auto& idx = db.get_index<account_referral_index, by_account_name>();
+                auto itr = idx.find(op.to);
+                if (itr != idx.end()) {
+                    db.modify(*itr, [&](auto& aro) {
+                        if (ref_amount.symbol == STEEM_SYMBOL) {
+                            aro.referrer_donate_rewards += ref_amount;
+                        } else {
+                            aro.referrer_donate_rewards_uia += ref_amount.amount.value;
+                        }
+                    });
+                }
+            }
 
             try {
                 auto bd = get_blog_donate(op);
@@ -664,7 +810,136 @@ namespace golos { namespace plugins { namespace social_network {
                 }
             } catch (...) {}
         }
+
+        result_type operator()(const account_create_with_delegation_operation& op) const {
+            if (!db.has_index<account_referral_index>()) {
+                return;
+            }
+
+            struct extension_visitor {
+                const account_create_with_delegation_operation& _op;
+                social_network::impl& _impl;
+
+                extension_visitor(const account_create_with_delegation_operation& op, social_network::impl& impl) : _op(op), _impl(impl) {
+                }
+
+                using result_type = void;
+
+                result_type operator()(const account_referral_options& aro) const {
+                    const auto& referral = _impl.db.get_account(_op.new_account_name);
+
+                    _impl.db.create<account_referral_object>([&](auto& aro) {
+                        aro.account = _op.new_account_name;
+                        aro.referrer = referral.referrer_account;
+                        aro.joined = referral.created;
+                        aro.active_referral = true;
+                    });
+
+                    _impl.upsert_referrer(referral.referrer_account, [&](auto& aro) {
+                        ++aro.referral_count;
+                        aro.total_referral_vesting = _impl.count_referrals_vesting(aro.account);
+                    });
+                }
+            };
+
+            for (auto& e : op.extensions) {
+                e.visit(extension_visitor(op, impl));
+            }
+        }
+
+        result_type operator()(const account_create_with_invite_operation& op) const {
+            if (!db.has_index<account_referral_index>()) {
+                return;
+            }
+
+            const auto& referral = db.get_account(op.new_account_name);
+            if (referral.referrer_account != account_name_type()) {
+                db.create<account_referral_object>([&](auto& aro) {
+                    aro.account = op.new_account_name;
+                    aro.referrer = referral.referrer_account;
+                    aro.joined = referral.created;
+                    aro.active_referral = true;
+                });
+
+                impl.upsert_referrer(referral.referrer_account, [&](auto& aro) {
+                    ++aro.referral_count;
+                    aro.total_referral_vesting = impl.count_referrals_vesting(aro.account);
+                });
+            }
+        }
+
+        result_type operator()(const break_free_referral_operation& op) const {
+            if (!db.has_index<account_referral_index>()) {
+                return;
+            }
+
+            const auto& idx = db.get_index<account_referral_index, by_account_name>();
+            auto itr = idx.find(op.referral);
+            account_name_type referrer;
+            if (itr != idx.end()) {
+                referrer = itr->referrer;
+
+                db.modify(*itr, [&](auto& aro) {
+                    aro.active_referral = false;
+                });
+            }
+
+            if (referrer != account_name_type()) {
+                auto itr2 = idx.find(referrer);
+                if (itr2 != idx.end()) {
+                    if (itr2->referral_count > 1 || itr2->is_referral()) {
+                        const auto& referral = db.get_account(op.referral);
+
+                        db.modify(*itr2, [&](auto& aro) {
+                            --aro.referral_count;
+                            aro.total_referral_vesting = impl.count_referrals_vesting(referrer);
+                            aro.referral_post_count = std::max(int64_t(aro.referral_post_count) - referral.post_count, int64_t(0));
+                            aro.referral_comment_count = std::max(int64_t(aro.referral_comment_count) - referral.comment_count, int64_t(0));
+                        });
+                    } else {
+                        db.remove(*itr2);
+                    }
+                }
+            }
+        }
     };
+
+    void social_network::impl::upsert_referrer(account_name_type referrer, auto&& modifier) {
+        const auto& idx = db.get_index<account_referral_index, by_account_name>();
+        auto itr = idx.find(referrer);
+        if (itr == idx.end()) {
+            db.create<account_referral_object>([&](auto& aro) {
+                aro.account = referrer;
+                aro.joined = db.get_account(referrer).created;
+                modifier(aro);
+            });
+        } else {
+            db.modify(*itr, [&](auto& aro) {
+                modifier(aro);
+            });
+        }
+    }
+
+    void social_network::impl::update_referral_vesting(account_name_type referral_name) {
+        if (db.has_index<account_referral_index>()) {
+            const auto& referral = db.get_account(referral_name);
+            if (referral.referrer_account != account_name_type()) {
+                upsert_referrer(referral.referrer_account, [&](auto& aro) {
+                    aro.total_referral_vesting = count_referrals_vesting(aro.account);
+                });
+            }
+        }
+    }
+
+    asset social_network::impl::count_referrals_vesting(account_name_type referrer) {
+        asset total_vesting(0, VESTS_SYMBOL);
+        const auto& idx = db.get_index<account_referral_index, by_referrer_joined>();
+        auto itr = idx.lower_bound(referrer);
+        for (; itr != idx.end() && itr->referrer == referrer; ++itr) {
+            total_vesting += db.get_account(itr->account).vesting_shares;
+        }
+        return total_vesting;
+    }
 
     void social_network::impl::pre_operation(const operation_notification& o) { try {
         delete_visitor<social_network::impl> ovisit(*this);
@@ -811,6 +1086,7 @@ namespace golos { namespace plugins { namespace social_network {
         }
 
         add_plugin_index<donate_data_index>(db);
+        add_plugin_index<account_referral_index>(db);
 
         db.pre_apply_operation.connect([&](const operation_notification &o) {
             pimpl->pre_operation(o);
@@ -1356,6 +1632,41 @@ namespace golos { namespace plugins { namespace social_network {
         return result;
     }
 
+    template<typename SortIndex>
+    std::vector<account_referral_object> social_network::impl::get_referrals(const referrals_query& query) const {
+        std::vector<account_referral_object> res;
+
+        const auto& idx = db.get_index<account_referral_index, SortIndex>();
+        auto itr = idx.lower_bound(query.referrer);
+        if (query.start_name.size()) {
+            for (; itr != idx.end() && itr->referrer == query.referrer && itr->account != query.start_name; ++itr);
+        }
+
+        for (; itr != idx.end() && itr->referrer == query.referrer && res.size() < query.limit; ++itr) {
+            res.push_back(*itr);
+        }
+
+        return res;
+    }
+
+    template<typename SortIndex>
+    std::vector<account_referral_object> social_network::impl::get_referrers(const referrers_query& query) const {
+        std::vector<account_referral_object> res;
+
+        const auto& idx = db.get_index<account_referral_index, SortIndex>();
+        auto itr = idx.begin();
+        if (query.start_name.size()) {
+            for (; itr != idx.end() && itr->account != query.start_name; ++itr);
+        }
+
+        for (; itr != idx.end() && res.size() < query.limit; ++itr) {
+            if (itr->referral_count == 0) continue;
+            res.push_back(*itr);
+        }
+
+        return res;
+    }
+
     /**
      *  This method can be used to fetch replies to an account.
      *
@@ -1402,6 +1713,36 @@ namespace golos { namespace plugins { namespace social_network {
         );
         return pimpl->db.with_weak_read_lock([&]() {
             return pimpl->get_all_discussions_by_active(start_author, start_permlink, from, limit, categories, vote_limit, vote_offset, filter_ids, filter_authors, category_prefix, prefs);
+        });
+    }
+
+    DEFINE_API(social_network, get_referrals) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (referrals_query, query)
+        );
+        return pimpl->db.with_weak_read_lock([&]() {
+            if (query.sort == referrals_sort::by_joined) {
+                return pimpl->get_referrals<by_referrer_joined>(query);
+            }
+            return pimpl->get_referrals<by_referrer_rewards>(query);
+        });
+    }
+
+    DEFINE_API(social_network, get_referrers) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (referrers_query, query)
+        );
+        return pimpl->db.with_weak_read_lock([&]() {
+            if (query.sort == referrers_sort::by_referral_count) {
+                return pimpl->get_referrers<by_referral_count>(query);
+            } else if (query.sort == referrers_sort::by_referral_vesting) {
+                return pimpl->get_referrers<by_referral_vesting>(query);
+            } else if (query.sort == referrers_sort::by_referral_post_count) {
+                return pimpl->get_referrers<by_referral_post_count>(query);
+            } else if (query.sort == referrers_sort::by_referral_comment_count) {
+                return pimpl->get_referrers<by_referral_comment_count>(query);
+            }
+            return pimpl->get_referrers<by_referral_total_postings>(query);
         });
     }
 

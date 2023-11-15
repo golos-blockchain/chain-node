@@ -13,7 +13,8 @@ namespace golos { namespace plugins { namespace social_network {
         comment_content_object_type = (SOCIAL_NETWORK_SPACE_ID << 8),
         comment_last_update_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 1,
         comment_reward_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 2,
-        donate_data_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 3
+        donate_data_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 3,
+        account_referral_object_type = (SOCIAL_NETWORK_SPACE_ID << 8) + 4
     };
 
 
@@ -258,6 +259,117 @@ namespace golos { namespace plugins { namespace social_network {
         account_name_type author;
         hashlink_type hashlink;
     };
+
+    class account_referral_object
+            : public object<account_referral_object_type, account_referral_object> {
+    public:
+        account_referral_object() = delete;
+
+        template<typename Constructor, typename Allocator>
+        account_referral_object(Constructor&& c, allocator <Allocator> a) {
+            c(*this);
+        }
+
+        id_type id;
+
+        account_name_type account;
+        account_name_type referrer;
+        asset referrer_rewards{0, STEEM_SYMBOL};
+        asset referrer_donate_rewards{0, STEEM_SYMBOL};
+        uint64_t referrer_donate_rewards_uia = 0;
+        time_point_sec joined;
+        bool active_referral = false;
+
+        uint32_t referral_count = 0;
+        asset total_referral_vesting{0, VESTS_SYMBOL};
+        uint32_t referral_post_count = 0;
+        uint32_t referral_comment_count = 0;
+
+        uint64_t rewards() const {
+            return referrer_rewards.amount.value + referrer_donate_rewards.amount.value + referrer_donate_rewards_uia;
+        }
+
+        bool is_referral() const {
+            return referrer != account_name_type();
+        }
+
+        bool is_referrer() const {
+            return referral_count != 0;
+        }
+
+        uint32_t referral_total_postings() const {
+            return referral_post_count + referral_comment_count;
+        }
+    };
+
+    using account_referral_id_type = object_id<account_referral_object>;
+
+    struct by_account_name;
+    struct by_referrer_joined;
+    struct by_referrer_rewards;
+    struct by_referral_count;
+    struct by_referral_vesting;
+    struct by_referral_post_count;
+    struct by_referral_comment_count;
+    struct by_referral_total_postings;
+
+    using account_referral_index = multi_index_container<
+        account_referral_object,
+        indexed_by<
+            ordered_unique<tag<by_id>, member<account_referral_object, account_referral_id_type, &account_referral_object::id>>,
+            ordered_unique<tag<by_account_name>, member<account_referral_object, account_name_type, &account_referral_object::account>>,
+            ordered_non_unique<tag<by_referrer_joined>, composite_key<account_referral_object,
+                member<account_referral_object, account_name_type, &account_referral_object::referrer>,
+                member<account_referral_object, time_point_sec, &account_referral_object::joined>
+            >, composite_key_compare<
+                std::less<account_name_type>,
+                std::greater<time_point_sec>
+            >>,
+            ordered_non_unique<tag<by_referrer_rewards>, composite_key<account_referral_object,
+                member<account_referral_object, account_name_type, &account_referral_object::referrer>,
+                const_mem_fun<account_referral_object, uint64_t, &account_referral_object::rewards>
+            >, composite_key_compare<
+                std::less<account_name_type>,
+                std::greater<uint64_t>
+            >>,
+            ordered_unique<tag<by_referral_count>, composite_key<account_referral_object,
+                member<account_referral_object, uint32_t, &account_referral_object::referral_count>,
+                member<account_referral_object, account_name_type, &account_referral_object::account>
+            >, composite_key_compare<
+                std::greater<uint32_t>,
+                std::less<account_name_type>
+            >>,
+            ordered_unique<tag<by_referral_vesting>, composite_key<account_referral_object,
+                member<account_referral_object, asset, &account_referral_object::total_referral_vesting>,
+                member<account_referral_object, account_name_type, &account_referral_object::account>
+            >, composite_key_compare<
+                std::greater<asset>,
+                std::less<account_name_type>
+            >>,
+            ordered_unique<tag<by_referral_post_count>, composite_key<account_referral_object,
+                member<account_referral_object, uint32_t, &account_referral_object::referral_post_count>,
+                member<account_referral_object, account_name_type, &account_referral_object::account>
+            >, composite_key_compare<
+                std::greater<uint32_t>,
+                std::less<account_name_type>
+            >>,
+            ordered_unique<tag<by_referral_comment_count>, composite_key<account_referral_object,
+                member<account_referral_object, uint32_t, &account_referral_object::referral_comment_count>,
+                member<account_referral_object, account_name_type, &account_referral_object::account>
+            >, composite_key_compare<
+                std::greater<uint32_t>,
+                std::less<account_name_type>
+            >>,
+            ordered_unique<tag<by_referral_total_postings>, composite_key<account_referral_object,
+                const_mem_fun<account_referral_object, uint32_t, &account_referral_object::referral_total_postings>,
+                member<account_referral_object, account_name_type, &account_referral_object::account>
+            >, composite_key_compare<
+                std::greater<uint32_t>,
+                std::less<account_name_type>
+            >>
+        >,
+        allocator<account_referral_object>
+    >;
 } } }
 
 
@@ -282,3 +394,12 @@ FC_REFLECT((golos::plugins::social_network::donate_api_object),
 
 FC_REFLECT((golos::plugins::social_network::author_hashlink),
     (author)(hashlink))
+
+CHAINBASE_SET_INDEX_TYPE(
+    golos::plugins::social_network::account_referral_object,
+    golos::plugins::social_network::account_referral_index
+)
+FC_REFLECT((golos::plugins::social_network::account_referral_object),
+    (id)(account)(referrer)(referrer_rewards)(referrer_donate_rewards)(referrer_donate_rewards_uia)(joined)(active_referral)
+    (referral_count)(total_referral_vesting)(referral_post_count)(referral_comment_count)
+)

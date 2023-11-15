@@ -209,7 +209,7 @@ namespace golos { namespace chain {
             void operator()(const account_referral_options& aro) const {
                 ASSERT_REQ_HF(STEEMIT_HARDFORK_0_19__295, "account_referral_options");
 
-                _db.get_account(aro.referrer);
+                const auto& referrer = _db.get_account(aro.referrer);
 
                 const auto& median_props = _db.get_witness_schedule_object().median_props;
 
@@ -226,6 +226,13 @@ namespace golos { namespace chain {
                     a.referrer_interest_rate = aro.interest_rate;
                     a.referral_end_date = aro.end_date;
                     a.referral_break_fee = aro.break_fee;
+                });
+
+                _db.push_event(referral_operation(_a.name, aro.referrer,
+                    aro.interest_rate, aro.end_date,aro.break_fee));
+
+                _db.modify(referrer, [&](account_object& a) {
+                    ++a.referral_count;
                 });
             }
         };
@@ -347,6 +354,8 @@ namespace golos { namespace chain {
                 });
             }
 
+            bool is_referral = inv.is_referral && inv.creator != STEEMIT_NULL_ACCOUNT;
+    
             const auto& new_account = _db.create<account_object>([&](account_object& acc) {
                 acc.name = op.new_account_name;
                 acc.memo_key = op.memo_key;
@@ -356,7 +365,7 @@ namespace golos { namespace chain {
                 acc.last_claim = now;
                 acc.mined = false;
                 acc.recovery_account = op.creator;
-                if (inv.is_referral && inv.creator != STEEMIT_NULL_ACCOUNT) {
+                if (is_referral) {
                     acc.referrer_account = inv.creator;
                     acc.referrer_interest_rate = median_props.max_referral_interest_rate;
                     acc.referral_end_date = now + median_props.max_referral_term_sec;
@@ -376,6 +385,16 @@ namespace golos { namespace chain {
                 auth.posting = op.posting;
                 auth.last_owner_update = fc::time_point_sec::min();
             });
+
+            if (is_referral) {
+                _db.modify(_db.get_account(inv.creator), [&](account_object& a) {
+                    ++a.referral_count;
+                });
+
+                _db.push_event(referral_operation(op.new_account_name, inv.creator,
+                    new_account.referrer_interest_rate, 
+                    new_account.referral_end_date, new_account.referral_break_fee));
+            }
 
             auto vest = inv.balance - distribute_account_fee(_db,
                 median_props.min_invite_balance);
