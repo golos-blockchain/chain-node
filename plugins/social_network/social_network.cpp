@@ -532,27 +532,9 @@ namespace golos { namespace plugins { namespace social_network {
                     } else {
                         auto itr = idx.find(o.author);
                         if (itr != idx.end() && itr->active_referral) {
-                            auto referrer = itr->referrer;
-
                             db.modify(*itr, [&](auto& aro) {
                                 aro.active_referral = false;
                             });
-
-                            if (referrer != account_name_type()) {
-                                auto itr2 = idx.find(referrer);
-                                if (itr2 != idx.end()) {
-                                    if (itr2->referral_count > 1 || itr2->is_referral()) {
-                                        db.modify(*itr2, [&](auto& aro) {
-                                            --aro.referral_count;
-                                            aro.total_referral_vesting = impl.count_referrals_vesting(referrer);
-                                            aro.referral_post_count = std::max(int64_t(aro.referral_post_count) - author.post_count, int64_t(0));
-                                            aro.referral_comment_count = std::max(int64_t(aro.referral_comment_count) - author.comment_count, int64_t(0));
-                                        });
-                                    } else {
-                                        db.remove(*itr2);
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -875,31 +857,10 @@ namespace golos { namespace plugins { namespace social_network {
 
             const auto& idx = db.get_index<account_referral_index, by_account_name>();
             auto itr = idx.find(op.referral);
-            account_name_type referrer;
             if (itr != idx.end()) {
-                referrer = itr->referrer;
-
                 db.modify(*itr, [&](auto& aro) {
                     aro.active_referral = false;
                 });
-            }
-
-            if (referrer != account_name_type()) {
-                auto itr2 = idx.find(referrer);
-                if (itr2 != idx.end()) {
-                    if (itr2->referral_count > 1 || itr2->is_referral()) {
-                        const auto& referral = db.get_account(op.referral);
-
-                        db.modify(*itr2, [&](auto& aro) {
-                            --aro.referral_count;
-                            aro.total_referral_vesting = impl.count_referrals_vesting(referrer);
-                            aro.referral_post_count = std::max(int64_t(aro.referral_post_count) - referral.post_count, int64_t(0));
-                            aro.referral_comment_count = std::max(int64_t(aro.referral_comment_count) - referral.comment_count, int64_t(0));
-                        });
-                    } else {
-                        db.remove(*itr2);
-                    }
-                }
             }
         }
     };
