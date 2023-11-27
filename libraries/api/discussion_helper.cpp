@@ -156,6 +156,7 @@ namespace golos { namespace api {
             d.app = get_comment_app_by_id(database(), extras->app_id);
             d.has_worker_request = extras->has_worker_request;
             d.children_rshares2 = extras->children_rshares2;
+            d.decrypt_fee = extras->decrypt_fee;
         }
     }
 

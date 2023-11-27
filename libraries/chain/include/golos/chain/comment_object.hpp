@@ -133,6 +133,8 @@ namespace golos {
              *  be reviewed.
              */
             fc::uint128_t children_rshares2;
+
+            asset decrypt_fee{0, STEEM_SYMBOL};
         };
 
         struct delegator_vote_interest_rate {
