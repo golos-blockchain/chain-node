@@ -286,7 +286,7 @@ namespace golos { namespace plugins { namespace social_network {
         uint32_t referral_comment_count = 0;
 
         uint64_t rewards() const {
-            return referrer_rewards.amount.value + referrer_donate_rewards.amount.value + referrer_donate_rewards_uia;
+            return referrer_rewards.amount.value + referrer_donate_rewards.amount.value;
         }
 
         bool is_referral() const {
