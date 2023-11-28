@@ -737,13 +737,14 @@ namespace golos { namespace plugins { namespace social_network {
                 don.wrong = false;
             });
 
-            const auto& to = db.get_account(op.to);
+            auto to_acc = op.to.size() ? op.to : op.from;
+            const auto& to = db.get_account(to_acc);
             if (to.referrer_account != account_name_type() && db.has_index<account_referral_index>()) {
                 auto ref_amount = asset(
                     (uint128_t(op.amount.amount.value) * to.referrer_interest_rate / STEEMIT_100_PERCENT).to_uint64(),
                     op.amount.symbol);
                 const auto& idx = db.get_index<account_referral_index, by_account_name>();
-                auto itr = idx.find(op.to);
+                auto itr = idx.find(to_acc);
                 if (itr != idx.end()) {
                     db.modify(*itr, [&](auto& aro) {
                         if (ref_amount.symbol == STEEM_SYMBOL) {
@@ -883,9 +884,13 @@ namespace golos { namespace plugins { namespace social_network {
 
     void social_network::impl::update_referral_vesting(account_name_type referral_name) {
         if (db.has_index<account_referral_index>()) {
-            const auto& referral = db.get_account(referral_name);
-            if (referral.referrer_account != account_name_type()) {
-                upsert_referrer(referral.referrer_account, [&](auto& aro) {
+            const auto* referral = db.find_account(referral_name);
+            if (!referral) {
+                wlog("update_referral_vesting - no account");
+                return;
+            }
+            if (referral->referrer_account != account_name_type()) {
+                upsert_referrer(referral->referrer_account, [&](auto& aro) {
                     aro.total_referral_vesting = count_referrals_vesting(aro.account);
                 });
             }
