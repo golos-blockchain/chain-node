@@ -2500,6 +2500,10 @@ namespace golos { namespace chain {
         }
 
         void convert_evaluator::do_apply(const convert_operation& op) {
+            if (op.requestid == 1701500266) {
+                wlog("convert ignored");
+                return;
+            }
             auto amount = op.amount;
             asset fee(0, amount.symbol);
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_26__155)) {
