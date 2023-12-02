@@ -200,6 +200,12 @@ namespace golos { namespace chain {
             price = noo.price;
         }
 
+        const auto& buyer = _db.get_account(op.buyer);
+        GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, price);
+
+        _db.adjust_balance(buyer, -price);
+        _db.adjust_balance(_db.get_account(op.seller), price);
+
         _db.modify(no, [&](auto& no) {
             no.last_update = _db.head_block_time();
             no.owner = noo.owner;
@@ -245,8 +251,18 @@ namespace golos { namespace chain {
                 price = noo.price;
             }
 
+            const auto& buyer = _db.get_account(op.buyer);
+            if (_db.head_block_num() <= 74644300) {
+                const auto& bal = get_balance(_db, buyer, MAIN_BALANCE, price.symbol);
+                if (bal < price) {
+                    wlog(std::string("NFT operation ignored: ") + op.buyer + " " + std::to_string(op.token_id));
+                    return;
+                }
+            }
+            GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, price);
+
             _db.adjust_balance(_db.get_account(noo.owner), price);
-            _db.adjust_balance(_db.get_account(op.buyer), -price);
+            _db.adjust_balance(buyer, -price);
 
             _db.modify(no, [&](auto& no) {
                 no.last_update = _db.head_block_time();
