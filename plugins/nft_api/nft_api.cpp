@@ -339,7 +339,7 @@ public:
                 return;
             }
             nft_order_api_object obj = std::move(no);
-            if (query.tokens) {
+            if (query.tokens && obj.token_id) {
                 const auto& no = _db.get_nft(obj.token_id);
                 obj.token = no;
             }
@@ -407,7 +407,7 @@ public:
 
             for (; itr != unsorted.end() && result.size() < query.limit; ++itr) {
                 nft_order_api_object obj = *itr;
-                if (query.tokens) {
+                if (query.tokens && obj.token_id) {
                     const auto& no = _db.get_nft(obj.token_id);
                     obj.token = no;
                 }
