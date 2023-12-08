@@ -79,6 +79,7 @@ struct decrypted_result {
     hashlink_type hashlink; //
     fc::optional<std::string> err;
     fc::optional<sub_options> sub;
+    fc::optional<asset> decrypt_fee;
 };
 
 struct decrypted_api_object {
@@ -109,7 +110,7 @@ FC_REFLECT((golos::plugins::cryptor::sub_options),
 )
 
 FC_REFLECT((golos::plugins::cryptor::decrypted_result),
-    (author)(body)(err)(sub)
+    (author)(body)(err)(sub)(decrypt_fee)
 )
 
 FC_REFLECT((golos::plugins::cryptor::decrypted_api_object),

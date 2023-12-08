@@ -29,7 +29,11 @@ struct post_operation_visitor {
         }
 
         auto donate = get_blog_donate(op);
-        if (!!donate || op.amount.symbol != STEEM_SYMBOL || op.to != donate->author) {
+        if (!donate) {
+            return;
+        }
+
+        if (op.amount.symbol != STEEM_SYMBOL || op.to != donate->author) {
             return;
         }
 
@@ -162,7 +166,7 @@ public:
         struct decrypt_entry {
             std::string author;
             std::string permlink;
-            hashlink_type hashlink;
+            hashlink_type hashlink = hashlink_type();
             std::string body;
         };
 
@@ -179,7 +183,7 @@ public:
 
         auto encrypt_key = fc::sha512::hash(cryptor_key);
 
-        auto decrypt = [&](const decrypt_entry& de) {
+        auto decrypt = [&](const decrypt_entry& de, decrypted_result& dr) {
             auto body = _db.with_weak_read_lock([&]() -> std::string {
                 if (de.body.size())  {
                     return de.body;
@@ -214,24 +218,50 @@ public:
             try {
                 jvar = fc::json::from_string(body);
             } catch (...) {
-                wlog("wrong_json_or_not_encrypted");
+                dr.err = "wrong_json_or_not_encrypted";
+                return;
             }
             auto jobj = jvar.get_object();
-            auto spec_type = jobj["t"].as_string();
-            if (spec_type != "e") {
-                wlog("not_encrypted");
-            }
-            auto version = jobj["v"].as_uint64();
-            if (version < 2) {
-                wlog("wrong_encrypt_version");
-            }
-            body = jobj["c"].as_string();
-            body = fc::base64_decode(body);
 
-            auto body_data = std::vector<char>(body.begin(), body.end());
-            auto result = fc::aes_decrypt(encrypt_key, body_data);
-            auto result_str = std::string(result.begin(), result.end());
-            return result_str;
+            auto spec_itr = jobj.find("t");
+            if (spec_itr == jobj.end() || !spec_itr->value().is_string()) {
+                dr.err = "no field `t` as valid string";
+                return;
+            }
+            auto spec_type = spec_itr->value().as_string();
+            if (spec_type != "e") {
+                dr.err = "not_encrypted";
+                return;
+            }
+
+            auto ver_itr = jobj.find("v");
+            if (ver_itr == jobj.end() || !ver_itr->value().is_uint64()) {
+                dr.err = "no field `v` as valid uint64";
+                return;
+            }
+            auto version = ver_itr->value().as_uint64();
+            if (version < 2) {
+                dr.err = "not_encrypted";
+                return;
+            }
+
+            auto c_itr = jobj.find("c");
+            if (c_itr == jobj.end() || !c_itr->value().is_string()) {
+                dr.err = "no field `c` as valid string";
+                return;
+            }
+            body = c_itr->value().as_string();
+
+            try {
+                body = fc::base64_decode(body);
+
+                auto body_data = std::vector<char>(body.begin(), body.end());
+                auto result = fc::aes_decrypt(encrypt_key, body_data);
+                auto result_str = std::string(result.begin(), result.end());
+                dr.body = result_str;
+            } catch (...) {
+                dr.err = "cannot_decrypt";
+            }
         };
 
         std::vector<decrypt_entry> entries;
@@ -254,7 +284,6 @@ public:
             if (hashlink_itr != entry.end()) {
                 de.hashlink = hashlink_itr->value().as<hashlink_type>();
             }
-
             auto body_itr = entry.find("body");
             if (body_itr != entry.end()) {
                 de.body = body_itr->value().as_string();
@@ -344,7 +373,7 @@ public:
                 continue;
             }
 
-            dr.body = decrypt(de);
+            decrypt(de, dr);
             res.results.push_back(std::move(dr));
         }
 
@@ -353,6 +382,7 @@ public:
             auto f = failed_res[i];
             auto& dr = res.results[f];
 
+            asset decrypt_fee{0, STEEM_SYMBOL};
             bool donated = _db.with_weak_read_lock([&]() {
                 if (!_db.has_index<crypto_buyer_index>()) {
                     return false;
@@ -368,18 +398,25 @@ public:
                 if (!extras) {
                     return false;
                 }
+                decrypt_fee = extras->decrypt_fee;
 
                 const auto& cb_idx = _db.get_index<crypto_buyer_index, by_comment_donater>();
                 auto cb_itr = cb_idx.find(std::make_tuple(extras->id, query.account));
-                if (cb_itr != cb_idx.end() && cb_itr->buyed) {
-                    return true;
+                if (cb_itr != cb_idx.end()) {
+                    if (cb_itr->buyed) {
+                        return true;
+                    } else {
+                        decrypt_fee -= cb_itr->amount;
+                    }
                 }
                 return false;
             });
 
             if (donated) {
                 dr.err = "";
-                dr.body = decrypt(*de);
+                decrypt(*de, dr);
+            } else if (decrypt_fee.amount.value) {
+                dr.decrypt_fee = decrypt_fee;
             }
         }
 
