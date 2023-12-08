@@ -97,6 +97,7 @@ namespace golos { namespace chain {
         uint32_t order_id = 0;
         asset price;
         bool selling = false;
+        bool holds = false;
 
         time_point_sec created;
 
@@ -244,7 +245,7 @@ namespace golos { namespace chain {
                 tag<by_id>,
                 member<nft_order_object, nft_order_object_id_type, &nft_order_object::id>
             >,
-            ordered_unique<
+            ordered_non_unique<
                 tag<by_token_id>,
                 member<nft_order_object, uint32_t, &nft_order_object::token_id>
             >,

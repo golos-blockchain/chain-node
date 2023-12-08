@@ -121,15 +121,19 @@ namespace golos { namespace chain {
 
             const auto& nft_coll = _db.get_nft_collection(no.name);
 
+            uint32_t sell_order_count = 0, buy_order_count = 0;
+            double market_depth = 0, market_asks = 0;
+            _db.clear_nft_orders(op.token_id, account_name_type(), 0, sell_order_count, buy_order_count,
+                market_depth, market_asks);
+
             _db.modify(nft_coll, [&](auto& nco) {
+                nco.sell_order_count -= sell_order_count;
+                nco.buy_order_count -= buy_order_count;
+                nco.market_depth -= market_depth;
+                nco.market_asks -= market_asks;
+
                 --nco.token_count;
             });
-
-            const auto& order_idx = _db.get_index<nft_order_index, by_token_id>();
-            auto order_itr = order_idx.find(no.token_id);
-            if (order_itr != order_idx.end()) {
-                _db.remove(*order_itr);
-            }
 
             _db.modify(no, [&](auto& no) {
                 no.burnt = true;
@@ -149,10 +153,6 @@ namespace golos { namespace chain {
         GOLOS_CHECK_VALUE(no.owner == op.seller, "Cannot sell not your token.");
         GOLOS_CHECK_VALUE(!no.burnt, "Cannot sell burnt token.");
 
-        GOLOS_CHECK_VALUE(!no.selling, "You already selling this token.");
-        GOLOS_CHECK_OBJECT_MISSING(_db, nft_order, op.token_id);
-        GOLOS_CHECK_OBJECT_MISSING(_db, nft_order, op.seller, op.order_id);
-
         if (op.price.symbol != STEEM_SYMBOL && op.price.symbol != SBD_SYMBOL) {
             _db.get_asset(op.price.symbol);
         }
@@ -160,6 +160,9 @@ namespace golos { namespace chain {
         const auto& nco = _db.get_nft_collection(no.name);
 
         if (op.buyer == account_name_type()) {
+            GOLOS_CHECK_VALUE(!no.selling, "You already selling this token.");
+            GOLOS_CHECK_OBJECT_MISSING(_db, nft_order, op.seller, op.order_id);
+
             _db.modify(no, [&](auto& no) {
                 no.last_update = _db.head_block_time();
                 no.selling = true;
@@ -189,6 +192,9 @@ namespace golos { namespace chain {
         const auto& noo = _db.get_nft_order(op.buyer, op.order_id);
         GOLOS_CHECK_VALUE(!noo.selling, "Cannot sell because this order is not buying - it is selling");
         GOLOS_CHECK_VALUE(noo.name == no.name, "Wrong NFT collection name");
+        if (noo.token_id) {
+            GOLOS_CHECK_VALUE(noo.token_id == op.token_id, "Wrong token_id - buyer specified another one");
+        }
 
         if (op.price.amount != 0) {
             GOLOS_CHECK_VALUE(op.price.symbol == noo.price.symbol, "Wrong price token");
@@ -200,11 +206,21 @@ namespace golos { namespace chain {
             price = noo.price;
         }
 
-        const auto& buyer = _db.get_account(op.buyer);
-        GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, price);
+        if (!noo.token_id) {
+            const auto& buyer = _db.get_account(op.buyer);
+            GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, price);
 
-        _db.adjust_balance(buyer, -price);
+            _db.adjust_balance(buyer, -price);
+        } else {
+            GOLOS_CHECK_VALUE(price == noo.price, "You cannot set your own price in this case.");
+        }
+
         _db.adjust_balance(_db.get_account(op.seller), price);
+        if (noo.holds) {
+            auto remain = price - noo.price;
+            if (remain.amount.value)
+                _db.adjust_balance(_db.get_account(noo.owner), remain);
+        }
 
         _db.modify(no, [&](auto& no) {
             no.last_update = _db.head_block_time();
@@ -215,15 +231,25 @@ namespace golos { namespace chain {
 
         _db.push_event(nft_token_sold_operation(op.seller, noo.owner, op.token_id, price));
 
-        _db.remove(noo);
-
         auto price_real = price.to_real();
 
+        uint32_t sell_order_count = 0, buy_order_count = 0;
+        double market_depth = 0, market_asks = 0;
+        if (!noo.token_id) {
+            _db.clear_nft_orders(0, op.buyer, op.order_id, sell_order_count, buy_order_count,
+                market_depth, market_asks);
+        }
+        _db.clear_nft_orders(op.token_id, account_name_type(), 0, sell_order_count, buy_order_count,
+            market_depth, market_asks);
+
         _db.modify(nco, [&](auto& nco) {
+            nco.sell_order_count -= sell_order_count;
+            nco.buy_order_count -= buy_order_count;
+            nco.market_depth -= market_depth;
+            nco.market_asks -= market_asks;
+
             nco.last_buy_price = price;
-            --nco.buy_order_count;
             nco.market_volume += price_real;
-            nco.market_asks -= price_real;
         });
     }
 
@@ -235,20 +261,76 @@ namespace golos { namespace chain {
         }
 
         if (op.token_id) {
-            const auto& noo = _db.get_nft_order(op.token_id);
+            const nft_order_object* noo = nullptr;
+            if (!_db.has_hardfork(STEEMIT_HARDFORK_0_30)) {
+                GOLOS_CHECK_VALUE(!op.name.size(), "You filled name field, so you want to buy any token of NFT collection, you cannot buy specific one - token_id should be 0");
 
-            GOLOS_CHECK_VALUE(noo.selling, "Cannot buy because this order is not selling - it is buying");
+                noo = _db.find<nft_order_object, by_token_id>(op.token_id);
+                GOLOS_CHECK_VALUE(noo, "Missing order");
+            } else {
+                const auto& no = _db.get_nft(op.token_id);
+                noo = _db.find_nft_order(no.owner, op.order_id);
 
-            auto& no = _db.get_nft(noo.token_id);
+                if (noo) {
+                    GOLOS_CHECK_VALUE(!op.name.size(), "You should not fill name if you buying token by existant selling order.");
+                }
+
+                GOLOS_CHECK_VALUE(!_db.find_nft_order(op.buyer, op.order_id), "Order already exists.");
+            }
+
+            if (!noo) {
+                GOLOS_CHECK_VALUE(op.name.size(), "You should fill name if your buy order is first.");
+
+                auto name = nft_name_from_string(op.name);
+
+                const auto& no = _db.get_nft(op.token_id);
+                GOLOS_CHECK_VALUE(no.owner != op.buyer, "Token is already your");
+                GOLOS_CHECK_VALUE(no.name == name, "Wrong name");
+
+                const auto& nco = _db.get_nft_collection(no.name);
+
+                const auto& buyer = _db.get_account(op.buyer);
+                GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, op.price);
+
+                if (!_db.check_nft_buying_price(op.token_id, op.price)) {
+                    GOLOS_CHECK_VALUE(false, "Order with such price already exists.");
+                }
+
+                _db.adjust_balance(buyer, -op.price);
+
+                _db.create<nft_order_object>([&](auto& noo) {
+                    noo.creator = nco.creator;
+                    noo.name = name;
+                    noo.token_id = op.token_id;
+
+                    noo.owner = op.buyer;
+                    noo.order_id = op.order_id;
+                    noo.price = op.price;
+                    noo.selling = false;
+                    noo.holds = true;
+
+                    noo.created = _db.head_block_time();
+                });
+
+                _db.modify(nco, [&](auto& nco) {
+                    ++nco.buy_order_count;
+                    nco.market_asks += op.price.to_real();
+                });
+                return;
+            }
+
+            GOLOS_CHECK_VALUE(noo->selling, "Cannot buy because this order is not selling - it is buying");
+
+            auto& no = _db.get_nft(noo->token_id);
 
             if (op.price.amount != 0) {
-                GOLOS_CHECK_VALUE(op.price.symbol == noo.price.symbol, "Wrong price token");
-                GOLOS_CHECK_VALUE(op.price >= noo.price, "Cannot buy with price lesser than seller's one");
+                GOLOS_CHECK_VALUE(op.price.symbol == noo->price.symbol, "Wrong price token");
+                GOLOS_CHECK_VALUE(op.price >= noo->price, "Cannot buy with price lesser than seller's one");
             }
 
             auto price = op.price;
             if (price.amount == 0) {
-                price = noo.price;
+                price = noo->price;
             }
 
             const auto& buyer = _db.get_account(op.buyer);
@@ -261,7 +343,7 @@ namespace golos { namespace chain {
             }
             GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, price);
 
-            _db.adjust_balance(_db.get_account(noo.owner), price);
+            _db.adjust_balance(_db.get_account(noo->owner), price);
             _db.adjust_balance(buyer, -price);
 
             _db.modify(no, [&](auto& no) {
@@ -273,16 +355,22 @@ namespace golos { namespace chain {
 
             const auto& nco = _db.get_nft_collection(no.name);
 
-            _db.push_event(nft_token_sold_operation(noo.owner, op.buyer, op.token_id, price));
+            _db.push_event(nft_token_sold_operation(noo->owner, op.buyer, op.token_id, price));
 
-            _db.remove(noo);
+            uint32_t sell_order_count = 0, buy_order_count = 0;
+            double market_depth = 0, market_asks = 0;
+            _db.clear_nft_orders(op.token_id, account_name_type(), 0, sell_order_count, buy_order_count,
+                market_depth, market_asks);
 
             auto price_real = price.to_real();
 
             _db.modify(nco, [&](auto& nco) {
+                nco.sell_order_count -= sell_order_count;
+                nco.buy_order_count -= buy_order_count;
+                nco.market_depth -= market_depth;
+                nco.market_asks -= market_asks;
+
                 nco.last_buy_price = price;
-                --nco.sell_order_count;
-                nco.market_depth -= price_real;
                 nco.market_volume += price_real;
             });
 
@@ -341,6 +429,10 @@ namespace golos { namespace chain {
                 nco.market_asks -= price_real;
             }
         });
+
+        if (noo.holds) {
+            _db.adjust_balance(_db.get_account(noo.owner), noo.price);
+        }
 
         _db.remove(noo);
     }

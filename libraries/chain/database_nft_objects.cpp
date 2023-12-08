@@ -47,14 +47,6 @@ const nft_object* database::find_nft(uint32_t token_id) const {
     return find<nft_object, by_token_id>(token_id);
 }
 
-const nft_order_object& database::get_nft_order(uint32_t token_id) const {
-    try {
-        return get<nft_order_object, by_token_id>(token_id);
-    } catch(const std::out_of_range& e) {
-        GOLOS_THROW_MISSING_OBJECT("nft_order", fc::mutable_variant_object()("token_id", token_id));
-    } FC_CAPTURE_AND_RETHROW((token_id))
-}
-
 const nft_order_object& database::get_nft_order(account_name_type owner, uint32_t order_id) const {
     try {
         return get<nft_order_object, by_owner_order_id>(std::make_tuple(owner, order_id));
@@ -63,24 +55,53 @@ const nft_order_object& database::get_nft_order(account_name_type owner, uint32_
     } FC_CAPTURE_AND_RETHROW((owner)(order_id))
 }
 
-const nft_order_object* database::find_nft_order(uint32_t token_id) const {
-    return find<nft_order_object, by_token_id>(token_id);
-}
-
 const nft_order_object* database::find_nft_order(account_name_type owner, uint32_t order_id) const {
     return find<nft_order_object, by_owner_order_id>(std::make_tuple(owner, order_id));
-}
-
-void database::throw_if_exists_nft_order(uint32_t token_id) const {
-    if (find_nft_order(token_id)) {
-        GOLOS_THROW_OBJECT_ALREADY_EXIST("nft_order", fc::mutable_variant_object()("token_id", token_id));
-    }
 }
 
 void database::throw_if_exists_nft_order(const account_name_type& owner, uint32_t order_id) const {
     if (find_nft_order(owner, order_id)) {
         GOLOS_THROW_OBJECT_ALREADY_EXIST("nft_order", fc::mutable_variant_object()("owner", owner)("order_id", order_id));
     }
+}
+
+void database::clear_nft_orders(uint32_t token_id, account_name_type buyer, uint32_t order_id,
+    uint32_t& sell_count, uint32_t& buy_count, double& market_depth, double& market_asks) {
+    const auto& idx = get_index<nft_order_index, by_token_id>();
+    if (token_id) {
+        auto itr = idx.lower_bound(token_id);
+        while (itr != idx.end() && itr->token_id == token_id) {
+            const auto& noo = *itr;
+            ++itr;
+            auto price = noo.price.to_real();
+            if (noo.selling) {
+                ++sell_count;
+                market_depth += price;
+            } else {
+                ++buy_count;
+                market_asks += price;
+            }
+            if (noo.holds) {
+                adjust_balance(get_account(noo.owner), noo.price);
+            }
+            remove(noo);
+        }
+    } else {
+        const auto& noo = get_nft_order(buyer, order_id);
+        remove(noo);
+    }
+}
+
+bool database::check_nft_buying_price(uint32_t token_id, asset price) const {
+    const auto& idx = get_index<nft_order_index, by_token_id>();
+    auto itr = idx.lower_bound(token_id);
+    while (itr != idx.end() && itr->token_id == token_id) {
+        if (!itr->selling && itr->price == price) {
+            return false;
+        }
+        ++itr;
+    }
+    return true;
 }
 
 }} // golos::chain

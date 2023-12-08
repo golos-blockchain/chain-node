@@ -101,9 +101,6 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(name, {
                 validate_nft_collection_name(name);
             });
-            GOLOS_CHECK_PARAM(token_id, {
-                GOLOS_CHECK_VALUE(!token_id, "You filled name field, so you want to buy any token of NFT collection, you cannot buy specific one - token_id should be 0");
-            });
             GOLOS_CHECK_PARAM(price, {
                 GOLOS_CHECK_VALUE(price.amount > 0, "If buy is first, buy price should be > 0");
             });
