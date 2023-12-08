@@ -12,6 +12,8 @@ using golos::chain::database;
 using golos::chain::nft_collection_object;
 using golos::chain::nft_object;
 using golos::chain::nft_order_object;
+using golos::chain::nft_order_index;
+using golos::chain::by_token_id;
 using golos::chain::to_string;
 using protocol::asset;
 using protocol::asset_symbol_type;
@@ -141,9 +143,14 @@ struct nft_extended_api_object : nft_api_object {
     }
 
     void fill_order(const database& _db) {
-        const auto* ord = _db.find_nft_order(token_id);
-        if (ord) {
-            order = nft_order_api_object(*ord);
+        const auto& idx = _db.get_index<nft_order_index, by_token_id>();
+        auto itr = idx.lower_bound(token_id);
+        while (itr != idx.end() && itr->token_id == token_id) {
+            if (itr->selling) {
+                order = nft_order_api_object(*itr);
+                return;
+            }
+            ++itr;
         }
     }
 
