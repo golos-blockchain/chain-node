@@ -19,7 +19,7 @@ DEFINE_API_ARGS(decrypt_comments, json_rpc::msg_pack, decrypted_api_object)
 class cryptor final : public appbase::plugin<cryptor> {
 public:
 
-    APPBASE_PLUGIN_REQUIRES((json_rpc::plugin)(chain::plugin)(social_network::social_network)(paid_subscription_api::paid_subscription_api_plugin))
+    APPBASE_PLUGIN_REQUIRES((json_rpc::plugin)(chain::plugin)(paid_subscription_api::paid_subscription_api_plugin))
 
     cryptor();
 
