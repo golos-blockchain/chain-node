@@ -145,7 +145,8 @@ namespace golos { namespace protocol {
                 subscription_inactive_operation,
                 subscription_prepaid_return_operation,
                 nft_token_operation,
-                nft_token_sold_operation
+                nft_token_sold_operation,
+                referral_operation
         > operation;
 
         /*void operation_get_required_authorities( const operation& op,

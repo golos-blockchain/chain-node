@@ -713,6 +713,10 @@ if (options.count(name)) { \
             insert_pair(op.seller, op.buyer);
         }
 
+        void operator()(const referral_operation& op) {
+            insert_pair(op.referrer, op.referral);
+        }
+
         void operator()(const nft_transfer_operation& op) {
             insert_pair(op.from, op.to);
         }

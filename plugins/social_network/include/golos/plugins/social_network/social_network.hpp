@@ -7,6 +7,7 @@
 #include <golos/api/account_vote.hpp>
 #include <golos/api/vote_state.hpp>
 #include <golos/api/discussion_helper.hpp>
+#include <golos/plugins/social_network/social_network_queries.hpp>
 #include <golos/plugins/social_network/social_network_types.hpp>
 
 namespace golos { namespace plugins { namespace social_network {
@@ -30,6 +31,8 @@ namespace golos { namespace plugins { namespace social_network {
     DEFINE_API_ARGS(get_donates_for_targets,      msg_pack, std::vector<std::vector<donate_api_object>>)
     DEFINE_API_ARGS(get_replies_by_last_update,   msg_pack, std::vector<discussion>)
     DEFINE_API_ARGS(get_all_discussions_by_active, msg_pack, categorized_discussions)
+    DEFINE_API_ARGS(get_referrals, msg_pack, std::vector<account_referral_object>)
+    DEFINE_API_ARGS(get_referrers, msg_pack, std::vector<account_referral_object>)
 
     class social_network final: public appbase::plugin<social_network> {
     public:
@@ -49,6 +52,8 @@ namespace golos { namespace plugins { namespace social_network {
             (get_donates_for_targets)
             (get_replies_by_last_update)
             (get_all_discussions_by_active)
+            (get_referrals)
+            (get_referrers)
         )
 
         social_network();
