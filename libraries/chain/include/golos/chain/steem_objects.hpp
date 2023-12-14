@@ -329,6 +329,19 @@ namespace golos {
             }
         };
 
+        class fix_me_object: public object<fix_me_object_type, fix_me_object> {
+        public:
+            fix_me_object() = delete;
+
+            template<typename Constructor, typename Allocator>
+            fix_me_object(Constructor&& c, allocator<Allocator> a) {
+                c(*this);
+            }
+
+            id_type id;
+            account_id_type account; // TODO: can be abstract string/int identifier
+        };
+
         struct by_price;
         struct by_expiration;
         struct by_account;
@@ -614,6 +627,19 @@ namespace golos {
             >,
             allocator<market_pair_object>
         >;
+
+        using fix_me_index = multi_index_container<
+            fix_me_object,
+            indexed_by<
+                ordered_unique<tag<by_id>,
+                    member<fix_me_object, fix_me_object_id_type, &fix_me_object::id>
+                >,
+                ordered_unique<tag<by_account>,
+                    member<fix_me_object, account_id_type, &fix_me_object::account>
+                >
+            >,
+            allocator<fix_me_object>
+        >;
     }
 } // golos::chain
 
@@ -663,3 +689,5 @@ CHAINBASE_SET_INDEX_TYPE(golos::chain::asset_object, golos::chain::asset_index)
 FC_REFLECT((golos::chain::market_pair_object),
         (base_depth)(quote_depth))
 CHAINBASE_SET_INDEX_TYPE(golos::chain::market_pair_object, golos::chain::market_pair_index)
+
+CHAINBASE_SET_INDEX_TYPE(golos::chain::fix_me_object, golos::chain::fix_me_index)
