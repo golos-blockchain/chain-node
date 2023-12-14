@@ -2977,6 +2977,8 @@ namespace golos { namespace chain {
 
                 auto converted_steem = asset(to_convert, VESTS_SYMBOL) * cprops.get_vesting_share_price();
 
+                bool add_fix_me = false;
+
                 modify(from_account, [&](account_object &a) {
                     a.vesting_shares.amount -= to_withdraw;
                     a.balance += converted_steem;
@@ -2989,11 +2991,22 @@ namespace golos { namespace chain {
                         if (has_hardfork(STEEMIT_HARDFORK_0_19__971)) {
                             a.withdrawn = 0;
                             a.to_withdraw = 0;
+                        } else {
+                            add_fix_me = true;
                         }
                     } else {
                         a.next_vesting_withdrawal += fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);
                     }
                 });
+
+                if (add_fix_me) {
+                    const auto* fm = find<fix_me_object, by_account>(from_account.id);
+                    if (!fm) {
+                        create<fix_me_object>([&](auto& fm) {
+                            fm.account = from_account.id;
+                        });
+                    }
+                }
 
                 modify(cprops, [&](dynamic_global_property_object &o) {
                     o.total_vesting_fund_steem -= converted_steem;
@@ -4288,6 +4301,7 @@ namespace golos { namespace chain {
             add_core_index<invite_index>(*this);
             add_core_index<asset_index>(*this);
             add_core_index<market_pair_index>(*this);
+            add_core_index<fix_me_index>(*this);
             add_core_index<account_balance_index>(*this);
             add_core_index<event_index>(*this);
             add_core_index<account_blocking_index>(*this);
@@ -6216,6 +6230,7 @@ namespace golos { namespace chain {
                     hf_act.convert_min_curate_golos_power();
                     break;
                 case STEEMIT_HARDFORK_0_30:
+                    hf_act.fix_vesting_withdrawals();
                     hf_act.prepare_for_tests();
                     break;
                 default:

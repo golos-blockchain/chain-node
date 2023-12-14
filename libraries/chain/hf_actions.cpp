@@ -160,6 +160,24 @@ void hf_actions::convert_min_curate_golos_power() {
     });
 }
 
+void hf_actions::fix_vesting_withdrawals() {
+    const auto& fm_idx = _db.get_index<fix_me_index, by_id>();
+    auto fm_itr = fm_idx.begin();
+    while (fm_itr != fm_idx.end()) {
+        const auto& fm = *fm_itr;
+        ++fm_itr;
+        const auto& acc = _db.get(fm.account);
+        wlog("Fixed VS: " + acc.name);
+        if (acc.next_vesting_withdrawal == fc::time_point_sec::maximum()){
+            _db.modify(acc, [&](auto& acc) {
+                acc.withdrawn = 0;
+                acc.to_withdraw = 0;
+            });
+        }
+        _db.remove(fm);
+    }
+}
+
 hf_actions::hf_actions(database& db) : _db(db) {
 }
 
