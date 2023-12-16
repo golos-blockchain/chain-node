@@ -3477,17 +3477,18 @@ namespace golos { namespace chain {
                 push_virtual_operation(producer_reward_operation(wacc.name, producer_reward));
         } FC_CAPTURE_AND_RETHROW() }
 
-        asset database::get_min_gp_to_emission() const {
-            auto min_golos_power_to_emission = asset(0, VESTS_SYMBOL);
+        std::pair<asset, asset> database::get_min_gp_to_emission() const {
+            asset min_golos{0, STEEM_SYMBOL};
+            asset min_golos_power_to_emission{0, VESTS_SYMBOL};
             if (has_hardfork(STEEMIT_HARDFORK_0_28__218)) {
                 const auto& gbg_median = get_feed_history().current_median_history;
                 if (!gbg_median.is_null()) {
                     auto min_gbg = get_witness_schedule_object().median_props.min_golos_power_to_emission;
-                    auto min_golos = min_gbg * gbg_median;
+                    min_golos = min_gbg * gbg_median;
                     min_golos_power_to_emission = min_golos * get_dynamic_global_properties().get_vesting_share_price();
                 }
             }
-            return min_golos_power_to_emission;
+            return std::make_pair(min_golos_power_to_emission, min_golos);
         }
 
         void database::process_accumulative_distributions() { try {
@@ -3503,7 +3504,7 @@ namespace golos { namespace chain {
             }
 
             bool has_hf28 = has_hardfork(STEEMIT_HARDFORK_0_28__218);
-            auto min_golos_power_to_emission = get_min_gp_to_emission();
+            auto min_golos_power_to_emission = get_min_gp_to_emission().first;
 
             auto distributed_sum = asset(0, STEEM_SYMBOL);
 
@@ -4137,7 +4138,7 @@ namespace golos { namespace chain {
                 const auto& acc = *itr;
                 ++itr;
 
-                auto min_vests = get_min_gp_to_emission();
+                auto min_vests = get_min_gp_to_emission().first;
                 if (acc.vesting_shares < min_vests) {
                     continue;
                 }

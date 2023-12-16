@@ -22,6 +22,8 @@ namespace golos { namespace plugins { namespace private_message {
         settings_object_type = (PRIVATE_MESSAGE_SPACE_ID << 8) + 1,
         contact_object_type = (PRIVATE_MESSAGE_SPACE_ID << 8) + 2,
         contact_size_object_type = (PRIVATE_MESSAGE_SPACE_ID << 8) + 3,
+        private_group_object_type = (PRIVATE_MESSAGE_SPACE_ID << 8) + 4,
+        private_group_member_object_type = (PRIVATE_MESSAGE_SPACE_ID << 8) + 5,
     };
 
     /**
@@ -306,6 +308,101 @@ namespace golos { namespace plugins { namespace private_message {
             >
         >, allocator<contact_size_object>>;
 
+    class private_group_object: public object<private_group_object_type, private_group_object> {
+    public:
+        template<typename Constructor, typename Allocator>
+        private_group_object(Constructor&& c, allocator <Allocator> a)
+            : name(a), json_metadata(a) {
+            c(*this);
+        }
+
+        id_type id;
+
+        account_name_type owner;
+        shared_string name;
+        shared_string json_metadata;
+        bool is_encrypted = false;
+        private_group_privacy privacy;
+        time_point_sec created;
+        uint32_t admins = 0;
+        uint32_t moders = 0;
+        uint32_t members = 0;
+        uint32_t pendings = 0;
+    };
+
+    using private_group_id_type = private_group_object::id_type;
+
+    struct by_name;
+    struct by_owner;
+
+    using private_group_index = multi_index_container<
+        private_group_object,
+        indexed_by<
+            ordered_unique<tag<by_id>,
+                member<private_group_object, private_group_id_type, &private_group_object::id>
+            >,
+            ordered_unique<tag<by_name>,
+                member<private_group_object, shared_string, &private_group_object::name>,
+                strcmp_less
+            >,
+            ordered_non_unique<tag<by_owner>,
+                member<private_group_object, account_name_type, &private_group_object::owner>
+            >
+        >, allocator<private_group_object>>;
+
+    class private_group_member_object: public object<private_group_member_object_type, private_group_member_object> {
+    public:
+        template<typename Constructor, typename Allocator>
+        private_group_member_object(Constructor&& c, allocator <Allocator> a)
+            : group(a), json_metadata(a) {
+            c(*this);
+        }
+
+        id_type id;
+
+        shared_string group;
+        account_name_type account;
+        shared_string json_metadata;
+        private_group_member_type member_type;
+        account_name_type invited;
+        time_point_sec joined;
+        time_point_sec updated;
+    };
+
+    using private_group_member_id_type = private_group_member_object::id_type;
+
+    struct by_group_account;
+    struct by_group_type;
+
+    using private_group_member_index = multi_index_container<
+        private_group_member_object,
+        indexed_by<
+            ordered_unique<tag<by_id>,
+                member<private_group_member_object, private_group_member_id_type, &private_group_member_object::id>
+            >,
+            ordered_unique<tag<by_group_account>,
+                composite_key<
+                    private_group_member_object,
+                    member<private_group_member_object, shared_string, &private_group_member_object::group>,
+                    member<private_group_member_object, account_name_type, &private_group_member_object::account>
+                >,
+                composite_key_compare<
+                    strcmp_less,
+                    std::less<account_name_type>
+                >
+            >,
+            ordered_non_unique<tag<by_group_type>,
+                composite_key<
+                    private_group_member_object,
+                    member<private_group_member_object, shared_string, &private_group_member_object::group>,
+                    member<private_group_member_object, private_group_member_type, &private_group_member_object::member_type>
+                >,
+                composite_key_compare<
+                    strcmp_less,
+                    std::less<private_group_member_type>
+                >
+            >
+        >, allocator<private_group_member_object>>;
 } } } // golos::plugins::private_message
 
 CHAINBASE_SET_INDEX_TYPE(
@@ -323,3 +420,11 @@ CHAINBASE_SET_INDEX_TYPE(
 CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::private_message::contact_size_object,
     golos::plugins::private_message::contact_size_index)
+
+CHAINBASE_SET_INDEX_TYPE(
+    golos::plugins::private_message::private_group_object,
+    golos::plugins::private_message::private_group_index)
+
+CHAINBASE_SET_INDEX_TYPE(
+    golos::plugins::private_message::private_group_member_object,
+    golos::plugins::private_message::private_group_member_index)

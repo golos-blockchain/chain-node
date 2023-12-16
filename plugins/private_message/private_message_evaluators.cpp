@@ -3,6 +3,10 @@
 #include <golos/plugins/private_message/private_message_exceptions.hpp>
 #include <golos/plugins/private_message/private_message_evaluators.hpp>
 
+uint32_t MAX_GROUPS_LIMIT = 100; // per creator
+uint32_t MAX_ADMINS_LIMIT = 50; // per group
+uint32_t MAX_MODERS_LIMIT = 50; // per group
+
 namespace golos { namespace plugins { namespace private_message {
 
 void private_message_evaluator::do_apply(const private_message_operation& op) {
@@ -494,6 +498,259 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
             fc::variant(callback_contact_event(
                 {callback_event_type::contact, contact_api_object(*contact_itr)})));
     }
+}
+
+void check_golos_power(const account_object& acc, const database& _db) {
+    auto min_gp = _db.get_min_gp_to_emission();
+    GOLOS_CHECK_LOGIC(acc.vesting_shares >= min_gp.first,
+        logic_errors::too_low_gp,
+        "Too low golos power: ${r} is required, ${p} is present.",
+        ("r", min_gp.second)("p", acc.vesting_shares));
+}
+
+void private_group_evaluator::do_apply(const private_group_operation& op) {
+    ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "private_group_operation");
+
+    const auto* pgo = _db.find<private_group_object, by_name>(op.name);
+
+    auto admin = op.admin != account_name_type() ? op.admin : op.creator;
+
+    _db.get_account(admin);
+
+    auto now = _db.head_block_time();
+
+    if (pgo) {
+        GOLOS_CHECK_LOGIC(pgo->owner == op.creator,
+            logic_errors::already_exists,
+            "Group already exists.");
+        GOLOS_CHECK_LOGIC(pgo->is_encrypted == op.is_encrypted,
+            logic_errors::cannot_change_group_encrypted,
+            "Cannot make encrypted group not encrypted or vice-versa.");
+
+        auto admins = pgo->admins;
+
+        const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_type>();
+
+        auto new_admin = pgm_idx.find(admin);
+
+        if (new_admin == pgm_idx.end() || new_admin->member_type != private_group_member_type::admin) {
+            if (pgo->admins == 1) {
+                auto old_admin = pgm_idx.find(std::make_tuple(pgo->name, private_group_member_type::admin));
+        
+                _db.modify(*old_admin, [&](auto& pgmo) {
+                    pgmo.member_type = private_group_member_type::member;
+                    pgmo.updated = now;
+                });
+
+                --admins;
+            }
+
+            if (new_admin == pgm_idx.end()) {
+                GOLOS_CHECK_LOGIC(admins && admins == MAX_ADMINS_LIMIT,
+                    logic_errors::too_many_admins,
+                    "Too many admins.");
+
+                _db.create<private_group_member_object>([&](auto& pgmo) {
+                    from_string(pgmo.group, op.name);
+                    pgmo.account = admin;
+                    from_string(pgmo.json_metadata, "{}");
+                    pgmo.member_type = private_group_member_type::admin;
+                    pgmo.invited = op.creator;
+                    pgmo.joined = now;
+                    pgmo.updated = now;
+                });
+
+                ++admins;
+            } else {
+                _db.modify(*new_admin, [&](auto& pgmo) {
+                    pgmo.member_type = private_group_member_type::admin;
+                    pgmo.updated = now;
+                });
+            }
+        }
+
+        if (pgo->privacy != private_group_privacy::public_group &&
+            op.privacy == private_group_privacy::public_group) {
+
+            auto pend = pgm_idx.lower_bound(std::make_tuple(pgo->name, private_group_member_type::pending));
+            for (; pend != pgm_idx.end() && pend->group == pgo->name &&
+                pend->member_type == private_group_member_type::pending; ++pend) {
+
+                _db.modify(*pend, [&](auto& pgmo) {
+                    pgmo.member_type = private_group_member_type::member;
+                    pgmo.updated = now;
+                });
+            }
+        }
+
+        _db.modify(*pgo, [&](auto& pgo) {
+            from_string(pgo.json_metadata, op.json_metadata);
+            pgo.privacy = op.privacy;
+            pgo.admins = admins;
+            pgo.pendings = 0;
+        });
+
+        return;
+    }
+
+    const auto& creator = _db.get_account(op.creator);
+    check_golos_power(creator, _db);
+
+    const auto& pgo_idx = _db.get_index<private_group_index, by_owner>();
+    auto pgo_itr = pgo_idx.lower_bound(op.creator);
+    uint32_t count = 0;
+    for (; pgo_itr != pgo_idx.end() && pgo_itr->owner == op.creator; ++pgo_itr) {
+        ++count;
+        if (count == MAX_GROUPS_LIMIT) break;
+    }
+
+    GOLOS_CHECK_LOGIC(count && count < MAX_GROUPS_LIMIT,
+        logic_errors::too_many_groups,
+        "Too many groups.");
+
+    _db.create<private_group_object>([&](auto& pgo) {
+        pgo.owner = op.creator;
+        from_string(pgo.name, op.name);
+        from_string(pgo.json_metadata, op.json_metadata);
+        pgo.is_encrypted = op.is_encrypted;
+        pgo.privacy = op.privacy;
+        pgo.created = now;
+        pgo.admins = 1;
+    });
+
+    _db.create<private_group_member_object>([&](auto& pgmo) {
+        from_string(pgmo.group, op.name);
+        pgmo.account = admin;
+        from_string(pgmo.json_metadata, "{}");
+        pgmo.member_type = private_group_member_type::admin;
+        pgmo.invited = op.creator;
+        pgmo.joined = now;
+        pgmo.updated = now;
+    });
+}
+
+void private_group_delete_evaluator::do_apply(const private_group_delete_operation& op) {
+    ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "private_group_delete_operation");
+
+    const auto& pgo = _db.get<private_group_object, by_name>(op.name);
+
+    GOLOS_CHECK_LOGIC(pgo.owner == op.owner,
+        logic_errors::unauthorized,
+        "Not your group.");
+
+    const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_type>();
+    auto pgm_itr = pgm_idx.find(std::make_tuple(op.name, private_group_member_type::member));
+    while (pgm_itr != pgm_idx.end() && pgm_itr->group == pgo.name) {
+        const auto& pgm = *pgm_itr;
+        ++pgm_itr;
+        _db.remove(pgm);
+    }
+
+    _db.remove(pgo);
+}
+
+void private_group_member_evaluator::do_apply(const private_group_member_operation& op) {
+    ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "private_group_member_operation");
+
+    _db.get_account(op.member);
+
+    const auto& pgo = _db.get<private_group_object, by_name>(op.name);
+
+    auto admins = pgo.admins;
+    auto moders = pgo.moders;
+    auto members = pgo.members;
+    auto pendings = pgo.pendings;
+
+    const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_account>();
+
+    auto requester_itr = pgm_idx.find(std::make_tuple(op.name, op.member));
+    bool requester_exists = requester_itr != pgm_idx.end();
+
+    bool is_owner = pgo.owner == op.requester;
+    bool is_admin = is_owner || (requester_exists && requester_itr->member_type == private_group_member_type::admin);
+    bool is_moder = is_admin || (requester_exists && requester_itr->member_type == private_group_member_type::moder);
+    bool is_same = op.requester == op.member;
+
+    auto member_itr = pgm_idx.find(std::make_tuple(op.name, op.member));
+
+    if (op.member_type == private_group_member_type::member) {
+        if (pgo.privacy != private_group_privacy::public_group) {
+            GOLOS_CHECK_LOGIC(is_moder, logic_errors::unauthorized, "Only moderators can add members to group or unban them.");
+        }
+        members++;
+    }
+
+    else if (op.member_type == private_group_member_type::pending) {
+        GOLOS_CHECK_LOGIC(pgo.privacy != private_group_privacy::public_group,
+            logic_errors::group_is_public, "Group is public.");
+        GOLOS_CHECK_LOGIC(is_same, logic_errors::unauthorized, "User can request membership only by theirself.");
+        pendings++;
+    }
+
+    else if (op.member_type == private_group_member_type::moder) {
+        GOLOS_CHECK_LOGIC(is_admin, logic_errors::unauthorized, "Only admins can make members moderators.");
+        moders++;
+    }
+
+    else if (op.member_type == private_group_member_type::admin) {
+        GOLOS_CHECK_LOGIC(is_owner,
+            logic_errors::unauthorized, "Only owner can make users admins.");
+        admins++;
+    }
+
+    else if (op.member_type == private_group_member_type::retired) {
+        GOLOS_CHECK_LOGIC(is_same, logic_errors::unauthorized, "User can retire only by theirself.");
+
+        bool is_banned = requester_exists && requester_itr->member_type == private_group_member_type::banned;
+        GOLOS_CHECK_LOGIC(!is_banned, logic_errors::unauthorized, "You are banned.");
+
+        bool is_retired = requester_exists && requester_itr->member_type == private_group_member_type::retired;
+        GOLOS_CHECK_LOGIC(!is_retired, logic_errors::unauthorized, "Already retired.");
+    }
+
+    auto now = _db.head_block_time();
+
+    if (member_itr != pgm_idx.end()) {
+        if (op.member_type == private_group_member_type::retired
+                && member_itr->member_type == private_group_member_type::pending) {
+            pendings--;
+            _db.remove(*member_itr);
+            return;
+        }
+
+        if (member_itr->member_type == private_group_member_type::member) {
+            members--;
+        } else if (member_itr->member_type == private_group_member_type::moder) {
+            moders--;
+        } else if (member_itr->member_type == private_group_member_type::admin) {
+            admins--;
+        } else if (member_itr->member_type == private_group_member_type::pending) {
+            pendings--;
+        }
+
+        _db.modify(*member_itr, [&](auto& pgmo) {
+            pgmo.member_type = op.member_type;
+            pgmo.updated = now;
+        });
+        return;
+    }
+
+    _db.create<private_group_member_object>([&](auto& pgmo) {
+        from_string(pgmo.group, op.name);
+        pgmo.account = op.member;
+        from_string(pgmo.json_metadata, op.json_metadata);
+        pgmo.member_type = op.member_type;
+        pgmo.invited = op.requester;
+        pgmo.joined = now;
+        pgmo.updated = now;
+    });
+
+    _db.modify(pgo, [&](auto& pgo) {
+        pgo.admins = admins;
+        pgo.moders = moders;
+        pgo.members = members;
+        pgo.pendings = pendings;
+    });
 }
 
 } } } // golos::plugins::private_message

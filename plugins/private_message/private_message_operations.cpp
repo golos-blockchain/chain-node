@@ -153,6 +153,73 @@ namespace golos { namespace plugins { namespace private_message {
             });
         }
     }
+
+    void validate_private_group_name(const std::string& name) {
+        GOLOS_CHECK_VALUE(name.size(), "Private group name should not be empty");
+        GOLOS_CHECK_VALUE(name.size() < 32, "Private group name should not be longer than 32 bytes");
+        for (const auto& c : name) {
+            if ((c > 'z' || c < 'a') && c != '-' && c != '_') {
+                GOLOS_CHECK_VALUE(false, "Private group name can contain only a-z symbols, - and _.");
+                break;
+            }
+        }
+    }
+
+    void private_group_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(creator);
+        GOLOS_CHECK_PARAM(name, {
+            validate_private_group_name(name);
+        });
+        if (json_metadata.size() > 0) {
+            GOLOS_CHECK_PARAM(json_metadata, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(json_metadata, 512);
+                GOLOS_CHECK_VALUE_UTF8(json_metadata);
+                GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
+            });
+        }
+        if (admin != account_name_type()) {
+            GOLOS_CHECK_PARAM_ACCOUNT(admin);
+        }
+        GOLOS_CHECK_PARAM(privacy, {
+            GOLOS_CHECK_VALUE(privacy != private_group_privacy::_size, "Wrong privacy value.");
+        });
+        if (privacy == private_group_privacy::private_group) {
+            GOLOS_CHECK_PARAM(is_encrypted, {
+                GOLOS_CHECK_VALUE(is_encrypted, "Private group cannot be not encrypted.");
+            });
+        }
+    }
+
+    void private_group_delete_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(owner);
+        GOLOS_CHECK_PARAM(name, {
+            validate_private_group_name(name);
+        });
+    }
+
+    void private_group_member_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(requester);
+        GOLOS_CHECK_PARAM(name, {
+            validate_private_group_name(name);
+        });
+        GOLOS_CHECK_PARAM_ACCOUNT(member);
+        GOLOS_CHECK_PARAM(member_type, {
+            GOLOS_CHECK_VALUE(member_type != private_group_member_type::_size, "Wrong member type.");
+
+            if (member == requester) {
+                GOLOS_CHECK_VALUE(member_type != private_group_member_type::banned, "You cannot ban yourself.");
+                GOLOS_CHECK_VALUE(member_type != private_group_member_type::moder, "You cannot make moder yourself.");
+                GOLOS_CHECK_VALUE(member_type != private_group_member_type::admin, "You cannot make moder yourself.");
+            }
+        });
+        if (json_metadata.size() > 0) {
+            GOLOS_CHECK_PARAM(json_metadata, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(json_metadata, 512);
+                GOLOS_CHECK_VALUE_UTF8(json_metadata);
+                GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
+            });
+        }
+    }
 } } } // golos::plugins::private_message
 
 DEFINE_OPERATION_TYPE(golos::plugins::private_message::private_message_plugin_operation);

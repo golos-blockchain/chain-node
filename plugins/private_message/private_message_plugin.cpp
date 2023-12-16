@@ -434,6 +434,8 @@ namespace golos { namespace plugins { namespace private_message {
         add_plugin_index<settings_index>(my->_db);
         add_plugin_index<contact_index>(my->_db);
         add_plugin_index<contact_size_index>(my->_db);
+        add_plugin_index<private_group_index>(my->_db);
+        add_plugin_index<private_group_member_index>(my->_db);
 
         using pairstring = std::pair<std::string, std::string>;
         LOAD_VALUE_SET(options, "pm-account-range", my->tracked_account_ranges_, pairstring);
