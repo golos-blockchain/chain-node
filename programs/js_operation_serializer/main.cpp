@@ -198,6 +198,20 @@ namespace detail_ns {
     };
 
     template<>
+    struct js_name<private_group_privacy> {
+        static std::string name() {
+            return "private_group_privacy";
+        }
+    };
+
+    template<>
+    struct js_name<private_group_member_type> {
+        static std::string name() {
+            return "private_group_member_type";
+        }
+    };
+
+    template<>
     struct js_name<delegator_payout_strategy> {
         static std::string name() {
             return "delegator_payout_strategy";
@@ -451,6 +465,24 @@ namespace detail_ns {
     };
 
     template<>
+    struct serializer<private_group_privacy, true> {
+        static void init() {
+        }
+
+        static void generate() {
+        }
+    };
+
+    template<>
+    struct serializer<private_group_member_type, true> {
+        static void init() {
+        }
+
+        static void generate() {
+        }
+    };
+
+    template<>
     struct serializer<delegator_payout_strategy, true> {
         static void init() {
             static bool init = false;
@@ -672,6 +704,18 @@ int main(int argc, char **argv) {
         std::cout << "ChainTypes.private_contact_types=\n";
         for (uint8_t i = unknown; i < private_contact_type_size; ++i) {
             std::cout << "    " << fc::json::to_string(static_cast<private_contact_type>(i)) << ": " << int(i) << "\n";
+        }
+        std::cout << "\n";
+
+        std::cout << "ChainTypes.private_group_privacies=\n";
+        for (uint8_t i = unknown; i < uint8_t(private_group_privacy::_size); ++i) {
+            std::cout << "    " << fc::json::to_string(static_cast<private_group_privacy>(i)) << ": " << int(i) << "\n";
+        }
+        std::cout << "\n";
+
+        std::cout << "ChainTypes.private_group_member_types=\n";
+        for (uint8_t i = unknown; i < uint8_t(private_group_member_type::_size); ++i) {
+            std::cout << "    " << fc::json::to_string(static_cast<private_group_member_type>(i)) << ": " << int(i) << "\n";
         }
         std::cout << "\n";
 
