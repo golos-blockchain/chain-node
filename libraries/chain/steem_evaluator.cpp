@@ -685,6 +685,17 @@ namespace golos { namespace chain {
                     cblo.bill.curation_rewards_percent = ccrp.percent;
                 });
             }
+
+            void operator()(const comment_decrypt_fee& cdf) const {
+                ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30, "comment decrypt fee option");
+
+                const auto* extra = _db.find_extras(_c.author, _c.hashlink);
+                if (extra) {
+                    _db.modify(*extra, [&](auto& extra) {
+                        extra.decrypt_fee = cdf.fee;
+                    });
+                }
+            }
         };
 
         void comment_options_evaluator::do_apply(const comment_options_operation &o) {
