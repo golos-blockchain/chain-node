@@ -97,6 +97,7 @@ namespace golos { namespace chain {
         uint32_t order_id = 0;
         asset price;
         bool selling = false;
+        bool holds = false;
 
         time_point_sec created;
 

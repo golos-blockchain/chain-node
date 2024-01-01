@@ -206,10 +206,14 @@ namespace golos { namespace chain {
             price = noo.price;
         }
 
-        const auto& buyer = _db.get_account(op.buyer);
-        GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, price);
+        if (!noo.token_id) {
+            const auto& buyer = _db.get_account(op.buyer);
+            GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, price);
 
-        _db.adjust_balance(buyer, -price);
+            _db.adjust_balance(buyer, -price);
+        } else {
+            GOLOS_CHECK_VALUE(price == noo.price, "You cannot set your own price in this case.");
+        }
         _db.adjust_balance(_db.get_account(op.seller), price);
 
         _db.modify(no, [&](auto& no) {
@@ -256,9 +260,15 @@ namespace golos { namespace chain {
             } else {
                 const auto& no = _db.get_nft(op.token_id);
                 noo = _db.find_nft_order(no.owner, op.order_id);
+
+                if (noo) {
+                    GOLOS_CHECK_VALUE(!op.name.size(), "You should not fill name if you buying token by existant selling order.");
+                }
             }
 
             if (!noo) {
+                GOLOS_CHECK_VALUE(op.name.size(), "You should fill name if your buy order is first.");
+
                 auto name = nft_name_from_string(op.name);
 
                 const auto& no = _db.get_nft(op.token_id);
@@ -266,6 +276,15 @@ namespace golos { namespace chain {
                 GOLOS_CHECK_VALUE(no.name == name, "Wrong name");
 
                 const auto& nco = _db.get_nft_collection(no.name);
+
+                const auto& buyer = _db.get_account(op.buyer);
+                GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, op.price);
+
+                if (_db.check_nft_buying_price(op.token_id, op.price)) {
+                    GOLOS_CHECK_VALUE(false, "Order with such price already exists.");
+                }
+
+                _db.adjust_balance(buyer, -op.price);
 
                 _db.create<nft_order_object>([&](auto& noo) {
                     noo.creator = nco.creator;
@@ -276,6 +295,7 @@ namespace golos { namespace chain {
                     noo.order_id = op.order_id;
                     noo.price = op.price;
                     noo.selling = false;
+                    noo.holds = true;
 
                     noo.created = _db.head_block_time();
                 });
@@ -397,6 +417,10 @@ namespace golos { namespace chain {
                 nco.market_asks -= price_real;
             }
         });
+
+        if (noo.holds) {
+            _db.adjust_balance(_db.get_account(noo.owner), noo.price);
+        }
 
         _db.remove(noo);
     }

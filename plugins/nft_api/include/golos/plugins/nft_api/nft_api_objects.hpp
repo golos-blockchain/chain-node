@@ -102,7 +102,7 @@ struct nft_api_object {
 struct nft_order_api_object {
     nft_order_api_object(const nft_order_object& noo) : id(noo.id),
         creator(noo.creator), name(asset(0, noo.name).symbol_name()), token_id(noo.token_id),
-        owner(noo.owner), order_id(noo.order_id), price(noo.price), selling(noo.selling),
+        owner(noo.owner), order_id(noo.order_id), price(noo.price), selling(noo.selling), holds(noo.holds),
         created(noo.created) {
     }
 
@@ -118,6 +118,7 @@ struct nft_order_api_object {
     uint32_t order_id = 0;
     asset price;
     bool selling = false;
+    bool holds = false;
 
     time_point_sec created;
 
@@ -191,7 +192,7 @@ FC_REFLECT((golos::plugins::nft_api::nft_api_object),
 )
 
 FC_REFLECT((golos::plugins::nft_api::nft_order_api_object),
-    (id)(creator)(name)(token_id)(owner)(order_id)(price)(selling)(created)(token)
+    (id)(creator)(name)(token_id)(owner)(order_id)(price)(selling)(holds)(created)(token)
 )
 
 FC_REFLECT_DERIVED((golos::plugins::nft_api::nft_extended_api_object),

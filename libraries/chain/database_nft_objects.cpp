@@ -79,8 +79,23 @@ void database::clear_nft_orders(uint32_t token_id, uint32_t& sell_count, uint32_
             ++buy_count;
             market_asks += price;
         }
+        if (noo.holds) {
+            adjust_balance(get_account(noo.owner), noo.price);
+        }
         remove(noo);
     }
+}
+
+bool database::check_nft_buying_price(uint32_t token_id, asset price) const {
+    const auto& idx = get_index<nft_order_index, by_token_id>();
+    auto itr = idx.lower_bound(token_id);
+    while (itr != idx.end() && itr->token_id == token_id) {
+        if (!itr->selling && itr->price == price) {
+            return false;
+        }
+        ++itr;
+    }
+    return true;
 }
 
 }} // golos::chain

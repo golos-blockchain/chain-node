@@ -306,6 +306,8 @@ namespace golos { namespace chain {
 
             void clear_nft_orders(uint32_t token_id, uint32_t& sell_count, uint32_t& buy_count, double& market_depth, double& market_asks);
 
+            bool check_nft_buying_price(uint32_t token_id, asset price) const;
+
             void update_pair_depth(asset base, asset quote);
             void update_asset_marketed(asset_symbol_type symbol);
 
