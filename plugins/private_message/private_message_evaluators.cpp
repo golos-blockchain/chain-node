@@ -9,6 +9,55 @@ uint32_t MAX_MODERS_LIMIT = 50; // per group
 
 namespace golos { namespace plugins { namespace private_message {
 
+struct private_message_extension_visitor {
+    private_message_extension_visitor(const account_name_type& _requester,
+        const database& db, std::string& _group, account_name_type _delete_from = account_name_type())
+        : requester(_requester), _db(db), group(_group), delete_from(_delete_from) {
+    }
+
+    const account_name_type& requester;
+    const database& _db;
+    std::string& group;
+    account_name_type delete_from;
+
+    using result_type = void;
+
+    void operator()(const private_group_options& _pgo) const {
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "private_group_options");
+
+        const auto& pgo = _db.get<private_group_object, by_name>(_pgo.group);
+
+        const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_account>();
+
+        auto pgm_itr = pgm_idx.find(std::make_tuple(pgo.name, requester));
+        bool exists = pgm_itr != pgm_idx.end();
+
+        if (exists) {
+            GOLOS_CHECK_LOGIC(pgm_itr->member_type != private_group_member_type::retired,
+                logic_errors::unauthorized, "You are retired.");
+            GOLOS_CHECK_LOGIC(pgm_itr->member_type != private_group_member_type::banned,
+                logic_errors::unauthorized, "You are banned.");
+        }
+
+        bool is_owner = pgo.owner == requester;
+        bool is_admin = is_owner || (exists && pgm_itr->member_type == private_group_member_type::admin);
+        bool is_moder = is_admin || (exists && pgm_itr->member_type == private_group_member_type::moder); 
+
+        if (pgo.privacy != private_group_privacy::public_group) {
+            GOLOS_CHECK_LOGIC(exists &&
+                (pgm_itr->member_type == private_group_member_type::member || is_moder),
+                logic_errors::unauthorized, "You should be member of the group.");
+        }
+
+        if (delete_from != account_name_type() && requester != delete_from) {
+            GOLOS_CHECK_LOGIC(is_moder,
+                logic_errors::unauthorized, "You should be moder/admin to delete foreign messages.");
+        }
+
+        group = _pgo.group;
+    }
+};
+
 void private_message_evaluator::do_apply(const private_message_operation& op) {
     if (!_plugin->is_tracked_account(op.from) && !_plugin->is_tracked_account(op.to)) {
         return;
@@ -34,8 +83,13 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         logic_errors::recipient_ignores_messages_from_unknown_contact,
         "Recipient accepts messages only from his contact list");
 
+    std::string group;
+    for (auto& e : op.extensions) {
+        e.visit(private_message_extension_visitor(op.from, _db, group));
+    }
+
     auto& id_idx = _db.get_index<message_index, by_nonce>();
-    auto id_itr = id_idx.find(std::make_tuple(op.from, op.to, op.nonce));
+    auto id_itr = id_idx.find(std::make_tuple(group, op.from, op.to, op.nonce));
 
     if (op.update && id_itr == id_idx.end()) {
         GOLOS_THROW_MISSING_OBJECT("private_message",
@@ -60,6 +114,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
 
     if (id_itr == id_idx.end()) {
         _db.create<message_object>([&](auto& pmo) {
+            from_string(pmo.group, group);
             pmo.from = op.from;
             pmo.to = op.to;
             pmo.nonce = op.nonce;
@@ -69,7 +124,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
             pmo.remove_date = time_point_sec::min();
             set_message(pmo);
         });
-        id_itr = id_idx.find(std::make_tuple(op.from, op.to, op.nonce));
+        id_itr = id_idx.find(std::make_tuple(group, op.from, op.to, op.nonce));
     } else {
         _db.modify(*id_itr, set_message);
     }
@@ -177,12 +232,12 @@ bool process_private_messages(database& _db, const Operation& po, Action&& actio
 
 template <typename Operation, typename Map, typename ProcessAction, typename ContactAction>
 void process_group_message_operation(
-    database& _db, const Operation& po, const std::string& requester,
+    database& _db, const Operation& po, const std::string& group, const std::string& requester,
     Map& map, ProcessAction&& process_action, ContactAction&& contact_action
 ) {
     if (po.nonce != 0) {
         auto& idx = _db.get_index<message_index, by_nonce>();
-        auto itr = idx.find(std::make_tuple(po.from, po.to, po.nonce));
+        auto itr = idx.find(std::make_tuple(group, po.from, po.to, po.nonce));
 
         if (itr == idx.end()) {
             GOLOS_THROW_MISSING_OBJECT("private_message",
@@ -191,13 +246,13 @@ void process_group_message_operation(
 
         process_action(*itr);
     } else if (po.from.size() && po.to.size() && po.from == requester) {
-        if (!process_private_messages<by_outbox_account>(_db, po, process_action, po.from, po.to)) {
+        if (!process_private_messages<by_outbox_account>(_db, po, process_action, group, po.from, po.to)) {
             GOLOS_THROW_MISSING_OBJECT("private_message",
                 fc::mutable_variant_object()("from", po.from)("to", po.to)
                 ("start_date", po.start_date)("stop_date", po.stop_date));
         }
     } else if (po.from.size() && po.to.size()) {
-        if (!process_private_messages<by_inbox_account>(_db, po, process_action, po.to, po.from)) {
+        if (!process_private_messages<by_inbox_account>(_db, po, process_action, group, po.to, po.from)) {
             GOLOS_THROW_MISSING_OBJECT("private_message",
                 fc::mutable_variant_object()("from", po.from)("to", po.to)
                 ("start_date", po.start_date)("stop_date", po.stop_date));
@@ -258,12 +313,17 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
         return;
     }
 
+    std::string group;
+    for (auto& e : op.extensions) {
+        e.visit(private_message_extension_visitor(op.requester, _db, group, op.from));
+    }
+
     auto now = _db.head_block_time();
     fc::flat_map<std::tuple<account_name_type, account_name_type>, contact_size_info> stat_map;
 
     process_group_message_operation(
-        _db, op, op.requester, stat_map,
-        /* process_action */
+        _db, op, group, op.requester, stat_map,
+        // process_action
         [&](const message_object& m) -> bool {
             uint32_t unread_messages = 0;
 
@@ -299,7 +359,7 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
             _db.remove(m);
             return true;
         },
-        /* contact_action */
+        // contact_action
         [&](const contact_object& co, const contact_size_object& so, const contact_size_info& size) -> bool {
             if (co.size != size || co.type != unknown) { // not all messages removed or contact is not 'unknown'
                 return false;
@@ -328,8 +388,8 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
     fc::flat_map<std::tuple<account_name_type, account_name_type>, contact_size_info> stat_map;
 
     process_group_message_operation(
-        _db, op, op.to, stat_map,
-        /* process_action */
+        _db, op, "", op.to, stat_map,
+        // process_action
         [&](const message_object& m) -> bool {
             if (m.read_date != time_point_sec::min()) {
                 return true;
@@ -351,7 +411,7 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
             return true;
         },
 
-        /* contact_action */
+        // contact_action
         [&](const contact_object&, const contact_size_object&, const contact_size_info&) -> bool {
             return false;
         }

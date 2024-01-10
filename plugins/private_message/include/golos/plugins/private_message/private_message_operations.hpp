@@ -7,6 +7,18 @@ namespace golos { namespace plugins { namespace private_message {
 
     using namespace golos::protocol;
 
+    struct private_group_options {
+        std::string group;
+
+        void validate() const;
+    };
+
+    using group_extension = static_variant<
+        private_group_options
+    >;
+
+    using group_extensions_type = flat_set<group_extension>;
+
     struct private_message_operation: public base_operation {
         account_name_type from;
         account_name_type to;
@@ -17,7 +29,7 @@ namespace golos { namespace plugins { namespace private_message {
         bool update = false;
         std::vector<char> encrypted_message;
 
-        extensions_type extensions;
+        group_extensions_type extensions;
 
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
@@ -33,7 +45,7 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec start_date;
         time_point_sec stop_date;
 
-        extensions_type extensions;
+        group_extensions_type extensions;
 
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
@@ -180,6 +192,8 @@ namespace golos { namespace plugins { namespace private_message {
 
 } } } // golos::plugins::private_message
 
+FC_REFLECT((golos::plugins::private_message::private_group_options), (group))
+FC_REFLECT_TYPENAME((golos::plugins::private_message::group_extension))
 FC_REFLECT(
     (golos::plugins::private_message::private_message_operation),
     (from)(to)(nonce)(from_memo_key)(to_memo_key)(checksum)(update)(encrypted_message)(extensions))

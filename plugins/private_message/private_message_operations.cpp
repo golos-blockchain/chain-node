@@ -20,6 +20,24 @@ namespace golos { namespace plugins { namespace private_message {
         return false;
     }
 
+    struct group_extension_validate_visitor {
+        group_extension_validate_visitor(std::string& _group) : group(_group) {
+        }
+
+        using result_type = void;
+
+        std::string& group;
+
+        void operator()(const private_group_options& pgo) const {
+            pgo.validate();
+            group = pgo.group;
+        }
+    };
+
+    void private_group_options::validate() const {
+        validate_private_group_name(group);
+    }
+
     void private_message_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(to);
         GOLOS_CHECK_PARAM_ACCOUNT(from);
@@ -48,6 +66,11 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(encrypted_message, {
             GOLOS_CHECK_VALUE(encrypted_message.size() >= 16, "Encrypted message is too small");
         });
+
+        std::string group;
+        for (auto& e : extensions) {
+            e.visit(group_extension_validate_visitor(group));
+        }
     }
 
     void private_delete_message_operation::validate() const {
@@ -64,10 +87,15 @@ namespace golos { namespace plugins { namespace private_message {
             }
         });
 
+        std::string group;
+        for (auto& e : extensions) {
+            e.visit(group_extension_validate_visitor(group));
+        }
+
         GOLOS_CHECK_PARAM(requester, {
             validate_account_name(requester);
             if (to.size() || from.size()) {
-                GOLOS_CHECK_VALUE(requester == to || requester == from,
+                GOLOS_CHECK_VALUE(group.size() || requester == to || requester == from,
                     "`requester` can delete messages only from his inbox/outbox");
             }
         });
@@ -79,7 +107,7 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
                 GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
-                GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
+                GOLOS_CHECK_VALUE(group.size() || to.size(), "Non-zero `nonce` requires `to`/`group` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
