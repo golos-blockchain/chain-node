@@ -75,7 +75,7 @@ namespace golos { namespace plugins { namespace private_message {
                 }
 
                 auto& id_idx = _db.get_index<message_index, by_nonce>();
-                auto id_itr = id_idx.find(std::make_tuple(md->from, md->to, md->nonce));
+                auto id_itr = id_idx.find(std::make_tuple(md->group, md->from, md->to, md->nonce));
                 if (id_itr != id_idx.end()) {
                     _db.modify(*id_itr, [&](auto& o) {
                         if (op.amount.symbol == STEEM_SYMBOL) {
@@ -209,7 +209,7 @@ namespace golos { namespace plugins { namespace private_message {
     ) const {
 
         std::vector<message_api_object> result;
-        const auto& outbox_idx = _db.get_index<message_index, by_outbox_account>();
+        /*const auto& outbox_idx = _db.get_index<message_index, by_outbox_account>();
         const auto& inbox_idx = _db.get_index<message_index, by_inbox_account>();
 
         auto outbox_itr = outbox_idx.lower_bound(std::make_tuple(from, to, query.newest_date));
@@ -255,7 +255,7 @@ namespace golos { namespace plugins { namespace private_message {
                 result.emplace_back(message);
             }
         }
-
+*/
         return result;
     }
 

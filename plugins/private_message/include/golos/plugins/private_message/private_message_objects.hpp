@@ -33,12 +33,13 @@ namespace golos { namespace plugins { namespace private_message {
     public:
         template<typename Constructor, typename Allocator>
         message_object(Constructor&& c, allocator <Allocator> a)
-            : encrypted_message(a) {
+            : group(a), encrypted_message(a) {
             c(*this);
         }
 
         id_type id;
 
+        shared_string group;
         account_name_type from;
         account_name_type to;
         uint64_t nonce;
@@ -90,12 +91,14 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_unique<tag<by_inbox_account>,
                 composite_key<
                     message_object,
+                    member<message_object, shared_string, &message_object::group>,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, time_point_sec, &message_object::inbox_create_date>,
                     member<message_object, message_id_type, &message_object::id>
                 >,
                 composite_key_compare<
+                    strcmp_less,
                     string_less,
                     string_less,
                     std::greater<time_point_sec>,
@@ -118,12 +121,14 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_unique<tag<by_outbox_account>,
                 composite_key<
                     message_object,
+                    member<message_object, shared_string, &message_object::group>,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, time_point_sec, &message_object::outbox_create_date>,
                     member<message_object, message_id_type, &message_object::id>
                 >,
                 composite_key_compare<
+                    strcmp_less,
                     string_less,
                     string_less,
                     std::greater<time_point_sec>,
@@ -133,11 +138,13 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_unique<tag<by_nonce>,
                 composite_key<
                     message_object,
+                    member<message_object, shared_string, &message_object::group>,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, uint64_t, &message_object::nonce>
                 >,
                 composite_key_compare<
+                    strcmp_less,
                     string_less,
                     string_less,
                     std::less<uint64_t>
