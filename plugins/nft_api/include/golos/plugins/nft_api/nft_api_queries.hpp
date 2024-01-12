@@ -132,6 +132,7 @@ struct nft_orders_query {
     account_name_type owner;
     std::set<std::string> select_collections;
     uint32_t collection_limit = UINT32_MAX;
+    std::set<uint32_t> select_token_ids;
 
     bool tokens = true;
 
@@ -154,6 +155,7 @@ struct nft_orders_query {
         if (type == nft_order_type::selling && !obj.selling) return false;
 
         if (select_collections.size() && !select_collections.count(obj.name)) return false;
+        if (select_token_ids.size() && !select_token_ids.count(obj.token_id)) return false;
 
         return true;
     };
@@ -224,7 +226,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::nft_api::nft_orders_query),
-    (owner)(select_collections)(collection_limit)
+    (owner)(select_collections)(collection_limit)(select_token_ids)
     (tokens)(start_order_id)(limit)
     (filter_creators)(filter_names)(filter_owners)(filter_token_ids)(filter_order_ids)
     (type)(sort)(reverse_sort)

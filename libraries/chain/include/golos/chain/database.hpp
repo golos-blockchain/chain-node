@@ -304,7 +304,8 @@ namespace golos { namespace chain {
             const nft_order_object* find_nft_order(account_name_type seller, uint32_t order_id) const;
             void               throw_if_exists_nft_order(const account_name_type& seller, uint32_t order_id) const;
 
-            void clear_nft_orders(uint32_t token_id, account_name_type buyer, uint32_t order_id,
+            void clear_nft_orders(uint32_t token_id,
+                const nft_order_object* proceed_order, const nft_order_object* clear_order,
                 uint32_t& sell_count, uint32_t& buy_count, double& market_depth, double& market_asks);
 
             bool check_nft_buying_price(uint32_t token_id, asset price) const;

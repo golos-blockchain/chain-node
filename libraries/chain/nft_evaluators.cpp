@@ -123,8 +123,8 @@ namespace golos { namespace chain {
 
             uint32_t sell_order_count = 0, buy_order_count = 0;
             double market_depth = 0, market_asks = 0;
-            _db.clear_nft_orders(op.token_id, account_name_type(), 0, sell_order_count, buy_order_count,
-                market_depth, market_asks);
+            _db.clear_nft_orders(op.token_id, nullptr, nullptr,
+                sell_order_count, buy_order_count, market_depth, market_asks);
 
             _db.modify(nft_coll, [&](auto& nco) {
                 nco.sell_order_count -= sell_order_count;
@@ -235,11 +235,7 @@ namespace golos { namespace chain {
 
         uint32_t sell_order_count = 0, buy_order_count = 0;
         double market_depth = 0, market_asks = 0;
-        if (!noo.token_id) {
-            _db.clear_nft_orders(0, op.buyer, op.order_id, sell_order_count, buy_order_count,
-                market_depth, market_asks);
-        }
-        _db.clear_nft_orders(op.token_id, account_name_type(), 0, sell_order_count, buy_order_count,
+        _db.clear_nft_orders(op.token_id, &noo, &noo, sell_order_count, buy_order_count,
             market_depth, market_asks);
 
         _db.modify(nco, [&](auto& nco) {
@@ -359,7 +355,7 @@ namespace golos { namespace chain {
 
             uint32_t sell_order_count = 0, buy_order_count = 0;
             double market_depth = 0, market_asks = 0;
-            _db.clear_nft_orders(op.token_id, account_name_type(), 0, sell_order_count, buy_order_count,
+            _db.clear_nft_orders(op.token_id, noo, nullptr, sell_order_count, buy_order_count,
                 market_depth, market_asks);
 
             auto price_real = price.to_real();
