@@ -593,11 +593,12 @@ namespace golos { namespace protocol {
             nft_token_sold_operation() {
             }
 
-            nft_token_sold_operation(const account_name_type& s, const account_name_type& b,
+            nft_token_sold_operation(const account_name_type& a, const account_name_type& s, const account_name_type& b,
                     uint32_t t, asset p) :
-                seller(s), buyer(b), token_id(t), price(p) {
+                actor(a), seller(s), buyer(b), token_id(t), price(p) {
             }
 
+            account_name_type actor;
             account_name_type seller;
             account_name_type buyer;
             uint32_t token_id = 0;
@@ -660,5 +661,5 @@ FC_REFLECT((golos::protocol::subscription_payment_operation), (subscriber)(autho
 FC_REFLECT((golos::protocol::subscription_inactive_operation), (subscriber)(author)(oid)(reason)(extra))
 FC_REFLECT((golos::protocol::subscription_prepaid_return_operation), (subscriber)(author)(oid)(amount)(to_tip)(extra))
 FC_REFLECT((golos::protocol::nft_token_operation), (creator)(name)(to)(token_id)(issue_cost))
-FC_REFLECT((golos::protocol::nft_token_sold_operation), (seller)(buyer)(token_id)(price))
+FC_REFLECT((golos::protocol::nft_token_sold_operation), (actor)(seller)(buyer)(token_id)(price))
 FC_REFLECT((golos::protocol::referral_operation), (referral)(referrer)(interest_rate)(end_date)(break_fee))
