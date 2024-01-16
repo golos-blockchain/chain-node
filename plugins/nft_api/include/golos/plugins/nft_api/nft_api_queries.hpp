@@ -44,6 +44,8 @@ enum class nft_tokens_sort : uint8_t {
 
 enum class nft_token_state : uint8_t {
     selling_only,
+    selling_auction_only,
+    selling_not_auction_only,
     not_selling_only,
     any_not_burnt,
     burnt_only,
@@ -92,8 +94,12 @@ struct nft_tokens_query {
 
         if (illformed == nft_token_illformed::ignore && obj.illformed) return false;
 
-        if (state == nft_token_state::selling_only && !obj.selling) return false;
-        if (state == nft_token_state::not_selling_only && obj.selling) return false;
+        auto has_auction = obj.auction_expiration != time_point_sec();
+
+        if (state == nft_token_state::selling_only && !obj.selling && !has_auction) return false;
+        if (state == nft_token_state::not_selling_only && (obj.selling || has_auction)) return false;
+        if (state == nft_token_state::selling_auction_only && !has_auction) return false;
+        if (state == nft_token_state::selling_not_auction_only && (!obj.selling || !has_auction)) return false;
 
         if (state != nft_token_state::any && state != nft_token_state::burnt_only && obj.burnt) return false;
         if (state == nft_token_state::burnt_only && !obj.burnt) return false;
@@ -166,6 +172,16 @@ struct nft_orders_query {
     bool reverse_sort = false;
 };
 
+struct nft_bets_query {
+    account_name_type owner;
+    std::set<uint32_t> select_token_ids;
+
+    bool tokens = true;
+
+    uint32_t start_bet_id = 0;
+    uint32_t limit = 20;
+};
+
 }}}
 
 FC_REFLECT_ENUM(
@@ -188,7 +204,8 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT_ENUM(
     golos::plugins::nft_api::nft_token_state,
-    (selling_only)(not_selling_only)(any_not_burnt)(burnt_only)(any)
+    (selling_only)(selling_auction_only)(selling_not_auction_only)
+    (not_selling_only)(any_not_burnt)(burnt_only)(any)
 )
 
 FC_REFLECT_ENUM(
@@ -230,4 +247,10 @@ FC_REFLECT(
     (tokens)(start_order_id)(limit)
     (filter_creators)(filter_names)(filter_owners)(filter_token_ids)(filter_order_ids)
     (type)(sort)(reverse_sort)
+)
+
+FC_REFLECT(
+    (golos::plugins::nft_api::nft_bets_query),
+    (owner)(select_token_ids)
+    (tokens)(start_bet_id)(limit)
 )

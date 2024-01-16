@@ -115,4 +115,12 @@ namespace golos { namespace protocol {
     void nft_cancel_order_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(owner);
     }
+
+    void nft_auction_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(owner);
+        GOLOS_CHECK_PARAM(min_price, {
+            GOLOS_CHECK_VALUE(min_price.symbol != VESTS_SYMBOL, "Price cannot be GESTS");
+            GOLOS_CHECK_VALUE(min_price.amount >= 0, "Price should be >= 0");
+        });
+    }
 }}

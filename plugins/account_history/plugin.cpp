@@ -729,6 +729,10 @@ if (options.count(name)) { \
             insert_dual(op.owner);
         }
 
+        void operator()(const nft_auction_operation& op) {
+            insert_dual(op.owner);
+        }
+
         void operator()(const nft_buy_operation& op) {
             insert_dual(op.buyer);
         }

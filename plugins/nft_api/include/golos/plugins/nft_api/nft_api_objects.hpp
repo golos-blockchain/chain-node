@@ -13,6 +13,7 @@ using golos::chain::nft_collection_object;
 using golos::chain::nft_object;
 using golos::chain::nft_order_object;
 using golos::chain::nft_order_index;
+using golos::chain::nft_bet_object;
 using golos::chain::by_token_id;
 using golos::chain::to_string;
 using protocol::asset;
@@ -52,7 +53,8 @@ struct nft_api_object {
     nft_api_object(const nft_object& no) : id(no.id),
         creator(no.creator), name(asset(0, no.name).symbol_name()), owner(no.owner), token_id(no.token_id), burnt(no.burnt),
         issue_cost(no.issue_cost), last_buy_price(no.last_buy_price), json_metadata(to_string(no.json_metadata)), illformed(false),
-        issued(no.issued), last_update(no.last_update), selling(no.selling) {
+        issued(no.issued), last_update(no.last_update), selling(no.selling),
+        auction_min_price(no.auction_min_price), auction_expiration(no.auction_expiration) {
     }
 
     nft_api_object() {}
@@ -93,6 +95,9 @@ struct nft_api_object {
     time_point_sec issued;
     time_point_sec last_update;
     bool selling = false;
+
+    asset auction_min_price{0, STEEM_SYMBOL};
+    time_point_sec auction_expiration;
 
     double price_real() const {
         return last_buy_price.to_real();
@@ -178,6 +183,33 @@ struct nft_extended_api_object : nft_api_object {
     fc::optional<nft_order_api_object> order;
 };
 
+struct nft_bet_api_object {
+    nft_bet_api_object(const nft_bet_object& nbo, const database& _db, bool fill_token = false) : id(nbo.id),
+        creator(nbo.creator), name(asset(0, nbo.name).symbol_name()), token_id(nbo.token_id),
+        owner(nbo.owner), price(nbo.price),
+        created(nbo.created) {
+        if (fill_token) {
+            const auto& no = _db.get<nft_object, by_token_id>(token_id);
+            token = no;
+        }
+    }
+
+    nft_bet_api_object() {}
+
+    nft_bet_object::id_type id;
+
+    account_name_type creator;
+    std::string name;
+    uint32_t token_id = 0;
+
+    account_name_type owner;
+    asset price;
+
+    time_point_sec created;
+
+    fc::optional<nft_api_object> token;
+};
+
 } } } // golos::plugins::nft_api
 
 FC_REFLECT((golos::plugins::nft_api::nft_collection_api_object),
@@ -188,7 +220,7 @@ FC_REFLECT((golos::plugins::nft_api::nft_collection_api_object),
 
 FC_REFLECT((golos::plugins::nft_api::nft_api_object),
     (id)(creator)(name)(owner)(token_id)(burnt)(issue_cost)(last_buy_price)(json_metadata)(illformed)
-    (issued)(last_update)(selling)
+    (issued)(last_update)(selling)(auction_min_price)(auction_expiration)
 )
 
 FC_REFLECT((golos::plugins::nft_api::nft_order_api_object),
@@ -198,4 +230,8 @@ FC_REFLECT((golos::plugins::nft_api::nft_order_api_object),
 FC_REFLECT_DERIVED((golos::plugins::nft_api::nft_extended_api_object),
     ((golos::plugins::nft_api::nft_api_object)),
     (collection)(order)
+)
+
+FC_REFLECT((golos::plugins::nft_api::nft_bet_api_object),
+    (id)(creator)(name)(token_id)(owner)(price)(created)(token)
 )

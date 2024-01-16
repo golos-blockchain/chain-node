@@ -88,6 +88,10 @@ namespace golos {
             bool operator()(const nft_cancel_order_operation &) const {
                 return true;
             }
+
+            bool operator()(const nft_auction_operation &) const {
+                return true;
+            }
         };
 
         bool is_market_operation(const operation &op) {

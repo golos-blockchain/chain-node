@@ -424,6 +424,46 @@ public:
         return result;
     }
 
+    std::vector<nft_bet_api_object> get_nft_bets(
+        const nft_bets_query& query
+    ) {
+        std::vector<nft_bet_api_object> result;
+
+        GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
+
+        const auto& idx = _db.get_index<nft_bet_index, by_token_price>();
+
+        if (query.owner != account_name_type()) {
+            for (auto itr = idx.begin(); itr != idx.end() && result.size() < query.limit; ++itr) {
+                if (itr->owner != query.owner) {
+                    continue;
+                }
+                if (query.start_bet_id && itr->id != query.start_bet_id) {
+                    continue;
+                }
+                nft_bet_api_object obj(*itr, _db, query.tokens);
+                result.push_back(std::move(obj));
+            }
+        } else if (query.select_token_ids.size()) {
+            auto token_id = *(query.select_token_ids.begin());
+
+            auto itr = idx.lower_bound(token_id);
+
+            if (query.start_bet_id) {
+                for (; itr != idx.end() && itr->token_id == token_id
+                    && itr->id != query.start_bet_id; ++itr) {
+                }
+            }
+
+            for (; itr != idx.end() && itr->token_id == token_id && result.size() < query.limit; ++itr) {
+                nft_bet_api_object obj(*itr, _db, query.tokens);
+                result.push_back(std::move(obj));
+            }
+        }
+
+        return result;
+    }
+
     database& _db;
 };
 
@@ -479,6 +519,15 @@ DEFINE_API(nft_api_plugin, get_nft_orders) {
     )
     return my->_db.with_weak_read_lock([&](){
         return my->get_nft_orders(query);
+    });
+}
+
+DEFINE_API(nft_api_plugin, get_nft_bets) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (nft_bets_query, query)
+    )
+    return my->_db.with_weak_read_lock([&](){
+        return my->get_nft_bets(query);
     });
 }
 

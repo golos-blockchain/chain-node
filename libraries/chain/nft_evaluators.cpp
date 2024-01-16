@@ -102,6 +102,7 @@ namespace golos { namespace chain {
         GOLOS_CHECK_VALUE(op.from == no.owner, "Cannot transfer not your token.");
         GOLOS_CHECK_VALUE(!no.burnt, "Cannot transfer burnt token.");
         GOLOS_CHECK_VALUE(!no.selling, "Cannot transfer selling token.");
+        GOLOS_CHECK_VALUE(no.auction_expiration == time_point_sec(), "Cannot transfer token selling via auction.");
 
         _db.get_account(op.to);
 
@@ -256,6 +257,56 @@ namespace golos { namespace chain {
             _db.get_asset(op.price.symbol);
         }
 
+        if (_db.has_hardfork(STEEMIT_HARDFORK_0_30) && !op.order_id) {
+            const auto& no = _db.get_nft(op.token_id);
+
+            GOLOS_CHECK_VALUE(no.auction_expiration != time_point_sec(),
+                "This NFT is not selling by auction.");
+
+            const auto& buyer = _db.get_account(op.buyer);
+            GOLOS_CHECK_BALANCE(_db, buyer, MAIN_BALANCE, op.price);
+
+            if (!op.price.amount.value) {
+                const nft_bet_object* bet = _db.find<nft_bet_object, by_token_owner>(std::make_tuple(op.token_id, op.buyer));
+
+                GOLOS_CHECK_VALUE(bet, "Bet should exist if you want cancel it (0 price).");
+
+                _db.adjust_balance(buyer, bet->price);
+                _db.remove(*bet);
+                return;
+            } else if (!_db.check_nft_bets(op.token_id, op.price)) {
+                GOLOS_CHECK_VALUE(false, "Bet with such price already exists.");
+            }
+
+            GOLOS_CHECK_VALUE(op.price.symbol == no.auction_min_price.symbol, "Wrong price token.");
+            GOLOS_CHECK_VALUE(op.price >= no.auction_min_price, "You cannot bet low than min price.");
+
+            _db.adjust_balance(buyer, -op.price);
+
+            auto now = _db.head_block_time();
+
+            _db.create<nft_bet_object>([&](auto& noo) {
+                noo.creator = no.creator;
+                noo.name = no.name;
+                noo.token_id = no.token_id;
+
+                noo.owner = op.buyer;
+                noo.price = op.price;
+
+                noo.created = now;
+            });
+
+            if ((no.auction_expiration - now).to_seconds() <= 20*60) {
+                _db.modify(no, [&](auto& no) {
+                    no.auction_expiration += 10*60;
+                });
+            }
+
+            return;
+        } else if (!op.order_id) {
+            wlog("nft_buy_operation order_id = 0");
+        }
+
         if (op.token_id) {
             const nft_order_object* noo = nullptr;
             if (!_db.has_hardfork(STEEMIT_HARDFORK_0_30)) {
@@ -282,6 +333,7 @@ namespace golos { namespace chain {
                 const auto& no = _db.get_nft(op.token_id);
                 GOLOS_CHECK_VALUE(no.owner != op.buyer, "Token is already your");
                 GOLOS_CHECK_VALUE(no.name == name, "Wrong name");
+                GOLOS_CHECK_VALUE(no.auction_expiration == time_point_sec(), "Cannot place offer on token selling via auction.");
 
                 const auto& nco = _db.get_nft_collection(no.name);
 
@@ -431,5 +483,57 @@ namespace golos { namespace chain {
         }
 
         _db.remove(noo);
+    }
+
+    void nft_auction_evaluator::do_apply(const nft_auction_operation& op) {
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30, "nft_auction_operation");
+
+        const auto& no = _db.get_nft(op.token_id);
+        GOLOS_CHECK_VALUE(no.owner == op.owner, "Cannot sell not your token.");
+
+        if (op.min_price.symbol != STEEM_SYMBOL && op.min_price.symbol != SBD_SYMBOL) {
+            _db.get_asset(op.min_price.symbol);
+        }
+
+        auto now = _db.head_block_time();
+
+        auto empty_expiration = op.expiration == time_point_sec();
+        auto empty_amount = !op.min_price.amount.value;
+
+        if (!empty_expiration) {
+            GOLOS_CHECK_VALUE(op.expiration >= now,
+                "Expiration should be set in future.");
+        }
+
+        if (empty_expiration || empty_amount) {
+            GOLOS_CHECK_VALUE(no.auction_expiration != time_point_sec(),
+                "No auction already.");
+
+            _db.clear_nft_bets(op.token_id);
+        } else {
+            GOLOS_CHECK_VALUE(no.auction_expiration == time_point_sec(),
+                "You cannot edit auction.");
+
+            uint32_t sell_order_count = 0, buy_order_count = 0;
+            double market_depth = 0, market_asks = 0;
+            _db.clear_nft_orders(op.token_id, nullptr, nullptr,
+                sell_order_count, buy_order_count, market_depth, market_asks,
+                true);
+
+            const auto& nco = _db.get_nft_collection(no.name);
+
+            _db.modify(nco, [&](auto& nco) {
+                nco.sell_order_count -= sell_order_count;
+                nco.buy_order_count -= buy_order_count;
+                nco.market_depth -= market_depth;
+                nco.market_asks -= market_asks;
+            });
+        }
+
+        _db.modify(no, [&](auto& no) {
+            no.last_update = now;
+            no.auction_min_price = !empty_expiration ? op.min_price : asset{0, STEEM_SYMBOL};
+            no.auction_expiration = !empty_amount ? op.expiration : time_point_sec();
+        });
     }
 } } // golos::chain

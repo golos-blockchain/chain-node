@@ -115,6 +115,21 @@ namespace golos { namespace protocol {
         }
     };
 
+    struct nft_auction_operation : public base_operation {
+        account_name_type owner;
+        uint32_t token_id = 0;
+        asset min_price{1, STEEM_SYMBOL};
+        fc::time_point_sec expiration;
+
+        extensions_type extensions;
+
+        void validate() const;
+
+        void get_required_active_authorities(flat_set<account_name_type>& a) const {
+            a.insert(owner);
+        }
+    };
+
 } } // golos::protocol
 
 FC_REFLECT(
@@ -150,4 +165,9 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::protocol::nft_cancel_order_operation),
     (owner)(order_id)(extensions)
+)
+
+FC_REFLECT(
+    (golos::protocol::nft_auction_operation),
+    (owner)(token_id)(min_price)(expiration)(extensions)
 )

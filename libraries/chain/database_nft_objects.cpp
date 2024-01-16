@@ -68,7 +68,8 @@ void database::throw_if_exists_nft_order(const account_name_type& owner, uint32_
 void database::clear_nft_orders(uint32_t token_id,
     const nft_order_object* proceed_order,
     const nft_order_object* clear_order,
-    uint32_t& sell_count, uint32_t& buy_count, double& market_depth, double& market_asks) {
+    uint32_t& sell_count, uint32_t& buy_count, double& market_depth, double& market_asks,
+    bool only_buying) {
     
     auto update_stats = [&](const nft_order_object& noo) {
         auto price = noo.price.to_real();
@@ -87,6 +88,9 @@ void database::clear_nft_orders(uint32_t token_id,
         while (itr != idx.end() && itr->token_id == token_id) {
             const auto& noo = *itr;
             ++itr;
+            if (only_buying && noo.selling) {
+                continue;
+            }
             update_stats(noo);
             if (noo.holds && (!proceed_order
                 || noo.owner != proceed_order->owner
@@ -117,6 +121,81 @@ bool database::check_nft_buying_price(uint32_t token_id, asset price) const {
         ++itr;
     }
     return true;
+}
+
+bool database::check_nft_bets(uint32_t token_id, asset price) const {
+    const auto& idx = get_index<nft_bet_index, by_token_price>();
+    auto itr = idx.find(std::make_tuple(token_id, price));
+    return itr == idx.end();
+}
+
+void database::clear_nft_bets(uint32_t token_id, const nft_bet_object* proceed_bet) {
+    const auto& idx = get_index<nft_bet_index, by_token_price>();
+    auto itr = idx.lower_bound(token_id);
+    while (itr != idx.end() && itr->token_id == token_id) {
+        const auto& bet = *itr;
+        ++itr;
+        if (!proceed_bet || proceed_bet->id != bet.id)
+            adjust_balance(get_account(bet.owner), bet.price);
+        remove(bet);
+    }
+}
+
+void database::process_nft_bets() {
+    const auto& idx = get_index<nft_index, by_auction_expiration>();
+    auto itr = idx.upper_bound(time_point_sec());
+
+    const auto& bet_idx = get_index<nft_bet_index, by_token_price>();
+
+    auto now = head_block_time();
+
+    while (itr != idx.end() && itr->auction_expiration < now) {
+        const auto& token = *itr;
+        ++itr;
+
+        auto bet_itr = bet_idx.lower_bound(std::make_tuple(token.token_id));
+        if (bet_itr == bet_idx.end()) {
+            modify(token, [&](auto& no) {
+                no.auction_min_price = asset{0, STEEM_SYMBOL};
+                no.auction_expiration = time_point_sec(0);
+                no.last_update = now;
+            });
+            continue;
+        }
+
+        adjust_balance(get_account(token.owner), bet_itr->price);
+
+        auto price = bet_itr->price;
+        auto price_real = price.to_real();
+
+        push_event(nft_token_sold_operation(account_name_type(), token.owner, bet_itr->owner, token.token_id, price));
+
+        modify(token, [&](auto& no) {
+            no.auction_min_price = asset{0, STEEM_SYMBOL};
+            no.auction_expiration = time_point_sec(0);
+            no.last_update = now;
+            no.owner = bet_itr->owner;
+            no.selling = false;
+            no.last_buy_price = bet_itr->price;
+        });
+
+        clear_nft_bets(token.token_id, &(*bet_itr));
+
+        uint32_t sell_order_count = 0, buy_order_count = 0;
+        double market_depth = 0, market_asks = 0;
+        clear_nft_orders(token.token_id, nullptr, nullptr, sell_order_count, buy_order_count,
+            market_depth, market_asks);
+
+        modify(get_nft_collection(token.name), [&](auto& nco) {
+            nco.sell_order_count -= sell_order_count;
+            nco.buy_order_count -= buy_order_count;
+            nco.market_depth -= market_depth;
+            nco.market_asks -= market_asks;
+
+            nco.last_buy_price = price;
+            nco.market_volume += price_real;
+        });
+    }
 }
 
 }} // golos::chain

@@ -4247,6 +4247,7 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<nft_sell_evaluator>();
             _my->_evaluator_registry.register_evaluator<nft_buy_evaluator>();
             _my->_evaluator_registry.register_evaluator<nft_cancel_order_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_auction_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -4311,6 +4312,7 @@ namespace golos { namespace chain {
             add_core_index<nft_collection_index>(*this);
             add_core_index<nft_index>(*this);
             add_core_index<nft_order_index>(*this);
+            add_core_index<nft_bet_index>(*this);
 
             _plugin_index_signal();
         }
@@ -4886,6 +4888,8 @@ namespace golos { namespace chain {
                 process_gbg_payments();
 
                 process_paid_subscribers();
+
+                process_nft_bets();
 
                 // notify observers that the block has been applied
                 notify_applied_block(next_block);

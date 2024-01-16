@@ -114,5 +114,6 @@ namespace golos { namespace chain {
         DEFINE_EVALUATOR(nft_sell)
         DEFINE_EVALUATOR(nft_cancel_order)
         DEFINE_EVALUATOR(nft_buy)
+        DEFINE_EVALUATOR(nft_auction)
 
 } } // golos::chain

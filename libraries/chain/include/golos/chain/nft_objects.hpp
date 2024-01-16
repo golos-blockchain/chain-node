@@ -68,6 +68,9 @@ namespace golos { namespace chain {
         time_point_sec last_update;
         bool selling = false;
 
+        asset auction_min_price{0, STEEM_SYMBOL};
+        time_point_sec auction_expiration;
+
         double price_real() const {
             return last_buy_price.to_real();
         }
@@ -104,6 +107,28 @@ namespace golos { namespace chain {
         double price_real() const {
             return price.to_real();
         }
+    };
+
+    class nft_bet_object : public object<nft_bet_object_type, nft_bet_object> {
+    public:
+        nft_bet_object() {
+        }
+
+        template <typename Constructor, typename Allocator>
+        nft_bet_object(Constructor&& c, allocator <Allocator> a) {
+            c(*this);
+        };
+
+        id_type id;
+
+        account_name_type creator;
+        asset_symbol_type name;
+        uint32_t token_id = 0;
+
+        account_name_type owner;
+        asset price;
+
+        time_point_sec created;
     };
 
     struct by_name;
@@ -179,6 +204,7 @@ namespace golos { namespace chain {
     struct by_owner;
     struct by_issued;
     struct by_last_update;
+    struct by_auction_expiration;
 
     using nft_index = multi_index_container<
         nft_object,
@@ -230,6 +256,11 @@ namespace golos { namespace chain {
                 tag<by_last_price>,
                 const_mem_fun<nft_object, double, &nft_object::price_real>,
                 std::greater<double>
+            >,
+            ordered_non_unique<
+                tag<by_auction_expiration>,
+                member<nft_object, time_point_sec, &nft_object::auction_expiration>,
+                std::less<time_point_sec>
             >
         >,
         allocator<nft_object>
@@ -271,6 +302,39 @@ namespace golos { namespace chain {
         allocator<nft_order_object>
     >;
 
+    struct by_token_owner;
+    struct by_token_price;
+
+    using nft_bet_index = multi_index_container<
+        nft_bet_object,
+        indexed_by<
+            ordered_unique<
+                tag<by_id>,
+                member<nft_bet_object, nft_bet_object_id_type, &nft_bet_object::id>
+            >,
+            ordered_unique<
+                tag<by_token_owner>,
+                composite_key<
+                    nft_bet_object,
+                    member<nft_bet_object, uint32_t, &nft_bet_object::token_id>,
+                    member<nft_bet_object, account_name_type, &nft_bet_object::owner>
+                >
+            >,
+            ordered_unique<
+                tag<by_token_price>,
+                composite_key<
+                    nft_bet_object,
+                    member<nft_bet_object, uint32_t, &nft_bet_object::token_id>,
+                    member<nft_bet_object, asset, &nft_bet_object::price>
+                >,
+                composite_key_compare<
+                    std::less<uint32_t>,
+                    std::greater<asset>
+                >
+            >
+        >,
+        allocator<nft_bet_object>
+    >;
 } } // golos::chain
 
 CHAINBASE_SET_INDEX_TYPE(
@@ -284,3 +348,7 @@ CHAINBASE_SET_INDEX_TYPE(
 CHAINBASE_SET_INDEX_TYPE(
     golos::chain::nft_order_object,
     golos::chain::nft_order_index);
+
+CHAINBASE_SET_INDEX_TYPE(
+    golos::chain::nft_bet_object,
+    golos::chain::nft_bet_index);
