@@ -115,7 +115,7 @@ bool database::check_nft_buying_price(uint32_t token_id, asset price) const {
     const auto& idx = get_index<nft_order_index, by_token_id>();
     auto itr = idx.lower_bound(token_id);
     while (itr != idx.end() && itr->token_id == token_id) {
-        if (!itr->selling && itr->price == price) {
+        if (!itr->selling && itr->price.symbol == price.symbol && itr->price == price) {
             return false;
         }
         ++itr;
