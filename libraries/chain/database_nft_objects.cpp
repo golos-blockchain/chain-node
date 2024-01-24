@@ -125,7 +125,7 @@ bool database::check_nft_buying_price(uint32_t token_id, asset price) const {
 
 bool database::check_nft_bets(uint32_t token_id, asset price) const {
     const auto& idx = get_index<nft_bet_index, by_token_price>();
-    auto itr = idx.find(std::make_tuple(token_id, price));
+    auto itr = idx.find(std::make_tuple(token_id, price.to_real()));
     return itr == idx.end();
 }
 

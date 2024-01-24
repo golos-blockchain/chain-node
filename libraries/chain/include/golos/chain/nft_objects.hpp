@@ -128,6 +128,10 @@ namespace golos { namespace chain {
         account_name_type owner;
         asset price;
 
+        double price_real() const {
+            return price.to_real();
+        }
+
         time_point_sec created;
     };
 
@@ -325,11 +329,11 @@ namespace golos { namespace chain {
                 composite_key<
                     nft_bet_object,
                     member<nft_bet_object, uint32_t, &nft_bet_object::token_id>,
-                    member<nft_bet_object, asset, &nft_bet_object::price>
+                    const_mem_fun<nft_bet_object, double, &nft_bet_object::price_real>
                 >,
                 composite_key_compare<
                     std::less<uint32_t>,
-                    std::greater<asset>
+                    std::greater<int64_t>
                 >
             >
         >,
