@@ -31,6 +31,10 @@ namespace golos { namespace protocol {
 
             string to_string() const;
 
+            static asset_symbol_type min_symbol();
+
+            static asset_symbol_type max_symbol();
+
             asset &operator+=(const asset &o) {
                 FC_ASSERT(symbol == o.symbol);
                 amount += o.amount;
