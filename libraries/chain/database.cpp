@@ -1,5 +1,6 @@
 #include <openssl/md5.h>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
 
 #include <golos/protocol/steem_operations.hpp>
@@ -895,6 +896,19 @@ namespace golos { namespace chain {
             if (nullptr != find_asset(symbol_name)) {
                 GOLOS_THROW_OBJECT_ALREADY_EXIST("asset", symbol_name);
             }
+        }
+
+        asset_symbol_type database::symbol_from_str(std::string str, bool allow_empty) const {
+            boost::to_upper(str);
+            asset_symbol_type sym = 0;
+            if (str == "GOLOS") {
+                sym = STEEM_SYMBOL;
+            } else if (str == "GBG") {
+                sym = SBD_SYMBOL;
+            } else if (!allow_empty || str != "") {
+                sym = get_asset(str).symbol();
+            }
+            return sym;
         }
 
         const donate_object& database::get_donate(const donate_object_id_type& donate_id) const {

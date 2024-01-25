@@ -33,6 +33,7 @@
 #include <golos/plugins/paid_subscription_api/paid_subscription_api.hpp>
 #include <golos/plugins/nft_api/nft_api.hpp>
 #include <golos/plugins/cryptor/cryptor.hpp>
+#include <golos/plugins/exchange/exchange.hpp>
 #ifdef MONGODB_PLUGIN_BUILT
     #include <golos/plugins/mongo_db/mongo_db_plugin.hpp>
 #endif
@@ -98,6 +99,7 @@ namespace golos {
             appbase::app().register_plugin<golos::plugins::paid_subscription_api::paid_subscription_api_plugin>();
             appbase::app().register_plugin<golos::plugins::nft_api::nft_api_plugin>();
             appbase::app().register_plugin<golos::plugins::cryptor::cryptor>();
+            appbase::app().register_plugin<golos::plugins::exchange::exchange>();
             #ifdef MONGODB_PLUGIN_BUILT
                 appbase::app().register_plugin<golos::plugins::mongo_db::mongo_db_plugin>();
             #endif

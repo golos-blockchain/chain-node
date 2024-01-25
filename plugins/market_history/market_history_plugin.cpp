@@ -226,21 +226,9 @@ namespace golos {
                     if (!allow_partial || pair.second.size())
                         GOLOS_CHECK_VALUE(pair.second.size() >= 3 && pair.second.size() <= 14, "pair.second must be between 3 and 14");
                 });
-                auto sym_from_str = [&](std::string str) {
-                    boost::to_upper(str);
-                    asset_symbol_type sym = 0;
-                    if (str == "GOLOS") {
-                        sym = STEEM_SYMBOL;
-                    } else if (str == "GBG") {
-                        sym = SBD_SYMBOL;
-                    } else if (!allow_partial || str != "") {
-                        sym = _db.get_asset(str).symbol();
-                    }
-                    return sym;
-                };
                 return get_symbol_type_pair(
-                    asset(0, sym_from_str(pair.first)),
-                    asset(0, sym_from_str(pair.second)),
+                    asset(0, _db.symbol_from_str(pair.first, allow_partial)),
+                    asset(0, _db.symbol_from_str(pair.second, allow_partial)),
                     pair_reversed
                 );
             }
@@ -909,7 +897,6 @@ namespace golos {
                     return _my->get_orders(order_ids);
                 });
             }
-
         }
     }
 } // golos::plugins::market_history

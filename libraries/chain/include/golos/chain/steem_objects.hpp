@@ -210,6 +210,10 @@ namespace golos {
             asset amount_to_receive() const {
                 return amount_for_sale() * sell_price;
             }
+
+            price buy_price() const {
+                return ~sell_price;
+            }
         };
 
 
@@ -346,6 +350,7 @@ namespace golos {
         struct by_expiration;
         struct by_account;
         struct by_symbol;
+        struct by_buy_price;
         using limit_order_index = multi_index_container<
             limit_order_object,
             indexed_by<
@@ -368,7 +373,14 @@ namespace golos {
                 >>,
                 ordered_non_unique<tag<by_symbol>,
                     member<limit_order_object, asset_symbol_type, &limit_order_object::symbol>
-                >
+                >,
+                ordered_unique<tag<by_buy_price>, composite_key<limit_order_object,
+                    const_mem_fun<limit_order_object, price, &limit_order_object::buy_price>,
+                    member<limit_order_object, limit_order_id_type, &limit_order_object::id>
+                >, composite_key_compare<
+                    std::less<price>,
+                    std::less<limit_order_id_type>
+                >>
             >,
             allocator<limit_order_object>
         >;
