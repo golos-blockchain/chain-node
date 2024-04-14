@@ -378,14 +378,27 @@ namespace golos { namespace plugins { namespace private_message {
 
     using private_group_member_id_type = private_group_member_object::id_type;
 
+    struct by_account_group;
     struct by_group_account;
     struct by_group_type;
+    struct by_group_updated;
 
     using private_group_member_index = multi_index_container<
         private_group_member_object,
         indexed_by<
             ordered_unique<tag<by_id>,
                 member<private_group_member_object, private_group_member_id_type, &private_group_member_object::id>
+            >,
+            ordered_unique<tag<by_account_group>,
+                composite_key<
+                    private_group_member_object,
+                    member<private_group_member_object, account_name_type, &private_group_member_object::account>,
+                    member<private_group_member_object, shared_string, &private_group_member_object::group>
+                >,
+                composite_key_compare<
+                    std::less<account_name_type>,
+                    strcmp_less
+                >
             >,
             ordered_unique<tag<by_group_account>,
                 composite_key<
@@ -407,6 +420,17 @@ namespace golos { namespace plugins { namespace private_message {
                 composite_key_compare<
                     strcmp_less,
                     std::less<private_group_member_type>
+                >
+            >,
+            ordered_non_unique<tag<by_group_updated>,
+                composite_key<
+                    private_group_member_object,
+                    member<private_group_member_object, shared_string, &private_group_member_object::group>,
+                    member<private_group_member_object, time_point_sec, &private_group_member_object::updated>
+                >,
+                composite_key_compare<
+                    strcmp_less,
+                    std::greater<time_point_sec>
                 >
             >
         >, allocator<private_group_member_object>>;

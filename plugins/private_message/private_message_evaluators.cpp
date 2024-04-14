@@ -27,9 +27,9 @@ struct private_message_extension_visitor {
 
         const auto& pgo = _db.get<private_group_object, by_name>(_pgo.group);
 
-        const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_account>();
+        const auto& pgm_idx = _db.get_index<private_group_member_index, by_account_group>();
 
-        auto pgm_itr = pgm_idx.find(std::make_tuple(pgo.name, requester));
+        auto pgm_itr = pgm_idx.find(std::make_tuple(requester, pgo.name));
         bool exists = pgm_itr != pgm_idx.end();
 
         if (exists) {
@@ -721,9 +721,9 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     auto members = pgo.members;
     auto pendings = pgo.pendings;
 
-    const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_account>();
+    const auto& pgm_idx = _db.get_index<private_group_member_index, by_account_group>();
 
-    auto requester_itr = pgm_idx.find(std::make_tuple(op.name, op.member));
+    auto requester_itr = pgm_idx.find(std::make_tuple(op.requester, op.name));
     bool requester_exists = requester_itr != pgm_idx.end();
 
     bool is_owner = pgo.owner == op.requester;
@@ -731,7 +731,7 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     bool is_moder = is_admin || (requester_exists && requester_itr->member_type == private_group_member_type::moder);
     bool is_same = op.requester == op.member;
 
-    auto member_itr = pgm_idx.find(std::make_tuple(op.name, op.member));
+    auto member_itr = pgm_idx.find(std::make_tuple(op.member, op.name));
 
     if (op.member_type == private_group_member_type::member) {
         if (pgo.privacy != private_group_privacy::public_group) {

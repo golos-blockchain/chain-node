@@ -26,6 +26,8 @@ namespace golos { namespace plugins { namespace private_message {
     DEFINE_API_ARGS(get_contacts_size, json_rpc::msg_pack, contacts_size_api_object)
     DEFINE_API_ARGS(get_contacts,      json_rpc::msg_pack, std::vector<contact_api_object>)
     DEFINE_API_ARGS(set_callback,      json_rpc::msg_pack, json_rpc::void_type)
+    DEFINE_API_ARGS(get_groups,        json_rpc::msg_pack, std::vector<private_group_api_object>)
+    DEFINE_API_ARGS(get_group_members, json_rpc::msg_pack, std::vector<private_group_member_api_object>)
 
     /**
      *   This plugin scans the blockchain for custom operations containing a valid message and authorized
@@ -68,6 +70,8 @@ namespace golos { namespace plugins { namespace private_message {
             (get_contacts_size)
             (get_contacts)
             (set_callback)
+            (get_groups)
+            (get_group_members)
         )
 
     private:

@@ -1,6 +1,7 @@
 #include <golos/plugins/private_message/private_message_plugin.hpp>
 #include <golos/plugins/private_message/private_message_evaluators.hpp>
 #include <golos/plugins/private_message/private_message_objects.hpp>
+#include <golos/plugins/private_message/private_message_queries.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <appbase/application.hpp>
@@ -128,6 +129,10 @@ namespace golos { namespace plugins { namespace private_message {
         std::vector<contact_api_object> get_contacts(
             const std::string& owner, const private_contact_type, uint16_t limit, uint32_t offset) const;
 
+        std::vector<private_group_api_object> get_groups(const private_group_query& query) const;
+
+        std::vector<private_group_member_api_object> get_group_members(const private_group_member_query& query) const;
+
         bool can_call_callbacks() const;
 
         void call_callbacks(
@@ -209,13 +214,14 @@ namespace golos { namespace plugins { namespace private_message {
     ) const {
 
         std::vector<message_api_object> result;
-        /*const auto& outbox_idx = _db.get_index<message_index, by_outbox_account>();
+        const auto& outbox_idx = _db.get_index<message_index, by_outbox_account>();
         const auto& inbox_idx = _db.get_index<message_index, by_inbox_account>();
 
-        auto outbox_itr = outbox_idx.lower_bound(std::make_tuple(from, to, query.newest_date));
-        auto outbox_etr = outbox_idx.upper_bound(std::make_tuple(from, to, min_create_date()));
-        auto inbox_itr = inbox_idx.lower_bound(std::make_tuple(from, to, query.newest_date));
-        auto inbox_etr = inbox_idx.upper_bound(std::make_tuple(from, to, min_create_date()));
+        std::string group;
+        auto outbox_itr = outbox_idx.lower_bound(std::make_tuple(group, from, to, query.newest_date));
+        auto outbox_etr = outbox_idx.upper_bound(std::make_tuple(group, from, to, min_create_date()));
+        auto inbox_itr = inbox_idx.lower_bound(std::make_tuple(group, from, to, query.newest_date));
+        auto inbox_etr = inbox_idx.upper_bound(std::make_tuple(group, from, to, min_create_date()));
         auto offset = query.offset;
 
         auto filter = [&](const message_object& o) {
@@ -255,7 +261,7 @@ namespace golos { namespace plugins { namespace private_message {
                 result.emplace_back(message);
             }
         }
-*/
+
         return result;
     }
 
@@ -352,6 +358,86 @@ namespace golos { namespace plugins { namespace private_message {
         });
 
         return result;
+    }
+
+    std::vector<private_group_api_object> private_message_plugin::private_message_plugin_impl::get_groups(const private_group_query& query) const {
+        std::vector<private_group_api_object> res;
+
+        if (!!query.with_members) {
+            const auto& pgms = query.with_members;
+            GOLOS_CHECK_LIMIT_PARAM(pgms->accounts.size(), 20);
+            GOLOS_CHECK_PARAM(query.with_members, {
+                GOLOS_CHECK_VALUE(!pgms->accounts.size() || pgms->start == account_name_type(),
+                    "You cannot set with_members.start if you using with_members.accounts");
+            });
+        }
+
+        if (query.member == account_name_type()) {
+            GOLOS_CHECK_PARAM(query.member_types, {
+                GOLOS_CHECK_VALUE(query.member_types.size() == 0, "If member is empty (select all groups) - member_types should be [] empty too.");
+            });
+
+            const auto& idx = _db.get_index<private_group_index, by_name>();
+            auto itr = idx.lower_bound(query.start_group);
+            for (; itr != idx.end() && res.size() < query.limit; ++itr) {
+                res.emplace_back(*itr, _db, query.with_members);
+            }
+
+            return res;
+        }
+
+        if (query.member_types.size()) {
+            const auto& idx = _db.get_index<private_group_member_index, by_account_group>();
+            auto itr = idx.lower_bound(query.member);
+            for (; itr != idx.end() && itr->account == query.member
+                    && res.size() < query.limit; ++itr) {
+                bool has = query.member_types.count(itr->member_type);
+                if (!has) continue;
+
+                if (query.start_group.size() && to_string(itr->group) != query.start_group) {
+                    continue;
+                }
+
+                const auto& pgo = _db.get<private_group_object, by_name>(itr->group);
+                res.emplace_back(pgo, _db, query.with_members);
+            }
+
+            return res;
+        }
+
+        const auto& idx = _db.get_index<private_group_index, by_owner>();
+        auto itr = idx.lower_bound(query.member);
+        for (; itr != idx.end() && itr->owner == query.member
+                && res.size() < query.limit; ++itr) {
+            if (query.start_group.size() && to_string(itr->name) != query.start_group) {
+                continue;
+            }
+
+            res.emplace_back(*itr, _db, query.with_members);
+        }
+
+        return res;
+    }
+
+    std::vector<private_group_member_api_object> private_message_plugin::private_message_plugin_impl::get_group_members(const private_group_member_query& query) const {
+        std::vector<private_group_member_api_object> res;
+
+        const auto& idx = _db.get_index<private_group_member_index, by_group_updated>();
+        auto itr = idx.lower_bound(query.group);
+        for (; itr != idx.end() && to_string(itr->group) == query.group
+                && res.size() < query.limit; ++itr) {
+            if (query.start_member != account_name_type() && itr->account != query.start_member) {
+                continue;
+            }
+
+            if (query.member_types.size() && !query.member_types.count(itr->member_type)) {
+                continue;
+            }
+
+            res.emplace_back(*itr);
+        }
+
+        return res;
     }
 
     bool private_message_plugin::private_message_plugin_impl::can_call_callbacks() const {
@@ -617,6 +703,30 @@ namespace golos { namespace plugins { namespace private_message {
         };
         transfer.complete();
         return {};
+    }
+
+    DEFINE_API(private_message_plugin, get_groups) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (private_group_query, query)
+        );
+
+        GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
+
+        return my->_db.with_weak_read_lock([&](){
+            return my->get_groups(query);
+        });
+    }
+
+    DEFINE_API(private_message_plugin, get_group_members) {
+        PLUGIN_API_VALIDATE_ARGS(
+            (private_group_member_query, query)
+        );
+
+        GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
+
+        return my->_db.with_weak_read_lock([&](){
+            return my->get_group_members(query);
+        });
     }
 
 } } } // golos::plugins::private_message
