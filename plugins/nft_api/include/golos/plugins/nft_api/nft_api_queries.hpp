@@ -39,7 +39,8 @@ enum class nft_tokens_sort : uint8_t {
     by_name,
     by_issued,
     by_last_update,
-    by_last_price
+    by_last_price,
+    by_auction_expiration
 };
 
 enum class nft_token_state : uint8_t {
@@ -70,6 +71,8 @@ enum class nft_token_sorting_priority : uint8_t {
 };
 
 struct nft_tokens_query {
+    account_name_type current;
+
     account_name_type owner;
     std::set<std::string> select_collections;
     uint32_t collection_limit = UINT32_MAX;
@@ -199,7 +202,7 @@ FC_REFLECT(
 
 FC_REFLECT_ENUM(
     golos::plugins::nft_api::nft_tokens_sort,
-    (by_name)(by_issued)(by_last_update)(by_last_price)
+    (by_name)(by_issued)(by_last_update)(by_last_price)(by_auction_expiration)
 )
 
 FC_REFLECT_ENUM(
@@ -225,7 +228,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::nft_api::nft_tokens_query),
-    (owner)(select_collections)(collection_limit)
+    (current)(owner)(select_collections)(collection_limit)
     (collections)(orders)(start_token_id)(limit)(select_token_ids)
     (filter_creators)(filter_names)(filter_token_ids)(state)
     (sort)(reverse_sort)(illformed)(selling_sorting)(sorting_priority)

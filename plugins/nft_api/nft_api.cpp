@@ -131,7 +131,7 @@ public:
             if (!query.is_good(no) || !good_collection_count(no.name, collection_count, query.collection_limit)) {
                 return;
             }
-            nft_extended_api_object obj(no, _db, query.collections, query.orders);
+            nft_extended_api_object obj(no, _db, query.collections, query.orders, query.current);
             result.push_back(std::move(obj));
         };
 
@@ -169,7 +169,7 @@ public:
         std::map<asset_symbol_type, uint32_t> collection_count;
 
         auto push = [&](nft_extended_api_object& obj) {
-            obj.fill_extensions(_db, query.collections, query.orders);
+            obj.fill_extensions(_db, query.collections, query.orders, query.current);
             result.push_back(std::move(obj));
         };
 
@@ -315,6 +315,8 @@ public:
                     return get_nft_tokens_by_index<by_issued>(query);
                 } else if (query.sort == nft_tokens_sort::by_last_price) {
                     return get_nft_tokens_by_index<by_last_price>(query);
+                } else if (query.sort == nft_tokens_sort::by_auction_expiration) {
+                    return get_nft_tokens_by_index<by_auction_expiration>(query);
                 } else {
                     return get_nft_tokens_by_index<by_last_update>(query);
                 }
@@ -424,10 +426,10 @@ public:
         return result;
     }
 
-    std::vector<nft_bet_api_object> get_nft_bets(
+    std::vector<nft_extended_bet_api_object> get_nft_bets(
         const nft_bets_query& query
     ) {
-        std::vector<nft_bet_api_object> result;
+        std::vector<nft_extended_bet_api_object> result;
 
         GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
 
@@ -441,7 +443,7 @@ public:
                 if (query.start_bet_id && itr->id != query.start_bet_id) {
                     continue;
                 }
-                nft_bet_api_object obj(*itr, _db, query.tokens);
+                nft_extended_bet_api_object obj(*itr, _db, query.tokens);
                 result.push_back(std::move(obj));
             }
         } else if (query.select_token_ids.size()) {
@@ -456,7 +458,7 @@ public:
             }
 
             for (; itr != idx.end() && itr->token_id == token_id && result.size() < query.limit; ++itr) {
-                nft_bet_api_object obj(*itr, _db, query.tokens);
+                nft_extended_bet_api_object obj(*itr, _db, query.tokens);
                 result.push_back(std::move(obj));
             }
         }
