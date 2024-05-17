@@ -227,5 +227,5 @@ FC_REFLECT(
     (owner)(select_collections)(collection_limit)
     (tokens)(start_order_id)(limit)
     (filter_creators)(filter_names)(filter_owners)(filter_token_ids)(filter_order_ids)
-    (type)
+    (type)(sort)(reverse_sort)
 )

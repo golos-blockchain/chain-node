@@ -126,6 +126,8 @@ namespace golos { namespace api {
     
         fc::optional<bad_comment> bad;
 
+        asset decrypt_fee{0, STEEM_SYMBOL};
+
         bool is_special() const {
             return boost::algorithm::starts_with(body, "{\"t\":");
         }
@@ -155,6 +157,6 @@ FC_REFLECT(
     (root_comment)(root_title)(root_author)(app)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)
     (allow_curation_rewards)(curation_rewards_percent)(min_golos_power_to_curate)
     (has_worker_request)
-    (beneficiaries)(bad))
+    (beneficiaries)(bad)(decrypt_fee))
 
 #endif //GOLOS_COMMENT_API_OBJ_H
