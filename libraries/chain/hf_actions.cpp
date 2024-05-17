@@ -12,6 +12,9 @@ void hf_actions::prepare_for_tests() {
     //Owner: 5KD45zFh5WNFaW8mZTSx4eicy8FzwEmm5psNKH7GLg5bVQwUw6s
     //Memo: 5Kek6zP5vQmDRXXNBtZkxUtoMT3iW1xEYXcifkA2UHb2VT5UD7P
 
+    elog("PERFOPROFILE: livetest prepare_for_tests started");
+    auto el_start = fc::time_point::now();
+
     for (const auto &account : _db.get_index<account_index>().indices()) {
         _db.update_owner_authority(account, authority(1, public_key_type("GLS5GfkCE2HQwcE6Gs8pDXvp2PJtF4dwqG8Af9rhn9LKNrJ6PKPMF"), 1));
 
@@ -25,6 +28,9 @@ void hf_actions::prepare_for_tests() {
         });
     }
 
+    elog("PERFOPROFILE: Keys reset - done, " + std::to_string((fc::time_point::now() - el_start).count() / 1000) + " msec");
+    el_start = fc::time_point::now();
+
     _db.modify(_db.get_account(STEEMIT_NOTIFY_ACCOUNT), [&](auto& a) {
         // 5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw
         a.memo_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
@@ -36,6 +42,8 @@ void hf_actions::prepare_for_tests() {
             w.signing_key = public_key_type("GLS8EAm8DhD8tjX3N87RVAvw1o8uzSQkRJ3Tcn4dgmybHwnsyvThb");
         });
     }
+
+    elog("PERFOPROFILE: Witness reset - done, " + std::to_string((fc::time_point::now() - el_start).count() / 1000) + " msec");
 #endif
 #ifdef STEEMIT_BUILD_TESTNET
 #define COMMON_POSTING public_key_type("GLS8hnaAj3ufXbfFBKqGNhyGvW78EQN5rpeqfcDD2d2tQyhd2dEDb")
@@ -161,6 +169,11 @@ void hf_actions::convert_min_curate_golos_power() {
 }
 
 void hf_actions::fix_vesting_withdrawals() {
+    if (!_db.vw_fixes) {
+        elog("PERFOPROFILE: fix_vesting_withdrawals");
+    }
+    auto el_start = fc::time_point::now();
+
     const auto& fm_idx = _db.get_index<fix_me_index, by_id>();
     auto fm_itr = fm_idx.begin();
     uint64_t count = 0;
@@ -177,6 +190,14 @@ void hf_actions::fix_vesting_withdrawals() {
         }
         _db.remove(fm);
         ++count;
+    }
+
+    if (!_db.vw_fixes) {
+        elog("PERFOPROFILE: fix_vesting_withdrawals - done, " + std::to_string((fc::time_point::now() - el_start).count() / 1000) + " msec");
+    }
+
+    if (!count) {
+        _db.vw_fixes = 1;
     }
 }
 

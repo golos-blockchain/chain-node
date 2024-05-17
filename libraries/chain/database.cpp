@@ -6040,6 +6040,7 @@ namespace golos { namespace chain {
                 elog("HARDFORK ${hf} at block ${b}", ("hf", hardfork)("b", head_block_num()));
             }
 
+            elog("PERFOPROFILE: APPLY_HARDFORK ${hf}", ("hf", hardfork));
             hf_actions hf_act(*this);
 
             switch (hardfork) {
