@@ -35,6 +35,7 @@ file(GLOB PLUGIN_TESTS
     "plugin_tests/plugin_ops.cpp"
     "plugin_tests/json_rpc.cpp"
     "plugin_tests/chain.cpp"
+    "plugin_tests/cryptor.cpp"
     "plugin_tests/operation_history.cpp"
     "plugin_tests/event_plugin.cpp"
     "plugin_tests/account_history.cpp"
@@ -54,6 +55,7 @@ target_link_libraries(plugin_test
     golos_social_network
     golos_private_message
     golos_worker_api
+    golos_cryptor
     fc
     ${PLATFORM_SPECIFIC_LIBS})
 target_include_directories(plugin_test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/common")

@@ -278,6 +278,9 @@ namespace golos { namespace chain {
                 GOLOS_CHECK_VALUE(false, "Bet with such price already exists.");
             }
 
+            const auto* bet = _db.find<nft_bet_object, by_token_owner>(std::make_tuple(op.token_id, op.buyer));
+            GOLOS_CHECK_VALUE(!bet, "Your bet already exists.");
+
             GOLOS_CHECK_VALUE(op.price.symbol == no.auction_min_price.symbol, "Wrong price token.");
             GOLOS_CHECK_VALUE(op.price >= no.auction_min_price, "You cannot bet low than min price.");
 
@@ -385,6 +388,9 @@ namespace golos { namespace chain {
             if (_db.head_block_num() <= 74644300) {
                 const auto& bal = get_balance(_db, buyer, MAIN_BALANCE, price.symbol);
                 if (bal < price) {
+#ifdef STEEMIT_BUILD_TESTNET
+                    elog(std::string("NFT operation ignored: ") + op.buyer + " " + std::to_string(op.token_id) + ", " + bal.to_string() + " < " + price.to_string());
+#endif
                     wlog(std::string("NFT operation ignored: ") + op.buyer + " " + std::to_string(op.token_id));
                     return;
                 }

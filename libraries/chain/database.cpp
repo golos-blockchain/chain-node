@@ -6387,6 +6387,17 @@ namespace golos { namespace chain {
                     }
                 }
 
+                const auto& noo_idx = get_index<nft_order_index, by_id>();
+                for (auto itr = noo_idx.begin();
+                     itr != noo_idx.end(); ++itr) {
+                    if (!itr->holds) continue;
+                    if (itr->price.symbol == STEEM_SYMBOL) {
+                        total_supply += itr->price;
+                    } else if (itr->price.symbol == SBD_SYMBOL) {
+                        total_sbd += itr->price;
+                    }
+                }
+
                 fc::uint128_t total_rshares2;
                 fc::uint128_t total_children_rshares2;
 

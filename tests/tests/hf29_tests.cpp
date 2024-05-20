@@ -1462,6 +1462,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Buy NFT");
 
+        fund("bob", ASSET("1.000 GBG"));
+
         nft_buy_operation nbop;
         nbop.buyer = "bob";
         nbop.name = "";
@@ -1561,6 +1563,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         validate_database();
 
         BOOST_TEST_MESSAGE("-- Sell NFT");
+
+        fund("bob", ASSET("2.000 GBG"));
 
         nft_sell_operation nsop;
         nsop.seller = "carol";
