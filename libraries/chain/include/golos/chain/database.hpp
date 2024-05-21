@@ -747,8 +747,6 @@ namespace golos { namespace chain {
 #endif
 
             const block_log &get_block_log() const;
-
-            uint32_t vw_fixes = 0;
         protected:
             //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
             //void pop_undo() { object_database::pop_undo(); }

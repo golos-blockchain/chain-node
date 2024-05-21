@@ -6040,7 +6040,6 @@ namespace golos { namespace chain {
                 elog("HARDFORK ${hf} at block ${b}", ("hf", hardfork)("b", head_block_num()));
             }
 
-            elog("PERFOPROFILE: APPLY_HARDFORK ${hf}", ("hf", hardfork));
             hf_actions hf_act(*this);
 
             switch (hardfork) {
@@ -6391,6 +6390,16 @@ namespace golos { namespace chain {
                 for (auto itr = noo_idx.begin();
                      itr != noo_idx.end(); ++itr) {
                     if (!itr->holds) continue;
+                    if (itr->price.symbol == STEEM_SYMBOL) {
+                        total_supply += itr->price;
+                    } else if (itr->price.symbol == SBD_SYMBOL) {
+                        total_sbd += itr->price;
+                    }
+                }
+
+                const auto& nbo_idx = get_index<nft_bet_index, by_id>();
+                for (auto itr = nbo_idx.begin();
+                     itr != nbo_idx.end(); ++itr) {
                     if (itr->price.symbol == STEEM_SYMBOL) {
                         total_supply += itr->price;
                     } else if (itr->price.symbol == SBD_SYMBOL) {
