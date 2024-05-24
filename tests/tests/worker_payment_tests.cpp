@@ -18,14 +18,14 @@ BOOST_AUTO_TEST_CASE(worker_fund_emiting) {
 
     generate_block();
 
-    auto old_fund = db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance;
+    auto old_fund = _db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance;
 
     comment_fund fund(*db);
 
     generate_block();
 
-    BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, fund.worker_fund());
-    BOOST_CHECK_GT(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, old_fund);
+    BOOST_CHECK_EQUAL(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, fund.worker_fund());
+    BOOST_CHECK_GT(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, old_fund);
 }
 
 BOOST_AUTO_TEST_CASE(worker_fund_transfering) {
@@ -38,11 +38,11 @@ BOOST_AUTO_TEST_CASE(worker_fund_transfering) {
 
     BOOST_TEST_MESSAGE("-- Normal funding");
 
-    const auto init_balance = db->get_balance("alice", STEEM_SYMBOL);
-    const auto init_fund = db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance;
+    const auto init_balance = _db.get_balance("alice", STEEM_SYMBOL);
+    const auto init_fund = _db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance;
 
     generate_block();
-    const auto block_add = db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance - init_fund;
+    const auto block_add = _db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance - init_fund;
 
     transfer_operation op;
     op.from = "alice";
@@ -51,8 +51,8 @@ BOOST_AUTO_TEST_CASE(worker_fund_transfering) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, op));
     generate_block();
 
-    BOOST_CHECK_EQUAL(db->get_balance("alice", STEEM_SYMBOL), init_balance - op.amount);
-    BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, init_fund + block_add*2 + op.amount);
+    BOOST_CHECK_EQUAL(_db.get_balance("alice", STEEM_SYMBOL), init_balance - op.amount);
+    BOOST_CHECK_EQUAL(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, init_fund + block_add*2 + op.amount);
 }
 
 BOOST_AUTO_TEST_CASE(worker_request_payment) {
@@ -73,8 +73,8 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, transfer_op));
     generate_block();
 
-    BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance, ASSET_GBG(1000));
-    BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, ASSET_GBG(10));
+    BOOST_CHECK_EQUAL(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).sbd_balance, ASSET_GBG(1000));
+    BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, ASSET_GBG(10));
 
     BOOST_TEST_MESSAGE("-- Creating bob request in same block");
 
@@ -142,18 +142,18 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
     upvote_request("dave", "dave-request", STEEMIT_100_PERCENT);
     upvote_request("frad", "frad-request", STEEMIT_100_PERCENT);
 
-    generate_blocks(db->get_comment_by_perm("bob", string("bob-request")).created
+    generate_blocks(_db.get_comment_by_perm("bob", string("bob-request")).created
         + wtop.duration, true);
 
     BOOST_TEST_MESSAGE("-- Checking bob and carol requests approved");
 
     {
-        const auto& wro = db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
+        const auto& wro = _db.get_worker_request(_db.get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
     }
     {
-        const auto& wro = db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id);
+        const auto& wro = _db.get_worker_request(_db.get_comment_by_perm("carol", string("carol-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
     }
@@ -162,14 +162,14 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
 
     generate_blocks(GOLOS_WORKER_CASHOUT_INTERVAL);
 
-    BOOST_CHECK_EQUAL(db->get_balance("bob", SBD_SYMBOL), ASSET_GBG(60));
+    BOOST_CHECK_EQUAL(_db.get_balance("bob", SBD_SYMBOL), ASSET_GBG(60));
     {
-        const auto& wro = db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
+        const auto& wro = _db.get_worker_request(_db.get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
     }
-    BOOST_CHECK_EQUAL(db->get_balance("carol", SBD_SYMBOL), ASSET_GBG(60));
+    BOOST_CHECK_EQUAL(_db.get_balance("carol", SBD_SYMBOL), ASSET_GBG(60));
     {
-        const auto& wro = db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id);
+        const auto& wro = _db.get_worker_request(_db.get_comment_by_perm("carol", string("carol-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
     }
 }
@@ -178,9 +178,9 @@ BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
     BOOST_TEST_MESSAGE("Testing: worker_request_payment_vests");
 
     ACTORS((alice)(bob)(carol)(dave)(frad))
-    auto emission_per_block = db->get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL);
+    auto emission_per_block = _db.get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL);
     generate_block();
-    emission_per_block = db->get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL) - emission_per_block;
+    emission_per_block = _db.get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL) - emission_per_block;
 
     signed_transaction tx;
 
@@ -227,39 +227,39 @@ BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
     upvote_request("bob", "bob-request", STEEMIT_100_PERCENT);
     upvote_request("carol", "carol-request", STEEMIT_100_PERCENT);
 
-    generate_blocks(db->get_comment_by_perm("bob", string("bob-request")).created
+    generate_blocks(_db.get_comment_by_perm("bob", string("bob-request")).created
         + wtop.duration, true);
 
     BOOST_TEST_MESSAGE("-- Checking bob and carol requests approved");
 
     {
-        const auto& wro = db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
+        const auto& wro = _db.get_worker_request(_db.get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
     }
     {
-        const auto& wro = db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id);
+        const auto& wro = _db.get_worker_request(_db.get_comment_by_perm("carol", string("carol-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
     }
 
     BOOST_TEST_MESSAGE("-- Waiting for payment");
 
-    auto funds_need = ASSET_GOLOS(12) - db->get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL);
-    auto blocks_need = db->head_block_num() + funds_need.amount.value / emission_per_block.amount.value;
+    auto funds_need = ASSET_GOLOS(12) - _db.get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL);
+    auto blocks_need = _db.head_block_num() + funds_need.amount.value / emission_per_block.amount.value;
     auto actual_blocks_need = blocks_need / GOLOS_WORKER_CASHOUT_INTERVAL * GOLOS_WORKER_CASHOUT_INTERVAL;
     if (actual_blocks_need != blocks_need)
         actual_blocks_need += GOLOS_WORKER_CASHOUT_INTERVAL;
     generate_blocks(actual_blocks_need);
 
-    BOOST_CHECK_EQUAL(db->get_balance("bob", STEEM_SYMBOL), ASSET_GOLOS(6));
+    BOOST_CHECK_EQUAL(_db.get_balance("bob", STEEM_SYMBOL), ASSET_GOLOS(6));
     {
-        const auto& wro = db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
+        const auto& wro = _db.get_worker_request(_db.get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
     }
-    BOOST_CHECK_EQUAL(db->get_balance("carol", STEEM_SYMBOL).amount, 0);
+    BOOST_CHECK_EQUAL(_db.get_balance("carol", STEEM_SYMBOL).amount, 0);
     {
-        const auto& wro = db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id);
+        const auto& wro = _db.get_worker_request(_db.get_comment_by_perm("carol", string("carol-request")).id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment_complete);
     }
 }

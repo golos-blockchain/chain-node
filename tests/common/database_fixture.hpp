@@ -672,11 +672,22 @@ namespace golos { namespace chain {
         };
 
         struct clean_database_fixture : public database_fixture {
-            clean_database_fixture(bool init = true);
+            clean_database_fixture(bool init = true,
+                std::function<void()> custom_init = {});
 
             ~clean_database_fixture() override;
 
             void resize_shared_mem(uint64_t size);
+        };
+
+        struct clean_database_fixture_wrap : public clean_database_fixture {
+            clean_database_fixture_wrap(bool init = true,
+                std::function<void()> custom_init = {}) :
+                    clean_database_fixture(init, custom_init),
+                    _db(*db) {
+            }
+
+            chain::database& _db;
         };
 
         struct live_database_fixture : public database_fixture {

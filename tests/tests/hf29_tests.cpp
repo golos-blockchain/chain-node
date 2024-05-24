@@ -7,7 +7,7 @@ using namespace golos;
 using namespace golos::chain;
 using namespace golos::protocol;
 
-BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
+BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
 
     BOOST_AUTO_TEST_CASE(paid_subscription_create_validate) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscription_create_validate");
@@ -193,11 +193,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscription");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto& idx = db->get_index<paid_subscriber_index, by_author_oid_subscriber>();
+            const auto& idx = _db.get_index<paid_subscriber_index, by_author_oid_subscriber>();
             auto ssingle = idx.find(std::make_tuple("alice", pscop.oid));
             BOOST_CHECK(ssingle != idx.end());
             BOOST_CHECK_EQUAL(ssingle->active, true);
@@ -208,8 +208,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("bob").tip_balance, asset(5000, STEEM_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").tip_balance, asset(15000, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("bob").tip_balance, asset(5000, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").tip_balance, asset(15000, STEEM_SYMBOL));
 
         BOOST_TEST_MESSAGE("-- Create periodic paid subscription by alice");
 
@@ -244,23 +244,23 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, pstop));
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, pstop2));
 
-        auto created = db->head_block_time();
+        auto created = _db.head_block_time();
         generate_block();
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 2);
 
-            const auto* dave = db->find_paid_subscriber("dave", "alice", pscop.oid);
+            const auto* dave = _db.find_paid_subscriber("dave", "alice", pscop.oid);
             BOOST_CHECK(dave != nullptr);
             BOOST_CHECK_EQUAL(dave->active, true);
             BOOST_CHECK_EQUAL(dave->prepaid.amount.value, 0);
             BOOST_CHECK_EQUAL(dave->next_payment, created + fc::seconds(30));
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(1510, SBD_SYMBOL));
@@ -271,16 +271,16 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("dave").sbd_balance, asset(0, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("dave").sbd_balance, asset(0, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
 
         BOOST_TEST_MESSAGE("-- Wait for next payment");
 
         generate_blocks(30 / STEEMIT_BLOCK_INTERVAL - 2);
 
         {
-            const auto* dave = db->find_paid_subscriber("dave", "alice", pscop.oid);
+            const auto* dave = _db.find_paid_subscriber("dave", "alice", pscop.oid);
             BOOST_CHECK(dave != nullptr);
             BOOST_CHECK_EQUAL(dave->active, true);
             BOOST_CHECK_EQUAL(dave->next_payment, created + fc::seconds(30));
@@ -292,17 +292,17 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* dave = db->find_paid_subscriber("dave", "alice", pscop.oid);
+            const auto* dave = _db.find_paid_subscriber("dave", "alice", pscop.oid);
             BOOST_CHECK(dave != nullptr);
             BOOST_CHECK_EQUAL(dave->active, false); // he paid for 1 interval
             BOOST_CHECK_EQUAL(dave->prepaid.amount.value, 0);
             BOOST_CHECK_EQUAL(dave->next_payment, fc::time_point_sec(0));
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(1010, SBD_SYMBOL));
@@ -311,9 +311,9 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("dave").sbd_balance, asset(0, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("dave").sbd_balance, asset(0, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
 
         validate_database();
 
@@ -324,11 +324,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(510, SBD_SYMBOL));
@@ -337,8 +337,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500 + 500, SBD_SYMBOL));
 
         validate_database();
 
@@ -349,11 +349,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -362,8 +362,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500 + 500 + 510, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500 + 500 + 510, SBD_SYMBOL));
 
         validate_database();
 
@@ -374,11 +374,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", paid_subscription_id{"alicegram", "hugs", 1});
+            const auto& pso = _db.get_paid_subscription("alice", paid_subscription_id{"alicegram", "hugs", 1});
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 0);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, false);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -387,8 +387,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500 + 500 + 510, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500 + 500 + 510, SBD_SYMBOL));
 
         validate_database();
 
@@ -416,17 +416,17 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, pstop));
 
-        auto updated = db->head_block_time();
+        auto updated = _db.head_block_time();
         generate_block();
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(10, STEEM_SYMBOL));
@@ -440,11 +440,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(9, STEEM_SYMBOL));
@@ -453,9 +453,9 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500 + 500 + 510, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(1, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500 + 500 + 510, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(1, STEEM_SYMBOL));
 
         validate_database();
 
@@ -466,11 +466,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(8, STEEM_SYMBOL));
@@ -479,7 +479,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(2, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(2, STEEM_SYMBOL));
 
         validate_database();
 
@@ -490,11 +490,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, STEEM_SYMBOL));
@@ -503,7 +503,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(10, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(10, STEEM_SYMBOL));
 
         validate_database();
 
@@ -514,11 +514,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 0);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, false);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, STEEM_SYMBOL));
@@ -527,7 +527,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(10, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(10, STEEM_SYMBOL));
 
         validate_database();
 
@@ -566,17 +566,17 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         pstop.from_tip = false;
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, pstop));
 
-        auto created = db->head_block_time();
+        auto created = _db.head_block_time();
         generate_block();
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -587,8 +587,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
 
         BOOST_TEST_MESSAGE("-- Wait for next payment");
 
@@ -597,11 +597,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -610,8 +610,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(9000, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(9000, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
 
         validate_database();
 
@@ -622,11 +622,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -635,8 +635,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(8500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
 
         validate_database();
 
@@ -647,11 +647,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 0);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, false);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -660,8 +660,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(8500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
 
         validate_database();
 
@@ -680,7 +680,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, false);
             BOOST_CHECK_EQUAL(carol->cost, asset(1, STEEM_SYMBOL));
@@ -699,17 +699,17 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         pstop.from_tip = false;
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, pstop));
 
-        auto updated = db->head_block_time();
+        auto updated = _db.head_block_time();
         generate_block();
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, STEEM_SYMBOL));
@@ -720,10 +720,10 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(8500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("carol").balance, asset(999, STEEM_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(1, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(999, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(1, STEEM_SYMBOL));
 
         BOOST_TEST_MESSAGE("-- Wait for next payment");
 
@@ -732,11 +732,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, STEEM_SYMBOL));
@@ -745,10 +745,10 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(8500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("carol").balance, asset(998, STEEM_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(2, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(998, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(2, STEEM_SYMBOL));
 
         validate_database();
 
@@ -770,11 +770,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -783,10 +783,10 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(8490, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500 + 10, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("carol").balance, asset(998, STEEM_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(2, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8490, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500 + 10, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(998, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(2, STEEM_SYMBOL));
 
         validate_database();
 
@@ -797,11 +797,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 0);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, false);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -810,10 +810,10 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(8490, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500 + 500 + 10, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("carol").balance, asset(998, STEEM_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(2, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8490, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500 + 10, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(998, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(2, STEEM_SYMBOL));
 
         validate_database();
 
@@ -858,11 +858,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
@@ -873,8 +873,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
 
         BOOST_TEST_MESSAGE("-- Update subscription, to 0.001 GOLOS");
 
@@ -891,11 +891,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 0);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, false);
             BOOST_CHECK_EQUAL(carol->cost, psuop.cost);
@@ -919,11 +919,11 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->cost, psuop.cost);
@@ -968,14 +968,14 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, pstop));
 
-        auto created = db->head_block_time();
+        auto created = _db.head_block_time();
         generate_block();
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         fc::time_point_sec next_payment;
         {
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(1510, SBD_SYMBOL));
@@ -987,8 +987,8 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(7990, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
 
         BOOST_TEST_MESSAGE("-- Update subscription, to 0.001 GOLOS");
 
@@ -1019,7 +1019,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(10, STEEM_SYMBOL));
@@ -1033,7 +1033,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(9, STEEM_SYMBOL));
@@ -1042,10 +1042,10 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances (incl. check GBG moneyback)");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("carol").balance, asset(9990, STEEM_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").balance, asset(1, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(9990, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(1, STEEM_SYMBOL));
 
         validate_database();
 
@@ -1094,7 +1094,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(1010, SBD_SYMBOL));
         }
@@ -1106,7 +1106,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(510, SBD_SYMBOL));
         }
@@ -1118,7 +1118,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(10, SBD_SYMBOL));
         }
@@ -1132,7 +1132,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, false);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(10, SBD_SYMBOL));
@@ -1199,23 +1199,23 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         pstop.from = "dave";
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, pstop));
 
-        auto created = db->head_block_time();
+        auto created = _db.head_block_time();
         generate_block();
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 2);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 2);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
             BOOST_CHECK_EQUAL(carol->prepaid, asset(1500, SBD_SYMBOL));
             BOOST_CHECK_EQUAL(carol->next_payment, created + fc::seconds(30));
 
-            const auto* dave = db->find_paid_subscriber("dave", "alice", pscop.oid);
+            const auto* dave = _db.find_paid_subscriber("dave", "alice", pscop.oid);
             BOOST_CHECK(dave != nullptr);
             BOOST_CHECK_EQUAL(dave->active, true);
             BOOST_CHECK_EQUAL(dave->prepaid, asset(1500, SBD_SYMBOL));
@@ -1226,9 +1226,9 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(8000, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("dave").sbd_balance, asset(8000, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8000, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("dave").sbd_balance, asset(8000, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
 
         validate_database();
 
@@ -1244,14 +1244,14 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto& pso = db->get_paid_subscription("alice", pscop.oid);
+            const auto& pso = _db.get_paid_subscription("alice", pscop.oid);
             BOOST_CHECK_EQUAL(pso.subscribers, 1);
             BOOST_CHECK_EQUAL(pso.active_subscribers, 1);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol == nullptr);
 
-            const auto* dave = db->find_paid_subscriber("dave", "alice", pscop.oid);
+            const auto* dave = _db.find_paid_subscriber("dave", "alice", pscop.oid);
             BOOST_CHECK(dave != nullptr);
             BOOST_CHECK_EQUAL(dave->active, true);
         }
@@ -1260,9 +1260,9 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances (carol should receive 1.500 GBG moneyback)");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("dave").sbd_balance, asset(8000, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("dave").sbd_balance, asset(8000, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
 
         BOOST_TEST_MESSAGE("-- Delete subscription by alice");
 
@@ -1275,13 +1275,13 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
         {
-            const auto* pso = db->find_paid_subscription("alice", pscop.oid);
+            const auto* pso = _db.find_paid_subscription("alice", pscop.oid);
             BOOST_CHECK(pso == nullptr);
 
-            const auto* carol = db->find_paid_subscriber("carol", "alice", pscop.oid);
+            const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol == nullptr);
 
-            const auto* dave = db->find_paid_subscriber("dave", "alice", pscop.oid);
+            const auto* dave = _db.find_paid_subscriber("dave", "alice", pscop.oid);
             BOOST_CHECK(dave == nullptr);
         }
 
@@ -1289,9 +1289,9 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check balances (carol and dave should receive moneyback)");
 
-        BOOST_CHECK_EQUAL(db->get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("dave").sbd_balance, asset(9500, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(db->get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(9500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("dave").sbd_balance, asset(9500, SBD_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500, SBD_SYMBOL));
 
     } FC_LOG_AND_RETHROW() }
 

@@ -19,26 +19,22 @@
 
 namespace golos { namespace chain {
 
-    struct hf17_database_fixture: public database_fixture {
-        hf17_database_fixture() {
-            try {
-                initialize();
-                open_database();
+    struct hf17_database_fixture: public clean_database_fixture_wrap {
+        hf17_database_fixture() : clean_database_fixture_wrap(true, [&]() {
+            initialize();
+            open_database();
 
-                generate_block();
-                db->set_hardfork(STEEMIT_HARDFORK_0_16);
-                startup(false);
-            } catch (const fc::exception& e) {
-                edump((e.to_detail_string()));
-                throw;
-            }
+            generate_block();
+            db->set_hardfork(STEEMIT_HARDFORK_0_16);
+            startup(false);
+        }) {
         }
 
         ~hf17_database_fixture() {
         }
 
         uint128_t quadratic_curve(uint128_t rshares) const {
-            auto s = db->get_content_constant_s();
+            auto s = _db.get_content_constant_s();
             return (rshares + s) * (rshares + s) - s * s;
         }
 
@@ -68,9 +64,9 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             ACTORS((alice)(bob)(sam))
             generate_block();
 
-            const auto& alice_account = db->get_account("alice");
-            const auto& bob_account = db->get_account("bob");
-            const auto& sam_account = db->get_account("sam");
+            const auto& alice_account = _db.get_account("alice");
+            const auto& bob_account = _db.get_account("bob");
+            const auto& sam_account = _db.get_account("sam");
 
             vest("alice", ASSET("30.000 GOLOS"));
             vest("bob", ASSET("20.000 GOLOS"));
@@ -78,7 +74,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             generate_block();
             validate_database();
 
-            const auto& gpo = db->get_dynamic_global_properties();
+            const auto& gpo = _db.get_dynamic_global_properties();
             BOOST_CHECK_EQUAL(gpo.total_reward_shares2, 0);
 
             comment_op.author = "alice";
@@ -88,22 +84,22 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.body = "foo bar";
 
             tx.operations = {comment_op};
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.set_expiration(_db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.sign(alice_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
             generate_block();
 
-            const auto& alice_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
+            const auto& alice_comment = _db.get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             comment_op.author = "bob";
 
             tx.operations = {comment_op};
             tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.sign(bob_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
             generate_block();
 
-            const auto& bob_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
+            const auto& bob_comment = _db.get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             vote_op.voter = "bob";
             vote_op.author = "alice";
@@ -112,17 +108,17 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
 
             tx.operations = {vote_op};
             tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.sign(bob_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
 
             vote_op.voter = "sam";
             vote_op.weight = STEEMIT_1_PERCENT * 50;
 
             tx.operations = {vote_op};
             tx.signatures.clear();
-            tx.sign(sam_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
-            generate_blocks(db->head_block_time() + fc::seconds(STEEMIT_MIN_VOTE_INTERVAL_SEC), true);
+            tx.sign(sam_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
+            generate_blocks(_db.head_block_time() + fc::seconds(STEEMIT_MIN_VOTE_INTERVAL_SEC), true);
 
             vote_op.voter = "alice";
             vote_op.author = "bob";
@@ -131,16 +127,16 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
 
             tx.operations = {vote_op};
             tx.signatures.clear();
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.sign(alice_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
 
             vote_op.voter = "sam";
             vote_op.weight = STEEMIT_1_PERCENT * 50;
 
             tx.operations = {vote_op};
             tx.signatures.clear();
-            tx.sign(sam_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.sign(sam_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
             generate_block();
 
             validate_database();
@@ -163,7 +159,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
                 gpo.total_reward_shares2,
                 quadratic_curve(alice_comment.net_rshares.value) + quadratic_curve(bob_comment.net_rshares.value));
 
-            db->set_hardfork(STEEMIT_HARDFORK_0_17);
+            _db.set_hardfork(STEEMIT_HARDFORK_0_17);
 
             generate_block();
             validate_database();
@@ -179,11 +175,11 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
 
             tx.operations = {comment_op};
             tx.signatures.clear();
-            tx.sign(sam_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.sign(sam_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
             generate_block();
 
-            const auto& sam_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
+            const auto& sam_comment = _db.get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             vote_op.voter = "alice";
             vote_op.author = "sam";
@@ -192,8 +188,8 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
 
             tx.operations = {vote_op};
             tx.signatures.clear();
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.sign(alice_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
             generate_block();
 
             BOOST_CHECK_EQUAL(
@@ -232,29 +228,29 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.body = "foo bar";
 
             tx.operations = { comment_op };
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.set_expiration(_db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.sign(alice_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
             generate_block();
 
-            const auto& alice_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
+            const auto& alice_comment = _db.get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             comment_op.author = "bob";
 
             tx.operations = { comment_op };
             tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.sign(bob_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
             generate_block();
 
-            const auto& bob_comment = db->get_comment_by_perm(comment_op.author, comment_op.permlink);
+            const auto& bob_comment = _db.get_comment_by_perm(comment_op.author, comment_op.permlink);
 
             validate_database();
 
             BOOST_CHECK_EQUAL(alice_comment.cashout_time, alice_comment.created +STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17);
             BOOST_CHECK_EQUAL(bob_comment.cashout_time, bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17);
 
-            db->set_hardfork(STEEMIT_HARDFORK_0_17);
+            _db.set_hardfork(STEEMIT_HARDFORK_0_17);
             generate_block();
             validate_database();
 
@@ -290,9 +286,9 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.title = "bar";
             comment_op.body = "foo bar";
             tx.operations = { comment_op };
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
+            tx.set_expiration(_db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.sign(alice_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
             generate_block();
 
             comment_op.parent_permlink = comment_op.permlink;
@@ -301,9 +297,9 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.permlink = "bob-comment-1";
             tx.operations = { comment_op };
             tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
-            generate_blocks(db->head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
+            tx.sign(bob_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
+            generate_blocks(_db.head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
 
             comment_op.parent_permlink = comment_op.permlink;
             comment_op.parent_author = comment_op.author;
@@ -311,9 +307,9 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.permlink = "alice-comment-2";
             tx.operations = { comment_op };
             tx.signatures.clear();
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
-            generate_blocks(db->head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
+            tx.sign(alice_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
+            generate_blocks(_db.head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
 
             comment_op.parent_permlink = comment_op.permlink;
             comment_op.parent_author = comment_op.author;
@@ -321,9 +317,9 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.permlink = "bob-comment-3";
             tx.operations = { comment_op };
             tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
-            generate_blocks(db->head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
+            tx.sign(bob_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
+            generate_blocks(_db.head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
 
             comment_op.parent_permlink = comment_op.permlink;
             comment_op.parent_author = comment_op.author;
@@ -331,9 +327,9 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.permlink = "alice-comment-4";
             tx.operations = { comment_op };
             tx.signatures.clear();
-            tx.sign(alice_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
-            generate_blocks(db->head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
+            tx.sign(alice_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
+            generate_blocks(_db.head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
 
             comment_op.parent_permlink = comment_op.permlink;
             comment_op.parent_author = comment_op.author;
@@ -341,9 +337,9 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.permlink = "bob-comment-5";
             tx.operations = { comment_op };
             tx.signatures.clear();
-            tx.sign(bob_private_key, db->get_chain_id());
-            db->push_transaction(tx, 0);
-            generate_blocks(db->head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
+            tx.sign(bob_private_key, _db.get_chain_id());
+            _db.push_transaction(tx, 0);
+            generate_blocks(_db.head_block_time() + STEEMIT_MIN_REPLY_INTERVAL);
 
             comment_op.parent_permlink = comment_op.permlink;
             comment_op.parent_author = comment_op.author;
@@ -351,15 +347,15 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_op.permlink = "alice-comment-6";
             tx.operations = { comment_op };
             tx.signatures.clear();
-            tx.sign(alice_private_key, db->get_chain_id());
-            STEEMIT_CHECK_THROW(db->push_transaction(tx, 0), fc::exception);
+            tx.sign(alice_private_key, _db.get_chain_id());
+            STEEMIT_CHECK_THROW(_db.push_transaction(tx, 0), fc::exception);
 
             generate_block();
-            db->set_hardfork(STEEMIT_HARDFORK_0_17);
+            _db.set_hardfork(STEEMIT_HARDFORK_0_17);
             generate_block();
             validate_database();
 
-            db->push_transaction(tx, 0);
+            _db.push_transaction(tx, 0);
         }
         FC_LOG_AND_RETHROW()
     }

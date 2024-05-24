@@ -25,11 +25,12 @@ using golos::chain::account_name_set;
 using namespace golos::plugins::account_notes;
 
 
-struct account_notes_fixture : public golos::chain::database_fixture {
-    account_notes_fixture() : golos::chain::database_fixture() {
+struct account_notes_fixture : public golos::chain::clean_database_fixture_wrap {
+    account_notes_fixture() : golos::chain::clean_database_fixture_wrap(true, [&]() {
         initialize<golos::plugins::account_notes::account_notes_plugin>();
         open_database();
         startup();
+    }) {
     }
 };
 
@@ -92,7 +93,7 @@ BOOST_AUTO_TEST_CASE(account_notes_apply) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
 
-    const auto& notes_idx = db->get_index<account_note_index, by_account_key>();
+    const auto& notes_idx = _db.get_index<account_note_index, by_account_key>();
     auto notes_itr = notes_idx.find(std::make_tuple(op.account, op.key));
     BOOST_CHECK(notes_itr != notes_idx.end());
 
@@ -138,7 +139,7 @@ BOOST_AUTO_TEST_CASE(account_notes_size_limits) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
 
-    const auto& notes_idx = db->get_index<account_note_index, by_account_key>();
+    const auto& notes_idx = _db.get_index<account_note_index, by_account_key>();
     auto notes_itr = notes_idx.find(std::make_tuple(op.account, op.key));
     BOOST_CHECK(notes_itr == notes_idx.end());
 
@@ -213,10 +214,10 @@ BOOST_AUTO_TEST_CASE(account_notes_count_limit_delete) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
     generate_block();
 
-    const auto& notes_idx = db->get_index<account_note_index, golos::plugins::account_notes::by_account_key>();
+    const auto& notes_idx = _db.get_index<account_note_index, golos::plugins::account_notes::by_account_key>();
     BOOST_CHECK_EQUAL(notes_idx.count(op.account), 10);
 
-    const auto& stats_idx = db->get_index<account_note_stats_index, golos::plugins::account_notes::by_account>();
+    const auto& stats_idx = _db.get_index<account_note_stats_index, golos::plugins::account_notes::by_account>();
     auto stats_itr = stats_idx.find(op.account);
     BOOST_CHECK(stats_itr != stats_idx.end());
     BOOST_CHECK_EQUAL(stats_itr->note_count, 10);

@@ -4,10 +4,10 @@
 using namespace golos::plugins::cryptor;
 using golos::plugins::json_rpc::msg_pack;
 
-struct cryptor_fixture : public clean_database_fixture {
-    cryptor_fixture() : clean_database_fixture(false) {
+struct cryptor_fixture : public clean_database_fixture_wrap {
+    cryptor_fixture() : clean_database_fixture_wrap(true, [&]() {
         initialize();
-
+    }) {
         c_plugin = &(appbase::app().register_plugin<cryptor>());
 
         std::vector<const char*> args;

@@ -42,6 +42,7 @@ BOOST_AUTO_TEST_CASE(comment_feed_test) {
         {"event-blocks", "100"},
         {"store-evaluator-events", "true"}
     });
+    auto& _db = *db;
 
     ACTORS((alice)(bob));
 
@@ -84,7 +85,7 @@ BOOST_AUTO_TEST_CASE(comment_feed_test) {
     BOOST_TEST_MESSAGE("--- Getting events");
 
     msg_pack mp;
-    mp.args = std::vector<fc::variant>({fc::variant(db->head_block_num()), fc::variant(false)});
+    mp.args = std::vector<fc::variant>({fc::variant(_db.head_block_num()), fc::variant(false)});
     auto events = e_plugin->get_events_in_block(mp);
     auto str = fc::json::to_string(events);
 
@@ -102,7 +103,7 @@ BOOST_AUTO_TEST_CASE(comment_feed_test) {
 
     BOOST_TEST_MESSAGE("--- Checking events are cleared now");
 
-    mp.args = std::vector<fc::variant>({fc::variant(db->head_block_num()), fc::variant(false)});
+    mp.args = std::vector<fc::variant>({fc::variant(_db.head_block_num()), fc::variant(false)});
     events = e_plugin->get_events_in_block(mp);
     str = fc::json::to_string(events);
 

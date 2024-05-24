@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     BOOST_TEST_MESSAGE("-- Trying decrypt (fail: active key, but only posting allowed)");
 
-    auto block_num = db->head_block_num();
+    auto block_num = _db.head_block_num();
     dq.signed_data.head_block_number = block_num;
 
     auto sig_hash = fc::sha256::hash(std::to_string(block_num));
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     BOOST_TEST_MESSAGE("-- Trying decrypt using author + hashlink (ok)");
 
-    const auto& cmt = db->get_comment_by_perm("alice", std::string("test"));
+    const auto& cmt = _db.get_comment_by_perm("alice", std::string("test"));
 
     dq.entries.clear();
     dq.entries.push_back(fc::mutable_variant_object()

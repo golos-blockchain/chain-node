@@ -30,11 +30,12 @@ using golos::chain::account_name_set;
 using namespace golos::plugins::follow;
 
 
-struct follow_fixture : public golos::chain::database_fixture {
-    follow_fixture() : golos::chain::database_fixture() {
+struct follow_fixture : public golos::chain::clean_database_fixture_wrap {
+    follow_fixture() : golos::chain::clean_database_fixture_wrap(true, [&]() {
         initialize<golos::plugins::follow::plugin>();
         open_database();
         startup();
+    }) {
     }
 };
 

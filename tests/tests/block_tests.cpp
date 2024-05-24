@@ -400,11 +400,11 @@ BOOST_AUTO_TEST_SUITE(block_tests)
         }
     }
 
-    BOOST_FIXTURE_TEST_CASE(optional_tapos, clean_database_fixture) {
+    BOOST_FIXTURE_TEST_CASE(optional_tapos, clean_database_fixture_wrap) {
         try {
             BOOST_TEST_MESSAGE("Testing: optional_tapos");
 
-            idump((db->get_account(STEEMIT_INIT_MINER_NAME)));
+            idump((_db.get_account(STEEMIT_INIT_MINER_NAME)));
             ACTORS((alice)(bob));
 
             generate_block();
@@ -425,16 +425,16 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             tx.ref_block_prefix = 0;
             tx.signatures.clear();
             tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
+                    _db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.sign(alice_private_key, _db.get_chain_id());
             PUSH_TX(*db, tx);
 
             BOOST_TEST_MESSAGE("proper ref_block_num, ref_block_prefix");
 
             tx.signatures.clear();
             tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
+                    _db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.sign(alice_private_key, _db.get_chain_id());
             PUSH_TX(*db, tx, database::skip_transaction_dupe_check);
 
             BOOST_TEST_MESSAGE("ref_block_num=0, ref_block_prefix=12345678");
@@ -443,8 +443,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             tx.ref_block_prefix = 0x12345678;
             tx.signatures.clear();
             tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
+                    _db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.sign(alice_private_key, _db.get_chain_id());
             STEEMIT_REQUIRE_THROW(PUSH_TX(*db, tx, database::skip_transaction_dupe_check), fc::exception);
 
             BOOST_TEST_MESSAGE("ref_block_num=1, ref_block_prefix=12345678");
@@ -453,8 +453,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             tx.ref_block_prefix = 0x12345678;
             tx.signatures.clear();
             tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
+                    _db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.sign(alice_private_key, _db.get_chain_id());
             STEEMIT_REQUIRE_THROW(PUSH_TX(*db, tx, database::skip_transaction_dupe_check), fc::exception);
 
             BOOST_TEST_MESSAGE("ref_block_num=9999, ref_block_prefix=12345678");
@@ -463,8 +463,8 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             tx.ref_block_prefix = 0x12345678;
             tx.signatures.clear();
             tx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
-            tx.sign(alice_private_key, db->get_chain_id());
+                    _db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.sign(alice_private_key, _db.get_chain_id());
             STEEMIT_REQUIRE_THROW(PUSH_TX(*db, tx, database::skip_transaction_dupe_check), fc::exception);
         }
         catch (fc::exception& e) {
@@ -473,7 +473,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
         }
     }
 
-    BOOST_FIXTURE_TEST_CASE(double_sign_check, clean_database_fixture) {
+    BOOST_FIXTURE_TEST_CASE(double_sign_check, clean_database_fixture_wrap) {
         try {
             BOOST_TEST_MESSAGE("Testing: double_sign_check");
 
@@ -487,10 +487,10 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             t.amount = asset(amount, STEEM_SYMBOL);
             trx.operations.push_back(t);
             trx.set_expiration(
-                    db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+                    _db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
             trx.validate();
 
-            db->push_transaction(trx, ~0);
+            _db.push_transaction(trx, ~0);
 
             trx.operations.clear();
             t.from = "bob";
@@ -500,27 +500,27 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             trx.validate();
 
             BOOST_TEST_MESSAGE("Verify that not-signing causes an exception");
-            STEEMIT_REQUIRE_THROW(db->push_transaction(trx, 0), fc::exception);
+            STEEMIT_REQUIRE_THROW(_db.push_transaction(trx, 0), fc::exception);
 
             BOOST_TEST_MESSAGE("Verify that double-signing causes an exception");
-            trx.sign(bob_private_key, db->get_chain_id());
-            trx.sign(bob_private_key, db->get_chain_id());
-            STEEMIT_REQUIRE_THROW(db->push_transaction(trx, 0), tx_duplicate_sig);
+            trx.sign(bob_private_key, _db.get_chain_id());
+            trx.sign(bob_private_key, _db.get_chain_id());
+            STEEMIT_REQUIRE_THROW(_db.push_transaction(trx, 0), tx_duplicate_sig);
 
             BOOST_TEST_MESSAGE("Verify that signing with an extra, unused key fails");
             trx.signatures.pop_back();
-            trx.sign(generate_private_key("bogus"), db->get_chain_id());
-            STEEMIT_REQUIRE_THROW(db->push_transaction(trx, 0), tx_irrelevant_sig);
+            trx.sign(generate_private_key("bogus"), _db.get_chain_id());
+            STEEMIT_REQUIRE_THROW(_db.push_transaction(trx, 0), tx_irrelevant_sig);
 
             BOOST_TEST_MESSAGE("Verify that signing once with the proper key passes");
             trx.signatures.pop_back();
-            db->push_transaction(trx, 0);
-            trx.sign(bob_private_key, db->get_chain_id());
+            _db.push_transaction(trx, 0);
+            trx.sign(bob_private_key, _db.get_chain_id());
 
         } FC_LOG_AND_RETHROW()
     }
 
-    BOOST_FIXTURE_TEST_CASE(pop_block_twice, clean_database_fixture) {
+    BOOST_FIXTURE_TEST_CASE(pop_block_twice, clean_database_fixture_wrap) {
         try {
             BOOST_TEST_MESSAGE("Testing: pop_block_twice");
 
@@ -541,7 +541,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             transaction tx;
             signed_transaction ptx;
 
-            db->get_account(STEEMIT_INIT_MINER_NAME);
+            _db.get_account(STEEMIT_INIT_MINER_NAME);
             // transfer from committee account to Sam account
             transfer(STEEMIT_INIT_MINER_NAME, "sam", ASSET("100.000 GOLOS"));
 
@@ -552,22 +552,22 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             account_create("bob", generate_private_key("bob").get_public_key());
             generate_block(skip_flags);
 
-            db->pop_block();
-            db->pop_block();
+            _db.pop_block();
+            _db.pop_block();
         } catch (const fc::exception& e) {
             edump((e.to_detail_string()));
             throw;
         }
     }
 
-    BOOST_FIXTURE_TEST_CASE(rsf_missed_blocks, clean_database_fixture) {
+    BOOST_FIXTURE_TEST_CASE(rsf_missed_blocks, clean_database_fixture_wrap) {
         try {
             BOOST_TEST_MESSAGE("Testing: rsf_missed_blocks");
 
             generate_block();
 
             auto rsf = [&]() -> string {
-                fc::uint128_t rsf = db->get_dynamic_global_properties().recent_slots_filled;
+                fc::uint128_t rsf = _db.get_dynamic_global_properties().recent_slots_filled;
                 string result = "";
                 result.reserve(128);
                 for (int i = 0; i < 128; i++) {
@@ -586,7 +586,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "1111111111111111111111111111111111111111111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), STEEMIT_100_PERCENT);
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), STEEMIT_100_PERCENT);
 
             BOOST_TEST_MESSAGE("Generating a block skipping 1");
             generate_block(~database::skip_fork_db, init_account_priv_key, 1);
@@ -594,7 +594,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "0111111111111111111111111111111111111111111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(127));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(127));
 
             BOOST_TEST_MESSAGE("Generating a block skipping 1");
             generate_block(~database::skip_fork_db, init_account_priv_key, 1);
@@ -602,7 +602,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "0101111111111111111111111111111111111111111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(126));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(126));
 
             BOOST_TEST_MESSAGE("Generating a block skipping 2");
             generate_block(~database::skip_fork_db, init_account_priv_key, 2);
@@ -610,7 +610,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "0010101111111111111111111111111111111111111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(124));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(124));
 
             BOOST_TEST_MESSAGE("Generating a block for skipping 3");
             generate_block(~database::skip_fork_db, init_account_priv_key, 3);
@@ -618,7 +618,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "0001001010111111111111111111111111111111111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(121));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(121));
 
             BOOST_TEST_MESSAGE("Generating a block skipping 5");
             generate_block(~database::skip_fork_db, init_account_priv_key, 5);
@@ -626,7 +626,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "0000010001001010111111111111111111111111111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(116));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(116));
 
             BOOST_TEST_MESSAGE("Generating a block skipping 8");
             generate_block(~database::skip_fork_db, init_account_priv_key, 8);
@@ -634,7 +634,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "0000000010000010001001010111111111111111111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(108));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(108));
 
             BOOST_TEST_MESSAGE("Generating a block skipping 13");
             generate_block(~database::skip_fork_db, init_account_priv_key, 13);
@@ -642,7 +642,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "0000000000000100000000100000100010010101111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(95));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(95));
 
             BOOST_TEST_MESSAGE("Generating a block skipping none");
             generate_block();
@@ -650,7 +650,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "1000000000000010000000010000010001001010111111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(95));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(95));
 
             BOOST_TEST_MESSAGE("Generating a block");
             generate_block();
@@ -658,61 +658,61 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 "1100000000000001000000001000001000100101011111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(95));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(95));
 
             generate_block();
             BOOST_CHECK_EQUAL(rsf(),
                 "1110000000000000100000000100000100010010101111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(95));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(95));
 
             generate_block();
             BOOST_CHECK_EQUAL(rsf(),
                 "1111000000000000010000000010000010001001010111111111111111111111"
                 "1111111111111111111111111111111111111111111111111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(95));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(95));
 
             generate_block(~database::skip_fork_db, init_account_priv_key, 64);
             BOOST_CHECK_EQUAL(rsf(),
                 "0000000000000000000000000000000000000000000000000000000000000000"
                 "1111100000000000001000000001000001000100101011111111111111111111"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(31));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(31));
 
             generate_block(~database::skip_fork_db, init_account_priv_key, 32);
             BOOST_CHECK_EQUAL(rsf(),
                 "0000000000000000000000000000000010000000000000000000000000000000"
                 "0000000000000000000000000000000001111100000000000001000000001000"
             );
-            BOOST_CHECK_EQUAL(db->witness_participation_rate(), pct(8));
+            BOOST_CHECK_EQUAL(_db.witness_participation_rate(), pct(8));
         }
         FC_LOG_AND_RETHROW()
     }
 
-    BOOST_FIXTURE_TEST_CASE(skip_block, clean_database_fixture) {
+    BOOST_FIXTURE_TEST_CASE(skip_block, clean_database_fixture_wrap) {
         try {
             BOOST_TEST_MESSAGE("Testing: skip_block");
 
             BOOST_TEST_MESSAGE("Skipping blocks through db");
-            BOOST_CHECK_EQUAL(db->head_block_num(), 2);
+            BOOST_CHECK_EQUAL(_db.head_block_num(), 2);
 
-            int init_block_num = db->head_block_num();
+            int init_block_num = _db.head_block_num();
             int miss_blocks =
                     fc::minutes(1).to_seconds() / STEEMIT_BLOCK_INTERVAL;
-            auto witness = db->get_scheduled_witness(miss_blocks);
-            auto block_time = db->get_slot_time(miss_blocks);
-            db->generate_block(block_time, witness, init_account_priv_key, 0);
+            auto witness = _db.get_scheduled_witness(miss_blocks);
+            auto block_time = _db.get_slot_time(miss_blocks);
+            _db.generate_block(block_time, witness, init_account_priv_key, 0);
 
-            BOOST_CHECK_EQUAL(db->head_block_num(), init_block_num + 1);
-            BOOST_CHECK_EQUAL(db->head_block_time(), block_time);
+            BOOST_CHECK_EQUAL(_db.head_block_num(), init_block_num + 1);
+            BOOST_CHECK_EQUAL(_db.head_block_time(), block_time);
 
             BOOST_TEST_MESSAGE("Generating a block through fixture");
             generate_block();
 
-            BOOST_CHECK_EQUAL(db->head_block_num(), init_block_num + 2);
-            BOOST_CHECK_EQUAL(db->head_block_time(),
+            BOOST_CHECK_EQUAL(_db.head_block_num(), init_block_num + 2);
+            BOOST_CHECK_EQUAL(_db.head_block_time(),
                         block_time + STEEMIT_BLOCK_INTERVAL);
         }
         FC_LOG_AND_RETHROW();
@@ -731,45 +731,47 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 throw;
             }
 
+            auto& _db = *db;
+
             BOOST_TEST_MESSAGE("Check hardfork not applied at genesis");
-            BOOST_CHECK(db->has_hardfork(0));
-            BOOST_CHECK(!db->has_hardfork(STEEMIT_HARDFORK_0_1));
+            BOOST_CHECK(_db.has_hardfork(0));
+            BOOST_CHECK(!_db.has_hardfork(STEEMIT_HARDFORK_0_1));
 
             BOOST_TEST_MESSAGE("Generate blocks up to the hardfork time and check hardfork still not applied");
             generate_blocks(fc::time_point_sec(
                     STEEMIT_HARDFORK_0_1_TIME - STEEMIT_BLOCK_INTERVAL), true);
 
-            BOOST_CHECK(db->has_hardfork(0));
-            BOOST_CHECK(!db->has_hardfork(STEEMIT_HARDFORK_0_1));
+            BOOST_CHECK(_db.has_hardfork(0));
+            BOOST_CHECK(!_db.has_hardfork(STEEMIT_HARDFORK_0_1));
 
             BOOST_TEST_MESSAGE("Generate a block and check hardfork is applied");
             // hardfork time depends on genesis time, that is why we need more than 1 signed block
             generate_blocks(2);
 
             string op_msg = "Testnet: Hardfork applied";
-            auto itr = db->get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>().end();
+            auto itr = _db.get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>().end();
             itr--;
 
-            BOOST_CHECK(db->has_hardfork(0));
-            BOOST_CHECK(db->has_hardfork(STEEMIT_HARDFORK_0_1));
+            BOOST_CHECK(_db.has_hardfork(0));
+            BOOST_CHECK(_db.has_hardfork(STEEMIT_HARDFORK_0_1));
             BOOST_CHECK_EQUAL(
                     get_last_operations(1)[0].get<custom_operation>().data,
                     vector<char>(op_msg.begin(), op_msg.end()));
-            BOOST_CHECK_EQUAL(db->get(itr->op).timestamp, db->head_block_time());
+            BOOST_CHECK_EQUAL(_db.get(itr->op).timestamp, _db.head_block_time());
 
             BOOST_TEST_MESSAGE("Testing hardfork is only applied once");
             generate_block();
 
-            itr = db->get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>().end();
+            itr = _db.get_index<golos::plugins::account_history::account_history_index>().indices().get<by_id>().end();
             itr--;
 
-            BOOST_CHECK(db->has_hardfork(0));
-            BOOST_CHECK(db->has_hardfork(STEEMIT_HARDFORK_0_1));
+            BOOST_CHECK(_db.has_hardfork(0));
+            BOOST_CHECK(_db.has_hardfork(STEEMIT_HARDFORK_0_1));
             BOOST_CHECK_EQUAL(
                     get_last_operations(1)[0].get<custom_operation>().data,
                     vector<char>(op_msg.begin(), op_msg.end()));
-            BOOST_CHECK_EQUAL(db->get(itr->op).timestamp,
-                          db->head_block_time() - STEEMIT_BLOCK_INTERVAL);
+            BOOST_CHECK_EQUAL(_db.get(itr->op).timestamp,
+                          _db.head_block_time() - STEEMIT_BLOCK_INTERVAL);
         }
         FC_LOG_AND_RETHROW()
     }

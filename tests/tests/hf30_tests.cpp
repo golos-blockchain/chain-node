@@ -7,9 +7,9 @@ using namespace golos;
 using namespace golos::chain;
 using namespace golos::protocol;
 
-struct hf30_fixture : public clean_database_fixture {
+struct hf30_fixture : public clean_database_fixture_wrap {
 
-    hf30_fixture(bool init = true) : clean_database_fixture(init) {
+    hf30_fixture() : clean_database_fixture_wrap() {
     }
 
     void issue_nft(account_name_type creator, const private_key_type& creator_key,
@@ -103,13 +103,13 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         BOOST_TEST_MESSAGE("-- Check token and orders");
         {
-            const auto& nft = db->get_nft(1);
+            const auto& nft = _db.get_nft(1);
             BOOST_CHECK_EQUAL(nft.owner, "alice");
 
-            const auto* order = db->find_nft_order("bob", 1);
+            const auto* order = _db.find_nft_order("bob", 1);
             BOOST_CHECK_NE(order, nullptr);
             BOOST_CHECK_EQUAL(order->order_id, 1);
-            order = db->find_nft_order("bob", 2);
+            order = _db.find_nft_order("bob", 2);
             BOOST_CHECK_NE(order, nullptr);
             BOOST_CHECK_EQUAL(order->order_id, 2);
         }
@@ -154,12 +154,12 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         BOOST_TEST_MESSAGE("-- Check token and order (should be no order)");
 
         {
-            const auto& nft = db->get_nft(1);
+            const auto& nft = _db.get_nft(1);
             BOOST_CHECK_EQUAL(nft.owner, "bob");
 
-            const auto* order = db->find_nft_order("bob", 1);
+            const auto* order = _db.find_nft_order("bob", 1);
             BOOST_CHECK_EQUAL(order, nullptr);
-            order = db->find_nft_order("bob", 2);
+            order = _db.find_nft_order("bob", 2);
             BOOST_CHECK_EQUAL(order, nullptr);
         }
 
@@ -195,7 +195,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         naop.owner = "bob";
         naop.token_id = 1;
         naop.min_price = asset{1, STEEM_SYMBOL};
-        naop.expiration = db->head_block_time() + 180;
+        naop.expiration = _db.head_block_time() + 180;
 
         GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, naop),
             CHECK_ERROR(tx_invalid_operation, 0)
@@ -213,7 +213,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         BOOST_TEST_MESSAGE("-- Start auction (fail: expiration in past)");
 
         naop.min_price = asset{1, STEEM_SYMBOL};
-        naop.expiration = db->head_block_time() - 180;
+        naop.expiration = _db.head_block_time() - 180;
 
         GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, naop),
             CHECK_ERROR(tx_invalid_operation, 0)
@@ -221,7 +221,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         BOOST_TEST_MESSAGE("-- Start auction (fail: zero-amount which cancels but no auction)");
 
-        naop.expiration = db->head_block_time() + 180;
+        naop.expiration = _db.head_block_time() + 180;
         naop.min_price = asset{0, STEEM_SYMBOL};
 
         GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, naop),
@@ -239,7 +239,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         BOOST_TEST_MESSAGE("-- Start auction");
 
-        naop.expiration = db->head_block_time() + 180;
+        naop.expiration = _db.head_block_time() + 180;
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, naop));
 
         validate_database();
@@ -257,7 +257,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         BOOST_TEST_MESSAGE("-- Check token");
 
         {
-            const auto& nft = db->get_nft(1);
+            const auto& nft = _db.get_nft(1);
             BOOST_CHECK_EQUAL(nft.selling, false);
             BOOST_CHECK_EQUAL(nft.auction_min_price, naop.min_price);
             BOOST_CHECK_EQUAL(nft.auction_expiration, naop.expiration);
@@ -280,7 +280,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         BOOST_TEST_MESSAGE("-- Check token");
 
         {
-            const auto& nft = db->get_nft(1);
+            const auto& nft = _db.get_nft(1);
             BOOST_CHECK_EQUAL(nft.selling, true);
             BOOST_CHECK_EQUAL(nft.auction_min_price, naop.min_price);
             BOOST_CHECK_EQUAL(nft.auction_expiration, naop.expiration);

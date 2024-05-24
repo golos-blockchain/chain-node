@@ -168,14 +168,19 @@ namespace golos { namespace chain {
             appbase::reset();
         }
 
-        clean_database_fixture::clean_database_fixture(bool init) {
+        clean_database_fixture::clean_database_fixture(bool init,
+                std::function<void()> custom_init) {
             if (!init) return;
             try {
-                initialize();
+                if (custom_init) {
+                    custom_init();
+                } else {
+                    initialize();
 
-                open_database();
+                    open_database();
 
-                startup();
+                    startup();
+                }
             } catch (const fc::exception &e) {
                 edump((e.to_detail_string()));
                 throw;

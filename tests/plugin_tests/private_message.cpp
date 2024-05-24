@@ -18,12 +18,14 @@ using golos::object_already_exist;
 using namespace golos::protocol;
 using namespace golos::plugins::private_message;
 
-struct private_message_fixture : public golos::chain::database_fixture {
-    private_message_fixture() : golos::chain::database_fixture() {
+struct private_message_fixture : public golos::chain::clean_database_fixture_wrap {
+    private_message_fixture() : golos::chain::clean_database_fixture_wrap(true, [&]() {
+        // WARNING: no work with private_message_fixture fields here
         initialize<private_message_plugin>();
-        pm_plugin = appbase::app().find_plugin<private_message_plugin>();
         open_database();
         startup();
+    }) {
+        pm_plugin = appbase::app().find_plugin<private_message_plugin>();
     }
 
     private_message_plugin* pm_plugin = nullptr;
@@ -643,7 +645,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         rop.from = "sam";
         rop.to = "alice";
         rop.nonce = 0;
-        rop.stop_date = db->head_block_time();
+        rop.stop_date = _db.head_block_time();
         pop = rop;
         jop.json = fc::json::to_string(pop);
         jop.required_posting_auths = {"alice"};
@@ -696,7 +698,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         rop.from = "";
         rop.to = "alice";
         rop.nonce = 0;
-        rop.stop_date = db->head_block_time();
+        rop.stop_date = _db.head_block_time();
         pop = rop;
         jop.json = fc::json::to_string(pop);
         jop.required_posting_auths = {"alice"};
@@ -937,7 +939,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         dop.from = "bob";
         dop.to = "alice";
         dop.nonce = 0;
-        dop.stop_date = db->head_block_time();
+        dop.stop_date = _db.head_block_time();
         pop = dop;
         jop.json = fc::json::to_string(pop);
         jop.required_posting_auths = {"bob"};
