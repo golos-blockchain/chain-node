@@ -86,7 +86,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             BOOST_TEST_MESSAGE("Testing: account_create_authorities");
 
             signed_transaction tx;
-            ACTORS((alice));
+            ACTORS_OLD((alice));
 
             private_key_type priv_key = generate_private_key("temp_key");
 
@@ -241,7 +241,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account_update_validate");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
 
             account_update_operation op;
             op.account = "alice";
@@ -267,7 +267,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account_update_authorities");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             private_key_type active_key = generate_private_key("new_key");
 
             _db.modify(_db.get<account_authority_object, by_account>("alice"), [&](account_authority_object &a) {
@@ -356,7 +356,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account_update_apply");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
 
             signed_transaction tx;
 
@@ -493,7 +493,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: comment_authorities");
 
-            ACTORS((alice)(bob));
+            ACTORS_OLD((alice)(bob));
             generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
 
             comment_operation op;
@@ -544,7 +544,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: comment_apply");
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
             generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
 
             BOOST_TEST_MESSAGE("-- Checking initial conditions");
@@ -829,7 +829,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: vote_apply");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             generate_block();
 
             vest("alice", ASSET("10.000 GOLOS"));
@@ -1279,7 +1279,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
 
     BOOST_AUTO_TEST_CASE(transfer_authorities) {
         try {
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
 
             BOOST_TEST_MESSAGE("Testing: transfer_authorities");
@@ -1333,7 +1333,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             // Legitimate tx signed by (Alice, Bob) goes through.
             // Sam shouldn't be able to add or remove signatures to get the transaction to process multiple times.
 
-            ACTORS((alice)(bob)(sam)(corp))
+            ACTORS_OLD((alice)(bob)(sam)(corp))
             fund("corp", 10000);
 
             account_update_operation update_op;
@@ -1387,7 +1387,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_apply");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
 
             BOOST_CHECK_EQUAL(alice.balance.amount.value, ASSET("10.000 GOLOS").amount.value);
@@ -1518,7 +1518,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
 
     BOOST_AUTO_TEST_CASE(transfer_to_vesting_authorities) {
         try {
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
 
             BOOST_TEST_MESSAGE("Testing: transfer_to_vesting_authorities");
@@ -1569,7 +1569,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_to_vesting_apply");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
 
             const auto &gpo = _db.get_dynamic_global_properties();
@@ -1676,7 +1676,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: withdraw_vesting_authorities");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
             vest("alice", 10000);
 
@@ -1723,7 +1723,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: withdraw_vesting_apply");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
 
@@ -1903,7 +1903,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: witness_update_apply");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             fund("alice", 10000);
             private_key_type signing_key = generate_private_key("new_key");
 
@@ -2013,7 +2013,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account_witness_vote_authorities");
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
 
             fund("alice", 1000);
             private_key_type alice_witness_key = generate_private_key("alice_witness");
@@ -2071,7 +2071,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account_witness_vote_apply");
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
             fund("alice", 5000);
             vest("alice", 5000);
             fund("sam", 1000);
@@ -2213,13 +2213,13 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             BOOST_TEST_MESSAGE("Testing: account_witness_vote_staked");
 
             signed_transaction tx;
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             fund("alice", 5000);
             vest("alice", 5000);
             auto witness_key = generate_private_key("test");
             for (auto i = 0; i < 3; ++i) {
                 const auto name = "witness" + std::to_string(i);
-                GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key(), witness_key.get_public_key()));
+                GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key()));
                 fund(name, 1000);
                 GOLOS_CHECK_NO_THROW(witness_create(name, witness_key, "foo.bar", witness_key.get_public_key(), 1000));
             }
@@ -2302,7 +2302,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             BOOST_TEST_MESSAGE("Testing: account_witness_vote_staked_with_proxy");
 
             signed_transaction tx;
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 5000);
             vest("alice", 5000);
             fund("bob", 5000);
@@ -2310,7 +2310,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             auto witness_key = generate_private_key("test");
             for (auto i = 0; i < 3; ++i) {
                 const auto name = "witness" + std::to_string(i);
-                GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key(), witness_key.get_public_key()));
+                GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key()));
                 fund(name, 1000);
                 GOLOS_CHECK_NO_THROW(witness_create(name, witness_key, "foo.bar", witness_key.get_public_key(), 1000));
             }
@@ -2384,7 +2384,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account_witness_proxy_authorities");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
 
             account_witness_proxy_operation op;
             op.account = "bob";
@@ -2426,7 +2426,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account_witness_proxy_apply");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             fund("alice", 1000);
             vest("alice", 1000);
             fund("bob", 3000);
@@ -2634,7 +2634,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(custom_binary_authorities) {
         BOOST_TEST_MESSAGE("Testing: custom_binary_authorities");
 
-        ACTORS((alice))
+        ACTORS_OLD((alice))
 
         auto alice_authority = _db.get<account_authority_object, by_account>("alice").posting;
 
@@ -2701,7 +2701,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: feed_publish_authorities");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
             witness_create("alice", alice_private_key, "foo.bar", alice_private_key.get_public_key(), 1000);
 
@@ -2750,7 +2750,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: feed_publish_apply");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             fund("alice", 10000);
             witness_create("alice", alice_private_key, "foo.bar", alice_private_key.get_public_key(), 1000);
 
@@ -2832,7 +2832,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: convert_authorities");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
 
             set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
@@ -2887,7 +2887,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: convert_apply");
 
-            ACTORS((alice)(bob));
+            ACTORS_OLD((alice)(bob));
             fund("alice", 10000);
             fund("bob", 10000);
 
@@ -3024,7 +3024,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_create_authorities");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
 
             limit_order_create_operation op;
@@ -3074,7 +3074,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
 
             set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 1000000);
             fund("bob", 1000000);
             convert("bob", ASSET("1000.000 GOLOS"));
@@ -3453,7 +3453,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_create2_authorities");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
 
             limit_order_create2_operation op;
@@ -3503,7 +3503,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
 
             set_price_feed(price(ASSET("1.000 GOLOS"), ASSET("1.000 GBG")));
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 1000000);
             fund("bob", 1000000);
             convert("bob", ASSET("1000.000 GOLOS"));
@@ -3872,7 +3872,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_cancel_authorities");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             fund("alice", 10000);
 
             limit_order_create_operation c;
@@ -3931,7 +3931,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: limit_order_cancel_apply");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             fund("alice", 10000);
 
             const auto &limit_order_idx = _db.get_index<limit_order_index>().indices().get<by_account>();
@@ -4133,7 +4133,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account recovery");
 
-            ACTORS((alice));
+            ACTORS_OLD((alice));
             fund("alice", 1000000);
 
             BOOST_TEST_MESSAGE("--- Creating account bob with alice");
@@ -4309,7 +4309,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: vesting withdraw reset on account recover");
 
-            ACTORS((alice));
+            ACTORS_OLD((alice));
             fund("alice", 1000000);
 
             account_create_operation acc_create;
@@ -4476,7 +4476,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing change_recovery_account_operation");
 
-            ACTORS((alice)(sam))
+            ACTORS_OLD((alice)(sam))
 
             auto change_recovery_account = [&](const string& account_to_recover, const string& new_recovery_account) {
                 change_recovery_account_operation op;
@@ -4728,7 +4728,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             generate_block();
             STEEMIT_REQUIRE_THROW(_db.push_transaction(tx, 0), fc::exception);
 
-            ACTORS((bob))
+            ACTORS_OLD((bob))
             generate_block();
 
             target = _db.get_pow_summary_target();
@@ -4864,7 +4864,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(prove_authority_apply) { try {
         BOOST_TEST_MESSAGE("Testing: prove_authority_apply");
 
-        ACTOR(bob)
+        ACTOR_OLD(bob)
         prove_authority_operation op;
         op.challenged = "bob";
         signed_transaction tx;
@@ -4958,7 +4958,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_transfer_apply");
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
             fund("alice", 10000);
 
             escrow_transfer_operation op;
@@ -5090,7 +5090,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_approve_apply");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
             escrow_transfer_operation et_op;
@@ -5320,7 +5320,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_dispute_apply");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
             escrow_transfer_operation et_op;
@@ -5557,7 +5557,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: escrow_release_apply");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             fund("alice", 10000);
 
             escrow_transfer_operation et_op;
@@ -5905,7 +5905,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_to_savings_apply");
 
-            ACTORS((alice)(bob));
+            ACTORS_OLD((alice)(bob));
             generate_block();
             fund("alice", ASSET("10.000 GOLOS"));
             fund("alice", ASSET("10.000 GBG"));
@@ -6027,7 +6027,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_from_savings_apply");
 
-            ACTORS((alice)(bob));
+            ACTORS_OLD((alice)(bob));
             generate_block();
             fund("alice", ASSET("10.000 GOLOS"));
             fund("alice", ASSET("10.000 GBG"));
@@ -6175,7 +6175,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: transfer_from_savings_memo_storing_flag");
 
-            ACTORS((alice)(bob));
+            ACTORS_OLD((alice)(bob));
             generate_block();
             fund("alice", ASSET("10.000 GOLOS"));
 
@@ -6243,7 +6243,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: cancel_transfer_from_savings_apply");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             generate_block();
 
             fund("alice", ASSET("10.000 GOLOS"));
@@ -6317,7 +6317,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: decline_voting_rights_apply");
 
-            ACTORS((alice)(bob));
+            ACTORS_OLD((alice)(bob));
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
             vest("bob", ASSET("10.000 GOLOS"));
@@ -6432,7 +6432,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: account_bandwidth");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
             fund("alice", ASSET("10.000 GOLOS"));
@@ -6557,7 +6557,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: comment_beneficiaries_apply");
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
             generate_block();
 
             fund("alice", 10000);
@@ -6686,7 +6686,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: delete_comment_apply");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
 
             signed_transaction tx;
             delete_comment_operation op;
@@ -6803,7 +6803,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             BOOST_TEST_MESSAGE("Testing: account_create_with_delegation_apply");
 
             signed_transaction tx;
-            ACTOR(alice);
+            ACTOR_OLD(alice);
 
             generate_blocks(1);
             fund("alice", ASSET_GOLOS(10));
@@ -6963,7 +6963,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             BOOST_TEST_MESSAGE("Testing: delegate_vesting_shares_apply");
 
             signed_transaction tx;
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
 
             generate_block();
             vest("alice", ASSET_GOLOS(10000));
@@ -7044,7 +7044,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
 
             generate_block();
-            ACTORS((sam)(dave))
+            ACTORS_OLD((sam)(dave))
             BOOST_TEST_MESSAGE(_db.head_block_time().to_iso_string());
             generate_block();
             vest("sam", ASSET_GOLOS(1000));
@@ -7122,7 +7122,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             BOOST_TEST_MESSAGE("Testing: reject_vesting_shares_delegation_apply");
 
             signed_transaction tx;
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
 
             generate_block();
             vest("alice", ASSET_GOLOS(10000));
@@ -7176,7 +7176,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: delegate_vesting_shares_with_interest_apply");
 
-            ACTORS((alice)(bob)(carol)(dave))
+            ACTORS_OLD((alice)(bob)(carol)(dave))
             generate_block();
 
             fund("alice", 10000);
@@ -7272,7 +7272,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: freeze_with_delegation");
 
-            ACTORS((alice)(bob)(carol)(dave))
+            ACTORS_OLD((alice)(bob)(carol)(dave))
             generate_block();
 
             fund("alice", 10000);
@@ -7375,7 +7375,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             // and it should store for all.
 
             signed_transaction tx;
-            ACTOR(alice);
+            ACTOR_OLD(alice);
 
             BOOST_TEST_MESSAGE("--- Test success under normal conditions");
             generate_blocks(10);
@@ -7400,7 +7400,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             BOOST_TEST_MESSAGE("--- Test existance of account_metadata_object after account_create");
             // bob is created before all metadata storing settings
             // therefore it should have account_metadata_object
-            ACTOR(bob);                                             // create_account with json_metadata = ""
+            ACTOR_OLD(bob);                                             // create_account with json_metadata = ""
             meta = _db.get<account_metadata_object, by_account>("bob"); // just checks presence, throws on fail
             BOOST_CHECK_EQUAL(meta.account, "bob");
             BOOST_CHECK_EQUAL(meta.json_metadata, "");
@@ -7439,7 +7439,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             _db.set_accounts_to_store_metadata(accs_v);
 
             signed_transaction tx;
-            ACTOR(alice);
+            ACTOR_OLD(alice);
 
             BOOST_TEST_MESSAGE("--- Test success under normal conditions");
             generate_blocks(10);
@@ -7460,7 +7460,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             account_api_object alice_api(alice_acc, *db);
             BOOST_CHECK_EQUAL(alice_api.json_metadata, "");
 
-            ACTOR(bob);                                             // create_account with json_metadata = ""
+            ACTOR_OLD(bob);                                             // create_account with json_metadata = ""
 
             BOOST_TEST_MESSAGE("--- Test existance of account_metadata_object after account_create_with_delegation");
             generate_blocks(1);
@@ -7494,7 +7494,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             _db.set_accounts_to_store_metadata(accs_v);
 
             signed_transaction tx;
-            ACTOR(alice);
+            ACTOR_OLD(alice);
 
             BOOST_TEST_MESSAGE("--- Test success under normal conditions");
             generate_blocks(10);
@@ -7515,7 +7515,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
             account_api_object alice_api(alice_acc, *db);
             BOOST_CHECK_EQUAL(alice_api.json_metadata, "");
 
-            ACTOR(bob);                                             // create_account with json_metadata = ""
+            ACTOR_OLD(bob);                                             // create_account with json_metadata = ""
 
             BOOST_TEST_MESSAGE("--- Test existance of account_metadata_object after account_create_with_delegation");
             generate_blocks(1);
@@ -7598,7 +7598,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: referral_create_account_comment");
 
-            ACTOR(bob);
+            ACTOR_OLD(bob);
             generate_blocks(1);
 
             fund("bob", ASSET_GOLOS(1000));
@@ -7694,7 +7694,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: referral_create_break_account_comment");
 
-            ACTOR(bob);
+            ACTOR_OLD(bob);
             generate_blocks(1);
 
             fund("bob", ASSET_GOLOS(1000));
@@ -7790,7 +7790,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: referral_create_expire_account_comment");
 
-            ACTOR(bob);
+            ACTOR_OLD(bob);
             generate_blocks(1);
 
             fund("bob", ASSET_GOLOS(1000));
@@ -7908,7 +7908,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: comment_curation_rewards_percent_apply");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             generate_block();
 
             auto& wso = _db.get_witness_schedule_object();
@@ -7976,7 +7976,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: vote_reputation");
 
-            ACTORS((alice)(bob)(carol)(dave))
+            ACTORS_OLD((alice)(bob)(carol)(dave))
             generate_block();
 
             signed_transaction tx;
@@ -8102,7 +8102,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: downvote_reputation");
 
-            ACTORS((alice)(bob)(carol)(dave))
+            ACTORS_OLD((alice)(bob)(carol)(dave))
             generate_block();
 
             signed_transaction tx;
@@ -8218,7 +8218,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: reputation_bandwidth");
 
-            ACTORS((alice)(bob)(carol)(dave))
+            ACTORS_OLD((alice)(bob)(carol)(dave))
             generate_block();
 
             signed_transaction tx;

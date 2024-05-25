@@ -30,7 +30,11 @@ struct votes_extended_fixture : public golos::chain::clean_database_fixture_wrap
         vote_key = post_key;
         for (uint32_t i = 0; i < n; i++) {
             const auto name = "voter" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, private_key.get_public_key(), post_key.get_public_key()));
+            GOLOS_CHECK_NO_THROW(account_create(name,
+                private_key.get_public_key(),
+                private_key.get_public_key(),
+                post_key.get_public_key(),
+                private_key.get_public_key()));
         }
         generate_block();
         validate_database();
@@ -55,7 +59,7 @@ struct votes_extended_fixture : public golos::chain::clean_database_fixture_wrap
     }
 
     void post(const std::string& permlink = "post", const std::string& parent_permlink = "test") {
-        ACTOR(alice);
+        ACTOR_OLD(alice);
         comment_operation op;
         op.author = "alice";
         op.permlink = permlink;
@@ -105,7 +109,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             generate_block();
 
-            ACTOR(alice);
+            ACTOR_OLD(alice);
             int voters_count = 10;
 
             comment_operation comment;
@@ -184,7 +188,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             generate_block();
 
-            ACTOR(alice);
+            ACTOR_OLD(alice);
             int voters_count = 10;
 
             comment_operation comment;
@@ -262,7 +266,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             generate_block();
 
-            ACTOR(alice);
+            ACTOR_OLD(alice);
             int voters_count = 10;
 
             comment_operation comment;
@@ -340,7 +344,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             generate_block();
 
-            ACTOR(alice);
+            ACTOR_OLD(alice);
             int voters_count = 10;
 
             comment_operation comment;
@@ -419,7 +423,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             generate_block();
 
-            ACTOR(alice);
+            ACTOR_OLD(alice);
             int voters_count = 10;
 
             comment_operation comment;
@@ -498,7 +502,7 @@ BOOST_FIXTURE_TEST_SUITE(auction_window_tests, votes_extended_fixture)
 
             generate_block();
 
-            ACTOR(alice);
+            ACTOR_OLD(alice);
             int voters_count = 6;
 
             comment_operation comment;

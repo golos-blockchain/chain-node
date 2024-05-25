@@ -14,7 +14,7 @@ BOOST_FIXTURE_TEST_SUITE(worker_api_plugin_request, worker_api_fixture)
 BOOST_AUTO_TEST_CASE(worker_request_create) {
     BOOST_TEST_MESSAGE("Testing: worker_request_create");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
 BOOST_AUTO_TEST_CASE(worker_request_modify) {
     BOOST_TEST_MESSAGE("Testing: worker_request_modify");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
 BOOST_AUTO_TEST_CASE(worker_request_vote) {
     BOOST_TEST_MESSAGE("Testing: worker_request_vote");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
 BOOST_AUTO_TEST_CASE(worker_request_delete) {
     BOOST_TEST_MESSAGE("Testing: worker_request_delete");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
@@ -232,7 +232,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
 BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_TEST_MESSAGE("Testing: worker_request_approve");
 
-    ACTORS((alice)(bob)(carol)(dave))
+    ACTORS_OLD((alice)(bob)(carol)(dave))
     generate_block();
 
     signed_transaction tx;

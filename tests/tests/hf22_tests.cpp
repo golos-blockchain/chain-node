@@ -51,7 +51,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
         std::vector<account_name_type> a;
         for (auto i = 0; i < 3; ++i) {
             const auto name = "voter" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, voter_key.get_public_key(), voter_key.get_public_key()));
+            GOLOS_CHECK_NO_THROW(account_create(name, voter_key.get_public_key()));
             generate_block();
             vest(name, ASSET("10.000 GOLOS"));
             a.push_back(name);
@@ -62,7 +62,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
         std::vector<account_name_type> w;
         for (auto i = 0; i < 6; ++i) {
             const auto name = "witness" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key(), witness_key.get_public_key()));
+            GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key()));
             fund(name, 1000);
             GOLOS_CHECK_NO_THROW(witness_create(name, witness_key, "foo.bar", witness_key.get_public_key(), 1000));
             w.push_back(name);
@@ -133,7 +133,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
         std::vector<account_name_type> a;
         for (auto i = 0; i < 3; ++i) {
             const auto name = "voter" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, voter_key.get_public_key(), voter_key.get_public_key()));
+            GOLOS_CHECK_NO_THROW(account_create(name, voter_key.get_public_key()));
             generate_block();
             vest(name, ASSET("10.000 GOLOS"));
             a.push_back(name);
@@ -144,7 +144,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
         std::vector<account_name_type> w;
         for (auto i = 0; i < 6; ++i) {
             const auto name = "witness" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key(), witness_key.get_public_key()));
+            GOLOS_CHECK_NO_THROW(account_create(name, witness_key.get_public_key()));
             fund(name, 1000);
             GOLOS_CHECK_NO_THROW(witness_create(name, witness_key, "foo.bar", witness_key.get_public_key(), 1000));
             w.push_back(name);
@@ -215,7 +215,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
 
         resize_shared_mem(1024 * 1024 * 24, STEEMIT_HARDFORK_0_17);
 
-        ACTORS((alice)(alice2)(bob)(dave)(dave2))
+        ACTORS_OLD((alice)(alice2)(bob)(dave)(dave2))
         generate_block();
         vest("alice", ASSET("10.000 GOLOS"));
         vest("alice2", ASSET("10.000 GOLOS"));
@@ -307,7 +307,7 @@ BOOST_FIXTURE_TEST_SUITE(hf22_tests, hf22_database_fixture)
 
         resize_shared_mem(1024 * 1024 * 24, STEEMIT_HARDFORK_0_21);
 
-        ACTORS((alice)(bob)(carol))
+        ACTORS_OLD((alice)(bob)(carol))
         generate_block();
         vest("alice", ASSET("10.000 GOLOS"));
         vest("bob", ASSET("10.000 GOLOS"));

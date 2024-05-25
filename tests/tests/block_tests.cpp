@@ -405,7 +405,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             BOOST_TEST_MESSAGE("Testing: optional_tapos");
 
             idump((_db.get_account(STEEMIT_INIT_MINER_NAME)));
-            ACTORS((alice)(bob));
+            ACTORS_OLD((alice)(bob));
 
             generate_block();
 
@@ -478,7 +478,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             BOOST_TEST_MESSAGE("Testing: double_sign_check");
 
             generate_block();
-            ACTOR(bob);
+            ACTOR_OLD(bob);
             share_type amount = 1000;
 
             transfer_operation t;

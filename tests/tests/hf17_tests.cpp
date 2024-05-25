@@ -61,7 +61,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             comment_operation comment_op;
             vote_operation vote_op;
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
             generate_block();
 
             const auto& alice_account = _db.get_account("alice");
@@ -213,7 +213,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             signed_transaction tx;
             comment_operation comment_op;
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             generate_block();
 
             vest("alice", ASSET("30.000 GOLOS"));
@@ -272,7 +272,7 @@ BOOST_FIXTURE_TEST_SUITE(hf17_tests, hf17_database_fixture)
             signed_transaction tx;
             comment_operation comment_op;
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             generate_block();
 
             vest("alice", ASSET("30.000 GOLOS"));

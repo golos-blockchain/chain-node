@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(comment_feed_test) {
     });
     auto& _db = *db;
 
-    ACTORS((alice)(bob));
+    ACTORS_OLD((alice)(bob));
 
     signed_transaction tx;
 

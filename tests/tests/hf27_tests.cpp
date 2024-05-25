@@ -24,10 +24,10 @@ struct hf27_database_fixture : public clean_database_fixture_wrap {
     }
 
     void create200accs() {
-        PREP_ACTOR(created);
+        PREP_ACTOR_OLD(created);
         for (int i = 1; i <= 200; ++i) {
             auto name = "created" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, created_public_key, created_post_key.get_public_key()));
+            GOLOS_CHECK_NO_THROW(account_create(name, created_public_key, created_public_key, created_public_key, created_post_key.get_public_key()));
             fund(name, 1000);
             vest(name, 1000);
         }
@@ -305,7 +305,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         signed_transaction tx;
 
-        ACTORS((goodie)(badie)(whale)(curator))
+        ACTORS_OLD((goodie)(badie)(whale)(curator))
         generate_block();
         validate_database();
 
@@ -392,7 +392,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         signed_transaction tx;
 
-        ACTORS((goodie)(badie)(whale)(curator))
+        ACTORS_OLD((goodie)(badie)(whale)(curator))
         generate_block();
 
         validate_database();

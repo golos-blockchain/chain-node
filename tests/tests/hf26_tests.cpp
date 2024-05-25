@@ -32,7 +32,7 @@ BOOST_FIXTURE_TEST_SUITE(hf26_tests, hf26_database_fixture)
     BOOST_AUTO_TEST_CASE(convert_validation) { try {
         BOOST_TEST_MESSAGE("Testing: convert_validation");
 
-        ACTORS((alice))
+        ACTORS_OLD((alice))
         generate_block();
         vest("alice", ASSET("10.000 GOLOS"));
 

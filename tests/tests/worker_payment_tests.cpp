@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(worker_fund_transfering) {
 
     signed_transaction tx;
 
-    ACTORS((alice))
+    ACTORS_OLD((alice))
     fund("alice", 15000);
 
     BOOST_TEST_MESSAGE("-- Normal funding");
@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(worker_fund_transfering) {
 BOOST_AUTO_TEST_CASE(worker_request_payment) {
     BOOST_TEST_MESSAGE("Testing: worker_request_payment");
 
-    ACTORS((alice)(bob)(carol)(dave)(frad))
+    ACTORS_OLD((alice)(bob)(carol)(dave)(frad))
     generate_block();
 
     signed_transaction tx;
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE(worker_request_payment) {
 BOOST_AUTO_TEST_CASE(worker_request_payment_vests) {
     BOOST_TEST_MESSAGE("Testing: worker_request_payment_vests");
 
-    ACTORS((alice)(bob)(carol)(dave)(frad))
+    ACTORS_OLD((alice)(bob)(carol)(dave)(frad))
     auto emission_per_block = _db.get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL);
     generate_block();
     emission_per_block = _db.get_balance(STEEMIT_WORKER_POOL_ACCOUNT, STEEM_SYMBOL) - emission_per_block;

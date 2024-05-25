@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE(worker_request_validate) {
 BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
     BOOST_TEST_MESSAGE("Testing: worker_request_apply_create");
 
-    ACTORS((alice)(bob)(carol)(dave)(eve)(fred)(greta))
+    ACTORS_OLD((alice)(bob)(carol)(dave)(eve)(fred)(greta))
     generate_block();
 
     signed_transaction tx;
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
 BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     BOOST_TEST_MESSAGE("Testing: worker_request_apply_modify");
 
-    ACTORS((alice)(bob)(carol))
+    ACTORS_OLD((alice)(bob)(carol))
     generate_block();
 
     signed_transaction tx;
@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_validate) {
 BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     BOOST_TEST_MESSAGE("Testing: worker_request_vote_apply_combinations");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
 BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     BOOST_TEST_MESSAGE("Testing: worker_request_vote_apply_approve");
 
-    ACTORS((alice)(bob)(carol)(dave)(frad))
+    ACTORS_OLD((alice)(bob)(carol)(dave)(frad))
     generate_block();
 
     signed_transaction tx;
@@ -642,7 +642,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_validate) {
 BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
     BOOST_TEST_MESSAGE("Testing: worker_request_delete_apply");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
@@ -709,7 +709,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
 BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
     BOOST_TEST_MESSAGE("Testing: worker_request_delete_apply_closing_cases");
 
-    ACTORS((alice)(bob)(carol)(dave))
+    ACTORS_OLD((alice)(bob)(carol)(dave))
     generate_block();
 
     signed_transaction tx;

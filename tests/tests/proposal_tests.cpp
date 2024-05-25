@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE(create_proposal) { try {
 
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
 
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -452,7 +452,7 @@ BOOST_AUTO_TEST_CASE(update_proposal1) { try {
     BOOST_TEST_MESSAGE("--- Auto execution of a proposal without a review period by signing of a transaction");
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -489,7 +489,7 @@ BOOST_AUTO_TEST_CASE(update_proposal2) { try {
     BOOST_TEST_MESSAGE("--- Auto execution of a proposal without a review period by approving with a public key");
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -526,7 +526,7 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
     BOOST_TEST_MESSAGE("--- Execution of a proposal with a review period after an expiration");
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -587,7 +587,7 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
  */
 BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     BOOST_TEST_MESSAGE("--- Multiple signatures");
-    ACTORS((alice)(bob)(cindy)(dave)(dan)(edy)(mega)(nova)(odle)(poxx)(well)(xylo)(yaya)(zyzz));
+    ACTORS_OLD((alice)(bob)(cindy)(dave)(dan)(edy)(mega)(nova)(odle)(poxx)(well)(xylo)(yaya)(zyzz));
     generate_blocks(1);
 
     auto set_auth = [&](
@@ -736,7 +736,7 @@ BOOST_AUTO_TEST_CASE(delete_proposal) { try {
     BOOST_TEST_MESSAGE("Testing: proposal_delete_operation");
     signed_transaction tx;
 
-    ACTORS((alice)(bob)(dave))
+    ACTORS_OLD((alice)(bob)(dave))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);

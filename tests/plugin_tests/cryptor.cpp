@@ -36,7 +36,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     auto body = fc::mutable_variant_object()
         ("t", "e")("v", 2)("c", enc_res.encrypted);
-    comment_create("alice", alice_post_key, "test", "", "test", "Hello", 
+    comment_create("alice", alice_posting_key, "test", "", "test", "Hello", 
         fc::json::to_string(body), "");
 
     validate_database();
@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     cdf.fee = asset{3, STEEM_SYMBOL};
     cop.extensions.insert(cdf);
 
-    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, cop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_posting_key, cop));
 
     validate_database();
 
@@ -76,14 +76,14 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     auto sig_hash = fc::sha256::hash(std::to_string(block_num));
 
-    dq.signature = bob_private_key.sign_compact(sig_hash);
+    dq.signature = bob_active_key.sign_compact(sig_hash);
 
     dec_res = decrypt_comments(dq);
     BOOST_CHECK_EQUAL(dec_res.error, "wrong_signature");
 
     BOOST_TEST_MESSAGE("-- Trying decrypt (login success, but empty result because empty query");
 
-    dq.signature = bob_post_key.sign_compact(sig_hash);
+    dq.signature = bob_posting_key.sign_compact(sig_hash);
     dec_res = decrypt_comments(dq);
     BOOST_CHECK_EQUAL(dec_res.error, "");
     BOOST_CHECK_EQUAL(dec_res.results.size(), 0);
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     totip.from = "bob";
     totip.to = "bob";
     totip.amount = asset(500, STEEM_SYMBOL);
-    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, totip));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_active_key, totip));
 
     validate_database();
 
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     dop.memo.target = fc::mutable_variant_object()
         ("author", "alice")("permlink", "test");
 
-    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_post_key, dop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_posting_key, dop));
 
     validate_database();
 
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     dop.amount = asset{2, STEEM_SYMBOL};
 
-    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_post_key, dop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_posting_key, dop));
 
     validate_database();
 
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     generate_block(); // avoids duplicate tx check + allows decrypt after 1 block
 
-    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_post_key, dop));
+    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_posting_key, dop));
 
     validate_database();
 

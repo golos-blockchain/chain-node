@@ -46,7 +46,7 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("Testing: serialization_raw_test");
 
         try {
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             transfer_operation op;
             op.from = "alice";
             op.to = "bob";
@@ -67,7 +67,7 @@ BOOST_FIXTURE_TEST_SUITE(serialization_tests, clean_database_fixture)
         BOOST_TEST_MESSAGE("Testing: serialization_json_test");
 
         try {
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             transfer_operation op;
             op.from = "alice";
             op.to = "bob";

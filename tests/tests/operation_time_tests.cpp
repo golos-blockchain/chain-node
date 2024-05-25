@@ -28,7 +28,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: comment_payout");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             vest("alice", 10000);
             fund("bob", 7500);
@@ -155,7 +155,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: comment_payout1");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             vest("alice", 10000);
             fund("bob", 7500);
@@ -436,7 +436,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: nested_comments");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             fund("alice", 1000000);
             vest("alice", 1000000);
             fund("bob", 1000000);
@@ -697,7 +697,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: comment_beneficiaries_payout");
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
             generate_block();
 
             fund("alice", 10000);
@@ -799,7 +799,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: vesting_withdrawals");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             fund("alice", 100000);
             vest("alice", 100000);
 
@@ -931,7 +931,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: vesting_withdraw_route");
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
 
             auto original_vesting = alice.vesting_shares;
 
@@ -1069,7 +1069,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
 
             resize_shared_mem(1024 * 1024 * 32);
 
-            ACTORS((alice0)(alice1)(alice2)(alice3)(alice4)(alice5)(alice6))
+            ACTORS_OLD((alice0)(alice1)(alice2)(alice3)(alice4)(alice5)(alice6))
 
             BOOST_TEST_MESSAGE("Setup");
 
@@ -1172,7 +1172,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: convert_delay");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
 
@@ -1612,7 +1612,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: sbd_interest");
 
-            ACTORS((alice)(bob))
+            ACTORS_OLD((alice)(bob))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
             vest("bob", ASSET("10.000 GOLOS"));
@@ -1737,7 +1737,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(limit_sbd_interest_rate) try {
         BOOST_TEST_MESSAGE("Testing: limit_sbd_interest_rate");
 
-        ACTORS((alice)(bob))
+        ACTORS_OLD((alice)(bob))
 
         generate_block();
 
@@ -1814,7 +1814,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
 
             _db.liquidity_rewards_enabled = false;
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
             vest("bob", ASSET("10.000 GOLOS"));
@@ -2488,7 +2488,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: post_rate_limit");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
 
             fund("alice", 10000);
             vest("alice", 10000);
@@ -2627,7 +2627,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: comment_freeze");
 
-            ACTORS((alice)(bob)(sam)(dave))
+            ACTORS_OLD((alice)(bob)(sam)(dave))
             fund("alice", 10000);
             fund("bob", 10000);
             fund("sam", 10000);
@@ -2752,7 +2752,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
             // Due to number of blocks in the test, it requires a large file. (32 MB)
             resize_shared_mem(1024 * 1024 * 256);
 
-            ACTORS((alice)(bob)(sam)(dave)(greg));
+            ACTORS_OLD((alice)(bob)(sam)(dave)(greg));
 
             fund("alice", 10000);
             fund("bob", 10000);
@@ -2887,7 +2887,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: sbd_price_feed_limit");
 
-            ACTORS((alice));
+            ACTORS_OLD((alice));
             generate_block();
             vest("alice", ASSET("10.000 GOLOS"));
 
@@ -2936,7 +2936,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_time_tests, clean_database_fixture_wrap)
         try {
             BOOST_TEST_MESSAGE("Testing: clear_null_account");
 
-            ACTORS((alice));
+            ACTORS_OLD((alice));
             generate_block();
 
             fund("alice", ASSET("10.000 GOLOS"));

@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
         try {
             BOOST_TEST_MESSAGE("Testing: transit_to_cyberway voting");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             fund("alice", 10000);
             private_key_type signing_key = generate_private_key("new_key");
 

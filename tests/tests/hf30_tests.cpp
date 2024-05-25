@@ -12,7 +12,7 @@ struct hf30_fixture : public clean_database_fixture_wrap {
     hf30_fixture() : clean_database_fixture_wrap() {
     }
 
-    void issue_nft(account_name_type creator, const private_key_type& creator_key,
+    void issue_nft(account_name_type creator, const private_key_type& creator_active_key,
         const std::string& name) {
         signed_transaction tx;
 
@@ -22,12 +22,12 @@ struct hf30_fixture : public clean_database_fixture_wrap {
         niop.to = creator;
         niop.json_metadata = "{\"health\":10}";
 
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, creator_key, niop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, creator_active_key, niop));
 
         validate_database();
     }
 
-    void create_nft(const private_key_type& alice_private_key) {
+    void create_nft(const private_key_type& alice_active_key) {
         signed_transaction tx;
 
         BOOST_TEST_MESSAGE("-- Create NFT collection");
@@ -37,7 +37,7 @@ struct hf30_fixture : public clean_database_fixture_wrap {
         ncop.name = "COOLGAME";
         ncop.json_metadata = "{}";
         ncop.max_token_count = 4294967295;
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, ncop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_active_key, ncop));
 
         validate_database();
 
@@ -45,7 +45,7 @@ struct hf30_fixture : public clean_database_fixture_wrap {
 
         fund("alice", ASSET("20.000 GBG"));
 
-        issue_nft("alice", alice_private_key, "COOLGAME");
+        issue_nft("alice", alice_active_key, "COOLGAME");
     }
 };
 
@@ -58,7 +58,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         ACTORS((alice)(bob)(carol))
         generate_block();
 
-        create_nft(alice_private_key);
+        create_nft(alice_active_key);
 
         BOOST_TEST_MESSAGE("-- Placing offer (fail - without fund)");
 
@@ -68,7 +68,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         nbop.token_id = 1;
         nbop.order_id = 1;
         nbop.price = asset(1000, SBD_SYMBOL);
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0,
                 CHECK_ERROR(insufficient_funds, "bob", "fund", "1.000 GBG")
             )
@@ -78,7 +78,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         fund("bob", ASSET("1.000 GBG"));
 
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, nbop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_active_key, nbop));
 
         validate_database();
         generate_block();
@@ -88,7 +88,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         fund("bob", ASSET("3.000 GBG"));
 
         nbop.order_id = 2;
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -96,7 +96,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         nbop.order_id = 2;
         nbop.price = asset(2000, SBD_SYMBOL);
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, nbop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_active_key, nbop));
 
         validate_database();
         generate_block();
@@ -118,7 +118,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         nbop.order_id = 0;
         nbop.price = asset(1000, SBD_SYMBOL);
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -131,7 +131,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         nsop.price = asset(3000, SBD_SYMBOL);
         nsop.order_id = 2;
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -139,14 +139,14 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         nsop.price = asset(2000, STEEM_SYMBOL);
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
         BOOST_TEST_MESSAGE("-- Selling token to offer");
 
         nsop.price = asset(2000, SBD_SYMBOL);
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, nsop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_active_key, nsop));
 
         validate_database();
         generate_block();
@@ -172,7 +172,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         ACTORS((alice)(bob)(carol))
         generate_block();
 
-        create_nft(alice_private_key);
+        create_nft(alice_active_key);
 
         BOOST_TEST_MESSAGE("-- Placing auction bet (fail - no auction)");
 
@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         nbop.order_id = 0;
         nbop.price = asset(1000, SBD_SYMBOL);
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -197,7 +197,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         naop.min_price = asset{1, STEEM_SYMBOL};
         naop.expiration = _db.head_block_time() + 180;
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, naop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, naop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -206,7 +206,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         naop.owner = "alice";
         naop.min_price = asset::from_string("1.0000000 FAKE");
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, naop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_active_key, naop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -215,7 +215,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         naop.min_price = asset{1, STEEM_SYMBOL};
         naop.expiration = _db.head_block_time() - 180;
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, naop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_active_key, naop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -224,7 +224,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         naop.expiration = _db.head_block_time() + 180;
         naop.min_price = asset{0, STEEM_SYMBOL};
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, naop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_active_key, naop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -233,14 +233,14 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         naop.min_price = asset{1, STEEM_SYMBOL};
         naop.expiration = time_point_sec();
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_private_key, naop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, alice_active_key, naop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
         BOOST_TEST_MESSAGE("-- Start auction");
 
         naop.expiration = _db.head_block_time() + 180;
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, naop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_active_key, naop));
 
         validate_database();
         generate_block();
@@ -250,7 +250,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         nbop.name = "COOLGAME"; // for offer it isn't omitting
         nbop.order_id = 1;
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
@@ -272,7 +272,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         nsop.price = asset(1000, SBD_SYMBOL);
         nsop.order_id = 1;
 
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, nsop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_active_key, nsop));
 
         validate_database();
         generate_block();
@@ -293,7 +293,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         nbop.order_id = 0;
         nbop.price = asset(1000, STEEM_SYMBOL);
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0,
                 CHECK_ERROR(insufficient_funds, "bob", "fund", "1.000 GOLOS")
             )
@@ -303,7 +303,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         BOOST_TEST_MESSAGE("-- Place bet");
 
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, nbop));
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_active_key, nbop));
 
         generate_block();
         validate_database();
@@ -312,14 +312,14 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
         fund("bob", ASSET("1.000 GOLOS"));
 
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 
         BOOST_TEST_MESSAGE("-- Place same bet by same account, but another price (fail)");
 
         nbop.price = asset(800, STEEM_SYMBOL);
-        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_private_key, nbop),
+        GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
 

@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(account_notes_validate_size_limits) {
 BOOST_AUTO_TEST_CASE(account_notes_apply) {
     BOOST_TEST_MESSAGE("Testing: account_notes_apply");
 
-    ACTORS((alice));
+    ACTORS_OLD((alice));
 
     generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
 
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(account_notes_apply) {
 BOOST_AUTO_TEST_CASE(account_notes_size_limits) {
     BOOST_TEST_MESSAGE("Testing: account_notes_size_limits");
 
-    ACTORS((alice));
+    ACTORS_OLD((alice));
 
     generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
 
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(account_notes_size_limits) {
 BOOST_AUTO_TEST_CASE(account_notes_count_limit_delete) {
     BOOST_TEST_MESSAGE("Testing: account_notes_count_limit_delete");
 
-    ACTORS((bob)(alice));
+    ACTORS_OLD((bob)(alice));
 
     generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
 

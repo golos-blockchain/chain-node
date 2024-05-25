@@ -266,7 +266,7 @@ namespace golos { namespace chain {
         add_operations_database_fixture::operations_map add_operations_database_fixture::add_operations() { try {
             operations_map _added_ops;
 
-            ACTORS((alice)(bob)(sam))
+            ACTORS_OLD((alice)(bob)(sam))
             fund("alice", 10000);
             vest("alice", 10000);
             fund("bob", 7500);
@@ -405,8 +405,10 @@ namespace golos { namespace chain {
                 const string &creator,
                 const private_key_type &creator_key,
                 const share_type &fee,
-                const public_key_type &key,
-                const public_key_type &post_key,
+                const public_key_type &owner_key,
+                const public_key_type &active_key,
+                const public_key_type &posting_key,
+                const public_key_type &memo_key,
                 const string &json_metadata
         ) {
             try {
@@ -414,10 +416,10 @@ namespace golos { namespace chain {
                 op.new_account_name = name;
                 op.creator = creator;
                 op.fee = fee;
-                op.owner = authority(1, key, 1);
-                op.active = authority(1, key, 1);
-                op.posting = authority(1, post_key, 1);
-                op.memo_key = key;
+                op.owner = authority(1, owner_key, 1);
+                op.active = authority(1, active_key, 1);
+                op.posting = authority(1, posting_key, 1);
+                op.memo_key = memo_key;
                 op.json_metadata = json_metadata;
 
                 trx.operations.push_back(op);
@@ -437,8 +439,10 @@ namespace golos { namespace chain {
 
         const account_object &database_fixture::account_create(
                 const string &name,
-                const public_key_type &key,
-                const public_key_type &post_key
+                const public_key_type &owner_key,
+                const public_key_type &active_key,
+                const public_key_type &posting_key,
+                const public_key_type &memo_key
         ) {
             try {
                 return account_create(
@@ -446,8 +450,10 @@ namespace golos { namespace chain {
                         STEEMIT_INIT_MINER_NAME,
                         init_account_priv_key,
                         30*1e3,
-                        key,
-                        post_key,
+                        owner_key,
+                        active_key,
+                        posting_key,
+                        memo_key,
                         "");
             }
             FC_CAPTURE_AND_RETHROW((name));
@@ -457,7 +463,7 @@ namespace golos { namespace chain {
                 const string &name,
                 const public_key_type &key
         ) {
-            return account_create(name, key, key);
+            return account_create(name, key, key, key, key);
         }
 
         const witness_object &database_fixture::witness_create(

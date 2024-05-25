@@ -57,7 +57,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
     BOOST_AUTO_TEST_CASE(private_outbox_message) {
         BOOST_TEST_MESSAGE("Testing: private_message_operation");
 
-        ACTORS((alice)(bob));
+        ACTORS_OLD((alice)(bob));
 
         BOOST_TEST_MESSAGE("--- Compose alice -> bob message");
 
@@ -281,7 +281,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
     // BOOST_AUTO_TEST_CASE(private_contact) {
     //     BOOST_TEST_MESSAGE("Testing: private_contact_operation");
 
-    //     ACTORS((alice)(bob)(sam)(dave));
+    //     ACTORS_OLD((alice)(bob)(sam)(dave));
 
     //     BOOST_TEST_MESSAGE("--- unknown contact");
 
@@ -456,7 +456,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
     BOOST_AUTO_TEST_CASE(private_mark) {
         BOOST_TEST_MESSAGE("Testing: private_mark_message_operation");
 
-        ACTORS((alice)(bob)(sam));
+        ACTORS_OLD((alice)(bob)(sam));
 
         BOOST_TEST_MESSAGE("--- bob -> alice message");
 
@@ -777,7 +777,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
     BOOST_AUTO_TEST_CASE(private_delete) {
         BOOST_TEST_MESSAGE("Testing: private_delete_message_operation");
 
-        ACTORS((alice)(bob)(sam));
+        ACTORS_OLD((alice)(bob)(sam));
 
         BOOST_TEST_MESSAGE("--- bob -> alice message");
 
@@ -1011,7 +1011,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         constexpr char bob_user_name[] = "bob";
         constexpr char clara_user_name[] = "clara";
 
-        ACTORS((alice)(bob)(clara))
+        ACTORS_OLD((alice)(bob)(clara))
 
         const auto alice_memo_private_key = generate_private_key("alice_memo");
         const auto alice_memo_public_key = alice_memo_private_key.get_public_key();

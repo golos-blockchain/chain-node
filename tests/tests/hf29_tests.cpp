@@ -152,7 +152,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(paid_subscriptions) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscriptions");
 
-        ACTORS((alice)(bob)(carol)(dave))
+        ACTORS_OLD((alice)(bob)(carol)(dave))
         generate_block();
 
         signed_transaction tx;
@@ -536,7 +536,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(paid_subscriptions_no_prepaid) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscriptions_no_prepaid");
 
-        ACTORS((alice)(carol))
+        ACTORS_OLD((alice)(carol))
         generate_block();
 
         signed_transaction tx;
@@ -822,7 +822,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(paid_subscriptions_single_update) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscriptions_single_update");
 
-        ACTORS((alice)(carol))
+        ACTORS_OLD((alice)(carol))
         generate_block();
 
         signed_transaction tx;
@@ -937,7 +937,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(paid_subscription_update) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscription_update");
 
-        ACTORS((alice)(carol))
+        ACTORS_OLD((alice)(carol))
         generate_block();
 
         signed_transaction tx;
@@ -1054,7 +1054,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(paid_subscription_inactive) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscription_inactive");
 
-        ACTORS((alice)(carol))
+        ACTORS_OLD((alice)(carol))
         generate_block();
 
         signed_transaction tx;
@@ -1164,7 +1164,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(paid_subscription_cancel_delete) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscription_cancel_delete");
 
-        ACTORS((alice)(carol)(dave))
+        ACTORS_OLD((alice)(carol)(dave))
         generate_block();
 
         signed_transaction tx;
@@ -1298,7 +1298,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(nft_collection) { try {
         BOOST_TEST_MESSAGE("Testing: nft_collection");
 
-        ACTORS((alice))
+        ACTORS_OLD((alice))
         generate_block();
 
         signed_transaction tx;
@@ -1370,7 +1370,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(nft_test) { try {
         BOOST_TEST_MESSAGE("Testing: nft_test");
 
-        ACTORS((alice)(bob)(carol))
+        ACTORS_OLD((alice)(bob)(carol))
         generate_block();
 
         signed_transaction tx;
@@ -1491,7 +1491,7 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
     BOOST_AUTO_TEST_CASE(nft_test_buy_first) { try {
         BOOST_TEST_MESSAGE("Testing: nft_test_buy_first");
 
-        ACTORS((alice)(bob)(carol))
+        ACTORS_OLD((alice)(bob)(carol))
         generate_block();
 
         signed_transaction tx;

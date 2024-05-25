@@ -45,7 +45,7 @@ BOOST_FIXTURE_TEST_SUITE(follow_plugin, follow_fixture)
 BOOST_AUTO_TEST_CASE(follow_validate) {
     BOOST_TEST_MESSAGE("Testing: follow_validate");
 
-    ACTORS((alice)(bob));
+    ACTORS_OLD((alice)(bob));
 
     follow_operation op;
     op.follower = "alice";
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(follow_authorities) {
 BOOST_AUTO_TEST_CASE(follow_apply) {
     BOOST_TEST_MESSAGE("Testing: follow_apply");
 
-    ACTORS((alice)(bob));
+    ACTORS_OLD((alice)(bob));
 
     generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
 
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE(reblog_authorities) {
 BOOST_AUTO_TEST_CASE(reblog_apply) {
     BOOST_TEST_MESSAGE("Testing: reblog_apply");
 
-    ACTORS((alice)(bob));
+    ACTORS_OLD((alice)(bob));
 
     generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
     signed_transaction tx;
