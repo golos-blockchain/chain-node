@@ -9,12 +9,14 @@
 #include <golos/plugins/account_history/plugin.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
 
+#include <boost/test/unit_test.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128lh_t.hpp>
 
 #include <iostream>
+#include "builder.hpp"
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
 
@@ -443,6 +445,7 @@ namespace golos { namespace chain {
         struct database_fixture {
             // the reason we use an app is to exercise the indexes of built-in plugins
             chain::database* db;
+            operation_builder _op;
             signed_transaction trx;
             private_key init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             string debug_key = golos::utilities::key_to_wif(init_account_priv_key);
@@ -458,6 +461,7 @@ namespace golos { namespace chain {
             bool skip_key_index_test = false;
 
             database_fixture() {
+                _op = operation_builder(this);
             }
 
             virtual ~database_fixture();

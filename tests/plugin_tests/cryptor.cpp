@@ -131,16 +131,12 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     BOOST_TEST_MESSAGE("-- Donating decrypt_fee partly");
 
-    donate_operation dop;
-    dop.from = "bob";
-    dop.to = "alice";
-    dop.amount = asset{1, STEEM_SYMBOL};
-    dop.memo.app = "best-golos-ui";
-    dop.memo.version = 1;
-    dop.memo.target = fc::mutable_variant_object()
-        ("author", "alice")("permlink", "test");
+    donate_memo dm;
+    dm.app = "best-golos-ui";
+    dm.version = 1;
+    dm.target = obj()("author", "alice")("permlink", "test");
 
-    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_posting_key, dop));
+    _op["donate"]({ "bob", "alice", "0.001 GOLOS", _var(dm) }).push(bob_posting_key);
 
     validate_database();
 
@@ -163,9 +159,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     BOOST_TEST_MESSAGE("-- Donating decrypt_fee remaining");
 
-    dop.amount = asset{2, STEEM_SYMBOL};
-
-    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_posting_key, dop));
+    _op["donate"]({ "bob", "alice", "0.002 GOLOS", _var(dm) }).push(bob_posting_key);
 
     validate_database();
 
@@ -206,7 +200,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     generate_block(); // avoids duplicate tx check + allows decrypt after 1 block
 
-    GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_posting_key, dop));
+    _op["donate"]({ "bob", "alice", "0.002 GOLOS", _var(dm) }).push(bob_posting_key);
 
     validate_database();
 

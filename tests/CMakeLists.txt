@@ -1,7 +1,8 @@
 file(GLOB COMMON_SOURCES
         common/database_fixture.cpp
         common/database_fixture.hpp
-        common/comment_reward.hpp)
+        common/comment_reward.hpp
+        common/builder.cpp)
 
 find_package(Gperftools QUIET)
 if(GPERFTOOLS_FOUND)
