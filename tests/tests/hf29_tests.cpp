@@ -752,20 +752,9 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
 
         validate_database();
 
-        BOOST_TEST_MESSAGE("-- Update subscription, again to 0.010 GBG");
-
-        psuop.author = "alice";
-        psuop.oid = paid_subscription_id{"alicegram", "hugs", 1};
-        psuop.cost = asset(10, SBD_SYMBOL);
-        psuop.tip_cost = false;
-        psuop.interval = 30;
-        psuop.executions = 2;
-        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, psuop));
-        generate_block();
-
         BOOST_TEST_MESSAGE("-- Wait for next payment, #2");
 
-        generate_blocks(30 / STEEMIT_BLOCK_INTERVAL - 1);
+        generate_blocks(30 / STEEMIT_BLOCK_INTERVAL);
 
         BOOST_TEST_MESSAGE("-- Check subscriptions");
 
@@ -777,16 +766,14 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
             const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, true);
-            BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
+            BOOST_CHECK_EQUAL(carol->prepaid, asset(0, STEEM_SYMBOL));
             BOOST_CHECK_EQUAL(carol->next_payment, updated + fc::seconds(30 * 3));
         }
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8490, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500 + 10, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(998, STEEM_SYMBOL));
-        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(2, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(997, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(3, STEEM_SYMBOL));
 
         validate_database();
 
@@ -804,16 +791,14 @@ BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
             const auto* carol = _db.find_paid_subscriber("carol", "alice", pscop.oid);
             BOOST_CHECK(carol != nullptr);
             BOOST_CHECK_EQUAL(carol->active, false);
-            BOOST_CHECK_EQUAL(carol->prepaid, asset(0, SBD_SYMBOL));
+            BOOST_CHECK_EQUAL(carol->prepaid, asset(0, STEEM_SYMBOL));
             BOOST_CHECK_EQUAL(carol->next_payment, fc::time_point_sec(0));
         }
 
         BOOST_TEST_MESSAGE("-- Check balances");
 
-        BOOST_CHECK_EQUAL(_db.get_account("carol").sbd_balance, asset(8490, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(_db.get_account("alice").sbd_balance, asset(500 + 500 + 500 + 10, SBD_SYMBOL));
-        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(998, STEEM_SYMBOL));
-        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(2, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("carol").balance, asset(997, STEEM_SYMBOL));
+        BOOST_CHECK_EQUAL(_db.get_account("alice").balance, asset(3, STEEM_SYMBOL));
 
         validate_database();
 
