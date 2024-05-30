@@ -287,6 +287,14 @@ public:
                         if (query.reverse_sort) return lhs.last_update < rhs.last_update;
                         return lhs.last_update > rhs.last_update;
                     });
+                else if (query.sort == nft_tokens_sort::by_auction_expiration) 
+                    std::sort(unsorted.begin(), unsorted.end(), [&](auto& lhs, auto& rhs) {
+                        auto sc = compare_sortings(lhs, rhs);
+                        if (!!sc) return *sc;
+
+                        if (query.reverse_sort) return lhs.auction_expiration > rhs.auction_expiration;
+                        return lhs.auction_expiration < rhs.auction_expiration;
+                    });
                 else
                     std::sort(unsorted.begin(), unsorted.end(), [&](auto& lhs, auto& rhs) {
                         auto sc = compare_sortings(lhs, rhs);

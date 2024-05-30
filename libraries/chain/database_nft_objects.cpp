@@ -97,6 +97,11 @@ void database::clear_nft_orders(uint32_t token_id,
                 || noo.order_id != proceed_order->order_id)) {
                 adjust_balance(get_account(noo.owner), noo.price);
             }
+            if (noo.holds && noo.price.symbol == STEEM_SYMBOL) {
+                modify(get_account(noo.owner), [&](auto& a) {
+                    a.nft_hold_balance -= noo.price;
+                });
+            }
             if (clear_order && clear_order->owner == noo.owner &&
                 clear_order->order_id == noo.order_id) {
                 clear_order = nullptr;
@@ -137,6 +142,12 @@ void database::clear_nft_bets(uint32_t token_id, const nft_bet_object* proceed_b
         ++itr;
         if (!proceed_bet || proceed_bet->id != bet.id)
             adjust_balance(get_account(bet.owner), bet.price);
+        if (bet.price.symbol == STEEM_SYMBOL) {
+            const auto& owner = get_account(bet.owner);
+            modify(owner, [&](auto& a) {
+                a.nft_hold_balance -= bet.price;
+            });
+        }
         remove(bet);
     }
 }
@@ -160,6 +171,11 @@ void database::process_nft_bets() {
                 no.auction_expiration = time_point_sec(0);
                 no.last_update = now;
             });
+
+            modify(get_nft_collection(token.name), [&](auto& nco) {
+                nco.auction_count--;
+            });
+
             continue;
         }
 
@@ -187,6 +203,7 @@ void database::process_nft_bets() {
             market_depth, market_asks);
 
         modify(get_nft_collection(token.name), [&](auto& nco) {
+            nco.auction_count--;
             nco.sell_order_count -= sell_order_count;
             nco.buy_order_count -= buy_order_count;
             nco.market_depth -= market_depth;

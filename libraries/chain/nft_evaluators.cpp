@@ -157,6 +157,7 @@ namespace golos { namespace chain {
         if (op.price.symbol != STEEM_SYMBOL && op.price.symbol != SBD_SYMBOL) {
             _db.get_asset(op.price.symbol);
         }
+        GOLOS_CHECK_VALUE(op.price.amount >= 0, "Price cannot be negative.");
 
         const auto& nco = _db.get_nft_collection(no.name);
 
@@ -256,6 +257,7 @@ namespace golos { namespace chain {
         if (op.price.symbol != STEEM_SYMBOL && op.price.symbol != SBD_SYMBOL) {
             _db.get_asset(op.price.symbol);
         }
+        GOLOS_CHECK_VALUE(op.price.amount >= 0, "Price cannot be negative.");
 
         if (_db.has_hardfork(STEEMIT_HARDFORK_0_30) && !op.order_id) {
             const auto& no = _db.get_nft(op.token_id);
@@ -272,6 +274,13 @@ namespace golos { namespace chain {
                 GOLOS_CHECK_VALUE(bet, "Bet should exist if you want cancel it (0 price).");
 
                 _db.adjust_balance(buyer, bet->price);
+
+                if (bet->price.symbol == STEEM_SYMBOL) {
+                    _db.modify(buyer, [&](auto& a) {
+                        a.nft_hold_balance -= bet->price;
+                    });
+                }
+
                 _db.remove(*bet);
                 return;
             } else if (!_db.check_nft_bets(op.token_id, op.price)) {
@@ -302,6 +311,12 @@ namespace golos { namespace chain {
             if ((no.auction_expiration - now).to_seconds() <= 20*60) {
                 _db.modify(no, [&](auto& no) {
                     no.auction_expiration += 10*60;
+                });
+            }
+
+            if (op.price.symbol == STEEM_SYMBOL) {
+                _db.modify(buyer, [&](auto& a) {
+                    a.nft_hold_balance += op.price;
                 });
             }
 
@@ -367,6 +382,12 @@ namespace golos { namespace chain {
                     ++nco.buy_order_count;
                     nco.market_asks += op.price.to_real();
                 });
+
+                if (op.price.symbol == STEEM_SYMBOL) {
+                    _db.modify(buyer, [&](auto& a) {
+                        a.nft_hold_balance += op.price;
+                    });
+                }
                 return;
             }
 
@@ -485,7 +506,15 @@ namespace golos { namespace chain {
         });
 
         if (noo.holds) {
-            _db.adjust_balance(_db.get_account(noo.owner), noo.price);
+            const auto& owner = _db.get_account(noo.owner);
+
+            _db.adjust_balance(owner, noo.price);
+
+            if (noo.price.symbol == STEEM_SYMBOL) {
+                _db.modify(owner, [&](auto& a) {
+                    a.nft_hold_balance -= noo.price;
+                });
+            }
         }
 
         _db.remove(noo);
@@ -511,11 +540,17 @@ namespace golos { namespace chain {
                 "Expiration should be set in future.");
         }
 
+        const auto& nco = _db.get_nft_collection(no.name);
+
         if (empty_expiration || empty_amount) {
             GOLOS_CHECK_VALUE(no.auction_expiration != time_point_sec(),
                 "No auction already.");
 
             _db.clear_nft_bets(op.token_id);
+
+            _db.modify(nco, [&](auto& nco) {
+                nco.auction_count--;
+            });
         } else {
             GOLOS_CHECK_VALUE(no.auction_expiration == time_point_sec(),
                 "You cannot edit auction.");
@@ -526,9 +561,8 @@ namespace golos { namespace chain {
                 sell_order_count, buy_order_count, market_depth, market_asks,
                 true);
 
-            const auto& nco = _db.get_nft_collection(no.name);
-
             _db.modify(nco, [&](auto& nco) {
+                nco.auction_count++;
                 nco.sell_order_count -= sell_order_count;
                 nco.buy_order_count -= buy_order_count;
                 nco.market_depth -= market_depth;

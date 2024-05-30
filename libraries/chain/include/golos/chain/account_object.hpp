@@ -64,6 +64,7 @@ public:
     asset accumulative_balance = asset(0, STEEM_SYMBOL);
     asset tip_balance = asset(0, STEEM_SYMBOL);
     asset market_balance = asset(0, STEEM_SYMBOL);
+    asset nft_hold_balance = asset(0, STEEM_SYMBOL); ///< offers and bets
 
     /**
      *  SBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
@@ -759,7 +760,7 @@ FC_REFLECT((golos::chain::account_object),
     (savings_balance)
     (accumulative_balance)
     (tip_balance)
-    (market_balance)
+    (market_balance)(nft_hold_balance)
     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
     (market_sbd_balance)
     (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)

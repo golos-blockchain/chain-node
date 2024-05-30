@@ -29,6 +29,7 @@ namespace golos { namespace chain {
         asset last_buy_price{0, STEEM_SYMBOL};
         uint32_t buy_order_count = 0;
         uint32_t sell_order_count = 0;
+        uint32_t auction_count = 0;
         double market_depth = 0;
         double market_asks = 0;
         double market_volume = 0;

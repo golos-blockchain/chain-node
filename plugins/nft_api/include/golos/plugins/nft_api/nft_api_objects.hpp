@@ -27,7 +27,7 @@ struct nft_collection_api_object {
     nft_collection_api_object(const nft_collection_object& nco) : id(nco.id),
         creator(nco.creator), name(asset(0, nco.name).symbol_name()), json_metadata(to_string(nco.json_metadata)),
         created(nco.created), token_count(nco.token_count), max_token_count(nco.max_token_count), last_token_id(nco.last_token_id),
-        last_buy_price(nco.last_buy_price), buy_order_count(nco.buy_order_count), sell_order_count(nco.sell_order_count),
+        last_buy_price(nco.last_buy_price), buy_order_count(nco.buy_order_count), sell_order_count(nco.sell_order_count), auction_count(nco.auction_count),
         market_depth(nco.market_depth), market_asks(nco.market_asks), market_volume(nco.market_volume) {
     }
 
@@ -46,6 +46,7 @@ struct nft_collection_api_object {
     asset last_buy_price;
     uint32_t buy_order_count = 0;
     uint32_t sell_order_count = 0;
+    uint32_t auction_count = 0;
     double market_depth = 0;
     double market_asks = 0;
     double market_volume = 0;
@@ -239,7 +240,7 @@ struct nft_extended_bet_api_object : nft_bet_api_object {
 
 FC_REFLECT((golos::plugins::nft_api::nft_collection_api_object),
     (id)(creator)(name)(json_metadata)(created)(token_count)(max_token_count)(last_token_id)
-    (last_buy_price)(buy_order_count)(sell_order_count)
+    (last_buy_price)(buy_order_count)(sell_order_count)(auction_count)
     (market_depth)(market_asks)(market_volume)
 )
 
