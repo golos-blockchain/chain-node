@@ -80,6 +80,7 @@ struct account_api_object {
     asset accumulative_balance;
     asset tip_balance;
     asset market_balance;
+    asset nft_hold_balance;
 
     asset sbd_balance;
     uint128_t sbd_seconds;
@@ -164,7 +165,7 @@ FC_REFLECT((golos::api::account_api_object),
     (recovery_account)(last_account_recovery)(reset_account)(comment_count)(lifetime_vote_count)
     (post_count)(sponsor_count)(referral_count)(can_vote)(voting_power)(last_vote_time)(balance)(savings_balance)(accumulative_balance)(tip_balance)(market_balance)
     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
-    (market_sbd_balance)
+    (market_sbd_balance)(nft_hold_balance)
     (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)
     (savings_withdraw_requests)(vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
     (emission_delegated_vesting_shares)(emission_received_vesting_shares)
