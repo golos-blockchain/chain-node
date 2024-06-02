@@ -286,7 +286,7 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
             BOOST_CHECK_EQUAL(nft.auction_expiration, naop.expiration);
         }
 
-        BOOST_TEST_MESSAGE("-- Place bet (fail: without founds)");
+        BOOST_TEST_MESSAGE("-- Place bet (fail: without funds)");
 
         fund("bob", ASSET("0.600 GOLOS"));
 
@@ -322,6 +322,80 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
         GOLOS_CHECK_ERROR_PROPS(push_tx_with_ops(tx, bob_active_key, nbop),
             CHECK_ERROR(tx_invalid_operation, 0)
         );
+
+        BOOST_TEST_MESSAGE("-- Place bet by carol");
+
+        fund("carol", ASSET("2.100 GOLOS"));
+
+        _op["nft_buy"]({ "carol", "", 1, 0, "2.000 GOLOS" }).push(carol_active_key);
+
+        validate_database();
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Waiting (expiration - 1 block)");
+
+        generate_blocks(naop.expiration + (20*60));
+
+        BOOST_TEST_MESSAGE("-- Checking auction result");
+
+        {
+            const auto& nft = _db.get_nft(1);
+            BOOST_CHECK_NE(nft.auction_expiration, fc::time_point_sec());
+            BOOST_CHECK_EQUAL(nft.owner, "alice");
+        }
+
+        BOOST_TEST_MESSAGE("-- Generate 1 block");
+
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Checking auction result - token is by carol");
+
+        {
+            const auto& nft = _db.get_nft(1);
+            BOOST_CHECK_EQUAL(nft.auction_expiration, fc::time_point_sec());
+            BOOST_CHECK_EQUAL(nft.auction_min_price, asset(0, STEEM_SYMBOL));
+            BOOST_CHECK_EQUAL(nft.owner, "carol");
+        }
+
+        BOOST_TEST_MESSAGE("-- Creating auction by carol");
+
+        auto ex = _db.head_block_time() + 40*60;
+        _op["nft_auction"]({ "carol", 1, "2.000 GBG", _var(ex) }).push(carol_active_key);
+
+        validate_database();
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Placing bet by alice");
+
+        fund("alice", ASSET("2.001 GBG"));
+
+        _op["nft_buy"]({ "alice", "", 1, 0, "2.001 GBG" }).push(alice_active_key);
+
+        validate_database();
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Placing bet by bob");
+
+        fund("bob", ASSET("2.000 GBG"));
+
+        _op["nft_buy"]({ "bob", "", 1, 0, "2.000 GBG" }).push(bob_active_key);
+
+        validate_database();
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Waiting (expiration)");
+
+        generate_blocks(ex);
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Checking auction result - token is alice");
+
+        {
+            const auto& nft = _db.get_nft(1);
+            BOOST_CHECK_EQUAL(nft.auction_expiration, fc::time_point_sec());
+            BOOST_CHECK_EQUAL(nft.auction_min_price, asset(0, STEEM_SYMBOL));
+            BOOST_CHECK_EQUAL(nft.owner, "alice");
+        }
 
     } FC_LOG_AND_RETHROW() }
 

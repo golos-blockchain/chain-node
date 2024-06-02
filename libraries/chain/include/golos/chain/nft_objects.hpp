@@ -318,14 +318,6 @@ namespace golos { namespace chain {
                 member<nft_bet_object, nft_bet_object_id_type, &nft_bet_object::id>
             >,
             ordered_unique<
-                tag<by_token_owner>,
-                composite_key<
-                    nft_bet_object,
-                    member<nft_bet_object, uint32_t, &nft_bet_object::token_id>,
-                    member<nft_bet_object, account_name_type, &nft_bet_object::owner>
-                >
-            >,
-            ordered_unique<
                 tag<by_token_price>,
                 composite_key<
                     nft_bet_object,
@@ -334,7 +326,15 @@ namespace golos { namespace chain {
                 >,
                 composite_key_compare<
                     std::less<uint32_t>,
-                    std::greater<int64_t>
+                    std::greater<double>
+                >
+            >,
+            ordered_unique<
+                tag<by_token_owner>,
+                composite_key<
+                    nft_bet_object,
+                    member<nft_bet_object, uint32_t, &nft_bet_object::token_id>,
+                    member<nft_bet_object, account_name_type, &nft_bet_object::owner>
                 >
             >
         >,
