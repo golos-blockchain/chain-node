@@ -399,4 +399,122 @@ BOOST_FIXTURE_TEST_SUITE(hf30_tests, hf30_fixture)
 
     } FC_LOG_AND_RETHROW() }
 
+    BOOST_AUTO_TEST_CASE(nft_auction_sell_offer_test) { try {
+        BOOST_TEST_MESSAGE("Testing: nft_auction_sell_offer_test");
+        signed_transaction tx;
+
+        ACTORS((alice)(bob)(carol)(dave))
+        generate_block();
+
+        create_nft(alice_active_key);
+
+        BOOST_TEST_MESSAGE("-- Selling by alice");
+
+        _op["nft_sell"]({ "alice", 1, "", 1, "2.000 GBG" }).push(alice_active_key);
+
+        validate_database();
+        generate_block();
+
+        BOOST_TEST_MESSAGE("-- Creating offer by bob");
+
+        fund("bob", ASSET("3.000 GOLOS"));
+
+        _op["nft_buy"]({ "bob", "COOLGAME", 1, 2, "3.000 GOLOS" }).push(bob_active_key);
+
+        validate_database();
+        generate_block();
+
+        {
+            GET_ACTOR(bob);
+            BOOST_CHECK_EQUAL(bob.nft_hold_balance, ASSET("3.000 GOLOS"));
+        }
+
+        BOOST_TEST_MESSAGE("-- Creating auction");
+
+        auto ex = _db.head_block_time() + 40*60;
+        _op["nft_auction"]({ "alice", 1, "3.000 GOLOS", _var(ex) }).push(alice_active_key);
+
+        validate_database();
+        generate_block();
+
+        {
+            GET_ACTOR(bob);
+            BOOST_CHECK_EQUAL(bob.nft_hold_balance, ASSET("0.000 GOLOS"));
+        }
+
+        BOOST_TEST_MESSAGE("-- Placing bet by dave");
+
+        fund("dave", ASSET("3.001 GOLOS"));
+
+        _op["nft_buy"]({ "dave", "", 1, 0, "3.001 GOLOS" }).push(dave_active_key);
+
+        validate_database();
+        generate_block();
+
+        {
+            GET_ACTOR(dave);
+            BOOST_CHECK_EQUAL(dave.nft_hold_balance, ASSET("3.001 GOLOS"));
+        }
+
+        BOOST_TEST_MESSAGE("-- Buying by carol via fixed order (NOT auction)");
+
+        fund("carol", ASSET("2.000 GBG"));
+
+        _op["nft_buy"]({ "carol", "", 1, 1, "2.000 GBG" }).push(carol_active_key);
+
+        validate_database();
+        generate_block();
+
+        {
+            const auto& nft = _db.get_nft(1);
+            BOOST_CHECK_EQUAL(nft.owner, "carol");
+            BOOST_CHECK_EQUAL(nft.auction_expiration, ex);
+            BOOST_CHECK_EQUAL(nft.auction_min_price, asset(3000, STEEM_SYMBOL));
+        }
+
+        {
+            GET_ACTOR(dave);
+            BOOST_CHECK_EQUAL(dave.nft_hold_balance, ASSET("3.001 GOLOS"));
+        }
+
+        BOOST_TEST_MESSAGE("-- Placing selling order by carol");
+
+        _op["nft_sell"]({ "carol", 1, "", 1, "3.000 GBG" }).push(carol_active_key);
+
+        validate_database();
+        generate_block();
+
+        {
+            const auto& nft = _db.get_nft(1);
+            const auto& nco = _db.get_nft_collection(nft.name);
+            BOOST_CHECK_EQUAL(nco.sell_order_count, 1);
+            BOOST_CHECK_EQUAL(nco.auction_count, 1);
+        }
+
+        BOOST_TEST_MESSAGE("-- Waiting for auction expiration");
+
+        generate_blocks(ex);
+        validate_database();
+        generate_block();
+        validate_database();
+
+        BOOST_TEST_MESSAGE("-- Checking result");
+
+        {
+            const auto& nft = _db.get_nft(1);
+            BOOST_CHECK_EQUAL(nft.owner, "dave");
+            BOOST_CHECK_EQUAL(nft.auction_expiration, fc::time_point_sec());
+            BOOST_CHECK_EQUAL(nft.auction_min_price, asset(0, STEEM_SYMBOL));
+
+            const auto& nco = _db.get_nft_collection(nft.name);
+            BOOST_CHECK_EQUAL(nco.sell_order_count, 0);
+            BOOST_CHECK_EQUAL(nco.auction_count, 0);
+        }
+
+        {
+            GET_ACTOR(dave);
+            BOOST_CHECK_EQUAL(dave.nft_hold_balance, ASSET("0.000 GOLOS"));
+        }
+    } FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

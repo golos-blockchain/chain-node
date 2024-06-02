@@ -7,7 +7,22 @@ using namespace golos;
 using namespace golos::chain;
 using namespace golos::protocol;
 
-BOOST_FIXTURE_TEST_SUITE(hf29_tests, clean_database_fixture_wrap)
+struct hf29_database_fixture : public clean_database_fixture_wrap {
+    hf29_database_fixture() : clean_database_fixture_wrap(true, [&]() {
+        initialize();
+        open_database();
+
+        generate_block();
+        db->set_hardfork(STEEMIT_HARDFORK_0_29);
+        startup(false);
+    }) {
+    }
+
+    ~hf29_database_fixture() {
+    }
+};
+
+BOOST_FIXTURE_TEST_SUITE(hf29_tests, hf29_database_fixture)
 
     BOOST_AUTO_TEST_CASE(paid_subscription_create_validate) { try {
         BOOST_TEST_MESSAGE("Testing: paid_subscription_create_validate");
