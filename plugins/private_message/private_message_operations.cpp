@@ -185,10 +185,18 @@ namespace golos { namespace plugins { namespace private_message {
     void validate_private_group_name(const std::string& name) {
         GOLOS_CHECK_VALUE(name.size(), "Private group name should not be empty");
         GOLOS_CHECK_VALUE(name.size() < 32, "Private group name should not be longer than 32 bytes");
-        for (const auto& c : name) {
-            if ((c > 'z' || c < 'a') && c != '-' && c != '_') {
-                GOLOS_CHECK_VALUE(false, "Private group name can contain only a-z symbols, - and _.");
-                break;
+        for (size_t i = 0; i < name.size(); ++i) {
+            const auto& c = name[i];
+            bool is_alpha = c >= 'a' && c <= 'z';
+            bool is_digit = c >= '0' && c <= '9';
+            bool is_dash = c == '-';
+            bool is_ul = c == '_';
+            if (i == 0) {
+                GOLOS_CHECK_VALUE(is_alpha || is_digit,
+                    "Private group name can start only from a-z symbol, or 0-9 digit.");
+            } else {
+                GOLOS_CHECK_VALUE(is_alpha || is_digit || is_dash || is_ul,
+                    "Private group name can contain only a-z, 0-9 symbols, - and _.");
             }
         }
     }
