@@ -28,5 +28,7 @@ namespace golos { namespace api {
         accumulative_emission_per_day = dgp.accumulative_emission_per_day;
 
         min_golos_power_to_emission = _db.get_min_gp_to_emission();
+
+        min_golos_power_for_groups = _db.get_min_gp_for_groups();
     }
 } } // golos::api

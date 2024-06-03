@@ -293,6 +293,11 @@
 #define GOLOS_MIN_NFT_ISSUE_COST                0
 #define GOLOS_DEF_NFT_ISSUE_COST                asset(5000, SBD_SYMBOL)
 
+#define GOLOS_MIN_PRIVATE_GROUP_GOLOS_POWER     0
+#define GOLOS_DEF_PRIVATE_GROUP_GOLOS_POWER     asset(1000000, SBD_SYMBOL)
+#define GOLOS_MIN_PRIVATE_GROUP_COST            0
+#define GOLOS_DEF_PRIVATE_GROUP_COST            asset(0, SBD_SYMBOL)
+
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000
 
@@ -610,6 +615,11 @@
 
 #define GOLOS_MIN_NFT_ISSUE_COST                0
 #define GOLOS_DEF_NFT_ISSUE_COST                asset(5000, SBD_SYMBOL)
+
+#define GOLOS_MIN_PRIVATE_GROUP_GOLOS_POWER     0
+#define GOLOS_DEF_PRIVATE_GROUP_GOLOS_POWER     asset(1000000, SBD_SYMBOL)
+#define GOLOS_MIN_PRIVATE_GROUP_COST            0
+#define GOLOS_DEF_PRIVATE_GROUP_COST            asset(0, SBD_SYMBOL)
 
 #define STEEMIT_MIN_UNDO_HISTORY                10
 #define STEEMIT_MAX_UNDO_HISTORY                10000

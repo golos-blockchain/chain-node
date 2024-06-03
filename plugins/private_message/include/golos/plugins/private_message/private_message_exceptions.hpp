@@ -20,7 +20,6 @@ namespace golos { namespace plugins { namespace private_message {
             cannot_change_group_encrypted,
             unauthorized,
             too_many_groups,
-            too_many_admins,
             too_many_moders,
             group_is_public
         };
@@ -49,7 +48,6 @@ FC_REFLECT_ENUM(golos::plugins::private_message::logic_errors::types,
     (cannot_change_group_encrypted)
     (unauthorized)
     (too_many_groups)
-    (too_many_admins)
     (too_many_moders)
     (group_is_public)
 );

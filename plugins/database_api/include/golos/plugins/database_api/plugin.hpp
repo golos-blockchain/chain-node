@@ -55,6 +55,15 @@ struct scheduled_hardfork {
     fc::time_point_sec live_time;
 };
 
+struct account_select_query {
+    bool include_frozen = false;
+    std::set<std::string> filter_accounts;
+};
+
+using account_select_legacy = fc::variant;
+// bool - include_frozen
+// or account_select_query
+
 struct withdraw_route {
     std::string from_account;
     std::string to_account;
@@ -336,6 +345,8 @@ FC_REFLECT((golos::plugins::database_api::withdraw_route), (from_account)(to_acc
 
 FC_REFLECT_ENUM(golos::plugins::database_api::withdraw_route_type, (incoming)(outgoing)(all))
 FC_REFLECT_ENUM(golos::plugins::database_api::delegations_type, (delegated)(received))
+
+FC_REFLECT((golos::plugins::database_api::account_select_query), (include_frozen)(filter_accounts))
 
 FC_REFLECT((golos::plugins::database_api::tag_count_object), (tag)(count))
 
