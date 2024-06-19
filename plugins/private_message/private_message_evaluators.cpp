@@ -664,7 +664,7 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
         if (count == MAX_GROUPS_LIMIT) break;
     }
 
-    GOLOS_CHECK_LOGIC(count && count < MAX_GROUPS_LIMIT,
+    GOLOS_CHECK_LOGIC(count < MAX_GROUPS_LIMIT,
         logic_errors::too_many_groups,
         "Too many groups.");
 

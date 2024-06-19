@@ -105,6 +105,9 @@ namespace golos { namespace plugins { namespace private_message {
             coi->register_evaluator<private_mark_message_evaluator>(&plugin);
             coi->register_evaluator<private_settings_evaluator>(&plugin);
             coi->register_evaluator<private_contact_evaluator>(&plugin);
+            coi->register_evaluator<private_group_delete_evaluator>(&plugin);
+            coi->register_evaluator<private_group_evaluator>(&plugin);
+            coi->register_evaluator<private_group_member_evaluator>(&plugin);
 
             _db.set_custom_operation_interpreter(plugin.name(), custom_operation_interpreter_);
         }
