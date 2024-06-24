@@ -116,7 +116,7 @@ namespace golos { namespace plugins { namespace private_message {
             : owner(o.owner), name(o.name.begin(), o.name.end()),
             json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
             is_encrypted(o.is_encrypted), privacy(o.privacy), created(o.created),
-            admins(o.admins), moders(o.moders), members(o.members), pendings(o.pendings) {
+            moders(o.moders), members(o.members), pendings(o.pendings) {
             if (!!pgms) {
                 const auto& idx = _db.get_index<private_group_member_index, by_group_account>();
                 if (pgms->accounts.size()) {
@@ -149,7 +149,6 @@ namespace golos { namespace plugins { namespace private_message {
         bool is_encrypted = false;
         private_group_privacy privacy;
         time_point_sec created;
-        uint32_t admins = 0;
         uint32_t moders = 0;
         uint32_t members = 0;
         uint32_t pendings = 0;
@@ -278,5 +277,5 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::plugins::private_message::private_group_api_object),
     (owner)(name)(json_metadata)(is_encrypted)(privacy)(created)
-    (admins)(moders)(members)(pendings)(member_list)
+    (moders)(members)(pendings)(member_list)
 )

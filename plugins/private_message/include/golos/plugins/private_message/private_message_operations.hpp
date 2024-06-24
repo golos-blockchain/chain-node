@@ -130,7 +130,6 @@ namespace golos { namespace plugins { namespace private_message {
         account_name_type creator;
         std::string name;
         std::string json_metadata;
-        account_name_type admin;
         bool is_encrypted = false;
         private_group_privacy privacy = private_group_privacy::public_group;
 
@@ -160,8 +159,7 @@ namespace golos { namespace plugins { namespace private_message {
         retired = 3,
         banned = 4,
         moder = 5,
-        admin = 6,
-        _size = 7
+        _size = 6
     };
 
     struct private_group_member_operation: public base_operation {
@@ -224,7 +222,7 @@ FC_REFLECT_ENUM(
     (public_group)(public_read_only)(private_group)(_size))
 FC_REFLECT(
     (golos::plugins::private_message::private_group_operation),
-    (creator)(name)(json_metadata)(admin)(is_encrypted)(privacy)(extensions))
+    (creator)(name)(json_metadata)(is_encrypted)(privacy)(extensions))
 
 FC_REFLECT(
     (golos::plugins::private_message::private_group_delete_operation),
@@ -232,7 +230,7 @@ FC_REFLECT(
 
 FC_REFLECT_ENUM(
     golos::plugins::private_message::private_group_member_type,
-    (pending)(member)(retired)(banned)(moder)(admin)(_size))
+    (pending)(member)(retired)(banned)(moder)(_size))
 FC_REFLECT(
     (golos::plugins::private_message::private_group_member_operation),
     (requester)(name)(member)(member_type)(json_metadata)(extensions))

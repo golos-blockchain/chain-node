@@ -4,7 +4,6 @@
 #include <golos/plugins/private_message/private_message_evaluators.hpp>
 
 uint32_t MAX_GROUPS_LIMIT = 100; // per creator
-uint32_t MAX_ADMINS_LIMIT = 50; // per group
 uint32_t MAX_MODERS_LIMIT = 50; // per group
 
 namespace golos { namespace plugins { namespace private_message {
@@ -40,8 +39,7 @@ struct private_message_extension_visitor {
         }
 
         bool is_owner = pgo.owner == requester;
-        bool is_admin = is_owner || (exists && pgm_itr->member_type == private_group_member_type::admin);
-        bool is_moder = is_admin || (exists && pgm_itr->member_type == private_group_member_type::moder); 
+        bool is_moder = is_owner || (exists && pgm_itr->member_type == private_group_member_type::moder); 
 
         if (pgo.privacy != private_group_privacy::public_group) {
             GOLOS_CHECK_LOGIC(exists &&
@@ -51,7 +49,7 @@ struct private_message_extension_visitor {
 
         if (delete_from != account_name_type() && requester != delete_from) {
             GOLOS_CHECK_LOGIC(is_moder,
-                logic_errors::unauthorized, "You should be moder/admin to delete foreign messages.");
+                logic_errors::unauthorized, "You should be moder to delete foreign messages.");
         }
 
         group = _pgo.group;
@@ -573,10 +571,6 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
 
     const auto* pgo = _db.find<private_group_object, by_name>(op.name);
 
-    auto admin = op.admin != account_name_type() ? op.admin : op.creator;
-
-    _db.get_account(admin);
-
     auto now = _db.head_block_time();
 
     if (pgo) {
@@ -587,47 +581,7 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
             logic_errors::cannot_change_group_encrypted,
             "Cannot make encrypted group not encrypted or vice-versa.");
 
-        auto admins = pgo->admins;
-
         const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_type>();
-
-        auto new_admin = pgm_idx.find(admin);
-
-        if (new_admin == pgm_idx.end() || new_admin->member_type != private_group_member_type::admin) {
-            if (pgo->admins == 1) {
-                auto old_admin = pgm_idx.find(std::make_tuple(pgo->name, private_group_member_type::admin));
-        
-                _db.modify(*old_admin, [&](auto& pgmo) {
-                    pgmo.member_type = private_group_member_type::member;
-                    pgmo.updated = now;
-                });
-
-                --admins;
-            }
-
-            if (new_admin == pgm_idx.end()) {
-                GOLOS_CHECK_LOGIC(admins && admins == MAX_ADMINS_LIMIT,
-                    logic_errors::too_many_admins,
-                    "Too many admins.");
-
-                _db.create<private_group_member_object>([&](auto& pgmo) {
-                    from_string(pgmo.group, op.name);
-                    pgmo.account = admin;
-                    from_string(pgmo.json_metadata, "{}");
-                    pgmo.member_type = private_group_member_type::admin;
-                    pgmo.invited = op.creator;
-                    pgmo.joined = now;
-                    pgmo.updated = now;
-                });
-
-                ++admins;
-            } else {
-                _db.modify(*new_admin, [&](auto& pgmo) {
-                    pgmo.member_type = private_group_member_type::admin;
-                    pgmo.updated = now;
-                });
-            }
-        }
 
         if (pgo->privacy != private_group_privacy::public_group &&
             op.privacy == private_group_privacy::public_group) {
@@ -646,7 +600,6 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
         _db.modify(*pgo, [&](auto& pgo) {
             from_string(pgo.json_metadata, op.json_metadata);
             pgo.privacy = op.privacy;
-            pgo.admins = admins;
             pgo.pendings = 0;
         });
 
@@ -675,17 +628,6 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
         pgo.is_encrypted = op.is_encrypted;
         pgo.privacy = op.privacy;
         pgo.created = now;
-        pgo.admins = 1;
-    });
-
-    _db.create<private_group_member_object>([&](auto& pgmo) {
-        from_string(pgmo.group, op.name);
-        pgmo.account = admin;
-        from_string(pgmo.json_metadata, "{}");
-        pgmo.member_type = private_group_member_type::admin;
-        pgmo.invited = op.creator;
-        pgmo.joined = now;
-        pgmo.updated = now;
     });
 }
 
@@ -699,8 +641,11 @@ void private_group_delete_evaluator::do_apply(const private_group_delete_operati
         "Not your group.");
 
     const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_type>();
-    auto pgm_itr = pgm_idx.find(std::make_tuple(op.name, private_group_member_type::member));
-    while (pgm_itr != pgm_idx.end() && pgm_itr->group == pgo.name) {
+    auto pgm_itr = pgm_idx.lower_bound(op.name);
+    while (pgm_itr != pgm_idx.end()) {
+        if (pgm_itr->group != pgo.name) {
+            break;
+        }
         const auto& pgm = *pgm_itr;
         ++pgm_itr;
         _db.remove(pgm);
@@ -716,7 +661,6 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
 
     const auto& pgo = _db.get<private_group_object, by_name>(op.name);
 
-    auto admins = pgo.admins;
     auto moders = pgo.moders;
     auto members = pgo.members;
     auto pendings = pgo.pendings;
@@ -727,8 +671,7 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     bool requester_exists = requester_itr != pgm_idx.end();
 
     bool is_owner = pgo.owner == op.requester;
-    bool is_admin = is_owner || (requester_exists && requester_itr->member_type == private_group_member_type::admin);
-    bool is_moder = is_admin || (requester_exists && requester_itr->member_type == private_group_member_type::moder);
+    bool is_moder = is_owner || (requester_exists && requester_itr->member_type == private_group_member_type::moder);
     bool is_same = op.requester == op.member;
 
     auto member_itr = pgm_idx.find(std::make_tuple(op.member, op.name));
@@ -748,14 +691,8 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     }
 
     else if (op.member_type == private_group_member_type::moder) {
-        GOLOS_CHECK_LOGIC(is_admin, logic_errors::unauthorized, "Only admins can make members moderators.");
+        GOLOS_CHECK_LOGIC(is_owner, logic_errors::unauthorized, "Only owner can make members moderators.");
         moders++;
-    }
-
-    else if (op.member_type == private_group_member_type::admin) {
-        GOLOS_CHECK_LOGIC(is_owner,
-            logic_errors::unauthorized, "Only owner can make users admins.");
-        admins++;
     }
 
     else if (op.member_type == private_group_member_type::retired) {
@@ -782,8 +719,6 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
             members--;
         } else if (member_itr->member_type == private_group_member_type::moder) {
             moders--;
-        } else if (member_itr->member_type == private_group_member_type::admin) {
-            admins--;
         } else if (member_itr->member_type == private_group_member_type::pending) {
             pendings--;
         }
@@ -806,7 +741,6 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     });
 
     _db.modify(pgo, [&](auto& pgo) {
-        pgo.admins = admins;
         pgo.moders = moders;
         pgo.members = members;
         pgo.pendings = pendings;

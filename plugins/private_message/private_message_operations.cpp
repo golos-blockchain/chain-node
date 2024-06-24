@@ -213,9 +213,6 @@ namespace golos { namespace plugins { namespace private_message {
                 GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
             });
         }
-        if (admin != account_name_type()) {
-            GOLOS_CHECK_PARAM_ACCOUNT(admin);
-        }
         GOLOS_CHECK_PARAM(privacy, {
             GOLOS_CHECK_VALUE(privacy != private_group_privacy::_size, "Wrong privacy value.");
         });
@@ -245,7 +242,6 @@ namespace golos { namespace plugins { namespace private_message {
             if (member == requester) {
                 GOLOS_CHECK_VALUE(member_type != private_group_member_type::banned, "You cannot ban yourself.");
                 GOLOS_CHECK_VALUE(member_type != private_group_member_type::moder, "You cannot make moder yourself.");
-                GOLOS_CHECK_VALUE(member_type != private_group_member_type::admin, "You cannot make moder yourself.");
             }
         });
         if (json_metadata.size() > 0) {

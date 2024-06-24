@@ -331,7 +331,6 @@ namespace golos { namespace plugins { namespace private_message {
         bool is_encrypted = false;
         private_group_privacy privacy;
         time_point_sec created;
-        uint32_t admins = 0;
         uint32_t moders = 0;
         uint32_t members = 0;
         uint32_t pendings = 0;
