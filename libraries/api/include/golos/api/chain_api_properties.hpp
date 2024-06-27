@@ -82,6 +82,9 @@ namespace golos { namespace api {
 
         fc::optional<asset> nft_issue_cost;
 
+        fc::optional<asset> private_group_golos_power;
+        fc::optional<asset> private_group_cost;
+
         bool chain_status = true;
     };
 
@@ -110,5 +113,6 @@ FC_REFLECT(
     (unwanted_operation_cost)(unlimit_operation_cost)
     (min_golos_power_to_emission)
     (nft_issue_cost)
+    (private_group_golos_power)(private_group_cost)
     (chain_status)
 )

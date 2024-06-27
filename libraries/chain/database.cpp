@@ -2486,7 +2486,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_29 median_props;
+            chain_properties_30 median_props;
 
             auto median = active.size() / 2;
 
@@ -2616,6 +2616,8 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_27::unlimit_operation_cost);
             calc_median(&chain_properties_28::min_golos_power_to_emission);
             calc_median(&chain_properties_29::nft_issue_cost);
+            calc_median(&chain_properties_30::private_group_golos_power);
+            calc_median(&chain_properties_30::private_group_cost);
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -3503,6 +3505,20 @@ namespace golos { namespace chain {
                 }
             }
             return std::make_pair(min_golos_power_to_emission, min_golos);
+        }
+
+        std::pair<asset, asset> database::get_min_gp_for_groups() const {
+            asset min_golos{0, STEEM_SYMBOL};
+            asset min_golos_power{0, VESTS_SYMBOL};
+            if (has_hardfork(STEEMIT_HARDFORK_0_30)) {
+                const auto& gbg_median = get_feed_history().current_median_history;
+                if (!gbg_median.is_null()) {
+                    auto min_gbg = get_witness_schedule_object().median_props.private_group_golos_power;
+                    min_golos = min_gbg * gbg_median;
+                    min_golos_power = min_golos * get_dynamic_global_properties().get_vesting_share_price();
+                }
+            }
+            return std::make_pair(min_golos_power, min_golos);
         }
 
         void database::process_accumulative_distributions() { try {

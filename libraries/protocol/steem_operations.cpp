@@ -407,6 +407,12 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_ASSET_GE(nft_issue_cost, GBG, GOLOS_MIN_NFT_ISSUE_COST);
         }
 
+        void chain_properties_30::validate() const {
+            chain_properties_29::validate();
+            GOLOS_CHECK_ASSET_GE(private_group_golos_power, GBG, GOLOS_MIN_PRIVATE_GROUP_GOLOS_POWER);
+            GOLOS_CHECK_ASSET_GE(private_group_cost, GBG, GOLOS_MIN_PRIVATE_GROUP_COST);
+        }
+
         void witness_update_operation::validate() const {
             GOLOS_CHECK_PARAM_ACCOUNT(owner);
             GOLOS_CHECK_PARAM(url, {

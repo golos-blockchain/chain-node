@@ -49,6 +49,7 @@ namespace golos { namespace api {
         flat_map<asset_symbol_type, uint32_t> worker_requests;
         asset accumulative_emission_per_day = asset(0, STEEM_SYMBOL);
         std::pair<asset, asset> min_golos_power_to_emission;
+        std::pair<asset, asset> min_golos_power_for_groups;
     };
 
 } } // golos::api
@@ -92,4 +93,5 @@ FC_REFLECT(
     (worker_requests)
     (accumulative_emission_per_day)
     (min_golos_power_to_emission)
+    (min_golos_power_for_groups)
 )

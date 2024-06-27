@@ -622,6 +622,8 @@ namespace golos { namespace chain {
 
             std::pair<asset, asset> get_min_gp_to_emission() const;
 
+            std::pair<asset, asset> get_min_gp_for_groups() const;
+
             void process_accumulative_distributions();
 
             void auto_claim_accumulatives();
