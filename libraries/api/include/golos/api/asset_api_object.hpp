@@ -2,7 +2,7 @@
 
 #include <golos/chain/steem_objects.hpp>
 
-namespace golos { namespace plugins { namespace database_api {
+namespace golos { namespace api {
 
     using golos::chain::asset_object;
     using namespace golos::protocol;
@@ -71,15 +71,15 @@ namespace golos { namespace plugins { namespace database_api {
         uint16_t fee_percent;
     };
 
-}}} // golos::plugins::database_api
+}} // golos::api
 
 FC_REFLECT(
-    (golos::plugins::database_api::assets_query),
+    (golos::api::assets_query),
     (system)
 )
 
 FC_REFLECT(
-    (golos::plugins::database_api::asset_api_object),
+    (golos::api::asset_api_object),
     (id)(creator)(max_supply)(supply)(can_issue)(precision)(allow_fee)(allow_override_transfer)
     (json_metadata)(created)(modified)(marketed)(symbols_whitelist)(fee_percent)
 )
