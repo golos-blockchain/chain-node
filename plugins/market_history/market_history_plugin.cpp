@@ -10,6 +10,7 @@
 #include <golos/protocol/exceptions.hpp>
 
 #include <boost/algorithm/string.hpp>
+#include <golos/api/asset_api_object.hpp>
 #include <golos/api/callback_info.hpp>
 #include <golos/plugins/market_history/market_history_callbacks.hpp>
 
@@ -21,6 +22,7 @@ namespace golos {
             using golos::protocol::fill_order_operation;
             using golos::chain::operation_notification;
 
+            using golos::api::asset_api_object;
             using golos::api::callback_info;
             using plugins::json_rpc::msg_pack_transfer;
 
@@ -686,6 +688,7 @@ namespace golos {
                     (market_pair_query, query)
                 );
                 auto &db = _my->database();
+                std::set<std::string> symbols;
                 std::map<symbol_type_pair, market_pair_api_object> pairs;
                 db.with_weak_read_lock([&]() {
                     auto& idx = db.get_index<market_pair_index, golos::chain::by_id>();
@@ -704,6 +707,9 @@ namespace golos {
                                 continue;
                             }
                         }
+
+                        symbols.insert(mp.quote_depth.symbol_name());
+                        symbols.insert(mp.base_depth.symbol_name());
 
                         if (query.tickers) {
                             symbol_name_pair spair(mp.quote_depth.symbol_name(), mp.base_depth.symbol_name());
@@ -728,6 +734,33 @@ namespace golos {
                         vec.push_back(p.second);
                     }
                     result["data"] = vec;
+                }
+
+                if (query.assets != asset_query::nothing) {
+                    std::vector<asset_api_object> assets;
+                    db.with_weak_read_lock([&]() {
+                        const auto& sym_idx = db.get_index<asset_index, by_symbol_name>();
+                        if (query.assets == asset_query::required) {
+                            for (auto symbol : symbols) {
+                                auto itr = sym_idx.find(symbol);
+                                if (itr != sym_idx.end()) {
+                                    assets.push_back(asset_api_object(*itr, db));
+                                } else if (symbol == "GOLOS") {
+                                    assets.push_back(asset_api_object::golos(db));
+                                } else if (symbol == "GBG") {
+                                    assets.push_back(asset_api_object::gbg(db));
+                                }
+                            }
+                        } else {
+                            assets.push_back(asset_api_object::golos(db));
+                            assets.push_back(asset_api_object::gbg(db));
+                            const auto& m_idx = db.get_index<asset_index, by_marketed>();
+                            for (auto itr = m_idx.begin(); itr != m_idx.end(); ++itr) {
+                                assets.push_back(asset_api_object(*itr, db));
+                            }
+                        }
+                    });
+                    result["assets"] = assets;
                 }
                 return result;
             }
