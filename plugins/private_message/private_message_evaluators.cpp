@@ -714,12 +714,6 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     auto now = _db.head_block_time();
 
     if (member_itr != pgm_idx.end()) {
-        if (op.member_type == private_group_member_type::retired) {
-            pendings--;
-            _db.remove(*member_itr);
-            return;
-        }
-
         if (member_itr->member_type == private_group_member_type::member) {
             members--;
         } else if (member_itr->member_type == private_group_member_type::moder) {
@@ -728,9 +722,19 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
             pendings--;
         }
 
-        _db.modify(*member_itr, [&](auto& pgmo) {
-            pgmo.member_type = op.member_type;
-            pgmo.updated = now;
+        if (op.member_type == private_group_member_type::retired) {
+            _db.remove(*member_itr);
+        } else {
+            _db.modify(*member_itr, [&](auto& pgmo) {
+                pgmo.member_type = op.member_type;
+                pgmo.updated = now;
+            });
+        }
+
+        _db.modify(pgo, [&](auto& pgo) {
+            pgo.moders = moders;
+            pgo.members = members;
+            pgo.pendings = pendings;
         });
         return;
     }
