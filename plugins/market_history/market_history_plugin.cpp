@@ -55,9 +55,9 @@ namespace golos {
                 symbol_type_pair get_symbol_type_pair(const symbol_name_pair& pair, bool* pair_reversed = nullptr, bool allow_partial = false) const;
                 void reverse_price(double& price) const;
 
-                market_ticker get_ticker(const symbol_name_pair& pair, uint32_t bucket = 86400) const;
-                market_ticker get_ticker_impl(const symbol_type_pair& pair, uint32_t bucket = 86400) const;
-                market_volume get_volume(const symbol_type_pair& pair, uint32_t bucket = 86400) const;
+                market_ticker get_ticker(const symbol_name_pair& pair, uint32_t bucket = 86400, uint32_t bucket_count = 1) const;
+                market_ticker get_ticker_impl(const symbol_type_pair& pair, uint32_t bucket = 86400, uint32_t bucket_count = 1) const;
+                market_volume get_volume(const symbol_type_pair& pair, uint32_t bucket = 86400, uint32_t bucket_count = 1) const;
                 market_depth get_depth(const symbol_type_pair& pair) const;
                 order_book get_order_book(const symbol_type_pair& pair, uint32_t limit) const;
                 order_book_extended get_order_book_extended(const symbol_type_pair& pair, uint32_t limit) const;
@@ -239,9 +239,9 @@ namespace golos {
                 if (price != 0) price = 1 / price;
             }
 
-            market_ticker market_history_plugin::market_history_plugin_impl::get_ticker(const symbol_name_pair& pair, uint32_t bucket) const {
+            market_ticker market_history_plugin::market_history_plugin_impl::get_ticker(const symbol_name_pair& pair, uint32_t bucket, uint32_t bucket_count) const {
                 bool reversed;
-                auto res = get_ticker_impl(get_symbol_type_pair(pair, &reversed), bucket);
+                auto res = get_ticker_impl(get_symbol_type_pair(pair, &reversed), bucket, bucket_count);
                 if (reversed) {
                     std::swap(res.latest1, res.latest2);
 
@@ -257,7 +257,7 @@ namespace golos {
                 return res;
             }
 
-            market_ticker market_history_plugin::market_history_plugin_impl::get_ticker_impl(const symbol_type_pair& pair, uint32_t bucket) const {
+            market_ticker market_history_plugin::market_history_plugin_impl::get_ticker_impl(const symbol_type_pair& pair, uint32_t bucket, uint32_t bucket_count) const {
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
                 auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, bucket, database().head_block_time() - bucket));
 
@@ -292,7 +292,7 @@ namespace golos {
                     result.lowest_ask = orders.asks[0].price;
                 }
 
-                auto volume = get_volume(pair, bucket);
+                auto volume = get_volume(pair, bucket, bucket_count);
                 result.asset1_volume = volume.asset1_volume;
                 result.asset2_volume = volume.asset2_volume;
 
@@ -303,11 +303,13 @@ namespace golos {
                 return result;
             }
 
-            market_volume market_history_plugin::market_history_plugin_impl::get_volume(const symbol_type_pair& pair, uint32_t bucket) const {
+            market_volume market_history_plugin::market_history_plugin_impl::get_volume(const symbol_type_pair& pair, uint32_t bucket, uint32_t bucket_count) const {
                 market_volume result;
 
+                auto secs = bucket * bucket_count;
+
                 const auto& bucket_idx = _db.get_index<bucket_index, by_bucket>();
-                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, bucket, database().head_block_time() - bucket));
+                auto itr = bucket_idx.lower_bound(std::make_tuple(pair.first, pair.second, bucket, database().head_block_time() - secs));
                 result.asset1_volume = asset(0, pair.first);
                 result.asset2_volume = asset(0, pair.second);
 
@@ -687,6 +689,7 @@ namespace golos {
                 PLUGIN_API_VALIDATE_ARGS(
                     (market_pair_query, query)
                 );
+                GOLOS_CHECK_LIMIT_PARAM(query.bucket_count, 20);
                 auto &db = _my->database();
                 std::set<std::string> symbols;
                 std::map<symbol_type_pair, market_pair_api_object> pairs;
@@ -713,7 +716,7 @@ namespace golos {
 
                         if (query.tickers) {
                             symbol_name_pair spair(mp.quote_depth.symbol_name(), mp.base_depth.symbol_name());
-                            mp.ticker = _my->get_ticker(spair, query.bucket);
+                            mp.ticker = _my->get_ticker(spair, query.bucket, query.bucket_count);
                         }
                         pairs[pair] = std::move(mp);
                     }

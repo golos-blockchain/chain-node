@@ -188,6 +188,7 @@ namespace golos {
                 bool merge = false;
                 bool as_map = false;
                 uint32_t bucket = 604800;
+                uint32_t bucket_count = 1;
                 symbol_name_pair pair;
             };
 
@@ -248,7 +249,7 @@ FC_REFLECT_ENUM(
     (nothing)(required)(all)
 )
 FC_REFLECT((golos::plugins::market_history::market_pair_query),
-           (tickers)(assets)(merge)(as_map)(bucket)(pair));
+           (tickers)(assets)(merge)(as_map)(bucket)(bucket_count)(pair));
 FC_REFLECT((golos::plugins::market_history::market_pair_api_object),
            (base_depth)(quote_depth)(ticker));
 
