@@ -61,7 +61,7 @@ namespace golos {
                 market_depth get_depth(const symbol_type_pair& pair) const;
                 order_book get_order_book(const symbol_type_pair& pair, uint32_t limit) const;
                 order_book_extended get_order_book_extended(const symbol_type_pair& pair, uint32_t limit) const;
-                vector<market_trade> get_trade_history(const symbol_type_pair& pair, time_point_sec start, time_point_sec end, uint32_t limit) const;
+                vector<market_trade> get_trade_history(const symbol_type_pair& pair, fc::optional<time_point_sec> start, fc::optional<time_point_sec> end, uint32_t limit) const;
                 vector<market_trade> get_recent_trades(const symbol_type_pair& pair, uint32_t limit) const;
                 vector<bucket_object> get_market_history(const symbol_type_pair& pair, uint32_t bucket_seconds, time_point_sec start, time_point_sec end) const;
                 flat_set<uint32_t> get_market_history_buckets() const;
@@ -434,26 +434,41 @@ namespace golos {
 
 
             vector<market_trade> market_history_plugin::market_history_plugin_impl::get_trade_history(
-                    const symbol_type_pair& pair, time_point_sec start, time_point_sec end, uint32_t limit) const {
-                const auto& bucket_idx = _db.get_index<order_history_index, by_time>();
-                auto itr = bucket_idx.lower_bound(start);
+                    const symbol_type_pair& pair, fc::optional<time_point_sec> start, fc::optional<time_point_sec> end, uint32_t limit) const {
+                const auto& idx = _db.get_index<order_history_index, by_time>();
 
                 std::vector<market_trade> result;
 
-                while (itr != bucket_idx.end() && itr->time <= end &&
-                       result.size() < limit) {
-                    if (!(itr->op.open_pays.symbol == pair.first && itr->op.current_pays.symbol == pair.second)
-                        && !(itr->op.open_pays.symbol == pair.second && itr->op.current_pays.symbol == pair.first)) {
-                        ++itr;
-                        continue;
+                auto process_trade = [&](const auto& tr) {
+                    if (!(tr.op.open_pays.symbol == pair.first && tr.op.current_pays.symbol == pair.second)
+                        && !(tr.op.open_pays.symbol == pair.second && tr.op.current_pays.symbol == pair.first)) {
+                        return;
                     }
                     market_trade trade;
-                    trade.id = itr->id;
-                    trade.date = itr->time;
-                    trade.current_pays = itr->op.current_pays;
-                    trade.open_pays = itr->op.open_pays;
+                    trade.id = tr.id;
+                    trade.date = tr.time;
+                    trade.current_pays = tr.op.current_pays;
+                    trade.open_pays = tr.op.open_pays;
                     result.push_back(trade);
-                    ++itr;
+                };
+
+                if (!!start) {
+                    auto itr = idx.lower_bound(*start);
+                    while (itr != idx.end() && (!end || itr->time <= *end) &&
+                           result.size() < limit) {
+                        process_trade(*itr);
+                        ++itr;
+                    }
+                } else {
+                    auto ritr = idx.rbegin();
+                    if (!!end) {
+                        auto itr = idx.upper_bound(*end);
+                        ritr = boost::make_reverse_iterator(itr);
+                    }
+                    while (ritr != idx.rend() && result.size() < limit) {
+                        process_trade(*ritr);
+                        ++ritr;
+                    }
                 }
 
                 return result;
@@ -855,16 +870,25 @@ namespace golos {
 
             DEFINE_API(market_history_plugin, get_trade_history) {
                 PLUGIN_API_VALIDATE_ARGS(
-                    (time_point_sec, start)
-                    (time_point_sec, end)
+                    (fc::optional<std::string>, start)
+                    (fc::optional<std::string>, end)
                     (uint32_t,       limit)
                     (symbol_name_pair, pair, symbol_name_pair("GOLOS", "GBG"))
                 );
                 GOLOS_CHECK_LIMIT_PARAM(limit, 1000);
 
+                auto string2time = [&](const auto& str) {
+                    fc::optional<time_point_sec> t;
+                    if (!str || str->empty()) return t;
+                    t = time_point_sec::from_iso_string(*str);
+                    return t;
+                };
+                auto t_start = string2time(start);
+                auto t_end = string2time(end);
+
                 auto &db = _my->database();
                 return db.with_weak_read_lock([&]() {
-                    return _my->get_trade_history(_my->get_symbol_type_pair(pair), start, end, limit);
+                    return _my->get_trade_history(_my->get_symbol_type_pair(pair), t_start, t_end, limit);
                 });
             }
 
