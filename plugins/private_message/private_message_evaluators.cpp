@@ -91,6 +91,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     for (auto& e : op.extensions) {
         e.visit(private_message_extension_visitor(op.from, _db, group));
     }
+    bool is_group = group.size();
 
     auto& id_idx = _db.get_index<message_index, by_nonce>();
     auto id_itr = id_idx.find(std::make_tuple(group, op.from, op.to, op.nonce));
@@ -117,7 +118,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     };
 
     if (id_itr == id_idx.end()) {
-        if (group.size()) {
+        if (is_group) {
             const auto& from = _db.get_account(op.from);
             check_golos_power(from, _db);
         }
@@ -180,9 +181,13 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     };
 
     // Add contact list if it doesn't exist or update it if it exits
-    auto modify_contact = [&](auto& owner, auto& contact, auto type, const bool is_send) {
+    auto modify_contact = [&](auto& owner, const std::string& contact, auto kind, auto type, const bool is_send) {
         bool is_new_contact;
-        auto contact_itr = contact_idx.find(std::make_tuple(owner, contact));
+
+        auto contact_at = (kind == contact_kind::account) ?
+            with_dog(contact) : contact;
+
+        auto contact_itr = contact_idx.find(std::make_tuple(owner, contact_at));
         if (contact_itr != contact_idx.end()) {
             _db.modify(*contact_itr, [&](auto& pco) {
                 pco.is_hidden = false;
@@ -193,14 +198,15 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         } else {
             _db.create<contact_object>([&](auto& pco) {
                 pco.owner = owner;
-                pco.contact = contact;
+                from_string(pco.contact, contact_at);
+                pco.kind = kind;
                 pco.type = type;
                 inc_counters(pco.size, is_send);
             });
             is_new_contact = true;
 
             if (_plugin->can_call_callbacks()) {
-                contact_itr = contact_idx.find(std::make_tuple(owner, contact));
+                contact_itr = contact_idx.find(std::make_tuple(owner, contact_at));
                 _plugin->call_callbacks(
                     callback_event_type::contact, owner, contact,
                     fc::variant(callback_contact_event(
@@ -211,8 +217,12 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     };
 
     if (!op.update) {
-        modify_contact(op.from, op.to, unknown, true);
-        modify_contact(op.to, op.from, unknown, false);
+        if (!is_group) {
+            modify_contact(op.from, op.to, contact_kind::account, unknown, true);
+            modify_contact(op.to, op.from, contact_kind::account, unknown, false);
+        } else {
+            modify_contact(op.from, group, contact_kind::account, unknown, true);
+        }
     }
 }
 
@@ -293,7 +303,9 @@ void process_group_message_operation(
 
     for (const auto& stat_info: map) {
         const auto& owner = std::get<0>(stat_info.first);
-        const auto& size = stat_info.second;
+        const auto& contact = std::get<1>(stat_info.first);
+        if (!starts_with_dog(contact)) continue;
+
         auto contact_itr = contact_idx.find(stat_info.first);
 
         FC_ASSERT(contact_itr != contact_idx.end(), "Invalid size");
@@ -302,6 +314,7 @@ void process_group_message_operation(
 
         FC_ASSERT(size_itr != size_idx.end(), "Invalid size");
 
+        const auto& size = stat_info.second;
         if (!contact_action(*contact_itr, *size_itr, size)) {
             _db.modify(*contact_itr, [&](auto& pco) {
                 pco.size -= size;
@@ -328,7 +341,7 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
     }
 
     auto now = _db.head_block_time();
-    fc::flat_map<std::tuple<account_name_type, account_name_type>, contact_size_info> stat_map;
+    fc::flat_map<std::tuple<account_name_type, std::string>, contact_size_info> stat_map;
 
     process_group_message_operation(
         _db, op, group, op.requester, stat_map,
@@ -340,11 +353,11 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
                 unread_messages = 1;
             }
             // remove from inbox
-            auto& inbox_stat = stat_map[std::make_tuple(m.to, m.from)];
+            auto& inbox_stat = stat_map[std::make_tuple(m.to, with_dog(m.from))];
             inbox_stat.unread_inbox_messages += unread_messages;
             inbox_stat.total_inbox_messages++;
             // remove from outbox
-            auto& outbox_stat = stat_map[std::make_tuple(m.from, m.to)];
+            auto& outbox_stat = stat_map[std::make_tuple(m.from, with_dog(m.to))];
             outbox_stat.unread_outbox_messages += unread_messages;
             outbox_stat.total_outbox_messages++;
 
@@ -394,7 +407,7 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
 
     uint32_t total_marked_messages = 0;
     auto now = _db.head_block_time();
-    fc::flat_map<std::tuple<account_name_type, account_name_type>, contact_size_info> stat_map;
+    fc::flat_map<std::tuple<account_name_type, std::string>, contact_size_info> stat_map;
 
     process_group_message_operation(
         _db, op, "", op.to, stat_map,
@@ -404,8 +417,8 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
                 return true;
             }
             // only recipient can mark messages
-            stat_map[std::make_tuple(m.to, m.from)].unread_inbox_messages++;
-            stat_map[std::make_tuple(m.from, m.to)].unread_outbox_messages++;
+            stat_map[std::make_tuple(m.to, with_dog(m.from))].unread_inbox_messages++;
+            stat_map[std::make_tuple(m.from, with_dog(m.to))].unread_outbox_messages++;
             total_marked_messages++;
 
             _db.modify(m, [&](auto& m){
@@ -474,12 +487,16 @@ void private_settings_evaluator::do_apply(const private_settings_operation& op) 
 void private_contact_evaluator::do_apply(const private_contact_operation& op) {
     GOLOS_ASSERT(false, unsupported_operation, "private_contact_operation is not yet supported");
 
+    // And this code supports only account-kind, not group
+
     if (!_plugin->is_tracked_account(op.owner) && !_plugin->is_tracked_account(op.contact)) {
         return;
     }
 
+    auto contact_at = with_dog(op.contact);
+
     auto& contact_idx = _db.get_index<contact_index, by_contact>();
-    auto contact_itr = contact_idx.find(std::make_tuple(op.owner, op.contact));
+    auto contact_itr = contact_idx.find(std::make_tuple(op.owner, contact_at));
 
     _db.get_account(op.contact);
 
@@ -541,12 +558,12 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
     } else if (op.type != unknown) {
         _db.create<contact_object>([&](auto& plo){
             plo.owner = op.owner;
-            plo.contact = op.contact;
+            from_string(plo.contact, contact_at);
             plo.type = op.type;
             from_string(plo.json_metadata, op.json_metadata);
         });
 
-        contact_itr = contact_idx.find(std::make_tuple(op.owner, op.contact));
+        contact_itr = contact_idx.find(std::make_tuple(op.owner, contact_at));
 
         if (dst_itr == owner_idx.end()) {
             _db.create<contact_size_object>([&](auto& pcso) {
@@ -672,6 +689,7 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     auto moders = pgo.moders;
     auto members = pgo.members;
     auto pendings = pgo.pendings;
+    auto banneds = pgo.banneds;
 
     const auto& pgm_idx = _db.get_index<private_group_member_index, by_account_group>();
 
@@ -709,6 +727,12 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
 
         bool is_banned = requester_exists && requester_itr->member_type == private_group_member_type::banned;
         GOLOS_CHECK_LOGIC(!is_banned, logic_errors::unauthorized, "You are banned.");
+        GOLOS_CHECK_LOGIC(requester_exists, logic_errors::unauthorized, "You are not in group.");
+    }
+
+    else if (op.member_type == private_group_member_type::banned) {
+        GOLOS_CHECK_LOGIC(is_moder && !is_same, logic_errors::unauthorized, "Only moderators can ban members.");
+        banneds++;
     }
 
     auto now = _db.head_block_time();
@@ -720,6 +744,8 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
             moders--;
         } else if (member_itr->member_type == private_group_member_type::pending) {
             pendings--;
+        } else if (member_itr->member_type == private_group_member_type::banned) {
+            banneds--;
         }
 
         if (op.member_type == private_group_member_type::retired) {
@@ -735,6 +761,7 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
             pgo.moders = moders;
             pgo.members = members;
             pgo.pendings = pendings;
+            pgo.banneds = banneds;
         });
         return;
     }
@@ -753,6 +780,7 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
         pgo.moders = moders;
         pgo.members = members;
         pgo.pendings = pendings;
+        pgo.banneds = banneds;
     });
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <golos/plugins/private_message/private_message_operations.hpp>
+
 #include <golos/protocol/asset.hpp>
 #include <golos/protocol/base.hpp>
 #include <golos/protocol/types.hpp>
@@ -12,6 +14,8 @@ namespace golos { namespace plugins { namespace private_message {
     using namespace chainbase;
     using namespace golos::chain;
     using namespace boost::multi_index;
+
+    using contact_name = shared_string;
 
 #ifndef PRIVATE_MESSAGE_SPACE_ID
 #define PRIVATE_MESSAGE_SPACE_ID 6
@@ -39,7 +43,7 @@ namespace golos { namespace plugins { namespace private_message {
 
         id_type id;
 
-        shared_string group;
+        contact_name group;
         account_name_type from;
         account_name_type to;
         uint64_t nonce;
@@ -64,10 +68,8 @@ namespace golos { namespace plugins { namespace private_message {
     struct by_inbox_account;
     struct by_outbox;
     struct by_outbox_account;
+    struct by_group;
     struct by_nonce;
-
-    struct by_owner;
-    struct by_contact;
 
     using message_index = multi_index_container<
         message_object,
@@ -91,7 +93,7 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_unique<tag<by_inbox_account>,
                 composite_key<
                     message_object,
-                    member<message_object, shared_string, &message_object::group>,
+                    member<message_object, contact_name, &message_object::group>,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, time_point_sec, &message_object::inbox_create_date>,
@@ -121,7 +123,7 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_unique<tag<by_outbox_account>,
                 composite_key<
                     message_object,
-                    member<message_object, shared_string, &message_object::group>,
+                    member<message_object, contact_name, &message_object::group>,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, time_point_sec, &message_object::outbox_create_date>,
@@ -135,10 +137,23 @@ namespace golos { namespace plugins { namespace private_message {
                     std::greater<message_id_type>
                 >
             >,
+            ordered_unique<tag<by_group>,
+                composite_key<
+                    message_object,
+                    member<message_object, contact_name, &message_object::group>,
+                    member<message_object, time_point_sec, &message_object::outbox_create_date>,
+                    member<message_object, message_id_type, &message_object::id>
+                >,
+                composite_key_compare<
+                    strcmp_less,
+                    std::greater<time_point_sec>,
+                    std::greater<message_id_type>
+                >
+            >,
             ordered_unique<tag<by_nonce>,
                 composite_key<
                     message_object,
-                    member<message_object, shared_string, &message_object::group>,
+                    member<message_object, contact_name, &message_object::group>,
                     member<message_object, account_name_type, &message_object::from>,
                     member<message_object, account_name_type, &message_object::to>,
                     member<message_object, uint64_t, &message_object::nonce>
@@ -170,6 +185,8 @@ namespace golos { namespace plugins { namespace private_message {
 
     using settings_id_type = settings_object::id_type;
 
+    struct by_owner;
+
     using settings_index = multi_index_container<
         settings_object,
         indexed_by<
@@ -180,6 +197,18 @@ namespace golos { namespace plugins { namespace private_message {
                 member<settings_object, account_name_type, &settings_object::owner>
             >
         >, allocator<settings_object>>;
+
+    #define _NAME_HAS_DOG(STR) (STR.size() && STR[0] == '@')
+
+    bool starts_with_dog(const std::string& str);
+
+    bool trim_dog(std::string& str);
+
+    bool prepend_dog(std::string& str);
+
+    std::string without_dog(const std::string& str);
+
+    std::string with_dog(const std::string& str);
 
     struct contact_size_info {
         uint32_t total_outbox_messages = 0;
@@ -224,20 +253,26 @@ namespace golos { namespace plugins { namespace private_message {
         uint32_t total_contacts = 0;
     };
 
+    enum class contact_kind: uint8_t {
+        account = 1,
+        group = 2,
+    };
+
     /**
      * Contact item
      */
     class contact_object: public object<contact_object_type, contact_object> {
     public:
         template<typename Constructor, typename Allocator>
-        contact_object(Constructor&& c, allocator <Allocator> a): json_metadata(a) {
+        contact_object(Constructor&& c, allocator <Allocator> a): contact(a), json_metadata(a) {
             c(*this);
         }
 
         id_type id;
 
         account_name_type owner;
-        account_name_type contact;
+        contact_name contact;
+        contact_kind kind;
         private_contact_type type;
         shared_string json_metadata;
         contact_size_info size;
@@ -245,6 +280,8 @@ namespace golos { namespace plugins { namespace private_message {
     };
 
     using contact_id_type = contact_object::id_type;
+
+    struct by_contact;
 
     using contact_index = multi_index_container<
         contact_object,
@@ -257,23 +294,23 @@ namespace golos { namespace plugins { namespace private_message {
                     contact_object,
                     member<contact_object, account_name_type, &contact_object::owner>,
                     member<contact_object, private_contact_type, &contact_object::type>,
-                    member<contact_object, account_name_type, &contact_object::contact>
+                    member<contact_object, contact_name, &contact_object::contact>
                 >,
                 composite_key_compare<
                     string_less,
                     std::greater<private_contact_type>,
-                    string_less
+                    strcmp_less
                 >
             >,
             ordered_unique<tag<by_contact>,
                 composite_key<
                     contact_object,
                     member<contact_object, account_name_type, &contact_object::owner>,
-                    member<contact_object, account_name_type, &contact_object::contact>
+                    member<contact_object, contact_name, &contact_object::contact>
                 >,
                 composite_key_compare<
                     string_less,
-                    string_less
+                    strcmp_less
                 >
             >
         >, allocator<contact_object>>;
@@ -326,7 +363,7 @@ namespace golos { namespace plugins { namespace private_message {
         id_type id;
 
         account_name_type owner;
-        shared_string name;
+        contact_name name;
         shared_string json_metadata;
         bool is_encrypted = false;
         private_group_privacy privacy;
@@ -334,6 +371,7 @@ namespace golos { namespace plugins { namespace private_message {
         uint32_t moders = 0;
         uint32_t members = 0;
         uint32_t pendings = 0;
+        uint32_t banneds = 0;
     };
 
     using private_group_id_type = private_group_object::id_type;
@@ -348,7 +386,7 @@ namespace golos { namespace plugins { namespace private_message {
                 member<private_group_object, private_group_id_type, &private_group_object::id>
             >,
             ordered_unique<tag<by_name>,
-                member<private_group_object, shared_string, &private_group_object::name>,
+                member<private_group_object, contact_name, &private_group_object::name>,
                 strcmp_less
             >,
             ordered_non_unique<tag<by_owner>,
@@ -366,7 +404,7 @@ namespace golos { namespace plugins { namespace private_message {
 
         id_type id;
 
-        shared_string group;
+        contact_name group;
         account_name_type account;
         shared_string json_metadata;
         private_group_member_type member_type;
@@ -392,7 +430,7 @@ namespace golos { namespace plugins { namespace private_message {
                 composite_key<
                     private_group_member_object,
                     member<private_group_member_object, account_name_type, &private_group_member_object::account>,
-                    member<private_group_member_object, shared_string, &private_group_member_object::group>
+                    member<private_group_member_object, contact_name, &private_group_member_object::group>
                 >,
                 composite_key_compare<
                     std::less<account_name_type>,
@@ -402,7 +440,7 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_unique<tag<by_group_account>,
                 composite_key<
                     private_group_member_object,
-                    member<private_group_member_object, shared_string, &private_group_member_object::group>,
+                    member<private_group_member_object, contact_name, &private_group_member_object::group>,
                     member<private_group_member_object, account_name_type, &private_group_member_object::account>
                 >,
                 composite_key_compare<
@@ -413,7 +451,7 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_non_unique<tag<by_group_type>,
                 composite_key<
                     private_group_member_object,
-                    member<private_group_member_object, shared_string, &private_group_member_object::group>,
+                    member<private_group_member_object, contact_name, &private_group_member_object::group>,
                     member<private_group_member_object, private_group_member_type, &private_group_member_object::member_type>
                 >,
                 composite_key_compare<
@@ -424,7 +462,7 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_non_unique<tag<by_group_updated>,
                 composite_key<
                     private_group_member_object,
-                    member<private_group_member_object, shared_string, &private_group_member_object::group>,
+                    member<private_group_member_object, contact_name, &private_group_member_object::group>,
                     member<private_group_member_object, time_point_sec, &private_group_member_object::updated>
                 >,
                 composite_key_compare<
@@ -458,3 +496,8 @@ CHAINBASE_SET_INDEX_TYPE(
 CHAINBASE_SET_INDEX_TYPE(
     golos::plugins::private_message::private_group_member_object,
     golos::plugins::private_message::private_group_member_index)
+
+FC_REFLECT_ENUM(
+    golos::plugins::private_message::contact_kind,
+    (account)(group)
+)

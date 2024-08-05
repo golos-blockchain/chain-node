@@ -8,8 +8,6 @@
 #include <golos/plugins/private_message/private_message_objects.hpp>
 #include <golos/plugins/private_message/private_message_queries.hpp>
 
-#define PRIVATE_DEFAULT_LIMIT 100
-
 namespace golos { namespace plugins { namespace private_message {
 
     using namespace golos::protocol;
@@ -61,16 +59,19 @@ namespace golos { namespace plugins { namespace private_message {
      */
     struct contact_api_object final {
         contact_api_object(const contact_object& o)
-            : owner(o.owner), contact(o.contact),
+            : owner(o.owner), contact(o.contact.begin(), o.contact.end()),
+            kind(o.kind),
             json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
             local_type(o.type),
             size(o.size) {
+            trim_dog(contact);
         }
 
         contact_api_object() = default;
 
         account_name_type owner;
-        account_name_type contact;
+        std::string contact;
+        contact_kind kind = contact_kind::account;
         std::string json_metadata;
         private_contact_type local_type = unknown;
         private_contact_type remote_type = unknown;
@@ -116,7 +117,7 @@ namespace golos { namespace plugins { namespace private_message {
             : owner(o.owner), name(o.name.begin(), o.name.end()),
             json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
             is_encrypted(o.is_encrypted), privacy(o.privacy), created(o.created),
-            moders(o.moders), members(o.members), pendings(o.pendings) {
+            moders(o.moders), members(o.members), pendings(o.pendings), banneds(o.banneds) {
             if (!!pgms) {
                 const auto& idx = _db.get_index<private_group_member_index, by_group_account>();
                 if (pgms->accounts.size()) {
@@ -152,30 +153,9 @@ namespace golos { namespace plugins { namespace private_message {
         uint32_t moders = 0;
         uint32_t members = 0;
         uint32_t pendings = 0;
+        uint32_t banneds = 0;
 
         std::vector<private_group_member_api_object> member_list;
-    };
-
-    /**
-     * Query for inbox/outbox messages
-     */
-    struct message_box_query final {
-        fc::flat_set<std::string> select_accounts;
-        fc::flat_set<std::string> filter_accounts;
-        time_point_sec newest_date = time_point_sec::min();
-        bool unread_only = false;
-        uint16_t limit = PRIVATE_DEFAULT_LIMIT;
-        uint32_t offset = 0;
-    };
-    
-    /**
-     * Query for thread messages
-     */
-    struct message_thread_query final {
-        time_point_sec newest_date = time_point_sec::min();
-        bool unread_only = false;
-        uint16_t limit = PRIVATE_DEFAULT_LIMIT;
-        uint32_t offset = 0;
     };
 
     /**
@@ -244,14 +224,6 @@ FC_REFLECT(
     (golos::plugins::private_message::contacts_size_api_object),
     (size))
 
-FC_REFLECT(
-    (golos::plugins::private_message::message_box_query),
-    (select_accounts)(filter_accounts)(newest_date)(unread_only)(limit)(offset))
-
-FC_REFLECT(
-    (golos::plugins::private_message::message_thread_query),
-    (newest_date)(unread_only)(limit)(offset))
-
 FC_REFLECT_ENUM(
     golos::plugins::private_message::callback_event_type,
     (message)(mark)(remove_inbox)(remove_outbox)(contact))
@@ -277,5 +249,5 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::plugins::private_message::private_group_api_object),
     (owner)(name)(json_metadata)(is_encrypted)(privacy)(created)
-    (moders)(members)(pendings)(member_list)
+    (moders)(members)(pendings)(banneds)(member_list)
 )
