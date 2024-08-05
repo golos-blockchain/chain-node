@@ -23,9 +23,20 @@ struct private_group_query {
     fc::optional<private_group_members> with_members;
 };
 
+enum class private_group_member_sort_direction : uint8_t {
+    up,
+    down,
+};
+
+struct private_group_member_sort_condition {
+    private_group_member_sort_direction direction = private_group_member_sort_direction::up;
+    private_group_member_type member_type = private_group_member_type::pending;
+};
+
 struct private_group_member_query {
     std::string group;
     std::set<private_group_member_type> member_types;
+    std::vector<private_group_member_sort_condition> sort_conditions;
 
     account_name_type start_member;
     uint32_t limit = 20;
@@ -41,6 +52,15 @@ FC_REFLECT((golos::plugins::private_message::private_group_query),
     (member)(member_types)(start_group)(limit)(with_members)
 )
 
+FC_REFLECT_ENUM(
+    golos::plugins::private_message::private_group_member_sort_direction,
+    (up)(down)
+)
+
+FC_REFLECT((golos::plugins::private_message::private_group_member_sort_condition),
+    (direction)(member_type)
+)
+
 FC_REFLECT((golos::plugins::private_message::private_group_member_query),
-    (group)(member_types)(start_member)(limit)
+    (group)(member_types)(sort_conditions)(start_member)(limit)
 )

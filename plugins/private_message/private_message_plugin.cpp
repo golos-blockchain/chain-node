@@ -425,19 +425,60 @@ namespace golos { namespace plugins { namespace private_message {
     std::vector<private_group_member_api_object> private_message_plugin::private_message_plugin_impl::get_group_members(const private_group_member_query& query) const {
         std::vector<private_group_member_api_object> res;
 
-        const auto& idx = _db.get_index<private_group_member_index, by_group_updated>();
-        auto itr = idx.lower_bound(query.group);
-        for (; itr != idx.end() && to_string(itr->group) == query.group
-                && res.size() < query.limit; ++itr) {
-            if (query.start_member != account_name_type() && itr->account != query.start_member) {
-                continue;
-            }
+        bool reached_start = query.start_member == account_name_type();
 
-            if (query.member_types.size() && !query.member_types.count(itr->member_type)) {
-                continue;
+        auto query_types = query.member_types;
+        if (!query_types.size()) {
+            for (uint8_t i = 0; i < uint8_t(private_group_member_type::_size); ++i) {
+                query_types.insert(private_group_member_type(i));
             }
+        }
 
-            res.emplace_back(*itr);
+        std::vector<private_group_member_sort_condition> sort_ups;
+        std::vector<private_group_member_sort_condition> sort_downs;
+        for (const auto& cond : query.sort_conditions) {
+            query_types.erase(cond.member_type);
+            if (cond.direction == private_group_member_sort_direction::up) {
+                sort_ups.push_back(cond);
+            } else {
+                sort_downs.push_back(cond);
+            }
+        }
+
+        auto fill_member_types = [&](const std::set<private_group_member_type>& member_types) {
+            return _db.with_weak_read_lock([&](){
+                const auto& idx = _db.get_index<private_group_member_index, by_group_updated>();
+                auto itr = idx.lower_bound(query.group);
+                for (; itr != idx.end() && to_string(itr->group) == query.group; ++itr) {
+                    if (res.size() == query.limit) return true;
+
+                    if (member_types.size() && !member_types.count(itr->member_type)) {
+                        continue;
+                    }
+
+                    if (!reached_start && itr->account != query.start_member) {
+                        continue;
+                    }
+                    reached_start = true;
+
+                    res.emplace_back(*itr);
+                }
+                return false;
+            });
+        };
+
+        for (const auto& cond : sort_ups) {
+            if (fill_member_types({cond.member_type})) {
+                return res;
+            }
+        }
+
+        fill_member_types(query_types);
+
+        for (const auto& cond : sort_downs) {
+            if (fill_member_types({cond.member_type})) {
+                return res;
+            }
         }
 
         return res;
@@ -727,9 +768,7 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
 
-        return my->_db.with_weak_read_lock([&](){
-            return my->get_group_members(query);
-        });
+        return my->get_group_members(query);
     }
 
 } } } // golos::plugins::private_message

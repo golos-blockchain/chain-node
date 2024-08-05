@@ -672,6 +672,7 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     auto moders = pgo.moders;
     auto members = pgo.members;
     auto pendings = pgo.pendings;
+    auto banneds = pgo.banneds;
 
     const auto& pgm_idx = _db.get_index<private_group_member_index, by_account_group>();
 
@@ -709,6 +710,12 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
 
         bool is_banned = requester_exists && requester_itr->member_type == private_group_member_type::banned;
         GOLOS_CHECK_LOGIC(!is_banned, logic_errors::unauthorized, "You are banned.");
+        GOLOS_CHECK_LOGIC(requester_exists, logic_errors::unauthorized, "You are not in group.");
+    }
+
+    else if (op.member_type == private_group_member_type::banned) {
+        GOLOS_CHECK_LOGIC(is_moder && !is_same, logic_errors::unauthorized, "Only moderators can ban members.");
+        banneds++;
     }
 
     auto now = _db.head_block_time();
@@ -720,6 +727,8 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
             moders--;
         } else if (member_itr->member_type == private_group_member_type::pending) {
             pendings--;
+        } else if (member_itr->member_type == private_group_member_type::banned) {
+            banneds--;
         }
 
         if (op.member_type == private_group_member_type::retired) {
@@ -735,6 +744,7 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
             pgo.moders = moders;
             pgo.members = members;
             pgo.pendings = pendings;
+            pgo.banneds = banneds;
         });
         return;
     }
@@ -753,6 +763,7 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
         pgo.moders = moders;
         pgo.members = members;
         pgo.pendings = pendings;
+        pgo.banneds = banneds;
     });
 }
 

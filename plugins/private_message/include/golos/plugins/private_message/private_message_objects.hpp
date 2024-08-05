@@ -334,6 +334,7 @@ namespace golos { namespace plugins { namespace private_message {
         uint32_t moders = 0;
         uint32_t members = 0;
         uint32_t pendings = 0;
+        uint32_t banneds = 0;
     };
 
     using private_group_id_type = private_group_object::id_type;
