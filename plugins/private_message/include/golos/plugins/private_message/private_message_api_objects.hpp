@@ -23,10 +23,14 @@ namespace golos { namespace plugins { namespace private_message {
             receive_date(o.receive_date),
             read_date(o.read_date), remove_date(o.remove_date),
             donates(o.donates), donates_uia(o.donates_uia) {
+            if (o.group.size()) {
+                group = std::string(o.group.begin(), o.group.end());
+            }
         }
 
         message_api_object() = default;
 
+        fc::optional<std::string> group = fc::optional<std::string>();
         account_name_type from;
         account_name_type to;
         uint64_t nonce = 0;
@@ -199,7 +203,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::message_api_object),
-    (from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)
+    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)
     (create_date)(receive_date)(read_date)(remove_date)
     (donates)(donates_uia)
 )

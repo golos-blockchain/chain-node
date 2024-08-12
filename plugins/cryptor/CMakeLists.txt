@@ -29,6 +29,7 @@ target_link_libraries(
     golos::chain_plugin
     golos::json_rpc
     golos::paid_subscription_api
+    golos::private_message
     golos::social_network
     appbase
 )

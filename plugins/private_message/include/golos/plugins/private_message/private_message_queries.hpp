@@ -2,6 +2,7 @@
 
 #include <golos/chain/database.hpp>
 #include <appbase/plugin.hpp>
+#include <golos/plugins/cryptor/cryptor_queries.hpp>
 #include <golos/plugins/private_message/private_message_objects.hpp>
 #include <golos/plugins/private_message/private_message_operations.hpp>
 
@@ -9,10 +10,12 @@
 
 namespace golos { namespace plugins { namespace private_message {
 
+using golos::plugins::cryptor::login_data;
+
 /**
  * Query for thread messages
  */
-struct message_thread_query final {
+struct message_thread_query final : login_data {
     std::string group;
     account_name_type from;
     account_name_type to;
@@ -81,8 +84,8 @@ struct private_group_member_query {
 
 } } } // golos::plugins::private_message
 
-FC_REFLECT(
-    (golos::plugins::private_message::message_thread_query),
+FC_REFLECT_DERIVED(
+    (golos::plugins::private_message::message_thread_query), ((golos::plugins::cryptor::login_data)),
     (group)(from)(to)
     (newest_date)(unread_only)(limit)(offset)
 )

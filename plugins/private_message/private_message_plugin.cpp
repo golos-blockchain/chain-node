@@ -4,6 +4,7 @@
 #include <golos/plugins/private_message/private_message_queries.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/plugins/chain/plugin.hpp>
+#include <golos/plugins/cryptor/cryptor.hpp>
 #include <appbase/application.hpp>
 #include <golos/protocol/donate_targets.hpp>
 
@@ -752,9 +753,22 @@ namespace golos { namespace plugins { namespace private_message {
             query.newest_date = my->_db.head_block_time();
         }
 
-        return my->_db.with_weak_read_lock([&]() {
+        auto res = my->_db.with_weak_read_lock([&]() {
             return my->get_thread(query);
         });
+
+        if (query.account != account_name_type()) {
+            using golos::plugins::cryptor::cryptor;
+            using golos::plugins::cryptor::decrypt_messages_query;
+
+            cryptor* cry = appbase::app().find_plugin<cryptor>();
+            FC_ASSERT(cry != nullptr, "No Cryptor plugin, when `account` requires it");
+
+            login_data ld = query;
+            decrypt_messages_query dmq = ld;
+            auto dobj = cry->our_decrypt_messages(dmq);
+        }
+        return res;
     }
 
     DEFINE_API(private_message_plugin, get_settings) {
