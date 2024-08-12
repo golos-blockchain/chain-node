@@ -2,6 +2,7 @@
 
 #include <golos/chain/database.hpp>
 #include <appbase/plugin.hpp>
+#include <golos/plugins/cryptor/cryptor_queries.hpp>
 #include <golos/plugins/private_message/private_message_objects.hpp>
 #include <golos/plugins/private_message/private_message_operations.hpp>
 
@@ -9,10 +10,12 @@
 
 namespace golos { namespace plugins { namespace private_message {
 
+using golos::plugins::cryptor::login_data;
+
 /**
  * Query for thread messages
  */
-struct message_thread_query final {
+struct message_thread_query final : login_data {
     std::string group;
     account_name_type from;
     account_name_type to;
@@ -55,9 +58,18 @@ struct private_group_query {
     fc::optional<private_group_members> with_members;
 };
 
-struct private_contact_query {
+struct private_contact_query : login_data {
     std::string owner;
     std::string contact;
+    std::string group;
+};
+
+struct contact_query : login_data {
+    std::string owner;
+    private_contact_type type = private_contact_type::unknown;
+    std::set<contact_kind> kinds; // empty = any
+    uint16_t limit = 20;
+    uint32_t offset = 0;
 };
 
 enum class private_group_member_sort_direction : uint8_t {
@@ -81,8 +93,8 @@ struct private_group_member_query {
 
 } } } // golos::plugins::private_message
 
-FC_REFLECT(
-    (golos::plugins::private_message::message_thread_query),
+FC_REFLECT_DERIVED(
+    (golos::plugins::private_message::message_thread_query), ((golos::plugins::cryptor::login_data)),
     (group)(from)(to)
     (newest_date)(unread_only)(limit)(offset)
 )
@@ -100,8 +112,14 @@ FC_REFLECT((golos::plugins::private_message::private_group_query),
     (member)(member_types)(start_group)(limit)(with_members)
 )
 
-FC_REFLECT((golos::plugins::private_message::private_contact_query),
-    (owner)(contact)
+FC_REFLECT_DERIVED(
+    (golos::plugins::private_message::private_contact_query), ((golos::plugins::cryptor::login_data)),
+    (owner)(contact)(group)
+)
+
+FC_REFLECT_DERIVED(
+    (golos::plugins::private_message::contact_query), ((golos::plugins::cryptor::login_data)),
+    (owner)(type)(kinds)(limit)(offset)
 )
 
 FC_REFLECT_ENUM(

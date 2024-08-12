@@ -48,8 +48,7 @@ struct private_message_extension_visitor {
         bool is_moder = is_owner || (exists && pgm_itr->member_type == private_group_member_type::moder); 
 
         if (pgo.privacy != private_group_privacy::public_group) {
-            GOLOS_CHECK_LOGIC(exists &&
-                (pgm_itr->member_type == private_group_member_type::member || is_moder),
+            GOLOS_CHECK_LOGIC((exists && pgm_itr->member_type == private_group_member_type::member) || is_moder,
                 logic_errors::unauthorized, "You should be member of the group.");
         }
 
@@ -68,24 +67,27 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     }
 
     auto& contact_idx = _db.get_index<contact_index, by_contact>();
-    auto contact_itr = contact_idx.find(std::make_tuple(op.to, op.from));
 
-    auto& cfg_idx = _db.get_index<settings_index, by_owner>();
-    auto cfg_itr = cfg_idx.find(op.to);
+    if (op.to.size()) {
+        _db.get_account(op.to);
 
-    _db.get_account(op.to);
+        auto contact_itr = contact_idx.find(std::make_tuple(op.to, op.from));
 
-    GOLOS_CHECK_LOGIC(contact_itr == contact_idx.end() || contact_itr->type != ignored,
-        logic_errors::sender_in_ignore_list,
-        "Sender is in the ignore list of recipient");
+        auto& cfg_idx = _db.get_index<settings_index, by_owner>();
+        auto cfg_itr = cfg_idx.find(op.to);
 
-    _db.check_no_blocking(op.to, op.from, false);
+        GOLOS_CHECK_LOGIC(contact_itr == contact_idx.end() || contact_itr->type != ignored,
+            logic_errors::sender_in_ignore_list,
+            "Sender is in the ignore list of recipient");
 
-    GOLOS_CHECK_LOGIC(
-        (cfg_itr == cfg_idx.end() || !cfg_itr->ignore_messages_from_unknown_contact) ||
-        (contact_itr != contact_idx.end() && contact_itr->type == pinned),
-        logic_errors::recipient_ignores_messages_from_unknown_contact,
-        "Recipient accepts messages only from his contact list");
+        _db.check_no_blocking(op.to, op.from, false);
+
+        GOLOS_CHECK_LOGIC(
+            (cfg_itr == cfg_idx.end() || !cfg_itr->ignore_messages_from_unknown_contact) ||
+            (contact_itr != contact_idx.end() && contact_itr->type == pinned),
+            logic_errors::recipient_ignores_messages_from_unknown_contact,
+            "Recipient accepts messages only from his contact list");
+    }
 
     std::string group;
     for (auto& e : op.extensions) {
@@ -221,7 +223,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
             modify_contact(op.from, op.to, contact_kind::account, unknown, true);
             modify_contact(op.to, op.from, contact_kind::account, unknown, false);
         } else {
-            modify_contact(op.from, group, contact_kind::account, unknown, true);
+            modify_contact(op.from, group, contact_kind::group, unknown, true);
         }
     }
 }
@@ -601,6 +603,12 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
             logic_errors::cannot_change_group_encrypted,
             "Cannot make encrypted group not encrypted or vice-versa.");
 
+        if (op.privacy == private_group_privacy::private_group) {
+            GOLOS_CHECK_LOGIC(pgo->is_encrypted,
+                logic_errors::cannot_change_group_encrypted,
+                "Cannot make group private - messages in this group are not encrypted.");
+        }
+
         const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_type>();
 
         if (pgo->privacy != private_group_privacy::public_group &&
@@ -632,6 +640,12 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
         GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, fee);
         _db.adjust_balance(creator, -fee);
         _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), fee);
+    }
+
+    if (op.privacy == private_group_privacy::private_group) {
+        GOLOS_CHECK_LOGIC(op.is_encrypted,
+            logic_errors::cannot_change_group_encrypted,
+            "Cannot create private group not encrypted.");
     }
 
     const auto& pgo_idx = _db.get_index<private_group_index, by_owner>();
