@@ -15,6 +15,7 @@ using namespace golos::chain;
 
 DEFINE_API_ARGS(encrypt_body, json_rpc::msg_pack, encrypted_api_object)
 DEFINE_API_ARGS(decrypt_comments, json_rpc::msg_pack, decrypted_api_object)
+DEFINE_API_ARGS(decrypt_messages, json_rpc::msg_pack, decrypted_api_object)
 
 class cryptor final : public appbase::plugin<cryptor> {
 public:
@@ -38,7 +39,10 @@ public:
     DECLARE_API(
         (encrypt_body)
         (decrypt_comments)
+        (decrypt_messages)
     )
+
+    decrypted_api_object our_decrypt_messages(const decrypt_messages_query& query) const;
 private:
     class cryptor_impl;
 

@@ -39,25 +39,51 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     void private_message_operation::validate() const {
-        GOLOS_CHECK_PARAM_ACCOUNT(to);
         GOLOS_CHECK_PARAM_ACCOUNT(from);
+
+        std::string group;
+        for (auto& e : extensions) {
+            e.visit(group_extension_validate_visitor(group));
+        }
+        bool is_group = group.size();
+
+        if (!is_group) {
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to != account_name_type(), "`to` can't be empty");
+            });
+        }
+        if (to.size()) {
+            GOLOS_CHECK_PARAM_ACCOUNT(to);
+        }
 
         GOLOS_CHECK_LOGIC(from != to,
             logic_errors::cannot_send_to_yourself,
             "You cannot write to yourself");
 
-        GOLOS_CHECK_PARAM(to_memo_key, {
-            GOLOS_CHECK_VALUE(to_memo_key != public_key_type(), "`to_key` can't be empty");
-        });
+        if (!is_group) {
+            // memo_keys should be GLS1111111111111111111111111111111114T1Anm
 
-        GOLOS_CHECK_PARAM(from_memo_key, {
-            GOLOS_CHECK_VALUE(from_memo_key != public_key_type(), "`from_key` can't be empty");
-        });
+            GOLOS_CHECK_PARAM(to_memo_key, {
+                GOLOS_CHECK_VALUE(to_memo_key != public_key_type(), "`to_key` can't be empty");
+            });
 
-        GOLOS_CHECK_LOGIC(
-            from_memo_key != to_memo_key,
-            logic_errors::from_and_to_memo_keys_must_be_different,
-            "`from_key` can't be equal to `to_key`");
+            GOLOS_CHECK_PARAM(from_memo_key, {
+                GOLOS_CHECK_VALUE(from_memo_key != public_key_type(), "`from_key` can't be empty");
+            });
+
+            GOLOS_CHECK_LOGIC(
+                from_memo_key != to_memo_key,
+                logic_errors::from_and_to_memo_keys_must_be_different,
+                "`from_key` can't be equal to `to_key`");
+        } else {
+            GOLOS_CHECK_PARAM(to_memo_key, {
+                GOLOS_CHECK_VALUE(to_memo_key == public_key_type(), "`to_key` should be empty, it is only for private chats, not groups");
+            });
+
+            GOLOS_CHECK_PARAM(from_memo_key, {
+                GOLOS_CHECK_VALUE(from_memo_key == public_key_type(), "`from_key` should be empty, it is only for private chats, not groups");
+            });
+        }
 
         GOLOS_CHECK_PARAM(nonce, {
             GOLOS_CHECK_VALUE(nonce != 0, "`nonce` can't be zero");
@@ -66,11 +92,6 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(encrypted_message, {
             GOLOS_CHECK_VALUE(encrypted_message.size() >= 16, "Encrypted message is too small");
         });
-
-        std::string group;
-        for (auto& e : extensions) {
-            e.visit(group_extension_validate_visitor(group));
-        }
     }
 
     void private_delete_message_operation::validate() const {

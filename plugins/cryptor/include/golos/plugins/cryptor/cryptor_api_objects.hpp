@@ -84,7 +84,8 @@ struct decrypted_result {
 
 struct decrypted_api_object {
     cryptor_status status = cryptor_status::ok;
-    std::string error;
+    fc::optional<std::string> login_error;
+    fc::optional<std::string> error;
 
     std::vector<decrypted_result> results;
 };
@@ -114,5 +115,5 @@ FC_REFLECT((golos::plugins::cryptor::decrypted_result),
 )
 
 FC_REFLECT((golos::plugins::cryptor::decrypted_api_object),
-    (status)(error)(results)
+    (status)(login_error)(error)(results)
 )

@@ -23,10 +23,14 @@ namespace golos { namespace plugins { namespace private_message {
             receive_date(o.receive_date),
             read_date(o.read_date), remove_date(o.remove_date),
             donates(o.donates), donates_uia(o.donates_uia) {
+            if (o.group.size()) {
+                group = std::string(o.group.begin(), o.group.end());
+            }
         }
 
         message_api_object() = default;
 
+        fc::optional<std::string> group = fc::optional<std::string>();
         account_name_type from;
         account_name_type to;
         uint64_t nonce = 0;
@@ -34,6 +38,10 @@ namespace golos { namespace plugins { namespace private_message {
         public_key_type to_memo_key;
         uint32_t checksum = 0;
         std::vector<char> encrypted_message;
+        // Message in groups if decrypted
+        fc::optional<std::vector<char>> decrypted;
+        // Group message decrypt error
+        fc::optional<std::string> error;
 
         time_point_sec create_date;
         time_point_sec receive_date;
@@ -199,7 +207,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::message_api_object),
-    (from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)
+    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(decrypted)(error)
     (create_date)(receive_date)(read_date)(remove_date)
     (donates)(donates_uia)
 )
@@ -218,7 +226,7 @@ FC_REFLECT_DERIVED(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_api_object),
-    (contact)(json_metadata)(local_type)(remote_type)(size)(last_message))
+    (contact)(kind)(json_metadata)(local_type)(remote_type)(size)(last_message))
 
 FC_REFLECT(
     (golos::plugins::private_message::contacts_size_api_object),

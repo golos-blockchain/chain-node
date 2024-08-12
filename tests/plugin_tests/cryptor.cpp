@@ -60,14 +60,16 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
 
     decrypt_query dq;
     auto dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "account_not_exists");
+    BOOST_CHECK(!!dec_res.login_error);
+    BOOST_CHECK_EQUAL(*(dec_res.login_error), "account_not_exists");
 
     BOOST_TEST_MESSAGE("-- Trying decrypt (fail: no signature)");
 
     dq.account = "bob";
 
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "illformed_signature");
+    BOOST_CHECK(!!dec_res.login_error);
+    BOOST_CHECK_EQUAL(*(dec_res.login_error), "illformed_signature");
 
     BOOST_TEST_MESSAGE("-- Trying decrypt (fail: active key, but only posting allowed)");
 
@@ -79,13 +81,14 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     dq.signature = bob_active_key.sign_compact(sig_hash);
 
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "wrong_signature");
+    BOOST_CHECK(!!dec_res.login_error);
+    BOOST_CHECK_EQUAL(*(dec_res.login_error), "wrong_signature");
 
     BOOST_TEST_MESSAGE("-- Trying decrypt (login success, but empty result because empty query");
 
     dq.signature = bob_posting_key.sign_compact(sig_hash);
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "");
+    BOOST_CHECK(!dec_res.error);
     BOOST_CHECK_EQUAL(dec_res.results.size(), 0);
 
     BOOST_TEST_MESSAGE("-- Trying decrypt by author + permlink (ok, result with 'no_sub' and 'decrypt_fee'");
@@ -93,7 +96,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     dq.entries.push_back(fc::mutable_variant_object()
         ("author","alice")("permlink","test"));
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "");
+    BOOST_CHECK(!dec_res.error);
     BOOST_CHECK_EQUAL(dec_res.results.size(), 1);
     {
         const auto& dr = dec_res.results[0];
@@ -146,7 +149,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     dq.entries.push_back(fc::mutable_variant_object()
         ("author","alice")("permlink","test"));
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "");
+    BOOST_CHECK(!dec_res.error);
     BOOST_CHECK_EQUAL(dec_res.results.size(), 1);
     {
         const auto& dr = dec_res.results[0];
@@ -166,7 +169,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     BOOST_TEST_MESSAGE("-- Trying decrypt again (ok)");
 
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "");
+    BOOST_CHECK(!dec_res.error);
     BOOST_CHECK_EQUAL(dec_res.results.size(), 1);
     {
         const auto& dr = dec_res.results[0];
@@ -185,7 +188,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     dq.entries.push_back(fc::mutable_variant_object()
         ("author","alice")("hashlink",cmt.hashlink));
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "");
+    BOOST_CHECK(!dec_res.error);
     BOOST_CHECK_EQUAL(dec_res.results.size(), 1);
     {
         const auto& dr = dec_res.results[0];
@@ -207,7 +210,7 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     BOOST_TEST_MESSAGE("-- Trying decrypt again");
 
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "");
+    BOOST_CHECK(!dec_res.error);
     BOOST_CHECK_EQUAL(dec_res.results.size(), 1);
     {
         const auto& dr = dec_res.results[0];
@@ -219,12 +222,12 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     }
 
     BOOST_TEST_MESSAGE("-- Generating more blocks");
-    generate_blocks(9);
+    generate_blocks(4);
 
     BOOST_TEST_MESSAGE("-- Trying again");
 
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "");
+    BOOST_CHECK(!dec_res.error);
     BOOST_CHECK_EQUAL(dec_res.results.size(), 1);
     {
         const auto& dr = dec_res.results[0];
@@ -239,7 +242,8 @@ BOOST_AUTO_TEST_CASE(decrypt_fee_test) {
     BOOST_TEST_MESSAGE("-- Trying again (fail - head block too old)");
 
     dec_res = decrypt_comments(dq);
-    BOOST_CHECK_EQUAL(dec_res.error, "head_block_num_too_old");
+    BOOST_CHECK(!!dec_res.login_error);
+    BOOST_CHECK_EQUAL(*(dec_res.login_error), "head_block_num_too_old");
     BOOST_CHECK_EQUAL(dec_res.results.size(), 0);
 }
 

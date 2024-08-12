@@ -149,11 +149,11 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
 
         mp.args = std::vector<fc::variant>(
             {fc::variant("alice"), fc::variant("bob"), fc::variant(message_thread_query())});
-        auto alice_bob_thread = pm_plugin->get_thread(mp);
+        auto alice_bob_thread = pm_plugin->get_thread(mp).as<std::vector<message_api_object>>();
 
         mp.args = std::vector<fc::variant>(
             {fc::variant("bob"), fc::variant("alice"), fc::variant(message_thread_query())});
-        auto bob_alice_thread = pm_plugin->get_thread(mp);
+        auto bob_alice_thread = pm_plugin->get_thread(mp).as<std::vector<message_api_object>>();
 
         BOOST_TEST_MESSAGE("--- Check messages count");
 
@@ -912,7 +912,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_thread alice bob");
 
         mp.args = std::vector<fc::variant>({fc::variant("alice"), fc::variant("bob"), fc::variant(message_thread_query())});
-        auto alice_bob_thread = pm_plugin->get_thread(mp);
+        auto alice_bob_thread = pm_plugin->get_thread(mp).as<std::vector<message_api_object>>();
         BOOST_CHECK_EQUAL(alice_bob_thread.size(), 1);
 
         BOOST_TEST_MESSAGE("--- get_outbox bob");
@@ -924,7 +924,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_thread bob alice");
 
         mp.args = std::vector<fc::variant>({fc::variant("bob"), fc::variant("alice"), fc::variant(message_thread_query())});
-        auto bob_alice_thread = pm_plugin->get_thread(mp);
+        auto bob_alice_thread = pm_plugin->get_thread(mp).as<std::vector<message_api_object>>();
         BOOST_CHECK_EQUAL(bob_alice_thread.size(), 1);
 
         BOOST_TEST_MESSAGE("--- get_outbox sam");
