@@ -584,12 +584,16 @@ public:
             }
 
             auto body = _db.with_weak_read_lock([&]() -> std::string {
-                const auto& idx = _db.get_index<message_index, by_nonce>();
-                auto itr = idx.find(std::make_tuple(de.group, de.from, de.to, de.nonce));
-                if (itr == idx.end()) {
-                    return "";
+                std::vector<char> encrypted = de.encrypted_message;
+                if (!encrypted.size()) {
+                    const auto& idx = _db.get_index<message_index, by_nonce>();
+                    auto itr = idx.find(std::make_tuple(de.group, de.from, de.to, de.nonce));
+                    if (itr == idx.end()) {
+                        return "";
+                    }
+                    encrypted = std::vector<char>(itr->encrypted_message.begin(), itr->encrypted_message.end());
                 }
-                std::string res(itr->encrypted_message.begin(), itr->encrypted_message.end());
+                std::string res(encrypted.begin(), encrypted.end());
                 return res;
             });
             if (!body.size()) {

@@ -311,7 +311,7 @@ namespace golos { namespace plugins { namespace private_message {
                     });
             }
         } else {
-            GOLOS_CHECK_VALUE(from.size() && to.size(), "`from` and `to` are required.");
+            GOLOS_CHECK_VALUE(from.size() && to.size(), "`from` and `to` are required in query object.");
 
             const auto& outbox_idx = _db.get_index<message_index, by_outbox_account>();
             const auto& inbox_idx = _db.get_index<message_index, by_inbox_account>();
@@ -721,11 +721,17 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     DEFINE_API(private_message_plugin, get_thread) {
+        using query_type = message_thread_query;
         PLUGIN_API_VALIDATE_ARGS(
             (fc::variant, from_or_query)
-            (std::string, to)
-            (message_thread_query, query)
+            (std::string, to, "")
+            (fc::optional<query_type>, opts, fc::optional<query_type>())
         );
+
+        query_type query;
+        if (!!opts) {
+            query = *opts;
+        }
 
         if (from_or_query.is_string()) {
             GOLOS_CHECK_PARAM(query, {
@@ -737,10 +743,17 @@ namespace golos { namespace plugins { namespace private_message {
             query.from = from_or_query.as_string();
             query.to = to;
         } else {
-            //GOLOS_CHECK_VALUE(query == message_thread_query(), "You should pass only one argument (query object).");
+            //GOLOS_CHECK_VALUE(query == query_type(), "You should pass only one argument (query object).");
             GOLOS_CHECK_VALUE(!to.size(), "You should pass only one argument (query object).");
 
-            query = from_or_query.as<message_thread_query>();
+            query = from_or_query.as<query_type>();
+        }
+
+        if (query.group.size()) {
+            GOLOS_CHECK_VALUE(query.full_result, "Group messages can be fetched only with `full_result`.");
+        }
+        if (query.account != account_name_type()) {
+            GOLOS_CHECK_VALUE(query.group.size(), "Authorization (`account`) is only for groups.");
         }
 
         GOLOS_CHECK_LIMIT_PARAM(query.limit, PRIVATE_DEFAULT_LIMIT * 10);
@@ -753,12 +766,16 @@ namespace golos { namespace plugins { namespace private_message {
             query.newest_date = my->_db.head_block_time();
         }
 
-        auto res = my->_db.with_weak_read_lock([&]() {
+        auto vec = my->_db.with_weak_read_lock([&]() {
             return my->get_thread(query);
         });
 
+        std::string status = "ok";
+        std::string error;
+
         if (query.account != account_name_type()) {
             using golos::plugins::cryptor::cryptor;
+            using golos::plugins::cryptor::cryptor_status;
             using golos::plugins::cryptor::decrypt_messages_query;
 
             cryptor* cry = appbase::app().find_plugin<cryptor>();
@@ -766,9 +783,38 @@ namespace golos { namespace plugins { namespace private_message {
 
             login_data ld = query;
             decrypt_messages_query dmq = ld;
+            for (const auto& msg : vec) {
+                dmq.entries.emplace_back(query.group, msg.encrypted_message);
+            }
             auto dobj = cry->our_decrypt_messages(dmq);
+            error = dobj.error;
+            if (dobj.status == cryptor_status::err) {
+                status = "err";
+            } else {
+                for (size_t i = 0; i < vec.size(); ++i) {
+                    auto& msg = vec[i];
+                    const auto& dr = dobj.results[i];
+                    if (!!dr.err) {
+                        msg.error = *(dr.err);
+                    } else if (!!dr.body) {
+                        const auto& body = *(dr.body);
+                        msg.message = std::vector<char>(body.begin(), body.end());
+                    }
+                }
+            }
         }
-        return res;
+
+        fc::variant var;
+        if (query.full_result) {
+            fc::mutable_variant_object vo;
+            vo["status"] = status;
+            if (error.size()) vo["error"] = error;
+            vo["messages"] = vec;
+            var = vo;
+        } else {
+            fc::to_variant(vec, var);
+        }
+        return var;
     }
 
     DEFINE_API(private_message_plugin, get_settings) {

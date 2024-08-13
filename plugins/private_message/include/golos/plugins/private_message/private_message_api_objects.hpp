@@ -38,6 +38,10 @@ namespace golos { namespace plugins { namespace private_message {
         public_key_type to_memo_key;
         uint32_t checksum = 0;
         std::vector<char> encrypted_message;
+        // Message in groups if decrypted
+        fc::optional<std::vector<char>> message;
+        // Group message decrypt error
+        fc::optional<std::string> error;
 
         time_point_sec create_date;
         time_point_sec receive_date;
@@ -203,7 +207,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::message_api_object),
-    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)
+    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(message)(error)
     (create_date)(receive_date)(read_date)(remove_date)
     (donates)(donates_uia)
 )

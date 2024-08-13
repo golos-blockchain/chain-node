@@ -601,6 +601,12 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
             logic_errors::cannot_change_group_encrypted,
             "Cannot make encrypted group not encrypted or vice-versa.");
 
+        if (op.privacy == private_group_privacy::private_group) {
+            GOLOS_CHECK_LOGIC(pgo->is_encrypted,
+                logic_errors::cannot_change_group_encrypted,
+                "Cannot make group private - messages in this group are not encrypted.");
+        }
+
         const auto& pgm_idx = _db.get_index<private_group_member_index, by_group_type>();
 
         if (pgo->privacy != private_group_privacy::public_group &&
@@ -632,6 +638,12 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
         GOLOS_CHECK_BALANCE(_db, creator, MAIN_BALANCE, fee);
         _db.adjust_balance(creator, -fee);
         _db.adjust_balance(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT), fee);
+    }
+
+    if (op.privacy == private_group_privacy::private_group) {
+        GOLOS_CHECK_LOGIC(op.is_encrypted,
+            logic_errors::cannot_change_group_encrypted,
+            "Cannot create private group not encrypted.");
     }
 
     const auto& pgo_idx = _db.get_index<private_group_index, by_owner>();

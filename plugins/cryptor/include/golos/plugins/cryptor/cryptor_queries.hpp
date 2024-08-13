@@ -32,9 +32,18 @@ struct decrypt_query : login_data {
 
 struct message_to_decrypt {
     std::string group;
+
+    // Fields are need to find the message...
     account_name_type from;
     account_name_type to;
     uint64_t nonce;
+     //...or just pass the encrypted_message if you have
+    std::vector<char> encrypted_message;
+
+    message_to_decrypt() {}
+
+    message_to_decrypt(const std::string& g, const std::vector<char> em)
+        : group(g), encrypted_message(em) {}
 };
 
 struct decrypt_messages_query : login_data {
@@ -69,7 +78,7 @@ FC_REFLECT_DERIVED(
 
 FC_REFLECT(
     (golos::plugins::cryptor::message_to_decrypt),
-    (group)(from)(to)(nonce)
+    (group)(from)(to)(nonce)(encrypted_message)
 )
 
 FC_REFLECT_DERIVED(

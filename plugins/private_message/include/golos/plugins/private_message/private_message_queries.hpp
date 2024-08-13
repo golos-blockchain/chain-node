@@ -24,6 +24,7 @@ struct message_thread_query final : login_data {
     bool unread_only = false;
     uint16_t limit = PRIVATE_DEFAULT_LIMIT;
     uint32_t offset = 0;
+    bool full_result = false;
 
     bool is_good(const message_object& mo) const {
         return (!unread_only || mo.read_date == time_point_sec::min());
@@ -87,7 +88,7 @@ struct private_group_member_query {
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::message_thread_query), ((golos::plugins::cryptor::login_data)),
     (group)(from)(to)
-    (newest_date)(unread_only)(limit)(offset)
+    (newest_date)(unread_only)(limit)(offset)(full_result)
 )
 
 FC_REFLECT(
