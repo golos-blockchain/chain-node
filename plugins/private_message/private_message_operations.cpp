@@ -61,6 +61,8 @@ namespace golos { namespace plugins { namespace private_message {
             "You cannot write to yourself");
 
         if (!is_group) {
+            // memo_keys should be GLS1111111111111111111111111111111114T1Anm
+
             GOLOS_CHECK_PARAM(to_memo_key, {
                 GOLOS_CHECK_VALUE(to_memo_key != public_key_type(), "`to_key` can't be empty");
             });

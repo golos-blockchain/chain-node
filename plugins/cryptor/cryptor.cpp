@@ -128,7 +128,7 @@ public:
         return res;
     }
 
-    decrypted_api_object login(const login_data& query) const {
+    decrypted_api_object login(const login_data& query, bool is_group = false) const {
         decrypted_api_object res;
         res.status = cryptor_status::ok;
 
@@ -140,7 +140,11 @@ public:
             res.error = "head_block_num_in_future";
             return res;
         }
-        if (head - query.signed_data.head_block_number > 10) {
+
+        uint32_t lifetime = is_group ?
+            STEEMIT_BLOCKS_PER_DAY :
+            STEEMIT_BLOCKS_PER_HOUR;
+        if (head - query.signed_data.head_block_number > lifetime) {
             res.status = cryptor_status::err;
             res.error = "head_block_num_too_old";
             return res;
@@ -185,11 +189,11 @@ public:
         fc::variant jvar;
         try {
             jvar = fc::json::from_string(body);
+            jobj = jvar.get_object();
         } catch (...) {
             dr.err = "wrong_json_or_not_encrypted";
             return false;
         }
-        jobj = jvar.get_object();
 
         auto spec_itr = jobj.find("t");
         if (spec_itr == jobj.end() || !spec_itr->value().is_string()) {
@@ -515,7 +519,7 @@ public:
             return res;
         }
 
-        auto login_res = login(query);
+        auto login_res = login(query, true);
         if (login_res.status != cryptor_status::ok) {
             return login_res;
         }
@@ -568,7 +572,7 @@ public:
         auto decrypt = [&](const message_to_decrypt& de, decrypted_result& dr) {
             group_data* gd = nullptr;
             const auto& gd_itr = groups.find(de.group);
-            if (gd_itr == groups.end()) {
+            if (gd_itr != groups.end()) {
                 gd = &gd_itr->second;
             } else {
                 groups[de.group] = load_group(de.group);

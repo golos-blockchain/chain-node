@@ -36,7 +36,7 @@ struct message_to_decrypt {
     // Fields are need to find the message...
     account_name_type from;
     account_name_type to;
-    uint64_t nonce;
+    uint64_t nonce = 0;
      //...or just pass the encrypted_message if you have
     std::vector<char> encrypted_message;
 

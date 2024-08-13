@@ -274,14 +274,14 @@ namespace golos { namespace plugins { namespace private_message {
                 auto itr = idx.lower_bound(std::make_tuple(group, query.newest_date));
 
                 auto offset = query.offset;
-                while (itr != idx.end() && offset) {
+                for (; itr != idx.end() && offset; ++itr) {
                     if (query.is_good(*itr)) {
                         --offset;
                     }
                 }
 
                 result.reserve(query.limit);
-                while (itr != idx.end() && result.size() < query.limit) {
+                for (; itr != idx.end() && result.size() < query.limit; ++itr) {
                     if (query.is_good(*itr)) {
                         result.emplace_back(*itr);
                     }

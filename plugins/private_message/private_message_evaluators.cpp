@@ -68,24 +68,27 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     }
 
     auto& contact_idx = _db.get_index<contact_index, by_contact>();
-    auto contact_itr = contact_idx.find(std::make_tuple(op.to, op.from));
 
-    auto& cfg_idx = _db.get_index<settings_index, by_owner>();
-    auto cfg_itr = cfg_idx.find(op.to);
+    if (op.to.size()) {
+        _db.get_account(op.to);
 
-    _db.get_account(op.to);
+        auto contact_itr = contact_idx.find(std::make_tuple(op.to, op.from));
 
-    GOLOS_CHECK_LOGIC(contact_itr == contact_idx.end() || contact_itr->type != ignored,
-        logic_errors::sender_in_ignore_list,
-        "Sender is in the ignore list of recipient");
+        auto& cfg_idx = _db.get_index<settings_index, by_owner>();
+        auto cfg_itr = cfg_idx.find(op.to);
 
-    _db.check_no_blocking(op.to, op.from, false);
+        GOLOS_CHECK_LOGIC(contact_itr == contact_idx.end() || contact_itr->type != ignored,
+            logic_errors::sender_in_ignore_list,
+            "Sender is in the ignore list of recipient");
 
-    GOLOS_CHECK_LOGIC(
-        (cfg_itr == cfg_idx.end() || !cfg_itr->ignore_messages_from_unknown_contact) ||
-        (contact_itr != contact_idx.end() && contact_itr->type == pinned),
-        logic_errors::recipient_ignores_messages_from_unknown_contact,
-        "Recipient accepts messages only from his contact list");
+        _db.check_no_blocking(op.to, op.from, false);
+
+        GOLOS_CHECK_LOGIC(
+            (cfg_itr == cfg_idx.end() || !cfg_itr->ignore_messages_from_unknown_contact) ||
+            (contact_itr != contact_idx.end() && contact_itr->type == pinned),
+            logic_errors::recipient_ignores_messages_from_unknown_contact,
+            "Recipient accepts messages only from his contact list");
+    }
 
     std::string group;
     for (auto& e : op.extensions) {
