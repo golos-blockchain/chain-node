@@ -26,7 +26,6 @@ fc::optional<blog_donate> get_blog_donate(const donate_operation& op) {
 
 fc::optional<message_donate> get_message_donate(const donate_operation& op) {
     fc::optional<message_donate> res;
-
     std::string group;
     std::string from_str;
     std::string to_str;
@@ -45,8 +44,11 @@ fc::optional<message_donate> get_message_donate(const donate_operation& op) {
     if (!is_valid_account_name(from_str)) return res;
     auto from = account_name_type(from_str);
 
-    if (!is_valid_account_name(to_str)) return res;
-    auto to = account_name_type(to_str);
+    account_name_type to;
+    if (!group.size()) {
+        if (!is_valid_account_name(to_str)) return res;
+        to = account_name_type(to_str);
+    }
 
     res = message_donate();
     res->group = group;
