@@ -849,8 +849,8 @@ namespace golos { namespace plugins { namespace private_message {
 
         private_contact_query query;
         if (owner_or_query.is_string()) {
-            query.owner = with_dog(owner_or_query.as_string());
-            query.contact = contact;
+            query.owner = owner_or_query.as_string();
+            query.contact = with_dog(contact);
         } else {
             query = owner_or_query.as<private_contact_query>();
         }
