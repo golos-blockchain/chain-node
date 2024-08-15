@@ -183,7 +183,7 @@ public:
         return res;
     }
 
-    bool get_encrypted_object(decrypted_result& dr, fc::variant_object jobj,
+    bool get_encrypted_object(decrypted_result& dr, fc::variant_object& jobj,
         const std::string& body, const std::string& check_type) const {
 
         fc::variant jvar;
@@ -237,20 +237,20 @@ public:
         std::string name;
         size_t mark_end = 0;
         try {
-            for (size_t i = mark.size(); i < std::max(mark_max_length, dec.size()); ++i) {
-                if (i == 0) {
+            for (size_t i = mark.size(); i < std::min(mark_max_length, dec.size()); ++i) {
+                if (found_type == '\0') {
                     found_type = dec[i];
                     continue;
                 }
                 if (name_started) {
                     if (dec[i] == mark_sep) {
-                        mark_end = i;
+                        mark_end = i + 1;
                         break;
                     }
                     name += dec[i];
-                } else if (found_type != '\0') {
+                } else {
                     if (dec[i] != mark_sep) {
-                        dr.err = "wrong_mark_format";
+                        dr.err = "wrong_mark_type_length";
                         return false;
                     } else if (found_type != mark_type) {
                         dr.err = "wrong_mark_type";
@@ -259,7 +259,11 @@ public:
                     name_started = true;
                 }
             }
-            if (found_type != mark_type || mark_end == 0 || name != mark_name) {
+            if (mark_end == 0) {
+                dr.err = "wrong_mark_format";
+                return false;
+            }
+            if (name != mark_name) {
                 dr.err = "wrong_mark";
                 return false;
             }
@@ -587,6 +591,22 @@ public:
                 return;
             }
 
+            auto readVarint32 = [&](const std::vector<char>& data) -> std::pair<int32_t, size_t> {
+                int32_t val = 0;
+                size_t i = 0;
+                while (i < data.size()) {
+                    auto b = data[i];
+                    if (i < 5)
+                        val |= (b & 0x7f) << (7 * i);
+                    ++i;
+                    if ((b & 0x80) == 0) {
+                        break;
+                    }
+                }
+                val |= 0;
+                return {val, i};
+            };
+
             auto body = _db.with_weak_read_lock([&]() -> std::string {
                 std::vector<char> encrypted = de.encrypted_message;
                 if (!encrypted.size()) {
@@ -597,7 +617,8 @@ public:
                     }
                     encrypted = std::vector<char>(itr->encrypted_message.begin(), itr->encrypted_message.end());
                 }
-                std::string res(encrypted.begin(), encrypted.end());
+                auto vi = readVarint32(encrypted);
+                std::string res(encrypted.begin() + vi.second, encrypted.end());
                 return res;
             });
             if (!body.size()) {
