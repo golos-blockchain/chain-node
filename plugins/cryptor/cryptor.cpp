@@ -137,16 +137,20 @@ public:
         });
         if (head < query.signed_data.head_block_number) {
             res.status = cryptor_status::err;
-            res.error = "head_block_num_in_future";
+            res.login_error = "head_block_num_in_future";
             return res;
         }
 
+#ifdef STEEMIT_BUILD_TESTNET
+        uint32_t lifetime = 5;
+#else
         uint32_t lifetime = is_group ?
             STEEMIT_BLOCKS_PER_DAY :
             STEEMIT_BLOCKS_PER_HOUR;
+#endif
         if (head - query.signed_data.head_block_number > lifetime) {
             res.status = cryptor_status::err;
-            res.error = "head_block_num_too_old";
+            res.login_error = "head_block_num_too_old";
             return res;
         }
 
@@ -155,7 +159,7 @@ public:
         });
         if (!exists) {
             res.status = cryptor_status::err;
-            res.error = "account_not_exists";
+            res.login_error = "account_not_exists";
             return res;
         }
 
@@ -166,7 +170,7 @@ public:
             key = fc::ecc::public_key(query.signature, sig_hash);
         } catch (...) {
             res.status = cryptor_status::err;
-            res.error = "illformed_signature";
+            res.login_error = "illformed_signature";
             return res;
         }
         auto pk = public_key_type(key);
@@ -176,7 +180,7 @@ public:
         });
         if (!acc_keys.size() || std::find(acc_keys.begin(), acc_keys.end(), pk) == acc_keys.end()) {
             res.status = cryptor_status::err;
-            res.error = "wrong_signature";
+            res.login_error = "wrong_signature";
             return res;
         }
 
@@ -591,22 +595,6 @@ public:
                 return;
             }
 
-            auto readVarint32 = [&](const std::vector<char>& data) -> std::pair<int32_t, size_t> {
-                int32_t val = 0;
-                size_t i = 0;
-                while (i < data.size()) {
-                    auto b = data[i];
-                    if (i < 5)
-                        val |= (b & 0x7f) << (7 * i);
-                    ++i;
-                    if ((b & 0x80) == 0) {
-                        break;
-                    }
-                }
-                val |= 0;
-                return {val, i};
-            };
-
             auto body = _db.with_weak_read_lock([&]() -> std::string {
                 std::vector<char> encrypted = de.encrypted_message;
                 if (!encrypted.size()) {
@@ -617,8 +605,9 @@ public:
                     }
                     encrypted = std::vector<char>(itr->encrypted_message.begin(), itr->encrypted_message.end());
                 }
-                auto vi = readVarint32(encrypted);
-                std::string res(encrypted.begin() + vi.second, encrypted.end());
+                // Groups are not using VString (string prefixed by varint32 with length)
+                // so just convert it
+                std::string res(encrypted.begin(), encrypted.end());
                 return res;
             });
             if (!body.size()) {

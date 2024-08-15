@@ -274,14 +274,14 @@ namespace golos { namespace plugins { namespace private_message {
                 auto itr = idx.lower_bound(std::make_tuple(group, query.newest_date));
 
                 auto offset = query.offset;
-                for (; itr != idx.end() && offset; ++itr) {
+                for (; itr != idx.end() && to_string(itr->group) == group && offset; ++itr) {
                     if (query.is_good(*itr)) {
                         --offset;
                     }
                 }
 
                 result.reserve(query.limit);
-                for (; itr != idx.end() && result.size() < query.limit; ++itr) {
+                for (; itr != idx.end() && to_string(itr->group) == group && result.size() < query.limit; ++itr) {
                     if (query.is_good(*itr)) {
                         result.emplace_back(*itr);
                     }
@@ -787,7 +787,11 @@ namespace golos { namespace plugins { namespace private_message {
                 dmq.entries.emplace_back(query.group, msg.encrypted_message);
             }
             auto dobj = cry->our_decrypt_messages(dmq);
-            error = dobj.error;
+            if (!!dobj.login_error) {
+                error = *(dobj.login_error);
+            } else if (!!dobj.error) {
+                error = *(dobj.error);
+            }
             if (dobj.status == cryptor_status::err) {
                 status = "err";
             } else {
@@ -798,7 +802,7 @@ namespace golos { namespace plugins { namespace private_message {
                         msg.error = *(dr.err);
                     } else if (!!dr.body) {
                         const auto& body = *(dr.body);
-                        msg.message = std::vector<char>(body.begin(), body.end());
+                        msg.decrypted = std::vector<char>(body.begin(), body.end());
                     }
                 }
             }
@@ -808,7 +812,7 @@ namespace golos { namespace plugins { namespace private_message {
         if (query.full_result) {
             fc::mutable_variant_object vo;
             vo["status"] = status;
-            if (error.size()) vo["error"] = error;
+            if (error.size()) vo["login_error"] = error;
             vo["messages"] = vec;
             var = vo;
         } else {

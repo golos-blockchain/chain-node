@@ -224,7 +224,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
             modify_contact(op.from, op.to, contact_kind::account, unknown, true);
             modify_contact(op.to, op.from, contact_kind::account, unknown, false);
         } else {
-            modify_contact(op.from, group, contact_kind::account, unknown, true);
+            modify_contact(op.from, group, contact_kind::group, unknown, true);
         }
     }
 }
