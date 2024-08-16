@@ -48,8 +48,7 @@ struct private_message_extension_visitor {
         bool is_moder = is_owner || (exists && pgm_itr->member_type == private_group_member_type::moder); 
 
         if (pgo.privacy != private_group_privacy::public_group) {
-            GOLOS_CHECK_LOGIC(exists &&
-                (pgm_itr->member_type == private_group_member_type::member || is_moder),
+            GOLOS_CHECK_LOGIC((exists && pgm_itr->member_type == private_group_member_type::member) || is_moder,
                 logic_errors::unauthorized, "You should be member of the group.");
         }
 

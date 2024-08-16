@@ -24,7 +24,6 @@ struct message_thread_query final : login_data {
     bool unread_only = false;
     uint16_t limit = PRIVATE_DEFAULT_LIMIT;
     uint32_t offset = 0;
-    bool full_result = false;
 
     bool is_good(const message_object& mo) const {
         return (!unread_only || mo.read_date == time_point_sec::min());
@@ -59,9 +58,18 @@ struct private_group_query {
     fc::optional<private_group_members> with_members;
 };
 
-struct private_contact_query {
+struct private_contact_query : login_data {
     std::string owner;
     std::string contact;
+    std::string group;
+};
+
+struct contact_query : login_data {
+    std::string owner;
+    private_contact_type type = private_contact_type::unknown;
+    std::set<contact_kind> kinds; // empty = any
+    uint16_t limit = 20;
+    uint32_t offset = 0;
 };
 
 enum class private_group_member_sort_direction : uint8_t {
@@ -88,7 +96,7 @@ struct private_group_member_query {
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::message_thread_query), ((golos::plugins::cryptor::login_data)),
     (group)(from)(to)
-    (newest_date)(unread_only)(limit)(offset)(full_result)
+    (newest_date)(unread_only)(limit)(offset)
 )
 
 FC_REFLECT(
@@ -104,8 +112,14 @@ FC_REFLECT((golos::plugins::private_message::private_group_query),
     (member)(member_types)(start_group)(limit)(with_members)
 )
 
-FC_REFLECT((golos::plugins::private_message::private_contact_query),
-    (owner)(contact)
+FC_REFLECT_DERIVED(
+    (golos::plugins::private_message::private_contact_query), ((golos::plugins::cryptor::login_data)),
+    (owner)(contact)(group)
+)
+
+FC_REFLECT_DERIVED(
+    (golos::plugins::private_message::contact_query), ((golos::plugins::cryptor::login_data)),
+    (owner)(type)(kinds)(limit)(offset)
 )
 
 FC_REFLECT_ENUM(
