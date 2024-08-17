@@ -90,8 +90,9 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     }
 
     std::string group;
+    private_message_extension_visitor visitor(op.from, _db, group);
     for (auto& e : op.extensions) {
-        e.visit(private_message_extension_visitor(op.from, _db, group));
+        e.visit(visitor);
     }
     bool is_group = group.size();
 
@@ -123,6 +124,11 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         if (is_group) {
             const auto& from = _db.get_account(op.from);
             check_golos_power(from, _db);
+        
+            const auto& pgo = _db.get<private_group_object, by_name>(group);
+            _db.modify(pgo, [&](auto& pgo) {
+                ++pgo.total_messages;
+            });
         }
 
         _db.create<message_object>([&](auto& pmo) {

@@ -48,6 +48,11 @@ struct private_group_members {
     uint32_t limit = 20;
 };
 
+enum class private_group_sort : uint8_t {
+    by_name,
+    by_popularity,
+};
+
 struct private_group_query {
     account_name_type member;
     std::set<private_group_member_type> member_types;
@@ -55,6 +60,7 @@ struct private_group_query {
     std::string start_group;
     uint32_t limit = 20;
 
+    private_group_sort sort = private_group_sort::by_name;
     fc::optional<private_group_members> with_members;
 };
 
@@ -108,8 +114,13 @@ FC_REFLECT((golos::plugins::private_message::private_group_members),
     (accounts)(start)(limit)
 )
 
+FC_REFLECT_ENUM(
+    golos::plugins::private_message::private_group_sort,
+    (by_name)(by_popularity)
+)
+
 FC_REFLECT((golos::plugins::private_message::private_group_query),
-    (member)(member_types)(start_group)(limit)(with_members)
+    (member)(member_types)(start_group)(limit)(sort)(with_members)
 )
 
 FC_REFLECT_DERIVED(

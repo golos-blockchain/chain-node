@@ -125,7 +125,8 @@ namespace golos { namespace plugins { namespace private_message {
             : owner(o.owner), name(o.name.begin(), o.name.end()),
             json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
             is_encrypted(o.is_encrypted), privacy(o.privacy), created(o.created),
-            moders(o.moders), members(o.members), pendings(o.pendings), banneds(o.banneds) {
+            moders(o.moders), members(o.members), pendings(o.pendings), banneds(o.banneds),
+            total_messages(o.total_messages) {
             if (!!pgms) {
                 const auto& idx = _db.get_index<private_group_member_index, by_group_account>();
                 if (pgms->accounts.size()) {
@@ -162,6 +163,7 @@ namespace golos { namespace plugins { namespace private_message {
         uint32_t members = 0;
         uint32_t pendings = 0;
         uint32_t banneds = 0;
+        uint32_t total_messages = 0;
 
         std::vector<private_group_member_api_object> member_list;
     };
