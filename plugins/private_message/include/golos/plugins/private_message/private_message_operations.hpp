@@ -9,6 +9,7 @@ namespace golos { namespace plugins { namespace private_message {
 
     struct private_group_options {
         std::string group;
+        account_name_type requester; // For editing. For delete - use operation's `requester`
 
         void validate() const;
     };
@@ -33,9 +34,32 @@ namespace golos { namespace plugins { namespace private_message {
 
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            if (update) {
+                for (const auto& ext : extensions) {
+                    if (ext.which() == group_extension::tag<private_group_options>::value) {
+                        const auto& pgo = ext.get<private_group_options>();
+                        if (pgo.requester != account_name_type()) {
+                            a.insert(pgo.requester);
+                            return;
+                        }
+                        break;
+                    }
+                }
+            }
             a.insert(from);
         }
     };
+
+    struct delete_options {
+        bool delete_contact = false;
+    };
+
+    using delete_extension = static_variant<
+        private_group_options,
+        delete_options
+    >;
+
+    using delete_extensions_type = flat_set<delete_extension>;
 
     struct private_delete_message_operation: public base_operation {
         account_name_type requester;
@@ -45,7 +69,7 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec start_date;
         time_point_sec stop_date;
 
-        group_extensions_type extensions;
+        delete_extensions_type extensions;
 
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
@@ -190,12 +214,14 @@ namespace golos { namespace plugins { namespace private_message {
 
 } } } // golos::plugins::private_message
 
-FC_REFLECT((golos::plugins::private_message::private_group_options), (group))
+FC_REFLECT((golos::plugins::private_message::private_group_options), (group)(requester))
 FC_REFLECT_TYPENAME((golos::plugins::private_message::group_extension))
 FC_REFLECT(
     (golos::plugins::private_message::private_message_operation),
     (from)(to)(nonce)(from_memo_key)(to_memo_key)(checksum)(update)(encrypted_message)(extensions))
 
+FC_REFLECT((golos::plugins::private_message::delete_options), (delete_contact))
+FC_REFLECT_TYPENAME((golos::plugins::private_message::delete_extension))
 FC_REFLECT(
     (golos::plugins::private_message::private_delete_message_operation),
     (requester)(from)(to)(nonce)(start_date)(stop_date)(extensions))

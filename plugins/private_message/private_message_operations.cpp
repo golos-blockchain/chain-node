@@ -21,31 +21,44 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     struct group_extension_validate_visitor {
-        group_extension_validate_visitor(std::string& _group) : group(_group) {
+        group_extension_validate_visitor(std::string& _group, account_name_type& _requester)
+            : group(_group), requester(_requester) {
         }
 
         using result_type = void;
 
         std::string& group;
+        account_name_type& requester;
 
         void operator()(const private_group_options& pgo) const {
             pgo.validate();
             group = pgo.group;
+            requester = pgo.requester;
         }
     };
 
     void private_group_options::validate() const {
         validate_private_group_name(group);
+        if (requester != account_name_type()) {
+            GOLOS_CHECK_PARAM_ACCOUNT(requester);
+        }
     }
 
     void private_message_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(from);
 
         std::string group;
+        account_name_type requester;
         for (auto& e : extensions) {
-            e.visit(group_extension_validate_visitor(group));
+            e.visit(group_extension_validate_visitor(group, requester));
         }
         bool is_group = group.size();
+
+        if (requester != account_name_type()) {
+            GOLOS_CHECK_PARAM(update, {
+                GOLOS_CHECK_VALUE(update, "Moderator can only edit messages, not send them as another user.");
+            });
+        }
 
         if (!is_group) {
             GOLOS_CHECK_PARAM(to, {
@@ -94,6 +107,20 @@ namespace golos { namespace plugins { namespace private_message {
         });
     }
 
+    struct delete_extension_validate_visitor : group_extension_validate_visitor {
+        delete_extension_validate_visitor(std::string& _group, account_name_type& _requester, fc::optional<bool>& _delete_contact)
+            : group_extension_validate_visitor(_group, _requester), delete_contact(_delete_contact) {
+        }
+
+        fc::optional<bool>& delete_contact;
+
+        using group_extension_validate_visitor::operator();
+
+        void operator()(const delete_options& dop) const {
+            delete_contact = dop.delete_contact;
+        }
+    };
+
     void private_delete_message_operation::validate() const {
         GOLOS_CHECK_PARAM(from, {
             if (from.size()) {
@@ -109,9 +136,21 @@ namespace golos { namespace plugins { namespace private_message {
         });
 
         std::string group;
+        account_name_type ext_requester;
+        fc::optional<bool> delete_contact;
         for (auto& e : extensions) {
-            e.visit(group_extension_validate_visitor(group));
+            e.visit(delete_extension_validate_visitor(group, ext_requester, delete_contact));
         }
+        if (!delete_contact.valid()) {
+            delete_contact = group.size() ? false : true;
+        }
+        GOLOS_CHECK_PARAM(extensions, {
+            GOLOS_CHECK_VALUE(!ext_requester.size(),
+                "For delete operations, use `requester` only from operation, not extension.");
+            if (group.size()) {
+                GOLOS_CHECK_VALUE(!(*delete_contact), "Cannot delete contact of group.");
+            }
+        });
 
         GOLOS_CHECK_PARAM(requester, {
             validate_account_name(requester);
@@ -205,7 +244,7 @@ namespace golos { namespace plugins { namespace private_message {
 
     void validate_private_group_name(const std::string& name) {
         GOLOS_CHECK_VALUE(name.size(), "Private group name should not be empty");
-        GOLOS_CHECK_VALUE(name.size() < 32, "Private group name should not be longer than 32 bytes");
+        GOLOS_CHECK_VALUE(name.size() <= 32, "Private group name should not be longer than 32 bytes");
         for (size_t i = 0; i < name.size(); ++i) {
             const auto& c = name[i];
             bool is_alpha = c >= 'a' && c <= 'z';

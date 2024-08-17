@@ -550,7 +550,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contacts_info alice bob");
 
         mp.args = std::vector<fc::variant>({fc::variant("alice"), fc::variant("bob")});
-        auto alice_bob_contact = pm_plugin->get_contact_info(mp);
+        auto alice_bob_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_inbox_messages, 2);
@@ -580,7 +580,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contacts_info bob alice");
 
         mp.args = std::vector<fc::variant>({fc::variant("bob"), fc::variant("alice")});
-        auto bob_alice_contact = pm_plugin->get_contact_info(mp);
+        auto bob_alice_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_outbox_messages, 2);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.unread_outbox_messages, 2);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_inbox_messages, 0);
@@ -612,7 +612,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info alice bob");
 
         mp.args = std::vector<fc::variant>({fc::variant("alice"), fc::variant("bob")});
-        alice_bob_contact = pm_plugin->get_contact_info(mp);
+        alice_bob_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_inbox_messages, 2);
@@ -632,7 +632,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info bob alice");
 
         mp.args = std::vector<fc::variant>({fc::variant("bob"), fc::variant("alice")});
-        bob_alice_contact = pm_plugin->get_contact_info(mp);
+        bob_alice_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_outbox_messages, 2);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.unread_outbox_messages, 1);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_inbox_messages, 0);
@@ -665,7 +665,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info alice sam");
 
         mp.args = std::vector<fc::variant>({fc::variant("alice"), fc::variant("sam")});
-        auto alice_sam_contact = pm_plugin->get_contact_info(mp);
+        auto alice_sam_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(alice_sam_contact.size.total_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_sam_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_sam_contact.size.total_inbox_messages, 2);
@@ -685,7 +685,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info sam alice");
 
         mp.args = std::vector<fc::variant>({fc::variant("sam"), fc::variant("alice")});
-        auto sam_alice_contact = pm_plugin->get_contact_info(mp);
+        auto sam_alice_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(sam_alice_contact.size.total_outbox_messages, 2);
         BOOST_CHECK_EQUAL(sam_alice_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(sam_alice_contact.size.total_inbox_messages, 0);
@@ -718,7 +718,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info alice sam");
 
         mp.args = std::vector<fc::variant>({fc::variant("alice"), fc::variant("sam")});
-        alice_sam_contact = pm_plugin->get_contact_info(mp);
+        alice_sam_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(alice_sam_contact.size.total_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_sam_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_sam_contact.size.total_inbox_messages, 2);
@@ -738,7 +738,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info sam alice");
 
         mp.args = std::vector<fc::variant>({fc::variant("sam"), fc::variant("alice")});
-        sam_alice_contact = pm_plugin->get_contact_info(mp);
+        sam_alice_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(sam_alice_contact.size.total_outbox_messages, 2);
         BOOST_CHECK_EQUAL(sam_alice_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(sam_alice_contact.size.total_inbox_messages, 0);
@@ -747,7 +747,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info alice sam");
 
         mp.args = std::vector<fc::variant>({fc::variant("alice"), fc::variant("bob")});
-        alice_bob_contact = pm_plugin->get_contact_info(mp);
+        alice_bob_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_inbox_messages, 2);
@@ -767,7 +767,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info bob alice");
 
         mp.args = std::vector<fc::variant>({fc::variant("bob"), fc::variant("alice")});
-        bob_alice_contact = pm_plugin->get_contact_info(mp);
+        bob_alice_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_outbox_messages, 2);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_inbox_messages, 0);
@@ -877,7 +877,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info alice bob");
 
         mp.args = std::vector<fc::variant>({fc::variant("alice"), fc::variant("bob")});
-        auto alice_bob_contact = pm_plugin->get_contact_info(mp);
+        auto alice_bob_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_inbox_messages, 1);
@@ -897,7 +897,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info bob alice");
 
         mp.args = std::vector<fc::variant>({fc::variant("bob"), fc::variant("alice")});
-        auto bob_alice_contact = pm_plugin->get_contact_info(mp);
+        auto bob_alice_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_outbox_messages, 1);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.unread_outbox_messages, 1);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_inbox_messages, 0);
@@ -958,7 +958,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info alice bob");
 
         mp.args = std::vector<fc::variant>({fc::variant("alice"), fc::variant("bob")});
-        alice_bob_contact = pm_plugin->get_contact_info(mp);
+        alice_bob_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(alice_bob_contact.size.total_inbox_messages, 0);
@@ -977,7 +977,7 @@ BOOST_FIXTURE_TEST_SUITE(private_message_plugin, private_message_fixture)
         BOOST_TEST_MESSAGE("--- get_contact_info bob alice");
 
         mp.args = std::vector<fc::variant>({fc::variant("bob"), fc::variant("alice")});
-        bob_alice_contact = pm_plugin->get_contact_info(mp);
+        bob_alice_contact = pm_plugin->get_contact_info(mp).as<contact_api_object>();
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_outbox_messages, 0);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.unread_outbox_messages, 0);
         BOOST_CHECK_EQUAL(bob_alice_contact.size.total_inbox_messages, 0);
