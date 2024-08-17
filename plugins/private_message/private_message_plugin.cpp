@@ -539,10 +539,21 @@ namespace golos { namespace plugins { namespace private_message {
                 GOLOS_CHECK_VALUE(query.member_types.size() == 0, "If member is empty (select all groups) - member_types should be [] empty too.");
             });
 
-            const auto& idx = _db.get_index<private_group_index, by_name>();
-            auto itr = idx.lower_bound(query.start_group);
-            for (; itr != idx.end() && res.size() < query.limit; ++itr) {
-                res.emplace_back(*itr, _db, query.with_members);
+            if (query.sort == private_group_sort::by_popularity) {
+                const auto& idx = _db.get_index<private_group_index, by_popularity>();
+                auto itr = idx.begin();
+                bool reached = !query.start_group.size();
+                for (; itr != idx.end() && res.size() < query.limit; ++itr) {
+                    if (!reached && to_string(itr->name) != query.start_group) continue;
+                    reached = true;
+                    res.emplace_back(*itr, _db, query.with_members);
+                }
+            } else {
+                const auto& idx = _db.get_index<private_group_index,  by_name>();
+                auto itr = idx.lower_bound(query.start_group);
+                for (; itr != idx.end() && res.size() < query.limit; ++itr) {
+                    res.emplace_back(*itr, _db, query.with_members);
+                }
             }
 
             return res;
@@ -551,14 +562,16 @@ namespace golos { namespace plugins { namespace private_message {
         if (query.member_types.size()) {
             const auto& idx = _db.get_index<private_group_member_index, by_account_group>();
             auto itr = idx.lower_bound(query.member);
+            bool reached = !query.start_group.size();
             for (; itr != idx.end() && itr->account == query.member
                     && res.size() < query.limit; ++itr) {
                 bool has = query.member_types.count(itr->member_type);
                 if (!has) continue;
 
-                if (query.start_group.size() && to_string(itr->group) != query.start_group) {
+                if (!reached && to_string(itr->group) != query.start_group) {
                     continue;
                 }
+                reached = true;
 
                 const auto& pgo = _db.get<private_group_object, by_name>(itr->group);
                 res.emplace_back(pgo, _db, query.with_members);
@@ -569,11 +582,13 @@ namespace golos { namespace plugins { namespace private_message {
 
         const auto& idx = _db.get_index<private_group_index, by_owner>();
         auto itr = idx.lower_bound(query.member);
+        bool reached = !query.start_group.size();
         for (; itr != idx.end() && itr->owner == query.member
                 && res.size() < query.limit; ++itr) {
-            if (query.start_group.size() && to_string(itr->name) != query.start_group) {
+            if (!reached && to_string(itr->name) != query.start_group) {
                 continue;
             }
+            reached = true;
 
             res.emplace_back(*itr, _db, query.with_members);
         }

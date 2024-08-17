@@ -372,12 +372,18 @@ namespace golos { namespace plugins { namespace private_message {
         uint32_t members = 0;
         uint32_t pendings = 0;
         uint32_t banneds = 0;
+        uint32_t total_messages = 0;
+
+        uint32_t total_members() const {
+            return moders + members;
+        }
     };
 
     using private_group_id_type = private_group_object::id_type;
 
     struct by_name;
     struct by_owner;
+    struct by_popularity;
 
     using private_group_index = multi_index_container<
         private_group_object,
@@ -391,6 +397,17 @@ namespace golos { namespace plugins { namespace private_message {
             >,
             ordered_non_unique<tag<by_owner>,
                 member<private_group_object, account_name_type, &private_group_object::owner>
+            >,
+            ordered_non_unique<tag<by_popularity>,
+                composite_key<
+                    private_group_object,
+                    member<private_group_object, uint32_t, &private_group_object::total_messages>,
+                    const_mem_fun<private_group_object, uint32_t, &private_group_object::total_members>
+                >,
+                composite_key_compare<
+                    std::greater<uint32_t>,
+                    std::greater<uint32_t>
+                >
             >
         >, allocator<private_group_object>>;
 
