@@ -33,6 +33,7 @@ struct private_message_extension_visitor {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "private_group_options");
 
         const auto& pgo = _db.get<private_group_object, by_name>(_pgo.group);
+        group = _pgo.group;
 
         const auto& pgm_idx = _db.get_index<private_group_member_index, by_account_group>();
 
@@ -52,12 +53,16 @@ struct private_message_extension_visitor {
                 logic_errors::unauthorized, "You should be member of the group.");
         }
 
+        // Update by moderator
+        if (_pgo.requester != account_name_type() && _pgo.requester != requester) {
+            GOLOS_CHECK_LOGIC(is_moder,
+                logic_errors::unauthorized, "You should be moder to update foreign messages.");
+        }
+
         if (delete_from != account_name_type() && requester != delete_from) {
             GOLOS_CHECK_LOGIC(is_moder,
                 logic_errors::unauthorized, "You should be moder to delete foreign messages.");
         }
-
-        group = _pgo.group;
     }
 };
 
@@ -335,6 +340,22 @@ void process_group_message_operation(
     }
 }
 
+struct delete_extension_visitor : private_message_extension_visitor {
+    delete_extension_visitor(const account_name_type& _requester,
+        const database& db, std::string& _group, account_name_type _delete_from, fc::optional<bool>& _delete_contact)
+        : private_message_extension_visitor(_requester, db, _group, _delete_from), delete_contact(_delete_contact) {
+    }
+
+    fc::optional<bool>& delete_contact;
+
+    using private_message_extension_visitor::operator();
+
+    void operator()(const delete_options& dop) const {
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "delete_options");
+        delete_contact = dop.delete_contact;
+    }
+};
+
 void private_delete_message_evaluator::do_apply(const private_delete_message_operation& op) {
     if (!_plugin->is_tracked_account(op.from) &&
         !_plugin->is_tracked_account(op.to) &&
@@ -344,9 +365,11 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
     }
 
     std::string group;
+    fc::optional<bool> delete_contact;
     for (auto& e : op.extensions) {
-        e.visit(private_message_extension_visitor(op.requester, _db, group, op.from));
+        e.visit(delete_extension_visitor(op.requester, _db, group, op.from, delete_contact));
     }
+    if (!!delete_contact) delete_contact = group.size() ? false : true;
 
     auto now = _db.head_block_time();
     fc::flat_map<std::tuple<account_name_type, std::string>, contact_size_info> stat_map;
@@ -392,6 +415,9 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
         // contact_action
         [&](const contact_object& co, const contact_size_object& so, const contact_size_info& size) -> bool {
             if (co.size != size || co.type != unknown) { // not all messages removed or contact is not 'unknown'
+                return false;
+            }
+            if (!(*delete_contact)) {
                 return false;
             }
             _db.remove(co);
