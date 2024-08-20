@@ -141,7 +141,7 @@ namespace golos { namespace plugins { namespace private_message {
         for (auto& e : extensions) {
             e.visit(delete_extension_validate_visitor(group, ext_requester, delete_contact));
         }
-        if (!!delete_contact) {
+        if (!delete_contact.valid()) {
             delete_contact = group.size() ? false : true;
         }
         GOLOS_CHECK_PARAM(extensions, {
