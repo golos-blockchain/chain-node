@@ -1,4 +1,5 @@
 #include <golos/plugins/database_api/plugin.hpp>
+#include <golos/plugins/database_api/api_objects/account_query.hpp>
 #include <golos/plugins/database_api/api_objects/asset_api_sort.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
@@ -65,7 +66,7 @@ public:
     dynamic_global_property_api_object get_dynamic_global_properties() const;
 
     // Accounts
-    std::vector<account_api_object> get_accounts(const std::vector<std::string>& names) const;
+    std::vector<account_api_object> get_accounts(const std::vector<std::string>& names, const account_query& query) const;
     std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names, bool include_frozen = false) const;
     std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit, account_select_legacy select = false) const;
     uint64_t get_account_count() const;
@@ -324,15 +325,17 @@ DEFINE_API(plugin, get_next_scheduled_hardfork) {
 DEFINE_API(plugin, get_accounts) {
     PLUGIN_API_VALIDATE_ARGS(
         (vector<std::string>, account_names)
+        (account_query, query, account_query())
     );
     return my->database().with_weak_read_lock([&]() {
-        return my->get_accounts(account_names);
+        return my->get_accounts(account_names, query);
     });
 }
 
-std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector<std::string>& names) const {
+std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector<std::string>& names, const account_query& query) const {
     const auto &idx = _db.get_index<account_index>().indices().get<by_name>();
     const auto &vidx = _db.get_index<witness_vote_index>().indices().get<by_account_witness>();
+    const auto& bidx = _db.get_index<account_blocking_index, by_account>();
     std::vector<account_api_object> results;
 
     for (auto name: names) {
@@ -343,6 +346,28 @@ std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector
             while (vitr != vidx.end() && vitr->account == itr->id) {
                 results.back().witness_votes.insert(_db.get(vitr->witness).owner);
                 ++vitr;
+            }
+            if (query.current != account_name_type()) {
+                fc::mutable_variant_object relations;
+                auto add_blocking = [&](const relation_direction& rel) {
+                    std::string key = fc::reflector<relation_direction>::to_string(rel);
+                    relations[key] = relation_type::blocking;
+                };
+                for (uint8_t i = 0; i < uint8_t(relation_direction::_size); ++i) {
+                    auto rel = relation_direction(i);
+                    if (rel == relation_direction::me_to_them) {
+                        auto bitr = bidx.find(std::make_tuple(query.current, itr->name));
+                        if (bitr != bidx.end()) {
+                            add_blocking(rel);
+                        }
+                    } else {
+                        auto bitr = bidx.find(std::make_tuple(itr->name, query.current));
+                        if (bitr != bidx.end()) {
+                            add_blocking(rel);
+                        }
+                    }
+                }
+                results.back().relations = relations;
             }
         }
     }

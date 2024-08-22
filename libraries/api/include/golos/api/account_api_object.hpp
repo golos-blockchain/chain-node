@@ -9,6 +9,8 @@
 namespace golos { namespace api {
 
 using golos::chain::account_object;
+using golos::chain::relation_direction;
+using golos::chain::relation_type;
 using golos::chain::account_freeze_object;
 using protocol::asset;
 using protocol::share_type;
@@ -147,6 +149,7 @@ struct account_api_object {
     fc::optional<account_freeze_api_object> freeze;
     bool do_not_bother = false;
     account_services services;
+    fc::optional<fc::mutable_variant_object> relations;
 };
 
 } } // golos::api
@@ -177,7 +180,7 @@ FC_REFLECT((golos::api::account_api_object),
     (witness_votes)(reputation)(posts_capacity)(comments_capacity)(voting_capacity)
     (referrer_account)(referrer_interest_rate)(referral_end_date)(referral_break_fee)
     (last_active_operation)(last_claim)(claim_expiration)
-    (proved_hf)(frozen)(freeze)(do_not_bother)(services)
+    (proved_hf)(frozen)(freeze)(do_not_bother)(services)(relations)
 )
 
 #endif //GOLOS_ACCOUNT_API_OBJ_HPP

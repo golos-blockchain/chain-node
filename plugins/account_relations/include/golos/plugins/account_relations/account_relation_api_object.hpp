@@ -20,15 +20,6 @@ namespace golos {
                 }
             };
 
-            enum class relation_direction : uint8_t {
-                me_to_them,
-                they_to_me
-            };
-
-            enum class relation_type : uint8_t {
-                blocking
-            };
-
             struct list_relation_query {
                 std::set<account_name_type> my_accounts;
 
@@ -52,16 +43,6 @@ namespace golos {
 FC_REFLECT(
     (golos::plugins::account_relations::account_relation_api_object),
     (who)(whom)(blocking)
-)
-
-FC_REFLECT_ENUM(
-    golos::plugins::account_relations::relation_direction,
-    (me_to_them)(they_to_me)
-)
-
-FC_REFLECT_ENUM(
-    golos::plugins::account_relations::relation_type,
-    (blocking)
 )
 
 FC_REFLECT(

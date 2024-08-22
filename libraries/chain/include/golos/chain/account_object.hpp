@@ -410,6 +410,16 @@ public:
     account_name_type blocking;
 };
 
+enum class relation_direction : uint8_t {
+    me_to_them,
+    they_to_me,
+    _size
+};
+
+enum class relation_type : uint8_t {
+    blocking
+};
+
 struct by_name;
 struct by_next_vesting_withdrawal;
 struct by_last_active_operation;
@@ -831,3 +841,13 @@ FC_REFLECT((golos::chain::account_blocking_object),
         (id)(account)(blocking)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_blocking_object, golos::chain::account_blocking_index)
+
+FC_REFLECT_ENUM(
+    golos::chain::relation_direction,
+    (me_to_them)(they_to_me)(_size)
+)
+
+FC_REFLECT_ENUM(
+    golos::chain::relation_type,
+    (blocking)
+)
