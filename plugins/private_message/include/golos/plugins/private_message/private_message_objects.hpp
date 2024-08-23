@@ -398,7 +398,7 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_non_unique<tag<by_owner>,
                 member<private_group_object, account_name_type, &private_group_object::owner>
             >,
-            ordered_unique<tag<by_popularity>,
+            ordered_non_unique<tag<by_popularity>,
                 composite_key<
                     private_group_object,
                     member<private_group_object, uint32_t, &private_group_object::total_messages>,

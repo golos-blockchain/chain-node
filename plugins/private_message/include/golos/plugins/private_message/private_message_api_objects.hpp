@@ -259,5 +259,5 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::plugins::private_message::private_group_api_object),
     (owner)(name)(json_metadata)(is_encrypted)(privacy)(created)
-    (moders)(members)(pendings)(banneds)(member_list)
+    (moders)(members)(pendings)(banneds)(total_messages)(member_list)
 )

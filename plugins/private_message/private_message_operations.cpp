@@ -244,7 +244,7 @@ namespace golos { namespace plugins { namespace private_message {
 
     void validate_private_group_name(const std::string& name) {
         GOLOS_CHECK_VALUE(name.size(), "Private group name should not be empty");
-        GOLOS_CHECK_VALUE(name.size() < 32, "Private group name should not be longer than 32 bytes");
+        GOLOS_CHECK_VALUE(name.size() <= 32, "Private group name should not be longer than 32 bytes");
         for (size_t i = 0; i < name.size(); ++i) {
             const auto& c = name[i];
             bool is_alpha = c >= 'a' && c <= 'z';
