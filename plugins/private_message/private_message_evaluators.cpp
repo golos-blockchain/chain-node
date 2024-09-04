@@ -165,7 +165,9 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     auto inc_counters = [&](auto& size_object, const bool is_send) {
         if (is_send) {
             size_object.total_outbox_messages++;
-            size_object.unread_outbox_messages++;
+            if (!is_group) {
+                size_object.unread_outbox_messages++;
+            }
         } else {
             size_object.total_inbox_messages++;
             size_object.unread_inbox_messages++;
@@ -328,8 +330,6 @@ void process_group_message_operation(
 
     for (const auto& stat_info: map) {
         const auto& owner = std::get<0>(stat_info.first);
-        const auto& contact = std::get<1>(stat_info.first);
-        if (!starts_with_dog(contact)) continue;
 
         auto contact_itr = contact_idx.find(stat_info.first);
 
@@ -393,14 +393,19 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
             if (m.read_date == time_point_sec::min()) {
                 unread_messages = 1;
             }
-            // remove from inbox
-            auto& inbox_stat = stat_map[std::make_tuple(m.to, with_dog(m.from))];
-            inbox_stat.unread_inbox_messages += unread_messages;
-            inbox_stat.total_inbox_messages++;
-            // remove from outbox
-            auto& outbox_stat = stat_map[std::make_tuple(m.from, with_dog(m.to))];
-            outbox_stat.unread_outbox_messages += unread_messages;
-            outbox_stat.total_outbox_messages++;
+            if (!group.size()) {
+                // remove from inbox
+                auto& inbox_stat = stat_map[std::make_tuple(m.to, with_dog(m.from))];
+                inbox_stat.unread_inbox_messages += unread_messages;
+                inbox_stat.total_inbox_messages++;
+                // remove from outbox
+                auto& outbox_stat = stat_map[std::make_tuple(m.from, with_dog(m.to))];
+                outbox_stat.unread_outbox_messages += unread_messages;
+                outbox_stat.total_outbox_messages++;
+            } else {
+                auto& outbox_stat = stat_map[std::make_tuple(m.from, group)];
+                outbox_stat.total_outbox_messages++;
+            }
 
             if (_plugin->can_call_callbacks()) {
                 message_api_object ma(m);

@@ -40,6 +40,8 @@ namespace golos { namespace plugins { namespace private_message {
         std::vector<char> encrypted_message;
         // Message in groups if decrypted
         fc::optional<std::vector<char>> decrypted;
+        // Same as receive_date. Need on client side for Redux state updates 
+        fc::optional<time_point_sec> decrypt_date;
         // Group message decrypt error
         fc::optional<std::string> error;
 
@@ -209,7 +211,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::message_api_object),
-    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(decrypted)(error)
+    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(decrypted)(decrypt_date)(error)
     (create_date)(receive_date)(read_date)(remove_date)
     (donates)(donates_uia)
 )

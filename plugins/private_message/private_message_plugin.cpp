@@ -313,6 +313,7 @@ namespace golos { namespace plugins { namespace private_message {
                         } else if (!!dr.body) {
                             const auto& body = *(dr.body);
                             msg->decrypted = std::vector<char>(body.begin(), body.end());
+                            msg->decrypt_date = msg->receive_date;
                         }
                     }
                 }
