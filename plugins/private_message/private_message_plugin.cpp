@@ -36,6 +36,7 @@ namespace golos { namespace plugins { namespace private_message {
         std::string status = "ok";
         std::string login_error;
         std::string error;
+        uint32_t decrypt_processed = 0;
     };
 
     struct callback_info final {
@@ -132,8 +133,8 @@ namespace golos { namespace plugins { namespace private_message {
             InItr& in_itr, const InItr& in_etr,
             std::function<bool (const message_object& msg)> filter) const;
 
-        api_result decrypt_messages(std::vector<message_api_object*>& ptrs, const login_data& query) const;
-        api_result decrypt_messages(std::vector<message_api_object>& vec, const login_data& query) const;
+        api_result decrypt_messages(std::vector<message_api_object*>& ptrs, const login_data& query, decrypt_ignore ign = decrypt_ignore()) const;
+        api_result decrypt_messages(std::vector<message_api_object>& vec, const login_data& query, decrypt_ignore ign = decrypt_ignore()) const;
 
         std::vector<message_api_object> get_thread(const message_thread_query&) const;
 
@@ -269,7 +270,7 @@ namespace golos { namespace plugins { namespace private_message {
     };
 
     api_result private_message_plugin::private_message_plugin_impl::decrypt_messages(
-        std::vector<message_api_object*>& ptrs, const login_data& query
+        std::vector<message_api_object*>& ptrs, const login_data& query, decrypt_ignore ign
     ) const {
         api_result res;
 
@@ -288,10 +289,18 @@ namespace golos { namespace plugins { namespace private_message {
                     const auto* msg = ptrs[i];
                     FC_ASSERT(msg != nullptr);
                     if (!msg->group.valid()) continue;
+                    auto ignore_key = std::to_string(msg->nonce) + "|" + msg->receive_date.to_iso_string() + "|" +
+                        msg->from + "|" + msg->to;
+                    if (ign.count(ignore_key)) {
+                        continue;
+                    }
 
                     dmq.entries.emplace_back(*(msg->group), msg->encrypted_message);
                     idxs.push_back(i);
+                    res.decrypt_processed++;
                 }
+
+                if (!dmq.entries.size()) return res;
 
                 auto dobj = cry->our_decrypt_messages(dmq);
                 if (!!dobj.login_error) {
@@ -313,6 +322,7 @@ namespace golos { namespace plugins { namespace private_message {
                         } else if (!!dr.body) {
                             const auto& body = *(dr.body);
                             msg->decrypted = std::vector<char>(body.begin(), body.end());
+                            msg->decrypt_date = msg->receive_date;
                         }
                     }
                 }
@@ -325,13 +335,13 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     api_result private_message_plugin::private_message_plugin_impl::decrypt_messages(
-        std::vector<message_api_object>& vec, const login_data& query
+        std::vector<message_api_object>& vec, const login_data& query, decrypt_ignore ign
     ) const {
         std::vector<message_api_object*> ptrs;
         for (auto& msg : vec) {
             ptrs.push_back(&msg);
         }
-        return decrypt_messages(ptrs, query);
+        return decrypt_messages(ptrs, query, ign);
     }
 
     std::vector<message_api_object> private_message_plugin::private_message_plugin_impl::get_thread(
@@ -873,7 +883,7 @@ namespace golos { namespace plugins { namespace private_message {
             return my->get_thread(query);
         });
 
-        auto dec_res = my->decrypt_messages(vec, query);
+        auto dec_res = my->decrypt_messages(vec, query, query.cache);
 
         fc::variant var;
         if (!old_version) {
@@ -882,6 +892,25 @@ namespace golos { namespace plugins { namespace private_message {
             if (dec_res.login_error.size()) vo["login_error"] = dec_res.login_error;
             if (dec_res.error.size()) vo["error"] = dec_res.error;
             vo["messages"] = vec;
+            vo["_dec_processed"] = dec_res.decrypt_processed;
+
+            if (query.contacts.valid()) {
+                auto cons = my->_db.with_weak_read_lock([&]() {
+                    return my->get_contacts(*(query.contacts));
+                });
+
+                std::vector<message_api_object*> lmsgs;
+                for (auto& con : cons) {
+                    if (con.last_message.from != account_name_type()) {
+                        lmsgs.push_back(&con.last_message);
+                    }
+                }
+                auto con_res = my->decrypt_messages(lmsgs, query, query.contacts->cache);
+
+                vo["contacts"] = cons;
+                vo["_dec_processed_con"] = con_res.decrypt_processed;
+            }
+
             var = vo;
         } else {
             fc::to_variant(vec, var);
@@ -988,13 +1017,14 @@ namespace golos { namespace plugins { namespace private_message {
                     msgs.push_back(&con.last_message);
                 }
             }
-            auto dec_res = my->decrypt_messages(msgs, query);
+            auto dec_res = my->decrypt_messages(msgs, query, query.cache);
 
             fc::mutable_variant_object vo;
             vo["status"] = dec_res.status;
             if (dec_res.login_error.size()) vo["login_error"] = dec_res.login_error;
             if (dec_res.error.size()) vo["error"] = dec_res.error;
             vo["contacts"] = vec;
+            vo["_dec_processed"] = dec_res.decrypt_processed;
             var = vo;
         } else {
             fc::to_variant(vec, var);
