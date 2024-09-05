@@ -12,6 +12,8 @@ namespace golos { namespace plugins { namespace private_message {
 
 using golos::plugins::cryptor::login_data;
 
+using decrypt_ignore = std::set<std::string>;
+
 /**
  * Query for thread messages
  */
@@ -24,6 +26,7 @@ struct message_thread_query final : login_data {
     bool unread_only = false;
     uint16_t limit = PRIVATE_DEFAULT_LIMIT;
     uint32_t offset = 0;
+    decrypt_ignore cache;
 
     bool is_good(const message_object& mo) const {
         return (!unread_only || mo.read_date == time_point_sec::min());
@@ -76,6 +79,7 @@ struct contact_query : login_data {
     std::set<contact_kind> kinds; // empty = any
     uint16_t limit = 20;
     uint32_t offset = 0;
+    decrypt_ignore cache;
 };
 
 enum class private_group_member_sort_direction : uint8_t {
@@ -102,7 +106,7 @@ struct private_group_member_query {
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::message_thread_query), ((golos::plugins::cryptor::login_data)),
     (group)(from)(to)
-    (newest_date)(unread_only)(limit)(offset)
+    (newest_date)(unread_only)(limit)(offset)(cache)
 )
 
 FC_REFLECT(
@@ -130,7 +134,7 @@ FC_REFLECT_DERIVED(
 
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::contact_query), ((golos::plugins::cryptor::login_data)),
-    (owner)(type)(kinds)(limit)(offset)
+    (owner)(type)(kinds)(limit)(offset)(cache)
 )
 
 FC_REFLECT_ENUM(
