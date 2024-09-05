@@ -893,6 +893,24 @@ namespace golos { namespace plugins { namespace private_message {
             if (dec_res.error.size()) vo["error"] = dec_res.error;
             vo["messages"] = vec;
             vo["_dec_processed"] = dec_res.decrypt_processed;
+
+            if (query.contacts.valid()) {
+                auto cons = my->_db.with_weak_read_lock([&]() {
+                    return my->get_contacts(*(query.contacts));
+                });
+
+                std::vector<message_api_object*> lmsgs;
+                for (auto& con : cons) {
+                    if (con.last_message.from != account_name_type()) {
+                        lmsgs.push_back(&con.last_message);
+                    }
+                }
+                auto con_res = my->decrypt_messages(lmsgs, query, query.contacts->cache);
+
+                vo["contacts"] = cons;
+                vo["_dec_processed_con"] = con_res.decrypt_processed;
+            }
+
             var = vo;
         } else {
             fc::to_variant(vec, var);
