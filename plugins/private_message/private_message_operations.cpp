@@ -21,19 +21,22 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     struct group_extension_validate_visitor {
-        group_extension_validate_visitor(std::string& _group, account_name_type& _requester)
-            : group(_group), requester(_requester) {
+        group_extension_validate_visitor(std::string& _group, account_name_type& _requester,
+            std::set<account_name_type>& _mentions)
+            : group(_group), requester(_requester), mentions(_mentions) {
         }
 
         using result_type = void;
 
         std::string& group;
         account_name_type& requester;
+        std::set<account_name_type>& mentions;
 
         void operator()(const private_group_options& pgo) const {
             pgo.validate();
             group = pgo.group;
             requester = pgo.requester;
+            mentions = pgo.mentions;
         }
     };
 
@@ -42,6 +45,12 @@ namespace golos { namespace plugins { namespace private_message {
         if (requester != account_name_type()) {
             GOLOS_CHECK_PARAM_ACCOUNT(requester);
         }
+        GOLOS_CHECK_PARAM(mentions, {
+            GOLOS_CHECK_VALUE(mentions.size() <= 10, "Max mentions are 10.");
+            for (const auto& men : mentions) {
+                validate_account_name(men);
+            }
+        });
     }
 
     void private_message_operation::validate() const {
@@ -49,8 +58,9 @@ namespace golos { namespace plugins { namespace private_message {
 
         std::string group;
         account_name_type requester;
+        std::set<account_name_type> mentions;
         for (auto& e : extensions) {
-            e.visit(group_extension_validate_visitor(group, requester));
+            e.visit(group_extension_validate_visitor(group, requester, mentions));
         }
         bool is_group = group.size();
 
@@ -108,8 +118,10 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     struct delete_extension_validate_visitor : group_extension_validate_visitor {
-        delete_extension_validate_visitor(std::string& _group, account_name_type& _requester, fc::optional<bool>& _delete_contact)
-            : group_extension_validate_visitor(_group, _requester), delete_contact(_delete_contact) {
+        delete_extension_validate_visitor(std::string& _group, account_name_type& _requester,
+            std::set<account_name_type>& _mentions, fc::optional<bool>& _delete_contact)
+            : group_extension_validate_visitor(_group, _requester, _mentions),
+            delete_contact(_delete_contact) {
         }
 
         fc::optional<bool>& delete_contact;
@@ -122,6 +134,35 @@ namespace golos { namespace plugins { namespace private_message {
     };
 
     void private_delete_message_operation::validate() const {
+        std::string group;
+        account_name_type ext_requester;
+        std::set<account_name_type> mentions;
+        fc::optional<bool> delete_contact;
+        for (auto& e : extensions) {
+            e.visit(delete_extension_validate_visitor(group, ext_requester, mentions, delete_contact));
+        }
+        if (!delete_contact.valid()) {
+            delete_contact = group.size() ? false : true;
+        }
+        GOLOS_CHECK_PARAM(extensions, {
+            GOLOS_CHECK_VALUE(!ext_requester.size(),
+                "For delete operations, use `requester` only from operation, not extension.");
+            GOLOS_CHECK_VALUE(!mentions.size(),
+                "For delete operations, `mentions` are not applicable.");
+            if (group.size()) {
+                GOLOS_CHECK_VALUE(!(*delete_contact), "Cannot delete contact of group.");
+            }
+        });
+
+        if (group.size() && nonce == 0) {
+            GOLOS_CHECK_PARAM(from, {
+                GOLOS_CHECK_VALUE(from == account_name_type(), "`from` not yet supported for groups");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to == account_name_type(), "`to` not yet supported for groups");
+            });
+        }
+
         GOLOS_CHECK_PARAM(from, {
             if (from.size()) {
                 validate_account_name(from);
@@ -132,23 +173,6 @@ namespace golos { namespace plugins { namespace private_message {
             if (to.size()) {
                 validate_account_name(to);
                 GOLOS_CHECK_VALUE(to != from, "You cannot delete messages to yourself");
-            }
-        });
-
-        std::string group;
-        account_name_type ext_requester;
-        fc::optional<bool> delete_contact;
-        for (auto& e : extensions) {
-            e.visit(delete_extension_validate_visitor(group, ext_requester, delete_contact));
-        }
-        if (!delete_contact.valid()) {
-            delete_contact = group.size() ? false : true;
-        }
-        GOLOS_CHECK_PARAM(extensions, {
-            GOLOS_CHECK_VALUE(!ext_requester.size(),
-                "For delete operations, use `requester` only from operation, not extension.");
-            if (group.size()) {
-                GOLOS_CHECK_VALUE(!(*delete_contact), "Cannot delete contact of group.");
             }
         });
 
@@ -167,7 +191,8 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
                 GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
-                GOLOS_CHECK_VALUE(group.size() || to.size(), "Non-zero `nonce` requires `to`/`group` to be set too");
+                if (!group.size())
+                    GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
@@ -175,7 +200,49 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     void private_mark_message_operation::validate() const {
-        GOLOS_CHECK_PARAM_ACCOUNT(to);
+        std::string group;
+        account_name_type requester;
+        std::set<account_name_type> mentions;
+        for (auto& e : extensions) {
+            e.visit(group_extension_validate_visitor(group, requester, mentions));
+        }
+        bool is_group = group.size();
+
+        GOLOS_CHECK_PARAM(extensions, {
+            if (is_group) {
+                GOLOS_CHECK_VALUE(requester != account_name_type(),
+                    "For group operations, you should use `requester` field.");
+                GOLOS_CHECK_VALUE(mentions.size() <= 1,
+                    "For mark operations, `mentions` size cannot be > 1.");
+                if (mentions.size()) {
+                    GOLOS_CHECK_VALUE(*(mentions.begin()) == requester,
+                        "You cannot read mention of another person.");
+                }
+            } else {
+                GOLOS_CHECK_VALUE(requester == account_name_type(),
+                    "In private chats, `requester` not supported. Use `to` only.");
+                GOLOS_CHECK_VALUE(!mentions.size(),
+                    "In private chats, `mentions` not supported.");
+            }
+        });
+
+        if (!is_group) {
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to != account_name_type(), "`to` can't be empty");
+            });
+        }
+        if (is_group && nonce == 0) {
+            GOLOS_CHECK_PARAM(from, {
+                GOLOS_CHECK_VALUE(from == account_name_type(), "`from` not yet supported for groups");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to == account_name_type(), "`to` not yet supported for groups");
+            });
+        }
+
+        if (to.size()) {
+            GOLOS_CHECK_PARAM_ACCOUNT(to);
+        }
 
         GOLOS_CHECK_PARAM(from, {
             if (from.size()) {
@@ -191,6 +258,8 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
                 GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
+                if (!is_group)
+                    GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }

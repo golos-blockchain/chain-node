@@ -7,6 +7,7 @@ using golos::chain::by_account_bandwidth_type;
 using golos::chain::account_bandwidth_object;
 using golos::chain::account_authority_object;
 using golos::chain::account_metadata_object;
+using golos::chain::account_blocking_index;
 using golos::chain::bandwidth_type;
 
 account_freeze_api_object::account_freeze_api_object(const account_freeze_object& afo) {
@@ -161,5 +162,32 @@ account_api_object::account_api_object(const account_object& a, const golos::cha
 }
 
 account_api_object::account_api_object() = default;
+
+fc::mutable_variant_object current_get_relations(
+    const golos::chain::database& _db,
+    account_name_type current, account_name_type account
+) {
+    const auto& bidx = _db.get_index<account_blocking_index, by_account>();
+    fc::mutable_variant_object relations;
+    auto add_blocking = [&](const relation_direction& rel) {
+        std::string key = fc::reflector<relation_direction>::to_string(rel);
+        relations[key] = relation_type::blocking;
+    };
+    for (uint8_t i = 0; i < uint8_t(relation_direction::_size); ++i) {
+        auto rel = relation_direction(i);
+        if (rel == relation_direction::me_to_them) {
+            auto bitr = bidx.find(std::make_tuple(current, account));
+            if (bitr != bidx.end()) {
+                add_blocking(rel);
+            }
+        } else {
+            auto bitr = bidx.find(std::make_tuple(account, current));
+            if (bitr != bidx.end()) {
+                add_blocking(rel);
+            }
+        }
+    }
+    return relations;
+}
 
 } } // golos::api

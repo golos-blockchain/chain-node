@@ -9,7 +9,8 @@ namespace golos { namespace plugins { namespace private_message {
 
     struct private_group_options {
         std::string group;
-        account_name_type requester; // For editing. For delete - use operation's `requester`
+        account_name_type requester; // For editing and marking. For delete - use operation's `requester`
+        std::set<account_name_type> mentions;
 
         void validate() const;
     };
@@ -19,6 +20,16 @@ namespace golos { namespace plugins { namespace private_message {
     >;
 
     using group_extensions_type = flat_set<group_extension>;
+
+    static inline account_name_type get_op_requester(const group_extensions_type& extensions) {
+        for (const auto& ext : extensions) {
+            if (ext.which() == group_extension::tag<private_group_options>::value) {
+                const auto& pgo = ext.get<private_group_options>();
+                return pgo.requester;
+            }
+        }
+        return account_name_type();
+    }
 
     struct private_message_operation: public base_operation {
         account_name_type from;
@@ -35,15 +46,10 @@ namespace golos { namespace plugins { namespace private_message {
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
             if (update) {
-                for (const auto& ext : extensions) {
-                    if (ext.which() == group_extension::tag<private_group_options>::value) {
-                        const auto& pgo = ext.get<private_group_options>();
-                        if (pgo.requester != account_name_type()) {
-                            a.insert(pgo.requester);
-                            return;
-                        }
-                        break;
-                    }
+                auto requester = get_op_requester(extensions);
+                if (requester != account_name_type()) {
+                    a.insert(requester);
+                    return;
                 }
             }
             a.insert(from);
@@ -84,10 +90,15 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec start_date;
         time_point_sec stop_date;
 
-        extensions_type extensions;
+        group_extensions_type extensions;
 
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            auto requester = get_op_requester(extensions);
+            if (requester != account_name_type()) {
+                a.insert(requester);
+                return;
+            }
             a.insert(to);
         }
     };
@@ -214,7 +225,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 } } } // golos::plugins::private_message
 
-FC_REFLECT((golos::plugins::private_message::private_group_options), (group)(requester))
+FC_REFLECT((golos::plugins::private_message::private_group_options), (group)(requester)(mentions))
 FC_REFLECT_TYPENAME((golos::plugins::private_message::group_extension))
 FC_REFLECT(
     (golos::plugins::private_message::private_message_operation),

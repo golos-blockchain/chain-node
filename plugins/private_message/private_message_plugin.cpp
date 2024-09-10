@@ -7,6 +7,7 @@
 #include <golos/plugins/cryptor/cryptor.hpp>
 #include <appbase/application.hpp>
 #include <golos/protocol/donate_targets.hpp>
+#include <golos/api/account_api_object.hpp>
 
 #include <golos/chain/index.hpp>
 #include <golos/chain/custom_operation_interpreter.hpp>
@@ -122,6 +123,9 @@ namespace golos { namespace plugins { namespace private_message {
 
         void post_operation(const operation_notification& note) const;
 
+        message_account_api_object get_msg_account(account_name_type account, account_name_type current = account_name_type(), std::string group = "") const;
+        bool fill_msg_account(message_accounts& accounts, account_name_type account, account_name_type current = account_name_type(), std::string group = "") const;
+
         template <typename Direction, typename Filter>
         std::vector<message_api_object> get_message_box(
             const std::string& account, const message_box_query&, Filter&&) const;
@@ -226,6 +230,64 @@ namespace golos { namespace plugins { namespace private_message {
         }
 
         return result;
+    }
+
+    message_account_api_object private_message_plugin::private_message_plugin_impl::get_msg_account(
+        account_name_type account, account_name_type current, std::string group) const {
+        message_account_api_object res;
+
+        const auto* acc = _db.find_account(account);
+        if (!acc) return res;
+        res.name = account;
+
+        auto meta = _db.find<account_metadata_object, by_account>(account);
+        if (meta != nullptr) {
+            res.json_metadata = to_string(meta->json_metadata);
+        }
+
+        fc::time_point_sec last_bandwidth_update;
+        auto forum = _db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(account, bandwidth_type::forum));
+        if (forum != nullptr) {
+            last_bandwidth_update = forum->last_bandwidth_update;
+        }
+
+        res.last_seen = std::max(acc->created, last_bandwidth_update);
+        res.memo_key = acc->memo_key;
+
+        if (current != account_name_type()) {
+            res.relations = golos::api::current_get_relations(_db, current, account);
+        }
+
+        if (!group.size()) return res;
+        const auto* pgm = _db.find<private_group_member_object, by_account_group>(std::make_tuple(account, group));
+        if (pgm) {
+            res.member_type = pgm->member_type;
+        } else {
+            const auto* pgo = _db.find<private_group_object, by_name>(group);
+            if (pgo && pgo->owner == account) {
+                res.member_type = private_group_member_type::moder;
+            }
+        }
+
+        return res;
+    }
+
+    bool private_message_plugin::private_message_plugin_impl::fill_msg_account(
+        message_accounts& accounts, account_name_type account, account_name_type current, std::string group) const {
+        if (account == account_name_type()) {
+            return false;
+        }
+        auto itr = accounts.find(account);
+        if (itr == accounts.end()) {
+            accounts[account] = get_msg_account(account, current, group);
+            return true;
+        } else {
+            // Merging, but only what really need to merge, due to code flow
+            if (current != account_name_type() && !itr->second.relations.valid()) {
+                itr->second.relations = get_msg_account(account, current, group).relations;
+            }
+        }
+        return false;
     }
 
     template<typename OutItr, typename InItr>
@@ -433,14 +495,14 @@ namespace golos { namespace plugins { namespace private_message {
     ) const {
         bool is_group = o.kind == contact_kind::group;
 
-        contact_api_object result(o);
+        contact_api_object result(o, _db);
 
         if (!is_group) {
             auto owner = account_name_type(result.contact);
             auto contact = with_dog(o.owner);
 
             const auto& idx = _db.get_index<contact_index, by_contact>();
-            auto itr = idx.find(std::make_tuple(owner, contact));
+            auto itr = idx.find(std::make_tuple(contact, owner));
 
             if (itr != idx.end()) {
                 result.remote_type = itr->type;
@@ -470,7 +532,7 @@ namespace golos { namespace plugins { namespace private_message {
         std::string contact = query.group.size() ?
             query.group : with_dog(query.contact);
         const auto& idx = _db.get_index<contact_index, by_contact>();
-        auto itr = idx.find(std::make_tuple(query.owner, contact));
+        auto itr = idx.find(std::make_tuple(contact, query.owner));
 
         if (itr != idx.end()) {
             return get_contact_item(*itr);
@@ -646,6 +708,9 @@ namespace golos { namespace plugins { namespace private_message {
                     reached_start = true;
 
                     res.emplace_back(*itr);
+                    if (query.accounts) {
+                        res.back().account_data = get_msg_account(itr->account, account_name_type(), query.group);
+                    }
                 }
                 return false;
             });
@@ -879,8 +944,28 @@ namespace golos { namespace plugins { namespace private_message {
             query.newest_date = my->_db.head_block_time();
         }
 
+        message_accounts accounts;
+
         auto vec = my->_db.with_weak_read_lock([&]() {
-            return my->get_thread(query);
+            auto msgs = my->get_thread(query);
+
+            if (query.accounts) {
+                account_name_type current;
+                if (!query.group.size()) current = query.from;
+
+                for (const auto& msg : msgs) {
+                    my->fill_msg_account(accounts, msg.from,
+                        msg.from != current ? current : account_name_type(),
+                        query.group);
+                    my->fill_msg_account(accounts, msg.to,
+                        msg.to != current ? current : account_name_type(),
+                        query.group);
+                }
+                my->fill_msg_account(accounts, query.from, account_name_type(), query.group);
+                my->fill_msg_account(accounts, query.to, current, query.group);
+            }
+
+            return msgs;
         });
 
         auto dec_res = my->decrypt_messages(vec, query, query.cache);
@@ -896,7 +981,22 @@ namespace golos { namespace plugins { namespace private_message {
 
             if (query.contacts.valid()) {
                 auto cons = my->_db.with_weak_read_lock([&]() {
-                    return my->get_contacts(*(query.contacts));
+                    auto contacts = my->get_contacts(*(query.contacts));
+
+                    if (query.accounts) {
+                        account_name_type current;
+                        if (query.contacts->relations) {
+                            current = query.contacts->owner;
+                        }
+
+                        my->fill_msg_account(accounts, query.contacts->owner);
+                        for (const auto& con : contacts) {
+                            if (con.kind != contact_kind::account) continue;
+                            my->fill_msg_account(accounts, con.contact, current);
+                        }
+                    }
+
+                    return contacts;
                 });
 
                 std::vector<message_api_object*> lmsgs;
@@ -909,6 +1009,10 @@ namespace golos { namespace plugins { namespace private_message {
 
                 vo["contacts"] = cons;
                 vo["_dec_processed_con"] = con_res.decrypt_processed;
+            }
+
+            if (query.accounts) {
+                vo["accounts"] = to_variant(accounts);
             }
 
             var = vo;
@@ -1005,8 +1109,23 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
 
+        message_accounts accounts;
+
         auto vec = my->_db.with_weak_read_lock([&](){
-            return my->get_contacts(query);
+            auto contacts = my->get_contacts(query);
+            if (query.accounts) {
+                account_name_type current;
+                if (query.relations) {
+                    current = query.owner;
+                }
+
+                my->fill_msg_account(accounts, query.owner);
+                for (const auto& con : contacts) {
+                    if (con.kind != contact_kind::account) continue;
+                    my->fill_msg_account(accounts, con.contact, current);
+                }
+            }
+            return contacts;
         });
 
         fc::variant var;
@@ -1024,6 +1143,11 @@ namespace golos { namespace plugins { namespace private_message {
             if (dec_res.login_error.size()) vo["login_error"] = dec_res.login_error;
             if (dec_res.error.size()) vo["error"] = dec_res.error;
             vo["contacts"] = vec;
+
+            if (query.accounts) {
+                vo["accounts"] = to_variant(accounts);
+            }
+
             vo["_dec_processed"] = dec_res.decrypt_processed;
             var = vo;
         } else {

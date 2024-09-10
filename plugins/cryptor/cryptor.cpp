@@ -558,6 +558,7 @@ public:
                 auto itr = idx.find(group);
                 if (itr == idx.end()) {
                     gd.exists = false;
+                    return;
                 }
                 gd.privacy = itr->privacy;
                 if (gd.privacy == private_group_privacy::private_group) {
