@@ -97,6 +97,23 @@ namespace golos { namespace plugins { namespace private_message {
     };
 
     /**
+     * "Mini-account" - brief data instead of "get account + get group member" call
+     */
+    struct message_account_api_object final {
+        // As account
+        account_name_type name;
+        std::string json_metadata;
+        time_point_sec last_seen; // max(last_bandwidth_update, created)
+
+        // As group member
+        fc::optional<private_group_member_type> member_type;
+    };
+
+    using message_accounts = std::map<account_name_type, message_account_api_object>;
+
+    fc::variant to_variant(const message_accounts& accounts);
+
+    /**
      * Private group member item
      */
     struct private_group_member_api_object final {
@@ -251,6 +268,12 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::plugins::private_message::callback_contact_event),
     (type)(contact))
+
+FC_REFLECT(
+    (golos::plugins::private_message::message_account_api_object),
+    (name)(json_metadata)(last_seen)
+    (member_type)
+)
 
 FC_REFLECT(
     (golos::plugins::private_message::private_group_member_api_object),

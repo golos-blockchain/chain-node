@@ -34,10 +34,11 @@ struct private_message_extension_visitor {
 
         const auto& pgo = _db.get<private_group_object, by_name>(_pgo.group);
         group = _pgo.group;
+        auto req = _pgo.requester.size() ? _pgo.requester : requester;
 
         const auto& pgm_idx = _db.get_index<private_group_member_index, by_account_group>();
 
-        auto pgm_itr = pgm_idx.find(std::make_tuple(requester, pgo.name));
+        auto pgm_itr = pgm_idx.find(std::make_tuple(req, pgo.name));
         bool exists = pgm_itr != pgm_idx.end();
 
         if (exists) {
@@ -45,7 +46,7 @@ struct private_message_extension_visitor {
                 logic_errors::unauthorized, "You are banned.");
         }
 
-        bool is_owner = pgo.owner == requester;
+        bool is_owner = pgo.owner == req;
         bool is_moder = is_owner || (exists && pgm_itr->member_type == private_group_member_type::moder); 
 
         if (pgo.privacy != private_group_privacy::public_group) {
@@ -54,7 +55,7 @@ struct private_message_extension_visitor {
         }
 
         // Update by moderator
-        if (_pgo.requester != account_name_type() && _pgo.requester != requester) {
+        if (_pgo.requester != account_name_type()) {
             GOLOS_CHECK_LOGIC(is_moder,
                 logic_errors::unauthorized, "You should be moder to update foreign messages.");
         }

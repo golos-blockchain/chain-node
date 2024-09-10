@@ -37,6 +37,7 @@ struct message_thread_query final : login_data {
     uint32_t offset = 0;
     decrypt_ignore cache;
 
+    bool accounts = false;
     fc::optional<contact_query> contacts;
 
     bool is_good(const message_object& mo) const {
@@ -113,7 +114,7 @@ FC_REFLECT_DERIVED(
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::message_thread_query), ((golos::plugins::cryptor::login_data)),
     (group)(from)(to)
-    (newest_date)(unread_only)(limit)(offset)(cache)(contacts)
+    (newest_date)(unread_only)(limit)(offset)(cache)(accounts)(contacts)
 )
 
 FC_REFLECT(

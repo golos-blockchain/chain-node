@@ -122,6 +122,9 @@ namespace golos { namespace plugins { namespace private_message {
 
         void post_operation(const operation_notification& note) const;
 
+        message_account_api_object get_msg_account(account_name_type account, std::string group = "") const;
+        bool fill_msg_account(message_accounts& accounts, account_name_type account, std::string group = "") const;
+
         template <typename Direction, typename Filter>
         std::vector<message_api_object> get_message_box(
             const std::string& account, const message_box_query&, Filter&&) const;
@@ -226,6 +229,53 @@ namespace golos { namespace plugins { namespace private_message {
         }
 
         return result;
+    }
+
+    message_account_api_object private_message_plugin::private_message_plugin_impl::get_msg_account(
+        account_name_type account, std::string group) const {
+        message_account_api_object res;
+
+        const auto* acc = _db.find_account(account);
+        if (!acc) return res;
+        res.name = account;
+
+        auto meta = _db.find<account_metadata_object, by_account>(account);
+        if (meta != nullptr) {
+            res.json_metadata = to_string(meta->json_metadata);
+        }
+
+        fc::time_point_sec last_bandwidth_update;
+        auto forum = _db.find<account_bandwidth_object, by_account_bandwidth_type>(std::make_tuple(account, bandwidth_type::forum));
+        if (forum != nullptr) {
+            last_bandwidth_update = forum->last_bandwidth_update;
+        }
+
+        res.last_seen = std::max(acc->created, last_bandwidth_update);
+
+        if (!group.size()) return res;
+        const auto* pgm = _db.find<private_group_member_object, by_account_group>(std::make_tuple(account, group));
+        if (pgm) {
+            res.member_type = pgm->member_type;
+        } else {
+            const auto* pgo = _db.find<private_group_object, by_name>(group);
+            if (pgo && pgo->owner == account) {
+                res.member_type = private_group_member_type::moder;
+            }
+        }
+
+        return res;
+    }
+
+    bool private_message_plugin::private_message_plugin_impl::fill_msg_account(
+        message_accounts& accounts, account_name_type account, std::string group) const {
+        if (account == account_name_type()) {
+            return false;
+        }
+        if (!accounts.count(account)) {
+            accounts[account] = get_msg_account(account, group);
+            return true;
+        }
+        return false;
     }
 
     template<typename OutItr, typename InItr>
@@ -879,8 +929,19 @@ namespace golos { namespace plugins { namespace private_message {
             query.newest_date = my->_db.head_block_time();
         }
 
+        message_accounts accounts;
+
         auto vec = my->_db.with_weak_read_lock([&]() {
-            return my->get_thread(query);
+            auto msgs = my->get_thread(query);
+
+            if (query.accounts) {
+                for (const auto& msg : msgs) {
+                    my->fill_msg_account(accounts, msg.from, query.group);
+                    my->fill_msg_account(accounts, msg.to, query.group);
+                }
+            }
+
+            return msgs;
         });
 
         auto dec_res = my->decrypt_messages(vec, query, query.cache);
@@ -909,6 +970,10 @@ namespace golos { namespace plugins { namespace private_message {
 
                 vo["contacts"] = cons;
                 vo["_dec_processed_con"] = con_res.decrypt_processed;
+            }
+
+            if (query.accounts) {
+                vo["accounts"] = to_variant(accounts);
             }
 
             var = vo;
