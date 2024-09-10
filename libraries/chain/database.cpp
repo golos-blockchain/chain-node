@@ -700,10 +700,12 @@ namespace golos { namespace chain {
             if (blocked) {
                 if (blocked == 1) {
                     GOLOS_CHECK_VALUE(can_bypass,
-                        "You are blocked by user, and cannot bypass it with money in that case");
+                        "You are blocked by user (@${account}), and cannot bypass it with money in that case",
+                        ("account", account));
                 } else {
                     GOLOS_CHECK_VALUE(can_bypass,
-                        "User tells to do not bother their, and you cannot bypass it with money in that case");
+                        "User (@${account}) tells to do not bother their, and you cannot bypass it with money in that case",
+                        ("account", account));
                 }
 
                 const auto& median_props = get_witness_schedule_object().median_props;
@@ -711,11 +713,13 @@ namespace golos { namespace chain {
 
                 if (blocked == 1) {
                     GOLOS_CHECK_VALUE(payer.tip_balance >= median_props.unwanted_operation_cost,
-                        "You are blocked by user, so you need at least ${amount} of TIP balance",
+                        "You are blocked by user (@${account}), so you need at least ${amount} of TIP balance",
+                        ("account", account)
                         ("amount", median_props.unwanted_operation_cost));
                 } else {
                     GOLOS_CHECK_VALUE(payer.tip_balance >= median_props.unwanted_operation_cost,
-                        "User tells to do not bother their, so you need at least ${amount} of TIP balance",
+                        "User (@${account}) tells to do not bother their, so you need at least ${amount} of TIP balance",
+                        ("account", account)
                         ("amount", median_props.unwanted_operation_cost));
                 }
                 modify(payer, [&](auto& payer) {
