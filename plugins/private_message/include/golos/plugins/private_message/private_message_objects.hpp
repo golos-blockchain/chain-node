@@ -14,6 +14,7 @@ namespace golos { namespace plugins { namespace private_message {
     using namespace chainbase;
     using namespace golos::chain;
     using namespace boost::multi_index;
+    namespace bip = boost::interprocess;
 
     using contact_name = shared_string;
 
@@ -37,7 +38,7 @@ namespace golos { namespace plugins { namespace private_message {
     public:
         template<typename Constructor, typename Allocator>
         message_object(Constructor&& c, allocator <Allocator> a)
-            : group(a), encrypted_message(a) {
+            : group(a), encrypted_message(a), mentions(a) {
             c(*this);
         }
 
@@ -51,6 +52,7 @@ namespace golos { namespace plugins { namespace private_message {
         public_key_type to_memo_key;
         uint32_t checksum = 0;
         buffer_type encrypted_message;
+        bip::vector<account_name_type, allocator<account_name_type>> mentions;
 
         time_point_sec inbox_create_date; // == time_point_sec::min() means removed message
         time_point_sec outbox_create_date; // == time_point_sec::min() means removed message
@@ -215,9 +217,10 @@ namespace golos { namespace plugins { namespace private_message {
         uint32_t unread_outbox_messages = 0;
         uint32_t total_inbox_messages = 0;
         uint32_t unread_inbox_messages = 0;
+        uint32_t unread_mentions = 0;
 
         bool empty() const {
-            return !total_outbox_messages && !total_inbox_messages;
+            return !total_outbox_messages && !total_inbox_messages && !unread_mentions;
         }
 
         contact_size_info& operator-=(const contact_size_info& s) {
@@ -225,6 +228,7 @@ namespace golos { namespace plugins { namespace private_message {
             unread_outbox_messages -= s.unread_outbox_messages;
             total_inbox_messages -= s.total_inbox_messages;
             unread_inbox_messages -= s.unread_inbox_messages;
+            unread_mentions -= s.unread_mentions;
             return *this;
         }
 
@@ -233,6 +237,7 @@ namespace golos { namespace plugins { namespace private_message {
             unread_outbox_messages += s.unread_outbox_messages;
             total_inbox_messages += s.total_inbox_messages;
             unread_inbox_messages += s.unread_inbox_messages;
+            unread_mentions -= s.unread_mentions;
             return *this;
         }
 
@@ -241,7 +246,8 @@ namespace golos { namespace plugins { namespace private_message {
                 total_outbox_messages == s.total_outbox_messages &&
                 unread_outbox_messages == s.unread_outbox_messages &&
                 total_inbox_messages == s.total_inbox_messages &&
-                unread_inbox_messages == s.unread_inbox_messages;
+                unread_inbox_messages == s.unread_inbox_messages &&
+                unread_mentions == s.unread_mentions;
         }
 
         bool operator!=(const contact_size_info& s) const {
@@ -305,12 +311,12 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_unique<tag<by_contact>,
                 composite_key<
                     contact_object,
-                    member<contact_object, account_name_type, &contact_object::owner>,
-                    member<contact_object, contact_name, &contact_object::contact>
+                    member<contact_object, contact_name, &contact_object::contact>,
+                    member<contact_object, account_name_type, &contact_object::owner>
                 >,
                 composite_key_compare<
-                    string_less,
-                    strcmp_less
+                    strcmp_less,
+                    string_less
                 >
             >
         >, allocator<contact_object>>;

@@ -18,13 +18,15 @@ void check_golos_power(const account_object& acc, const database& _db) {
 
 struct private_message_extension_visitor {
     private_message_extension_visitor(const account_name_type& _requester,
-        const database& db, std::string& _group, account_name_type _delete_from = account_name_type())
-        : requester(_requester), _db(db), group(_group), delete_from(_delete_from) {
+        const database& db, std::string& _group, std::set<account_name_type>& _mentions,
+        account_name_type _delete_from = account_name_type())
+        : requester(_requester), _db(db), group(_group), mentions(_mentions), delete_from(_delete_from) {
     }
 
     const account_name_type& requester;
     const database& _db;
     std::string& group;
+    std::set<account_name_type>& mentions;
     account_name_type delete_from;
 
     using result_type = void;
@@ -34,10 +36,12 @@ struct private_message_extension_visitor {
 
         const auto& pgo = _db.get<private_group_object, by_name>(_pgo.group);
         group = _pgo.group;
+        mentions = _pgo.mentions;
+        auto req = _pgo.requester.size() ? _pgo.requester : requester;
 
         const auto& pgm_idx = _db.get_index<private_group_member_index, by_account_group>();
 
-        auto pgm_itr = pgm_idx.find(std::make_tuple(requester, pgo.name));
+        auto pgm_itr = pgm_idx.find(std::make_tuple(req, pgo.name));
         bool exists = pgm_itr != pgm_idx.end();
 
         if (exists) {
@@ -45,7 +49,7 @@ struct private_message_extension_visitor {
                 logic_errors::unauthorized, "You are banned.");
         }
 
-        bool is_owner = pgo.owner == requester;
+        bool is_owner = pgo.owner == req;
         bool is_moder = is_owner || (exists && pgm_itr->member_type == private_group_member_type::moder); 
 
         if (pgo.privacy != private_group_privacy::public_group) {
@@ -54,7 +58,7 @@ struct private_message_extension_visitor {
         }
 
         // Update by moderator
-        if (_pgo.requester != account_name_type() && _pgo.requester != requester) {
+        if (_pgo.requester != account_name_type()) {
             GOLOS_CHECK_LOGIC(is_moder,
                 logic_errors::unauthorized, "You should be moder to update foreign messages.");
         }
@@ -76,7 +80,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     if (op.to.size()) {
         _db.get_account(op.to);
 
-        auto contact_itr = contact_idx.find(std::make_tuple(op.to, op.from));
+        auto contact_itr = contact_idx.find(std::make_tuple(op.from, op.to));
 
         auto& cfg_idx = _db.get_index<settings_index, by_owner>();
         auto cfg_itr = cfg_idx.find(op.to);
@@ -95,11 +99,15 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     }
 
     std::string group;
-    private_message_extension_visitor visitor(op.from, _db, group);
+    std::set<account_name_type> mentions;
+    private_message_extension_visitor visitor(op.from, _db, group, mentions);
     for (auto& e : op.extensions) {
         e.visit(visitor);
     }
     bool is_group = group.size();
+    for (const auto& acc : mentions) {
+        _db.get_account(acc);
+    }
 
     auto& id_idx = _db.get_index<message_index, by_nonce>();
     auto id_itr = id_idx.find(std::make_tuple(group, op.from, op.to, op.nonce));
@@ -114,6 +122,10 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
 
     auto now = _db.head_block_time();
 
+    for (const auto& men : mentions) {
+        _db.check_no_blocking(men, op.from, false);
+    }
+
     auto set_message = [&](message_object& pmo) {
         pmo.from_memo_key = op.from_memo_key;
         pmo.to_memo_key = op.to_memo_key;
@@ -123,6 +135,10 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         std::copy(
             op.encrypted_message.begin(), op.encrypted_message.end(),
             pmo.encrypted_message.begin());
+        pmo.mentions.clear();
+        for (const auto& men : mentions) {
+            pmo.mentions.push_back(men);
+        }
     };
 
     if (id_itr == id_idx.end()) {
@@ -143,7 +159,8 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
             pmo.nonce = op.nonce;
             pmo.inbox_create_date = now;
             pmo.outbox_create_date = now;
-            pmo.read_date = time_point_sec::min();
+            pmo.read_date = (is_group && op.to == account_name_type()) ?
+                now : time_point_sec::min();
             pmo.remove_date = time_point_sec::min();
             set_message(pmo);
         });
@@ -162,22 +179,26 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     auto& size_idx = _db.get_index<contact_size_index, by_owner>();
 
     // Increment counters depends on side of communication
-    auto inc_counters = [&](auto& size_object, const bool is_send) {
+    auto inc_counters = [&](auto& size_object, bool is_send, bool is_mention = false) {
         if (is_send) {
             size_object.total_outbox_messages++;
-            if (!is_group) {
+            if (!is_group || op.to != account_name_type()) {
                 size_object.unread_outbox_messages++;
             }
         } else {
-            size_object.total_inbox_messages++;
-            size_object.unread_inbox_messages++;
+            if (is_mention) {
+                size_object.unread_mentions++;
+            } else {
+                size_object.total_inbox_messages++;
+                size_object.unread_inbox_messages++;
+            }
         }
     };
 
     // Update global counters by type of contact
-    auto modify_size = [&](auto& owner, auto type, const bool is_new_contact, const bool is_send) {
+    auto modify_size = [&](auto& owner, auto type, bool is_new_contact, bool is_send, bool is_mention) {
         auto modify_counters = [&](auto& pcso) {
-            inc_counters(pcso.size, is_send);
+            inc_counters(pcso.size, is_send, is_mention);
             if (is_new_contact) {
                 pcso.size.total_contacts++;
             }
@@ -196,17 +217,17 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     };
 
     // Add contact list if it doesn't exist or update it if it exits
-    auto modify_contact = [&](auto& owner, const std::string& contact, auto kind, auto type, const bool is_send) {
+    auto modify_contact = [&](auto& owner, const std::string& contact, auto kind, auto type, bool is_send, bool is_mention = false) {
         bool is_new_contact;
 
         auto contact_at = (kind == contact_kind::account) ?
             with_dog(contact) : contact;
 
-        auto contact_itr = contact_idx.find(std::make_tuple(owner, contact_at));
+        auto contact_itr = contact_idx.find(std::make_tuple(contact_at, owner));
         if (contact_itr != contact_idx.end()) {
             _db.modify(*contact_itr, [&](auto& pco) {
                 pco.is_hidden = false;
-                inc_counters(pco.size, is_send);
+                inc_counters(pco.size, is_send, is_mention);
             });
             is_new_contact = false;
             type = contact_itr->type;
@@ -216,19 +237,19 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
                 from_string(pco.contact, contact_at);
                 pco.kind = kind;
                 pco.type = type;
-                inc_counters(pco.size, is_send);
+                inc_counters(pco.size, is_send, is_mention);
             });
             is_new_contact = true;
 
             if (_plugin->can_call_callbacks()) {
-                contact_itr = contact_idx.find(std::make_tuple(owner, contact_at));
+                contact_itr = contact_idx.find(std::make_tuple(contact_at, owner));
                 _plugin->call_callbacks(
                     callback_event_type::contact, owner, contact,
                     fc::variant(callback_contact_event(
-                        {callback_event_type::contact, contact_api_object(*contact_itr)})));
+                        {callback_event_type::contact, contact_api_object(*contact_itr, _db)})));
             }
         }
-        modify_size(owner, type, is_new_contact, is_send);
+        modify_size(owner, type, is_new_contact, is_send, is_mention);
     };
 
     if (!op.update) {
@@ -237,6 +258,14 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
             modify_contact(op.to, op.from, contact_kind::account, unknown, false);
         } else {
             modify_contact(op.from, group, contact_kind::group, unknown, true);
+            if (op.to != account_name_type()) {
+                modify_contact(op.to, group, contact_kind::group, unknown, false);
+            }
+            for (const auto& men : mentions) {
+                if (op.to != men) {
+                    modify_contact(men, group, contact_kind::group, unknown, false, true);
+                }
+            }
         }
     }
 }
@@ -267,7 +296,8 @@ bool process_private_messages(database& _db, const Operation& po, Action&& actio
 template <typename Operation, typename Map, typename ProcessAction, typename NoMsgsAction, typename ContactAction>
 void process_group_message_operation(
     database& _db, const Operation& po, const std::string& group, const std::string& requester,
-    Map& map, ProcessAction&& process_action, NoMsgsAction&& no_msgs_action, ContactAction&& contact_action
+    Map& map, ProcessAction&& process_action, NoMsgsAction&& no_msgs_action, ContactAction&& contact_action,
+    bool delete_contact = false
 ) {
     if (po.nonce != 0) {
         auto& idx = _db.get_index<message_index, by_nonce>();
@@ -276,13 +306,24 @@ void process_group_message_operation(
         if (itr == idx.end()) {
             if (!no_msgs_action()) {
                 GOLOS_THROW_MISSING_OBJECT("private_message",
-                    fc::mutable_variant_object()("from", po.from)("to", po.to)("nonce", po.nonce));
+                    fc::mutable_variant_object()("group", group)("from", po.from)("to", po.to)("nonce", po.nonce));
             }
         } else {
             process_action(*itr);
         }
+    } else if (group.size()) {
+        if (!process_private_messages<by_group>(_db, po, process_action, group)) {
+            if (!no_msgs_action()) {
+                GOLOS_THROW_MISSING_OBJECT("private_message",
+                    fc::mutable_variant_object()("group", group)
+                    ("start_date", po.start_date)("stop_date", po.stop_date));
+            }
+        }
     } else if (po.from.size() && po.to.size() && po.from == requester) {
-        if (!process_private_messages<by_outbox_account>(_db, po, process_action, group, po.from, po.to)) {
+        bool no_msgs = !process_private_messages<by_outbox_account>(_db, po, process_action, group, po.from, po.to);
+        if (delete_contact)
+            no_msgs &= !process_private_messages<by_inbox_account>(_db, po, process_action, group, po.from, po.to);
+        if (no_msgs) {
             if (!no_msgs_action()) {
                 GOLOS_THROW_MISSING_OBJECT("private_message",
                     fc::mutable_variant_object()("from", po.from)("to", po.to)
@@ -329,7 +370,7 @@ void process_group_message_operation(
     auto& size_idx = _db.get_index<contact_size_index, by_owner>();
 
     for (const auto& stat_info: map) {
-        const auto& owner = std::get<0>(stat_info.first);
+        const auto& owner = std::get<1>(stat_info.first);
 
         auto contact_itr = contact_idx.find(stat_info.first);
 
@@ -354,8 +395,9 @@ void process_group_message_operation(
 
 struct delete_extension_visitor : private_message_extension_visitor {
     delete_extension_visitor(const account_name_type& _requester,
-        const database& db, std::string& _group, account_name_type _delete_from, fc::optional<bool>& _delete_contact)
-        : private_message_extension_visitor(_requester, db, _group, _delete_from), delete_contact(_delete_contact) {
+        const database& db, std::string& _group, std::set<account_name_type>& _mentions,
+        account_name_type _delete_from, fc::optional<bool>& _delete_contact)
+        : private_message_extension_visitor(_requester, db, _group, _mentions, _delete_from), delete_contact(_delete_contact) {
     }
 
     fc::optional<bool>& delete_contact;
@@ -377,12 +419,13 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
     }
 
     std::string group;
+    std::set<account_name_type> mentions;
     fc::optional<bool> delete_contact;
     for (auto& e : op.extensions) {
-        e.visit(delete_extension_visitor(op.requester, _db, group, op.from, delete_contact));
+        e.visit(delete_extension_visitor(op.requester, _db, group, mentions, op.from, delete_contact));
     }
     auto now = _db.head_block_time();
-    fc::flat_map<std::tuple<account_name_type, std::string>, contact_size_info> stat_map;
+    fc::flat_map<std::tuple<std::string, account_name_type>, contact_size_info> stat_map;
 
     process_group_message_operation(
         _db, op, group, op.requester, stat_map,
@@ -395,15 +438,26 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
             }
             if (!group.size()) {
                 // remove from inbox
-                auto& inbox_stat = stat_map[std::make_tuple(m.to, with_dog(m.from))];
+                auto& inbox_stat = stat_map[std::make_tuple(with_dog(m.from), m.to)];
                 inbox_stat.unread_inbox_messages += unread_messages;
                 inbox_stat.total_inbox_messages++;
                 // remove from outbox
-                auto& outbox_stat = stat_map[std::make_tuple(m.from, with_dog(m.to))];
+                auto& outbox_stat = stat_map[std::make_tuple(with_dog(m.to), m.from)];
                 outbox_stat.unread_outbox_messages += unread_messages;
                 outbox_stat.total_outbox_messages++;
             } else {
-                auto& outbox_stat = stat_map[std::make_tuple(m.from, group)];
+                if (m.to.size()) {
+                    auto& inbox_stat = stat_map[std::make_tuple(group, m.to)];
+                    inbox_stat.unread_inbox_messages += unread_messages;
+                    inbox_stat.total_inbox_messages++;
+                }
+                for (const auto& men : m.mentions) {
+                    if (men != m.to) {
+                        auto& men_stat = stat_map[std::make_tuple(group, men)];
+                        men_stat.unread_mentions += 1;
+                    }
+                }
+                auto& outbox_stat = stat_map[std::make_tuple(group, m.from)];
                 outbox_stat.total_outbox_messages++;
             }
 
@@ -430,8 +484,8 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
         // no_msgs_action
         [&]() {
             if (!!delete_contact && *delete_contact) {
-                stat_map[std::make_tuple(op.to, with_dog(op.from))] = {};
-                stat_map[std::make_tuple(op.from, with_dog(op.to))] = {};
+                stat_map[std::make_tuple(with_dog(op.from), op.to)] = {};
+                stat_map[std::make_tuple(with_dog(op.to), op.from)] = {};
                 return true;
             }
             return false;
@@ -456,33 +510,90 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
                 });
             }
             return true;
-        }
+        },
+        !!delete_contact && delete_contact
     );
 }
+
+struct private_mark_message_extension_visitor {
+    private_mark_message_extension_visitor(account_name_type& _requester,
+        const database& db, std::string& _group, std::set<account_name_type>& _mentions)
+        : requester(_requester), _db(db), group(_group), mentions(_mentions) {
+    }
+
+    account_name_type& requester;
+    const database& _db;
+    std::string& group;
+    std::set<account_name_type>& mentions;
+
+    using result_type = void;
+
+    void operator()(const private_group_options& _pgo) const {
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "private_group_options");
+
+        _db.get<private_group_object, by_name>(_pgo.group);
+        group = _pgo.group;
+        requester = _pgo.requester;
+        mentions = _pgo.mentions;
+    }
+};
 
 void private_mark_message_evaluator::do_apply(const private_mark_message_operation& op) {
     if (!_plugin->is_tracked_account(op.from) && !_plugin->is_tracked_account(op.to)) {
         return;
     }
 
+    account_name_type requester;
+    std::string group;
+    std::set<account_name_type> mentions;
+    private_mark_message_extension_visitor visitor(requester, _db, group, mentions);
+    for (auto& e : op.extensions) {
+        e.visit(visitor);
+    }
+    bool is_group = group.size();
+
     uint32_t total_marked_messages = 0;
     auto now = _db.head_block_time();
-    fc::flat_map<std::tuple<account_name_type, std::string>, contact_size_info> stat_map;
+    fc::flat_map<std::tuple<std::string, account_name_type>, contact_size_info> stat_map;
 
     process_group_message_operation(
-        _db, op, "", op.to, stat_map,
+        _db, op, group, is_group ? requester : op.to, stat_map,
         // process_action
         [&](const message_object& m) -> bool {
-            if (m.read_date != time_point_sec::min()) {
+            bool unread = m.read_date == time_point_sec::min();
+            bool replied = true;
+            auto mentioned = m.mentions.end();
+            if (is_group) {
+                replied = m.to == requester;
+                if (mentions.count(requester)) {
+                    mentioned = std::find(m.mentions.begin(), m.mentions.end(),
+                        requester);
+                }
+                unread = (unread && replied) || (mentioned != m.mentions.end());
+            }
+
+            if (!unread) {
                 return true;
             }
-            // only recipient can mark messages
-            stat_map[std::make_tuple(m.to, with_dog(m.from))].unread_inbox_messages++;
-            stat_map[std::make_tuple(m.from, with_dog(m.to))].unread_outbox_messages++;
+
+            if (is_group) {
+                auto& stat = stat_map[std::make_tuple(group, requester)];
+                if (replied) stat.unread_inbox_messages++;
+                else if (mentioned != m.mentions.end()) stat.unread_mentions++;
+            } else {
+                // only recipient can mark messages
+                stat_map[std::make_tuple(with_dog(m.from), m.to)].unread_inbox_messages++;
+                stat_map[std::make_tuple(with_dog(m.to), m.from)].unread_outbox_messages++;
+            }
             total_marked_messages++;
 
             _db.modify(m, [&](auto& m){
-                m.read_date = now;
+                if (replied) {
+                    m.read_date = now;
+                }
+                if (mentioned != m.mentions.end()) {
+                    m.mentions.erase(mentioned);
+                }
             });
 
             if (_plugin->can_call_callbacks()) {
@@ -561,7 +672,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
     auto contact_at = with_dog(op.contact);
 
     auto& contact_idx = _db.get_index<contact_index, by_contact>();
-    auto contact_itr = contact_idx.find(std::make_tuple(op.owner, contact_at));
+    auto contact_itr = contact_idx.find(std::make_tuple(contact_at, op.owner));
 
     _db.get_account(op.contact);
 
@@ -647,7 +758,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
         _plugin->call_callbacks(
             callback_event_type::contact, op.owner, op.contact,
             fc::variant(callback_contact_event(
-                {callback_event_type::contact, contact_api_object(*contact_itr)})));
+                {callback_event_type::contact, contact_api_object(*contact_itr, _db)})));
     }
 }
 
@@ -753,6 +864,30 @@ void private_group_delete_evaluator::do_apply(const private_group_delete_operati
         _db.remove(pgm);
     }
 
+    const auto& con_idx = _db.get_index<contact_index, by_contact>();
+    auto con_itr = con_idx.lower_bound(pgo.name);
+    while (con_itr != con_idx.end()) {
+        if (con_itr->contact != pgo.name) {
+            break;
+        }
+        const auto& con = *con_itr;
+        ++con_itr;
+        _db.remove(con);
+    }
+
+    // In future can be optimized: separated in time (blocks),
+    // and forbid group creation if messages not yet removed
+    const auto& msg_idx = _db.get_index<message_index, by_group>();
+    auto msg_itr = msg_idx.lower_bound(pgo.name);
+    while (msg_itr != msg_idx.end()) {
+        if (msg_itr->group != pgo.name) {
+            break;
+        }
+        const auto& msg = *msg_itr;
+        ++msg_itr;
+        _db.remove(msg);
+    }
+
     _db.remove(pgo);
 }
 
@@ -778,6 +913,8 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     bool is_same = op.requester == op.member;
 
     auto member_itr = pgm_idx.find(std::make_tuple(op.member, op.name));
+
+    GOLOS_CHECK_LOGIC(op.member != pgo.owner, logic_errors::unauthorized, "Group owner is special status, it can not be member.");
 
     if (op.member_type == private_group_member_type::member) {
         if (pgo.privacy != private_group_privacy::public_group) {

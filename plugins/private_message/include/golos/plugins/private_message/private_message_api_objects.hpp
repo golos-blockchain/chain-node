@@ -25,6 +25,10 @@ namespace golos { namespace plugins { namespace private_message {
             donates(o.donates), donates_uia(o.donates_uia) {
             if (o.group.size()) {
                 group = std::string(o.group.begin(), o.group.end());
+                mentions = std::set<account_name_type>();
+                for (const auto& men : o.mentions) {
+                    mentions->insert(men);
+                }
             }
         }
 
@@ -38,6 +42,7 @@ namespace golos { namespace plugins { namespace private_message {
         public_key_type to_memo_key;
         uint32_t checksum = 0;
         std::vector<char> encrypted_message;
+        fc::optional<std::set<account_name_type>> mentions;
         // Message in groups if decrypted
         fc::optional<std::vector<char>> decrypted;
         // Same as receive_date. Need on client side for Redux state updates 
@@ -68,13 +73,20 @@ namespace golos { namespace plugins { namespace private_message {
      * Contact item
      */
     struct contact_api_object final {
-        contact_api_object(const contact_object& o)
+        contact_api_object(const contact_object& o, const golos::chain::database& _db)
             : owner(o.owner), contact(o.contact.begin(), o.contact.end()),
             kind(o.kind),
             json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
             local_type(o.type),
             size(o.size) {
             trim_dog(contact);
+            if (kind == contact_kind::group) {
+                const auto* pgo = _db.find<private_group_object, by_name>(contact);
+                if (pgo) {
+                    object_meta = std::string(pgo->json_metadata.begin(),
+                        pgo->json_metadata.end());
+                }
+            }
         }
 
         contact_api_object() = default;
@@ -87,6 +99,8 @@ namespace golos { namespace plugins { namespace private_message {
         private_contact_type remote_type = unknown;
         contact_size_info size;
         message_api_object last_message;
+
+        fc::optional<std::string> object_meta;
     };
 
     /**
@@ -95,6 +109,26 @@ namespace golos { namespace plugins { namespace private_message {
     struct contacts_size_api_object {
         fc::flat_map<private_contact_type, contacts_size_info> size;
     };
+
+    /**
+     * "Mini-account" - brief data instead of "get account + get group member" call
+     */
+    struct message_account_api_object final {
+        // As account
+        account_name_type name;
+        std::string json_metadata;
+        time_point_sec last_seen; // max(last_bandwidth_update, created)
+        public_key_type memo_key;
+        // As account with relations
+        fc::optional<fc::mutable_variant_object> relations;
+
+        // As group member
+        fc::optional<private_group_member_type> member_type;
+    };
+
+    using message_accounts = std::map<account_name_type, message_account_api_object>;
+
+    fc::variant to_variant(const message_accounts& accounts);
 
     /**
      * Private group member item
@@ -116,6 +150,8 @@ namespace golos { namespace plugins { namespace private_message {
         account_name_type invited;
         time_point_sec joined;
         time_point_sec updated;
+
+        fc::optional<message_account_api_object> account_data;
     };
 
     /**
@@ -211,7 +247,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::message_api_object),
-    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(decrypted)(decrypt_date)(error)
+    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(mentions)(decrypted)(decrypt_date)(error)
     (create_date)(receive_date)(read_date)(remove_date)
     (donates)(donates_uia)
 )
@@ -222,7 +258,9 @@ FC_REFLECT(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_size_info),
-    (total_outbox_messages)(unread_outbox_messages)(total_inbox_messages)(unread_inbox_messages))
+    (total_outbox_messages)(unread_outbox_messages)(total_inbox_messages)(unread_inbox_messages)
+    (unread_mentions)
+)
 
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::contacts_size_info), ((golos::plugins::private_message::contact_size_info)),
@@ -230,7 +268,9 @@ FC_REFLECT_DERIVED(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_api_object),
-    (contact)(kind)(json_metadata)(local_type)(remote_type)(size)(last_message))
+    (contact)(kind)(json_metadata)(local_type)(remote_type)(size)(last_message)
+    (object_meta)
+)
 
 FC_REFLECT(
     (golos::plugins::private_message::contacts_size_api_object),
@@ -253,9 +293,15 @@ FC_REFLECT(
     (type)(contact))
 
 FC_REFLECT(
+    (golos::plugins::private_message::message_account_api_object),
+    (name)(json_metadata)(last_seen)(memo_key)(relations)
+    (member_type)
+)
+
+FC_REFLECT(
     (golos::plugins::private_message::private_group_member_api_object),
     (group)(account)(json_metadata)(member_type)
-    (invited)(joined)(updated)
+    (invited)(joined)(updated)(account_data)
 )
 
 FC_REFLECT(
