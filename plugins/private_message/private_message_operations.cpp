@@ -21,19 +21,22 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     struct group_extension_validate_visitor {
-        group_extension_validate_visitor(std::string& _group, account_name_type& _requester)
-            : group(_group), requester(_requester) {
+        group_extension_validate_visitor(std::string& _group, account_name_type& _requester,
+            std::set<account_name_type>& _mentions)
+            : group(_group), requester(_requester), mentions(_mentions) {
         }
 
         using result_type = void;
 
         std::string& group;
         account_name_type& requester;
+        std::set<account_name_type>& mentions;
 
         void operator()(const private_group_options& pgo) const {
             pgo.validate();
             group = pgo.group;
             requester = pgo.requester;
+            mentions = pgo.mentions;
         }
     };
 
@@ -42,6 +45,12 @@ namespace golos { namespace plugins { namespace private_message {
         if (requester != account_name_type()) {
             GOLOS_CHECK_PARAM_ACCOUNT(requester);
         }
+        GOLOS_CHECK_PARAM(mentions, {
+            GOLOS_CHECK_VALUE(mentions.size() <= 10, "Max mentions are 10.");
+            for (const auto& men : mentions) {
+                validate_account_name(men);
+            }
+        });
     }
 
     void private_message_operation::validate() const {
@@ -49,8 +58,9 @@ namespace golos { namespace plugins { namespace private_message {
 
         std::string group;
         account_name_type requester;
+        std::set<account_name_type> mentions;
         for (auto& e : extensions) {
-            e.visit(group_extension_validate_visitor(group, requester));
+            e.visit(group_extension_validate_visitor(group, requester, mentions));
         }
         bool is_group = group.size();
 
@@ -108,8 +118,10 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     struct delete_extension_validate_visitor : group_extension_validate_visitor {
-        delete_extension_validate_visitor(std::string& _group, account_name_type& _requester, fc::optional<bool>& _delete_contact)
-            : group_extension_validate_visitor(_group, _requester), delete_contact(_delete_contact) {
+        delete_extension_validate_visitor(std::string& _group, account_name_type& _requester,
+            std::set<account_name_type>& _mentions, fc::optional<bool>& _delete_contact)
+            : group_extension_validate_visitor(_group, _requester, _mentions),
+            delete_contact(_delete_contact) {
         }
 
         fc::optional<bool>& delete_contact;
@@ -137,9 +149,10 @@ namespace golos { namespace plugins { namespace private_message {
 
         std::string group;
         account_name_type ext_requester;
+        std::set<account_name_type> mentions;
         fc::optional<bool> delete_contact;
         for (auto& e : extensions) {
-            e.visit(delete_extension_validate_visitor(group, ext_requester, delete_contact));
+            e.visit(delete_extension_validate_visitor(group, ext_requester, mentions, delete_contact));
         }
         if (!delete_contact.valid()) {
             delete_contact = group.size() ? false : true;

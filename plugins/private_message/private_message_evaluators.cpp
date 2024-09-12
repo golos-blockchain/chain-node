@@ -18,13 +18,15 @@ void check_golos_power(const account_object& acc, const database& _db) {
 
 struct private_message_extension_visitor {
     private_message_extension_visitor(const account_name_type& _requester,
-        const database& db, std::string& _group, account_name_type _delete_from = account_name_type())
-        : requester(_requester), _db(db), group(_group), delete_from(_delete_from) {
+        const database& db, std::string& _group, std::set<account_name_type>& _mentions,
+        account_name_type _delete_from = account_name_type())
+        : requester(_requester), _db(db), group(_group), mentions(_mentions), delete_from(_delete_from) {
     }
 
     const account_name_type& requester;
     const database& _db;
     std::string& group;
+    std::set<account_name_type>& mentions;
     account_name_type delete_from;
 
     using result_type = void;
@@ -34,6 +36,7 @@ struct private_message_extension_visitor {
 
         const auto& pgo = _db.get<private_group_object, by_name>(_pgo.group);
         group = _pgo.group;
+        mentions = _pgo.mentions;
         auto req = _pgo.requester.size() ? _pgo.requester : requester;
 
         const auto& pgm_idx = _db.get_index<private_group_member_index, by_account_group>();
@@ -96,7 +99,8 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     }
 
     std::string group;
-    private_message_extension_visitor visitor(op.from, _db, group);
+    std::set<account_name_type> mentions;
+    private_message_extension_visitor visitor(op.from, _db, group, mentions);
     for (auto& e : op.extensions) {
         e.visit(visitor);
     }
@@ -115,6 +119,10 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
 
     auto now = _db.head_block_time();
 
+    for (const auto& men : mentions) {
+        _db.check_no_blocking(men, op.from, false);
+    }
+
     auto set_message = [&](message_object& pmo) {
         pmo.from_memo_key = op.from_memo_key;
         pmo.to_memo_key = op.to_memo_key;
@@ -124,6 +132,10 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         std::copy(
             op.encrypted_message.begin(), op.encrypted_message.end(),
             pmo.encrypted_message.begin());
+        pmo.mentions.clear();
+        for (const auto& men : mentions) {
+            pmo.mentions.push_back(men);
+        }
     };
 
     if (id_itr == id_idx.end()) {
@@ -355,8 +367,9 @@ void process_group_message_operation(
 
 struct delete_extension_visitor : private_message_extension_visitor {
     delete_extension_visitor(const account_name_type& _requester,
-        const database& db, std::string& _group, account_name_type _delete_from, fc::optional<bool>& _delete_contact)
-        : private_message_extension_visitor(_requester, db, _group, _delete_from), delete_contact(_delete_contact) {
+        const database& db, std::string& _group, std::set<account_name_type>& _mentions,
+        account_name_type _delete_from, fc::optional<bool>& _delete_contact)
+        : private_message_extension_visitor(_requester, db, _group, _mentions, _delete_from), delete_contact(_delete_contact) {
     }
 
     fc::optional<bool>& delete_contact;
@@ -378,9 +391,10 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
     }
 
     std::string group;
+    std::set<account_name_type> mentions;
     fc::optional<bool> delete_contact;
     for (auto& e : op.extensions) {
-        e.visit(delete_extension_visitor(op.requester, _db, group, op.from, delete_contact));
+        e.visit(delete_extension_visitor(op.requester, _db, group, mentions, op.from, delete_contact));
     }
     auto now = _db.head_block_time();
     fc::flat_map<std::tuple<account_name_type, std::string>, contact_size_info> stat_map;

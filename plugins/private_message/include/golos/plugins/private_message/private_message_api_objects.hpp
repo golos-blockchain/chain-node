@@ -25,6 +25,10 @@ namespace golos { namespace plugins { namespace private_message {
             donates(o.donates), donates_uia(o.donates_uia) {
             if (o.group.size()) {
                 group = std::string(o.group.begin(), o.group.end());
+                mentions = std::set<account_name_type>();
+                for (const auto& men : o.mentions) {
+                    mentions->insert(men);
+                }
             }
         }
 
@@ -38,6 +42,7 @@ namespace golos { namespace plugins { namespace private_message {
         public_key_type to_memo_key;
         uint32_t checksum = 0;
         std::vector<char> encrypted_message;
+        fc::optional<std::set<account_name_type>> mentions;
         // Message in groups if decrypted
         fc::optional<std::vector<char>> decrypted;
         // Same as receive_date. Need on client side for Redux state updates 
@@ -228,7 +233,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::message_api_object),
-    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(decrypted)(decrypt_date)(error)
+    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(mentions)(decrypted)(decrypt_date)(error)
     (create_date)(receive_date)(read_date)(remove_date)
     (donates)(donates_uia)
 )

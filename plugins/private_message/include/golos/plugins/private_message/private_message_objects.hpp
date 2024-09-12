@@ -14,6 +14,7 @@ namespace golos { namespace plugins { namespace private_message {
     using namespace chainbase;
     using namespace golos::chain;
     using namespace boost::multi_index;
+    namespace bip = boost::interprocess;
 
     using contact_name = shared_string;
 
@@ -37,7 +38,7 @@ namespace golos { namespace plugins { namespace private_message {
     public:
         template<typename Constructor, typename Allocator>
         message_object(Constructor&& c, allocator <Allocator> a)
-            : group(a), encrypted_message(a) {
+            : group(a), encrypted_message(a), mentions(a) {
             c(*this);
         }
 
@@ -51,6 +52,7 @@ namespace golos { namespace plugins { namespace private_message {
         public_key_type to_memo_key;
         uint32_t checksum = 0;
         buffer_type encrypted_message;
+        bip::vector<account_name_type, allocator<account_name_type>> mentions;
 
         time_point_sec inbox_create_date; // == time_point_sec::min() means removed message
         time_point_sec outbox_create_date; // == time_point_sec::min() means removed message

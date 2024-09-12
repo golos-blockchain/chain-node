@@ -10,6 +10,7 @@ namespace golos { namespace plugins { namespace private_message {
     struct private_group_options {
         std::string group;
         account_name_type requester; // For editing. For delete - use operation's `requester`
+        std::set<account_name_type> mentions;
 
         void validate() const;
     };
@@ -214,7 +215,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 } } } // golos::plugins::private_message
 
-FC_REFLECT((golos::plugins::private_message::private_group_options), (group)(requester))
+FC_REFLECT((golos::plugins::private_message::private_group_options), (group)(requester)(mentions))
 FC_REFLECT_TYPENAME((golos::plugins::private_message::group_extension))
 FC_REFLECT(
     (golos::plugins::private_message::private_message_operation),
