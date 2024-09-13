@@ -21,6 +21,7 @@ struct contact_query : login_data {
     uint16_t limit = 20;
     uint32_t offset = 0;
     decrypt_ignore cache;
+    bool accounts = false;
 };
 
 /**
@@ -102,13 +103,15 @@ struct private_group_member_query {
 
     account_name_type start_member;
     uint32_t limit = 20;
+
+    bool accounts = false;
 };
 
 } } } // golos::plugins::private_message
 
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::contact_query), ((golos::plugins::cryptor::login_data)),
-    (owner)(type)(kinds)(limit)(offset)(cache)
+    (owner)(type)(kinds)(limit)(offset)(cache)(accounts)
 )
 
 FC_REFLECT_DERIVED(
@@ -150,5 +153,5 @@ FC_REFLECT((golos::plugins::private_message::private_group_member_sort_condition
 )
 
 FC_REFLECT((golos::plugins::private_message::private_group_member_query),
-    (group)(member_types)(sort_conditions)(start_member)(limit)
+    (group)(member_types)(sort_conditions)(start_member)(limit)(accounts)
 )

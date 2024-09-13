@@ -138,6 +138,8 @@ namespace golos { namespace plugins { namespace private_message {
         account_name_type invited;
         time_point_sec joined;
         time_point_sec updated;
+
+        fc::optional<message_account_api_object> account_data;
     };
 
     /**
@@ -283,7 +285,7 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::plugins::private_message::private_group_member_api_object),
     (group)(account)(json_metadata)(member_type)
-    (invited)(joined)(updated)
+    (invited)(joined)(updated)(account_data)
 )
 
 FC_REFLECT(

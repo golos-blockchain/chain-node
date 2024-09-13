@@ -286,12 +286,12 @@ namespace golos {
                         auto msecs = (fc::time_point::now() - start_).count() / 1000;
 
                         if (error_.empty()) {
-                            elog(
+                            dlog(
                                 "elapsed: ${time} msec, data: ${data}",
                                 ("data", fc::json::to_string(data_))
                                 ("time", msecs));
                         } else {
-                            elog(
+                            dlog(
                                 "elapsed: ${time} msec, error: '${error}', data: ${data}",
                                 ("data", fc::json::to_string(data_))
                                 ("error", error_)
@@ -327,7 +327,7 @@ namespace golos {
 
                 void rpc(const fc::variant& data, msg_pack& msg) {
                     dump_rpc_time dump(data, _log_rpc_calls_slower_msec);
-elog(fc::json::to_string(data));
+
                     try {
                         rpc_jsonrpc(data, msg);
 

@@ -696,6 +696,9 @@ namespace golos { namespace plugins { namespace private_message {
                     reached_start = true;
 
                     res.emplace_back(*itr);
+                    if (query.accounts) {
+                        res.back().account_data = get_msg_account(itr->account, query.group);
+                    }
                 }
                 return false;
             });
@@ -939,6 +942,8 @@ namespace golos { namespace plugins { namespace private_message {
                     my->fill_msg_account(accounts, msg.from, query.group);
                     my->fill_msg_account(accounts, msg.to, query.group);
                 }
+                my->fill_msg_account(accounts, query.from, query.group);
+                my->fill_msg_account(accounts, query.to, query.group);
             }
 
             return msgs;
@@ -957,7 +962,17 @@ namespace golos { namespace plugins { namespace private_message {
 
             if (query.contacts.valid()) {
                 auto cons = my->_db.with_weak_read_lock([&]() {
-                    return my->get_contacts(*(query.contacts));
+                    auto contacts = my->get_contacts(*(query.contacts));
+
+                    if (query.accounts) {
+                        my->fill_msg_account(accounts, query.contacts->owner);
+                        for (const auto& con : contacts) {
+                            if (con.kind != contact_kind::account) continue;
+                            my->fill_msg_account(accounts, con.contact);
+                        }
+                    }
+
+                    return contacts;
                 });
 
                 std::vector<message_api_object*> lmsgs;
@@ -1070,8 +1085,18 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
 
+        message_accounts accounts;
+
         auto vec = my->_db.with_weak_read_lock([&](){
-            return my->get_contacts(query);
+            auto contacts = my->get_contacts(query);
+            if (query.accounts) {
+                my->fill_msg_account(accounts, query.owner);
+                for (const auto& con : contacts) {
+                    if (con.kind != contact_kind::account) continue;
+                    my->fill_msg_account(accounts, con.contact);
+                }
+            }
+            return contacts;
         });
 
         fc::variant var;
@@ -1089,6 +1114,11 @@ namespace golos { namespace plugins { namespace private_message {
             if (dec_res.login_error.size()) vo["login_error"] = dec_res.login_error;
             if (dec_res.error.size()) vo["error"] = dec_res.error;
             vo["contacts"] = vec;
+
+            if (query.accounts) {
+                vo["accounts"] = to_variant(accounts);
+            }
+
             vo["_dec_processed"] = dec_res.decrypt_processed;
             var = vo;
         } else {
