@@ -251,6 +251,7 @@ namespace golos { namespace plugins { namespace private_message {
         }
 
         res.last_seen = std::max(acc->created, last_bandwidth_update);
+        res.memo_key = acc->memo_key;
 
         if (!group.size()) return res;
         const auto* pgm = _db.find<private_group_member_object, by_account_group>(std::make_tuple(account, group));
@@ -483,7 +484,7 @@ namespace golos { namespace plugins { namespace private_message {
     ) const {
         bool is_group = o.kind == contact_kind::group;
 
-        contact_api_object result(o);
+        contact_api_object result(o, _db);
 
         if (!is_group) {
             auto owner = account_name_type(result.contact);

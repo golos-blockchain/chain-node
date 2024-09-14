@@ -73,13 +73,20 @@ namespace golos { namespace plugins { namespace private_message {
      * Contact item
      */
     struct contact_api_object final {
-        contact_api_object(const contact_object& o)
+        contact_api_object(const contact_object& o, const golos::chain::database& _db)
             : owner(o.owner), contact(o.contact.begin(), o.contact.end()),
             kind(o.kind),
             json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
             local_type(o.type),
             size(o.size) {
             trim_dog(contact);
+            if (kind == contact_kind::group) {
+                const auto* pgo = _db.find<private_group_object, by_name>(contact);
+                if (pgo) {
+                    object_meta = std::string(pgo->json_metadata.begin(),
+                        pgo->json_metadata.end());
+                }
+            }
         }
 
         contact_api_object() = default;
@@ -92,6 +99,8 @@ namespace golos { namespace plugins { namespace private_message {
         private_contact_type remote_type = unknown;
         contact_size_info size;
         message_api_object last_message;
+
+        fc::optional<std::string> object_meta;
     };
 
     /**
@@ -109,6 +118,7 @@ namespace golos { namespace plugins { namespace private_message {
         account_name_type name;
         std::string json_metadata;
         time_point_sec last_seen; // max(last_bandwidth_update, created)
+        public_key_type memo_key;
 
         // As group member
         fc::optional<private_group_member_type> member_type;
@@ -254,7 +264,9 @@ FC_REFLECT_DERIVED(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_api_object),
-    (contact)(kind)(json_metadata)(local_type)(remote_type)(size)(last_message))
+    (contact)(kind)(json_metadata)(local_type)(remote_type)(size)(last_message)
+    (object_meta)
+)
 
 FC_REFLECT(
     (golos::plugins::private_message::contacts_size_api_object),
@@ -278,7 +290,7 @@ FC_REFLECT(
 
 FC_REFLECT(
     (golos::plugins::private_message::message_account_api_object),
-    (name)(json_metadata)(last_seen)
+    (name)(json_metadata)(last_seen)(memo_key)
     (member_type)
 )
 

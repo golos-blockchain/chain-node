@@ -238,7 +238,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
                 _plugin->call_callbacks(
                     callback_event_type::contact, owner, contact,
                     fc::variant(callback_contact_event(
-                        {callback_event_type::contact, contact_api_object(*contact_itr)})));
+                        {callback_event_type::contact, contact_api_object(*contact_itr, _db)})));
             }
         }
         modify_size(owner, type, is_new_contact, is_send);
@@ -662,7 +662,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
         _plugin->call_callbacks(
             callback_event_type::contact, op.owner, op.contact,
             fc::variant(callback_contact_event(
-                {callback_event_type::contact, contact_api_object(*contact_itr)})));
+                {callback_event_type::contact, contact_api_object(*contact_itr, _db)})));
     }
 }
 
