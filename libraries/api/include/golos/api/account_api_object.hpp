@@ -152,6 +152,11 @@ struct account_api_object {
     fc::optional<fc::mutable_variant_object> relations;
 };
 
+fc::mutable_variant_object current_get_relations(
+    const golos::chain::database& _db,
+    account_name_type current, account_name_type account
+);
+
 } } // golos::api
 
 FC_REFLECT((golos::api::account_freeze_api_object),

@@ -2,6 +2,7 @@ set(CURRENT_TARGET account_relations)
 
 list(APPEND CURRENT_TARGET_HEADERS
     include/golos/plugins/account_relations/account_relations.hpp
+    include/golos/plugins/account_relations/account_relation_api_object.hpp
 )
 
 list(APPEND CURRENT_TARGET_SOURCES

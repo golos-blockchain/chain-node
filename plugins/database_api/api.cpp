@@ -335,7 +335,6 @@ DEFINE_API(plugin, get_accounts) {
 std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector<std::string>& names, const account_query& query) const {
     const auto &idx = _db.get_index<account_index>().indices().get<by_name>();
     const auto &vidx = _db.get_index<witness_vote_index>().indices().get<by_account_witness>();
-    const auto& bidx = _db.get_index<account_blocking_index, by_account>();
     std::vector<account_api_object> results;
 
     for (auto name: names) {
@@ -348,26 +347,8 @@ std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector
                 ++vitr;
             }
             if (query.current != account_name_type()) {
-                fc::mutable_variant_object relations;
-                auto add_blocking = [&](const relation_direction& rel) {
-                    std::string key = fc::reflector<relation_direction>::to_string(rel);
-                    relations[key] = relation_type::blocking;
-                };
-                for (uint8_t i = 0; i < uint8_t(relation_direction::_size); ++i) {
-                    auto rel = relation_direction(i);
-                    if (rel == relation_direction::me_to_them) {
-                        auto bitr = bidx.find(std::make_tuple(query.current, itr->name));
-                        if (bitr != bidx.end()) {
-                            add_blocking(rel);
-                        }
-                    } else {
-                        auto bitr = bidx.find(std::make_tuple(itr->name, query.current));
-                        if (bitr != bidx.end()) {
-                            add_blocking(rel);
-                        }
-                    }
-                }
-                results.back().relations = relations;
+                results.back().relations = golos::api::current_get_relations(
+                    _db, query.current, itr->name);
             }
         }
     }

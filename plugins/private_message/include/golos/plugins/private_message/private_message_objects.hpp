@@ -307,12 +307,12 @@ namespace golos { namespace plugins { namespace private_message {
             ordered_unique<tag<by_contact>,
                 composite_key<
                     contact_object,
-                    member<contact_object, account_name_type, &contact_object::owner>,
-                    member<contact_object, contact_name, &contact_object::contact>
+                    member<contact_object, contact_name, &contact_object::contact>,
+                    member<contact_object, account_name_type, &contact_object::owner>
                 >,
                 composite_key_compare<
-                    string_less,
-                    strcmp_less
+                    strcmp_less,
+                    string_less
                 >
             >
         >, allocator<contact_object>>;

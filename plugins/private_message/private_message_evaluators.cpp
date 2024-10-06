@@ -80,7 +80,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     if (op.to.size()) {
         _db.get_account(op.to);
 
-        auto contact_itr = contact_idx.find(std::make_tuple(op.to, op.from));
+        auto contact_itr = contact_idx.find(std::make_tuple(op.from, op.to));
 
         auto& cfg_idx = _db.get_index<settings_index, by_owner>();
         auto cfg_itr = cfg_idx.find(op.to);
@@ -215,7 +215,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         auto contact_at = (kind == contact_kind::account) ?
             with_dog(contact) : contact;
 
-        auto contact_itr = contact_idx.find(std::make_tuple(owner, contact_at));
+        auto contact_itr = contact_idx.find(std::make_tuple(contact_at, owner));
         if (contact_itr != contact_idx.end()) {
             _db.modify(*contact_itr, [&](auto& pco) {
                 pco.is_hidden = false;
@@ -234,7 +234,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
             is_new_contact = true;
 
             if (_plugin->can_call_callbacks()) {
-                contact_itr = contact_idx.find(std::make_tuple(owner, contact_at));
+                contact_itr = contact_idx.find(std::make_tuple(contact_at, owner));
                 _plugin->call_callbacks(
                     callback_event_type::contact, owner, contact,
                     fc::variant(callback_contact_event(
@@ -342,7 +342,7 @@ void process_group_message_operation(
     auto& size_idx = _db.get_index<contact_size_index, by_owner>();
 
     for (const auto& stat_info: map) {
-        const auto& owner = std::get<0>(stat_info.first);
+        const auto& owner = std::get<1>(stat_info.first);
 
         auto contact_itr = contact_idx.find(stat_info.first);
 
@@ -397,7 +397,7 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
         e.visit(delete_extension_visitor(op.requester, _db, group, mentions, op.from, delete_contact));
     }
     auto now = _db.head_block_time();
-    fc::flat_map<std::tuple<account_name_type, std::string>, contact_size_info> stat_map;
+    fc::flat_map<std::tuple<std::string, account_name_type>, contact_size_info> stat_map;
 
     process_group_message_operation(
         _db, op, group, op.requester, stat_map,
@@ -410,15 +410,15 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
             }
             if (!group.size()) {
                 // remove from inbox
-                auto& inbox_stat = stat_map[std::make_tuple(m.to, with_dog(m.from))];
+                auto& inbox_stat = stat_map[std::make_tuple(with_dog(m.from), m.to)];
                 inbox_stat.unread_inbox_messages += unread_messages;
                 inbox_stat.total_inbox_messages++;
                 // remove from outbox
-                auto& outbox_stat = stat_map[std::make_tuple(m.from, with_dog(m.to))];
+                auto& outbox_stat = stat_map[std::make_tuple(with_dog(m.to), m.from)];
                 outbox_stat.unread_outbox_messages += unread_messages;
                 outbox_stat.total_outbox_messages++;
             } else {
-                auto& outbox_stat = stat_map[std::make_tuple(m.from, group)];
+                auto& outbox_stat = stat_map[std::make_tuple(group, m.from)];
                 outbox_stat.total_outbox_messages++;
             }
 
@@ -445,8 +445,8 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
         // no_msgs_action
         [&]() {
             if (!!delete_contact && *delete_contact) {
-                stat_map[std::make_tuple(op.to, with_dog(op.from))] = {};
-                stat_map[std::make_tuple(op.from, with_dog(op.to))] = {};
+                stat_map[std::make_tuple(with_dog(op.from), op.to)] = {};
+                stat_map[std::make_tuple(with_dog(op.to), op.from)] = {};
                 return true;
             }
             return false;
@@ -482,7 +482,7 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
 
     uint32_t total_marked_messages = 0;
     auto now = _db.head_block_time();
-    fc::flat_map<std::tuple<account_name_type, std::string>, contact_size_info> stat_map;
+    fc::flat_map<std::tuple<std::string, account_name_type>, contact_size_info> stat_map;
 
     process_group_message_operation(
         _db, op, "", op.to, stat_map,
@@ -492,8 +492,8 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
                 return true;
             }
             // only recipient can mark messages
-            stat_map[std::make_tuple(m.to, with_dog(m.from))].unread_inbox_messages++;
-            stat_map[std::make_tuple(m.from, with_dog(m.to))].unread_outbox_messages++;
+            stat_map[std::make_tuple(with_dog(m.from), m.to)].unread_inbox_messages++;
+            stat_map[std::make_tuple(with_dog(m.to), m.from)].unread_outbox_messages++;
             total_marked_messages++;
 
             _db.modify(m, [&](auto& m){
@@ -576,7 +576,7 @@ void private_contact_evaluator::do_apply(const private_contact_operation& op) {
     auto contact_at = with_dog(op.contact);
 
     auto& contact_idx = _db.get_index<contact_index, by_contact>();
-    auto contact_itr = contact_idx.find(std::make_tuple(op.owner, contact_at));
+    auto contact_itr = contact_idx.find(std::make_tuple(contact_at, op.owner));
 
     _db.get_account(op.contact);
 
@@ -766,6 +766,17 @@ void private_group_delete_evaluator::do_apply(const private_group_delete_operati
         const auto& pgm = *pgm_itr;
         ++pgm_itr;
         _db.remove(pgm);
+    }
+
+    const auto& con_idx = _db.get_index<contact_index, by_contact>();
+    auto con_itr = con_idx.lower_bound(pgo.name);
+    while (con_itr != con_idx.end()) {
+        if (con_itr->contact != pgo.name) {
+            break;
+        }
+        const auto& con = *con_itr;
+        ++con_itr;
+        _db.remove(con);
     }
 
     _db.remove(pgo);

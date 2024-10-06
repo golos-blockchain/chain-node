@@ -22,6 +22,7 @@ struct contact_query : login_data {
     uint32_t offset = 0;
     decrypt_ignore cache;
     bool accounts = false;
+    bool relations = true;
 };
 
 /**
@@ -111,7 +112,7 @@ struct private_group_member_query {
 
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::contact_query), ((golos::plugins::cryptor::login_data)),
-    (owner)(type)(kinds)(limit)(offset)(cache)(accounts)
+    (owner)(type)(kinds)(limit)(offset)(cache)(accounts)(relations)
 )
 
 FC_REFLECT_DERIVED(

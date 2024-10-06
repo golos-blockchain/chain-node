@@ -119,6 +119,8 @@ namespace golos { namespace plugins { namespace private_message {
         std::string json_metadata;
         time_point_sec last_seen; // max(last_bandwidth_update, created)
         public_key_type memo_key;
+        // As account with relations
+        fc::optional<fc::mutable_variant_object> relations;
 
         // As group member
         fc::optional<private_group_member_type> member_type;
@@ -290,7 +292,7 @@ FC_REFLECT(
 
 FC_REFLECT(
     (golos::plugins::private_message::message_account_api_object),
-    (name)(json_metadata)(last_seen)(memo_key)
+    (name)(json_metadata)(last_seen)(memo_key)(relations)
     (member_type)
 )
 
