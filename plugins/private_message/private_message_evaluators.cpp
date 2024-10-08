@@ -280,7 +280,8 @@ bool process_private_messages(database& _db, const Operation& po, Action&& actio
 template <typename Operation, typename Map, typename ProcessAction, typename NoMsgsAction, typename ContactAction>
 void process_group_message_operation(
     database& _db, const Operation& po, const std::string& group, const std::string& requester,
-    Map& map, ProcessAction&& process_action, NoMsgsAction&& no_msgs_action, ContactAction&& contact_action
+    Map& map, ProcessAction&& process_action, NoMsgsAction&& no_msgs_action, ContactAction&& contact_action,
+    bool delete_contact = false
 ) {
     if (po.nonce != 0) {
         auto& idx = _db.get_index<message_index, by_nonce>();
@@ -295,7 +296,10 @@ void process_group_message_operation(
             process_action(*itr);
         }
     } else if (po.from.size() && po.to.size() && po.from == requester) {
-        if (!process_private_messages<by_outbox_account>(_db, po, process_action, group, po.from, po.to)) {
+        bool no_msgs = !process_private_messages<by_outbox_account>(_db, po, process_action, group, po.from, po.to);
+        if (delete_contact)
+            no_msgs &= !process_private_messages<by_inbox_account>(_db, po, process_action, group, po.from, po.to);
+        if (no_msgs) {
             if (!no_msgs_action()) {
                 GOLOS_THROW_MISSING_OBJECT("private_message",
                     fc::mutable_variant_object()("from", po.from)("to", po.to)
@@ -471,7 +475,8 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
                 });
             }
             return true;
-        }
+        },
+        !!delete_contact && delete_contact
     );
 }
 
