@@ -105,6 +105,9 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
         e.visit(visitor);
     }
     bool is_group = group.size();
+    for (const auto& acc : mentions) {
+        _db.get_account(acc);
+    }
 
     auto& id_idx = _db.get_index<message_index, by_nonce>();
     auto id_itr = id_idx.find(std::make_tuple(group, op.from, op.to, op.nonce));
@@ -178,7 +181,7 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
     auto inc_counters = [&](auto& size_object, const bool is_send) {
         if (is_send) {
             size_object.total_outbox_messages++;
-            if (!is_group) {
+            if (!is_group || op.to != account_name_type()) {
                 size_object.unread_outbox_messages++;
             }
         } else {
@@ -250,6 +253,9 @@ void private_message_evaluator::do_apply(const private_message_operation& op) {
             modify_contact(op.to, op.from, contact_kind::account, unknown, false);
         } else {
             modify_contact(op.from, group, contact_kind::group, unknown, true);
+            if (op.to != account_name_type()) {
+                modify_contact(op.to, group, contact_kind::group, unknown, false);
+            }
         }
     }
 }
@@ -480,9 +486,37 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
     );
 }
 
+struct private_mark_message_extension_visitor {
+    private_mark_message_extension_visitor(account_name_type& _requester,
+        const database& db, std::string& _group)
+        : requester(_requester), _db(db), group(_group) {
+    }
+
+    account_name_type& requester;
+    const database& _db;
+    std::string& group;
+
+    using result_type = void;
+
+    void operator()(const private_group_options& _pgo) const {
+        ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "private_group_options");
+
+        const auto& pgo = _db.get<private_group_object, by_name>(_pgo.group);
+        group = _pgo.group;;
+        requester = _pgo.requester;
+    }
+};
+
 void private_mark_message_evaluator::do_apply(const private_mark_message_operation& op) {
     if (!_plugin->is_tracked_account(op.from) && !_plugin->is_tracked_account(op.to)) {
         return;
+    }
+
+    account_name_type requester;
+    std::string group;
+    private_mark_message_extension_visitor visitor(requester, _db, group);
+    for (auto& e : op.extensions) {
+        e.visit(visitor);
     }
 
     uint32_t total_marked_messages = 0;

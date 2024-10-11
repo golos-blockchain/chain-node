@@ -160,6 +160,8 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(extensions, {
             GOLOS_CHECK_VALUE(!ext_requester.size(),
                 "For delete operations, use `requester` only from operation, not extension.");
+            GOLOS_CHECK_VALUE(!mentions.size(),
+                "For delete operations, `mentions` are not applicable.");
             if (group.size()) {
                 GOLOS_CHECK_VALUE(!(*delete_contact), "Cannot delete contact of group.");
             }
