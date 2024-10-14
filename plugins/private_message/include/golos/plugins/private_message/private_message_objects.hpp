@@ -217,9 +217,10 @@ namespace golos { namespace plugins { namespace private_message {
         uint32_t unread_outbox_messages = 0;
         uint32_t total_inbox_messages = 0;
         uint32_t unread_inbox_messages = 0;
+        uint32_t unread_mentions = 0;
 
         bool empty() const {
-            return !total_outbox_messages && !total_inbox_messages;
+            return !total_outbox_messages && !total_inbox_messages && !unread_mentions;
         }
 
         contact_size_info& operator-=(const contact_size_info& s) {
@@ -227,6 +228,7 @@ namespace golos { namespace plugins { namespace private_message {
             unread_outbox_messages -= s.unread_outbox_messages;
             total_inbox_messages -= s.total_inbox_messages;
             unread_inbox_messages -= s.unread_inbox_messages;
+            unread_mentions -= s.unread_mentions;
             return *this;
         }
 
@@ -235,6 +237,7 @@ namespace golos { namespace plugins { namespace private_message {
             unread_outbox_messages += s.unread_outbox_messages;
             total_inbox_messages += s.total_inbox_messages;
             unread_inbox_messages += s.unread_inbox_messages;
+            unread_mentions -= s.unread_mentions;
             return *this;
         }
 
@@ -243,7 +246,8 @@ namespace golos { namespace plugins { namespace private_message {
                 total_outbox_messages == s.total_outbox_messages &&
                 unread_outbox_messages == s.unread_outbox_messages &&
                 total_inbox_messages == s.total_inbox_messages &&
-                unread_inbox_messages == s.unread_inbox_messages;
+                unread_inbox_messages == s.unread_inbox_messages &&
+                unread_mentions == s.unread_mentions;
         }
 
         bool operator!=(const contact_size_info& s) const {
