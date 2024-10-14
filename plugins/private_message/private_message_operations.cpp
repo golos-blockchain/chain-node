@@ -134,19 +134,6 @@ namespace golos { namespace plugins { namespace private_message {
     };
 
     void private_delete_message_operation::validate() const {
-        GOLOS_CHECK_PARAM(from, {
-            if (from.size()) {
-                validate_account_name(from);
-            }
-        });
-
-        GOLOS_CHECK_PARAM(to, {
-            if (to.size()) {
-                validate_account_name(to);
-                GOLOS_CHECK_VALUE(to != from, "You cannot delete messages to yourself");
-            }
-        });
-
         std::string group;
         account_name_type ext_requester;
         std::set<account_name_type> mentions;
@@ -167,6 +154,28 @@ namespace golos { namespace plugins { namespace private_message {
             }
         });
 
+        if (group.size() && nonce == 0) {
+            GOLOS_CHECK_PARAM(from, {
+                GOLOS_CHECK_VALUE(from == account_name_type(), "`from` not yet supported for groups");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to == account_name_type(), "`to` not yet supported for groups");
+            });
+        }
+
+        GOLOS_CHECK_PARAM(from, {
+            if (from.size()) {
+                validate_account_name(from);
+            }
+        });
+
+        GOLOS_CHECK_PARAM(to, {
+            if (to.size()) {
+                validate_account_name(to);
+                GOLOS_CHECK_VALUE(to != from, "You cannot delete messages to yourself");
+            }
+        });
+
         GOLOS_CHECK_PARAM(requester, {
             validate_account_name(requester);
             if (to.size() || from.size()) {
@@ -182,7 +191,7 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
                 GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
-                GOLOS_CHECK_VALUE(group.size() || to.size(), "Non-zero `nonce` requires `to`/`group` to be set too");
+                GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
@@ -190,7 +199,49 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     void private_mark_message_operation::validate() const {
-        GOLOS_CHECK_PARAM_ACCOUNT(to);
+        std::string group;
+        account_name_type requester;
+        std::set<account_name_type> mentions;
+        for (auto& e : extensions) {
+            e.visit(group_extension_validate_visitor(group, requester, mentions));
+        }
+        bool is_group = group.size();
+
+        GOLOS_CHECK_PARAM(extensions, {
+            if (is_group) {
+                GOLOS_CHECK_VALUE(requester != account_name_type(),
+                    "For group operations, you should use `requester` field.");
+                GOLOS_CHECK_VALUE(mentions.size() <= 1,
+                    "For mark operations, `mentions` size cannot be > 1.");
+                if (mentions.size()) {
+                    GOLOS_CHECK_VALUE(*(mentions.begin()) == requester,
+                        "You cannot read mention of another person.");
+                }
+            } else {
+                GOLOS_CHECK_VALUE(requester == account_name_type(),
+                    "In private chats, `requester` not supported. Use `to` only.");
+                GOLOS_CHECK_VALUE(!mentions.size(),
+                    "In private chats, `mentions` not supported.");
+            }
+        });
+
+        if (!is_group) {
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to != account_name_type(), "`to` can't be empty");
+            });
+        }
+        if (is_group && nonce == 0) {
+            GOLOS_CHECK_PARAM(from, {
+                GOLOS_CHECK_VALUE(from == account_name_type(), "`from` not yet supported for groups");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to == account_name_type(), "`to` not yet supported for groups");
+            });
+        }
+
+        if (to.size()) {
+            GOLOS_CHECK_PARAM_ACCOUNT(to);
+        }
 
         GOLOS_CHECK_PARAM(from, {
             if (from.size()) {
@@ -206,6 +257,8 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
                 GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
+                if (!is_group)
+                    GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
