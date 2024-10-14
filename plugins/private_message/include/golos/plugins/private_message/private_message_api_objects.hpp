@@ -258,7 +258,9 @@ FC_REFLECT(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_size_info),
-    (total_outbox_messages)(unread_outbox_messages)(total_inbox_messages)(unread_inbox_messages))
+    (total_outbox_messages)(unread_outbox_messages)(total_inbox_messages)(unread_inbox_messages)
+    (unread_mentions)
+)
 
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::contacts_size_info), ((golos::plugins::private_message::contact_size_info)),

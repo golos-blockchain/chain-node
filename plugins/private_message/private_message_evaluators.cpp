@@ -296,10 +296,18 @@ void process_group_message_operation(
         if (itr == idx.end()) {
             if (!no_msgs_action()) {
                 GOLOS_THROW_MISSING_OBJECT("private_message",
-                    fc::mutable_variant_object()("from", po.from)("to", po.to)("nonce", po.nonce));
+                    fc::mutable_variant_object()("group", group)("from", po.from)("to", po.to)("nonce", po.nonce));
             }
         } else {
             process_action(*itr);
+        }
+    } else if (group.size()) {
+        if (!process_private_messages<by_group>(_db, po, process_action, group)) {
+            if (!no_msgs_action()) {
+                GOLOS_THROW_MISSING_OBJECT("private_message",
+                    fc::mutable_variant_object()("group", group)
+                    ("start_date", po.start_date)("stop_date", po.stop_date));
+            }
         }
     } else if (po.from.size() && po.to.size() && po.from == requester) {
         bool no_msgs = !process_private_messages<by_outbox_account>(_db, po, process_action, group, po.from, po.to);
@@ -488,22 +496,24 @@ void private_delete_message_evaluator::do_apply(const private_delete_message_ope
 
 struct private_mark_message_extension_visitor {
     private_mark_message_extension_visitor(account_name_type& _requester,
-        const database& db, std::string& _group)
-        : requester(_requester), _db(db), group(_group) {
+        const database& db, std::string& _group, std::set<account_name_type>& _mentions)
+        : requester(_requester), _db(db), group(_group), mentions(_mentions) {
     }
 
     account_name_type& requester;
     const database& _db;
     std::string& group;
+    std::set<account_name_type>& mentions;
 
     using result_type = void;
 
     void operator()(const private_group_options& _pgo) const {
         ASSERT_REQ_HF(STEEMIT_HARDFORK_0_30__236, "private_group_options");
 
-        const auto& pgo = _db.get<private_group_object, by_name>(_pgo.group);
-        group = _pgo.group;;
+        _db.get<private_group_object, by_name>(_pgo.group);
+        group = _pgo.group;
         requester = _pgo.requester;
+        mentions = _pgo.mentions;
     }
 };
 
@@ -514,29 +524,55 @@ void private_mark_message_evaluator::do_apply(const private_mark_message_operati
 
     account_name_type requester;
     std::string group;
-    private_mark_message_extension_visitor visitor(requester, _db, group);
+    std::set<account_name_type> mentions;
+    private_mark_message_extension_visitor visitor(requester, _db, group, mentions);
     for (auto& e : op.extensions) {
         e.visit(visitor);
     }
+    bool is_group = group.size();
 
     uint32_t total_marked_messages = 0;
     auto now = _db.head_block_time();
     fc::flat_map<std::tuple<std::string, account_name_type>, contact_size_info> stat_map;
 
     process_group_message_operation(
-        _db, op, "", op.to, stat_map,
+        _db, op, group, is_group ? requester : op.to, stat_map,
         // process_action
         [&](const message_object& m) -> bool {
-            if (m.read_date != time_point_sec::min()) {
+            bool unread = m.read_date == time_point_sec::min();
+            bool replied = true;
+            auto mentioned = m.mentions.end();
+            if (is_group) {
+                replied = m.to == requester;
+                if (mentions.count(requester)) {
+                    mentioned = std::find(m.mentions.begin(), m.mentions.end(),
+                        requester);
+                }
+                unread = replied || (mentioned != m.mentions.end());
+            }
+
+            if (!unread) {
                 return true;
             }
-            // only recipient can mark messages
-            stat_map[std::make_tuple(with_dog(m.from), m.to)].unread_inbox_messages++;
-            stat_map[std::make_tuple(with_dog(m.to), m.from)].unread_outbox_messages++;
+
+            if (is_group) {
+                auto& stat = stat_map[std::make_tuple(group, requester)];
+                if (replied) stat.unread_inbox_messages++;
+                if (mentioned != m.mentions.end()) stat.unread_mentions++;
+            } else {
+                // only recipient can mark messages
+                stat_map[std::make_tuple(with_dog(m.from), m.to)].unread_inbox_messages++;
+                stat_map[std::make_tuple(with_dog(m.to), m.from)].unread_outbox_messages++;
+            }
             total_marked_messages++;
 
             _db.modify(m, [&](auto& m){
-                m.read_date = now;
+                if (replied) {
+                    m.read_date = now;
+                }
+                if (mentioned != m.mentions.end()) {
+                    m.mentions.erase(mentioned);
+                }
             });
 
             if (_plugin->can_call_callbacks()) {
