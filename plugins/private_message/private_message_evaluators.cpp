@@ -797,12 +797,15 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
                     pgmo.updated = now;
                 });
             }
+
+            _db.modify(*pgo, [&](auto& pgo) {
+                pgo.pendings = 0;
+            });
         }
 
         _db.modify(*pgo, [&](auto& pgo) {
             from_string(pgo.json_metadata, op.json_metadata);
             pgo.privacy = op.privacy;
-            pgo.pendings = 0;
         });
 
         return;
@@ -952,13 +955,18 @@ void private_group_member_evaluator::do_apply(const private_group_member_operati
     auto now = _db.head_block_time();
 
     if (member_itr != pgm_idx.end()) {
+        GOLOS_CHECK_LOGIC(op.member_type != private_group_member_type::pending,
+            logic_errors::unauthorized, "Cannot make pending if member already in group.");
+
         if (member_itr->member_type == private_group_member_type::member) {
             members--;
         } else if (member_itr->member_type == private_group_member_type::moder) {
+            GOLOS_CHECK_LOGIC(is_owner, logic_errors::unauthorized, "Only owner can update moders.");
             moders--;
         } else if (member_itr->member_type == private_group_member_type::pending) {
             pendings--;
         } else if (member_itr->member_type == private_group_member_type::banned) {
+            GOLOS_CHECK_LOGIC(is_moder, logic_errors::unauthorized, "Only moder can unban.");
             banneds--;
         }
 
