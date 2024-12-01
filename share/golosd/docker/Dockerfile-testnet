@@ -81,6 +81,7 @@ RUN \
         libstdc++-7-dev \
         libtinfo-dev \
         libtool \
+        libxslt-dev \
         linux-libc-dev \
         m4 \
         make \

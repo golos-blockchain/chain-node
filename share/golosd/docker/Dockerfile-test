@@ -20,6 +20,7 @@ RUN \
         libreadline-dev \
         libssl-dev \
         libtool \
+        libxslt-dev \
         ncurses-dev \
         pbzip2 \
         pkg-config \

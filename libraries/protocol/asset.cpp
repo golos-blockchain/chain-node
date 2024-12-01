@@ -39,6 +39,9 @@ namespace golos {
             } else {
                 FC_ASSERT(a[7] == 0);
             }
+            if (symbol == asset::max_symbol()) { // Fix because API requests hangs with raw one
+                return std::string(14, '?');
+            }
             return &a[1];
         }
 
@@ -114,6 +117,18 @@ namespace golos {
                 return result;
             }
             FC_CAPTURE_AND_RETHROW((from))
+        }
+
+        asset_symbol_type asset::min_symbol() {
+            return asset_symbol_type();
+        }
+
+        asset_symbol_type asset::max_symbol() {
+            auto sym = asset_symbol_type::max_value();
+            auto b = (char *)&sym;
+            b[0] = 114;
+            b[15] = 0;
+            return sym;
         }
 
         bool operator==(const price &a, const price &b) {

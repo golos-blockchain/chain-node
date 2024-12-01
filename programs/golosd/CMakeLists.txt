@@ -48,6 +48,7 @@ target_link_libraries(
         golos::paid_subscription_api
         golos::nft_api
         golos::cryptor
+        golos::exchange
         ${MONGO_LIB}
         golos_protocol
         fc
