@@ -788,6 +788,7 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
         if (pgo->privacy != private_group_privacy::public_group &&
             op.privacy == private_group_privacy::public_group) {
 
+            uint32_t pendings = 0;
             auto pend = pgm_idx.lower_bound(std::make_tuple(pgo->name, private_group_member_type::pending));
             for (; pend != pgm_idx.end() && pend->group == pgo->name &&
                 pend->member_type == private_group_member_type::pending; ++pend) {
@@ -796,10 +797,13 @@ void private_group_evaluator::do_apply(const private_group_operation& op) {
                     pgmo.member_type = private_group_member_type::member;
                     pgmo.updated = now;
                 });
+
+                pendings++;
             }
 
             _db.modify(*pgo, [&](auto& pgo) {
-                pgo.pendings = 0;
+                pgo.pendings -= pendings;
+                pgo.members += pendings;
             });
         }
 
