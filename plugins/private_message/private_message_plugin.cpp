@@ -154,6 +154,8 @@ namespace golos { namespace plugins { namespace private_message {
 
         std::vector<private_group_api_object> get_groups(const private_group_query& query) const;
 
+        private_group_api_object get_group_info(const std::string& group) const;
+
         std::vector<private_group_member_api_object> get_group_members(const private_group_member_query& query) const;
 
         bool can_call_callbacks() const;
@@ -666,6 +668,16 @@ namespace golos { namespace plugins { namespace private_message {
         }
 
         return res;
+    }
+
+    private_group_api_object private_message_plugin::private_message_plugin_impl::get_group_info(const std::string& group) const {
+        return _db.with_weak_read_lock([&](){
+            const auto* pgo = _db.find<private_group_object, by_name>(group);
+            if (!pgo) {
+                return private_group_api_object();
+            }
+            return private_group_api_object();//*group, _db, fc::optional<private_group_members>());
+        });
     }
 
     std::vector<private_group_member_api_object> private_message_plugin::private_message_plugin_impl::get_group_members(const private_group_member_query& query) const {
@@ -1194,7 +1206,11 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
 
         return my->_db.with_weak_read_lock([&](){
-            return my->get_groups(query);
+            const auto& groups = my->get_groups(query);
+
+            fc::mutable_variant_object vo;
+            vo["groups"] = groups;
+            return vo;
         });
     }
 
@@ -1205,7 +1221,14 @@ namespace golos { namespace plugins { namespace private_message {
 
         GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
 
-        return my->get_group_members(query);
+        const auto& members = my->get_group_members(query);
+
+        fc::mutable_variant_object vo;
+        vo["members"] = members;
+        if (query.group_data) {
+            vo["group"] = my->get_group_info(query.group);
+        }
+        return vo;
     }
 
 } } } // golos::plugins::private_message

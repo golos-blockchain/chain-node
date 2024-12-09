@@ -106,6 +106,7 @@ struct private_group_member_query {
     uint32_t limit = 20;
 
     bool accounts = false;
+    bool group_data = false;
 };
 
 } } } // golos::plugins::private_message
@@ -154,5 +155,5 @@ FC_REFLECT((golos::plugins::private_message::private_group_member_sort_condition
 )
 
 FC_REFLECT((golos::plugins::private_message::private_group_member_query),
-    (group)(member_types)(sort_conditions)(start_member)(limit)(accounts)
+    (group)(member_types)(sort_conditions)(start_member)(limit)(accounts)(group_data)
 )
