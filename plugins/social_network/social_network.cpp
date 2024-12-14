@@ -1717,6 +1717,14 @@ namespace golos { namespace plugins { namespace social_network {
             const auto content = db.find<comment_content_object, by_comment>(co.id);
             if (content != nullptr) {
                 con.title = to_string(content->title);
+                wlog(std::to_string(con.title[0]));
+                wlog(std::to_string(con.title[1]));
+                wlog(std::to_string(con.title[2]));
+                wlog(std::to_string(con.title[3]));
+                wlog(std::to_string(con.title[4]));
+                wlog(std::to_string(con.title[5]));
+                wlog(std::to_string(asset(0, asset::max_symbol()).symbol_name()[2]));
+                wlog(std::to_string(asset(0, asset::max_symbol()).symbol_name()[3]));
                 con.body = to_string(content->body);
                 con.json_metadata = to_string(content->json_metadata);
                 con.net_rshares = content->net_rshares;
