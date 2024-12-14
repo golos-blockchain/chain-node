@@ -14,6 +14,7 @@ using namespace golos::chain;
 DEFINE_API_ARGS(get_nft_collections, json_rpc::msg_pack, std::vector<nft_collection_api_object>)
 DEFINE_API_ARGS(get_nft_tokens, json_rpc::msg_pack, std::vector<nft_extended_api_object>)
 DEFINE_API_ARGS(get_nft_orders, json_rpc::msg_pack, std::vector<nft_order_api_object>)
+DEFINE_API_ARGS(get_nft_bets, json_rpc::msg_pack, std::vector<nft_extended_bet_api_object>)
 
 class nft_api_plugin final : public appbase::plugin<nft_api_plugin> {
 public:
@@ -38,6 +39,7 @@ public:
         (get_nft_collections)
         (get_nft_tokens)
         (get_nft_orders)
+        (get_nft_bets)
     )
 private:
     class nft_api_plugin_impl;

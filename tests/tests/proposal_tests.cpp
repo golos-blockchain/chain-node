@@ -30,7 +30,7 @@ using namespace golos::chain;
 using namespace golos::protocol;
 using std::string;
 
-BOOST_FIXTURE_TEST_SUITE(proposal_tests, clean_database_fixture)
+BOOST_FIXTURE_TEST_SUITE(proposal_tests, clean_database_fixture_wrap)
 
 
 // validate + authority tests
@@ -46,8 +46,8 @@ BOOST_AUTO_TEST_CASE(proposal_create_validate) { try {
     proposal_create_operation op;
     op.author = "alice";
     op.title = "test";
-    op.expiration_time = db->head_block_time() + fc::hours(6);
-    op.review_period_time = db->head_block_time() + fc::hours(3);
+    op.expiration_time = _db.head_block_time() + fc::hours(6);
+    op.review_period_time = _db.head_block_time() + fc::hours(3);
     op.proposed_operations.push_back(operation_wrapper(top));
 
     CHECK_OP_VALID(op);
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE(create_proposal) { try {
 
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -232,8 +232,8 @@ BOOST_AUTO_TEST_CASE(create_proposal) { try {
     proposal_create_operation cop;
     cop.author = "bob";
     cop.title = "Transfer with vote";
-    cop.expiration_time = db->head_block_time() + fc::hours(6);
-    cop.review_period_time = db->head_block_time() + fc::hours(3);
+    cop.expiration_time = _db.head_block_time() + fc::hours(6);
+    cop.review_period_time = _db.head_block_time() + fc::hours(3);
     cop.proposed_operations.push_back(operation_wrapper(top));
     cop.proposed_operations.push_back(operation_wrapper(vop));
 
@@ -252,13 +252,13 @@ BOOST_AUTO_TEST_CASE(create_proposal) { try {
     cop1.author = "bob";
     cop1.title = "Transfer to bob";
     cop1.memo = "Some memo about transfer";
-    cop1.expiration_time = db->head_block_time() + fc::hours(6);
-    cop1.review_period_time = db->head_block_time() + fc::hours(3);
+    cop1.expiration_time = _db.head_block_time() + fc::hours(6);
+    cop1.review_period_time = _db.head_block_time() + fc::hours(3);
     cop1.proposed_operations.push_back(operation_wrapper(top1));
 
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop1));
     generate_blocks(1);
-    const auto& p = db->get_proposal(cop1.author, cop1.title);
+    const auto& p = _db.get_proposal(cop1.author, cop1.title);
 
     BOOST_CHECK_EQUAL(p.required_active_approvals.size(), 1);
     BOOST_CHECK_EQUAL(p.required_owner_approvals.size(), 0);
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
 
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -290,13 +290,13 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
     cop.author = "bob";
     cop.title = "Transfer to bob";
     cop.memo = "Some memo about transfer";
-    cop.expiration_time = db->head_block_time() + fc::hours(6);
-    cop.review_period_time = db->head_block_time() + fc::hours(3);
+    cop.expiration_time = _db.head_block_time() + fc::hours(6);
+    cop.review_period_time = _db.head_block_time() + fc::hours(3);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
     generate_blocks(1);
-    const auto& p = db->get_proposal(cop.author, cop.title);
+    const auto& p = _db.get_proposal(cop.author, cop.title);
 
     BOOST_TEST_MESSAGE("--- Signing of a transaction with a proposal");
 
@@ -444,7 +444,7 @@ BOOST_AUTO_TEST_CASE(update_proposal) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop11));
     generate_blocks(1);
 
-    BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
+    BOOST_CHECK(nullptr == _db.find_proposal(cop.author, cop.title));
 
 } FC_LOG_AND_RETHROW() }
 
@@ -452,7 +452,7 @@ BOOST_AUTO_TEST_CASE(update_proposal1) { try {
     BOOST_TEST_MESSAGE("--- Auto execution of a proposal without a review period by signing of a transaction");
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -466,7 +466,7 @@ BOOST_AUTO_TEST_CASE(update_proposal1) { try {
     cop.author = "bob";
     cop.title = "Transfer to bob";
     cop.memo = "Some memo about transfer";
-    cop.expiration_time = db->head_block_time() + fc::hours(6);
+    cop.expiration_time = _db.head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
@@ -479,9 +479,9 @@ BOOST_AUTO_TEST_CASE(update_proposal1) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
     generate_blocks(1);
 
-    BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
-    BOOST_CHECK_EQUAL(db->get_account("alice").balance.amount.value, 7500);
-    BOOST_CHECK_EQUAL(db->get_account("bob").balance.amount.value, 2500);
+    BOOST_CHECK(nullptr == _db.find_proposal(cop.author, cop.title));
+    BOOST_CHECK_EQUAL(_db.get_account("alice").balance.amount.value, 7500);
+    BOOST_CHECK_EQUAL(_db.get_account("bob").balance.amount.value, 2500);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -489,7 +489,7 @@ BOOST_AUTO_TEST_CASE(update_proposal2) { try {
     BOOST_TEST_MESSAGE("--- Auto execution of a proposal without a review period by approving with a public key");
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -503,7 +503,7 @@ BOOST_AUTO_TEST_CASE(update_proposal2) { try {
     cop.author = "bob";
     cop.title = "Transfer to bob";
     cop.memo = "Some memo about transfer";
-    cop.expiration_time = db->head_block_time() + fc::hours(6);
+    cop.expiration_time = _db.head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
@@ -516,9 +516,9 @@ BOOST_AUTO_TEST_CASE(update_proposal2) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
     generate_blocks(1);
 
-    BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
-    BOOST_CHECK_EQUAL(db->get_account("alice").balance.amount.value, 7500);
-    BOOST_CHECK_EQUAL(db->get_account("bob").balance.amount.value, 2500);
+    BOOST_CHECK(nullptr == _db.find_proposal(cop.author, cop.title));
+    BOOST_CHECK_EQUAL(_db.get_account("alice").balance.amount.value, 7500);
+    BOOST_CHECK_EQUAL(_db.get_account("bob").balance.amount.value, 2500);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -526,7 +526,7 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
     BOOST_TEST_MESSAGE("--- Execution of a proposal with a review period after an expiration");
     signed_transaction tx;
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -540,8 +540,8 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
     cop.author = "bob";
     cop.title = "Transfer to bob";
     cop.memo = "Some memo about transfer";
-    cop.review_period_time = db->head_block_time() + fc::hours(3);
-    cop.expiration_time = db->head_block_time() + fc::hours(6);
+    cop.review_period_time = _db.head_block_time() + fc::hours(3);
+    cop.expiration_time = _db.head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
@@ -554,19 +554,19 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
     generate_blocks(1);
 
-    GOLOS_CHECK_NO_THROW(db->get_proposal(cop.author, cop.title));
+    GOLOS_CHECK_NO_THROW(_db.get_proposal(cop.author, cop.title));
 
-    const auto& p = db->get_proposal(cop.author, cop.title);
+    const auto& p = _db.get_proposal(cop.author, cop.title);
 
     generate_blocks(*p.review_period_time);
 
-    GOLOS_CHECK_NO_THROW(db->get_proposal(cop.author, cop.title));
+    GOLOS_CHECK_NO_THROW(_db.get_proposal(cop.author, cop.title));
 
     generate_blocks(p.expiration_time);
 
-    BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
-    BOOST_CHECK_EQUAL(db->get_account("alice").balance.amount.value, 7500);
-    BOOST_CHECK_EQUAL(db->get_account("bob").balance.amount.value, 2500);
+    BOOST_CHECK(nullptr == _db.find_proposal(cop.author, cop.title));
+    BOOST_CHECK_EQUAL(_db.get_account("alice").balance.amount.value, 7500);
+    BOOST_CHECK_EQUAL(_db.get_account("bob").balance.amount.value, 2500);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -587,7 +587,7 @@ BOOST_AUTO_TEST_CASE(update_proposal3) { try {
  */
 BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     BOOST_TEST_MESSAGE("--- Multiple signatures");
-    ACTORS((alice)(bob)(cindy)(dave)(dan)(edy)(mega)(nova)(odle)(poxx)(well)(xylo)(yaya)(zyzz));
+    ACTORS_OLD((alice)(bob)(cindy)(dave)(dan)(edy)(mega)(nova)(odle)(poxx)(well)(xylo)(yaya)(zyzz));
     generate_blocks(1);
 
     auto set_auth = [&](
@@ -604,13 +604,13 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     };
 
     auto get_active = [&](const string& name) {
-        return authority(db->get<account_authority_object, by_account>(name).active);
+        return authority(_db.get<account_authority_object, by_account>(name).active);
     };
     auto get_owner = [&](const string& name) {
-        return authority(db->get<account_authority_object, by_account>(name).owner);
+        return authority(_db.get<account_authority_object, by_account>(name).owner);
     };
     auto get_posting = [&](const string& name) {
-        return authority(db->get<account_authority_object, by_account>(name).posting);
+        return authority(_db.get<account_authority_object, by_account>(name).posting);
     };
 
     flat_set< public_key_type > all_keys{
@@ -669,12 +669,12 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     cop.author = "edy";
     cop.title = "Transfer to edy";
     cop.memo = "Some memo about transfer";
-    cop.expiration_time = db->head_block_time() + fc::hours(6);
+    cop.expiration_time = _db.head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(op));
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, edy_private_key, cop));
     generate_blocks(1);
 
-    BOOST_REQUIRE_NO_THROW(db->get_proposal(cop.author, cop.title));
+    BOOST_REQUIRE_NO_THROW(_db.get_proposal(cop.author, cop.title));
 
     proposal_update_operation uop;
     uop.author = cop.author;
@@ -683,10 +683,10 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, uop));
     generate_blocks(1);
 
-    const auto& poxx_account = db->get_account("poxx");
-    const auto& edy_account = db->get_account("edy");
+    const auto& poxx_account = _db.get_account("poxx");
+    const auto& edy_account = _db.get_account("edy");
 
-    BOOST_REQUIRE_NO_THROW(db->get_proposal(cop.author, cop.title));
+    BOOST_REQUIRE_NO_THROW(_db.get_proposal(cop.author, cop.title));
     BOOST_CHECK_EQUAL(poxx_account.balance.amount.value, 10000);
     BOOST_CHECK_EQUAL(edy_account.balance.amount.value, 0);
 
@@ -697,7 +697,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, uop1));
     generate_blocks(1);
 
-    BOOST_REQUIRE_NO_THROW(db->get_proposal(cop.author, cop.title));
+    BOOST_REQUIRE_NO_THROW(_db.get_proposal(cop.author, cop.title));
     BOOST_CHECK_EQUAL(poxx_account.balance.amount.value, 10000);
     BOOST_CHECK_EQUAL(edy_account.balance.amount.value, 0);
 
@@ -708,7 +708,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, cindy_private_key, uop2));
     generate_blocks(1);
 
-    BOOST_REQUIRE_NO_THROW(db->get_proposal(cop.author, cop.title));
+    BOOST_REQUIRE_NO_THROW(_db.get_proposal(cop.author, cop.title));
     BOOST_CHECK_EQUAL(poxx_account.balance.amount.value, 10000);
     BOOST_CHECK_EQUAL(edy_account.balance.amount.value, 0);
 
@@ -726,7 +726,7 @@ BOOST_AUTO_TEST_CASE(nested_signatures) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, dan_private_key, uop4));
     generate_blocks(1);
 
-    BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
+    BOOST_CHECK(nullptr == _db.find_proposal(cop.author, cop.title));
     BOOST_CHECK_EQUAL(poxx_account.balance.amount.value, 7500);
     BOOST_CHECK_EQUAL(edy_account.balance.amount.value, 2500);
 
@@ -736,7 +736,7 @@ BOOST_AUTO_TEST_CASE(delete_proposal) { try {
     BOOST_TEST_MESSAGE("Testing: proposal_delete_operation");
     signed_transaction tx;
 
-    ACTORS((alice)(bob)(dave))
+    ACTORS_OLD((alice)(bob)(dave))
     generate_blocks(1);
     fund("alice", 10000);
     generate_blocks(1);
@@ -750,8 +750,8 @@ BOOST_AUTO_TEST_CASE(delete_proposal) { try {
     cop.author = "bob";
     cop.title = "Transfer to bob";
     cop.memo = "Some memo about transfer";
-    cop.review_period_time = db->head_block_time() + fc::hours(3);
-    cop.expiration_time = db->head_block_time() + fc::hours(6);
+    cop.review_period_time = _db.head_block_time() + fc::hours(3);
+    cop.expiration_time = _db.head_block_time() + fc::hours(6);
     cop.proposed_operations.push_back(operation_wrapper(top));
 
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, cop));
@@ -776,7 +776,7 @@ BOOST_AUTO_TEST_CASE(delete_proposal) { try {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, dop1));
     generate_blocks(1);
 
-    BOOST_CHECK(nullptr == db->find_proposal(cop.author, cop.title));
+    BOOST_CHECK(nullptr == _db.find_proposal(cop.author, cop.title));
 
 } FC_LOG_AND_RETHROW() }
 

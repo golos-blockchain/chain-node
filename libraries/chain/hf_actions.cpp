@@ -12,6 +12,8 @@ void hf_actions::prepare_for_tests() {
     //Owner: 5KD45zFh5WNFaW8mZTSx4eicy8FzwEmm5psNKH7GLg5bVQwUw6s
     //Memo: 5Kek6zP5vQmDRXXNBtZkxUtoMT3iW1xEYXcifkA2UHb2VT5UD7P
 
+    elog("Livetest - resetting account keys...");
+
     for (const auto &account : _db.get_index<account_index>().indices()) {
         _db.update_owner_authority(account, authority(1, public_key_type("GLS5GfkCE2HQwcE6Gs8pDXvp2PJtF4dwqG8Af9rhn9LKNrJ6PKPMF"), 1));
 
@@ -30,12 +32,16 @@ void hf_actions::prepare_for_tests() {
         a.memo_key = public_key_type("GLS7Pbawjjr71ybgT6L2yni3B3LXYiJqEGnuFSq1MV9cjnV24dMG3");
     });
 
+    elog("Livetest - resetting witnesses...");
+
     const auto &witness_idx = _db.get_index<witness_index>().indices();
     for (auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr) {
         _db.modify(*itr, [&](witness_object &w) {
             w.signing_key = public_key_type("GLS8EAm8DhD8tjX3N87RVAvw1o8uzSQkRJ3Tcn4dgmybHwnsyvThb");
         });
     }
+
+    elog("Livetest - HF actions done.");
 #endif
 #ifdef STEEMIT_BUILD_TESTNET
 #define COMMON_POSTING public_key_type("GLS8hnaAj3ufXbfFBKqGNhyGvW78EQN5rpeqfcDD2d2tQyhd2dEDb")
@@ -158,6 +164,26 @@ void hf_actions::convert_min_curate_golos_power() {
     _db.modify(wso, [&](auto& wso) {
         wso.median_props.min_golos_power_to_curate = convert_to_gbg(wso.median_props.min_golos_power_to_curate);
     });
+}
+
+void hf_actions::fix_vesting_withdrawals() {
+    const auto& fm_idx = _db.get_index<fix_me_index, by_id>();
+    auto fm_itr = fm_idx.begin();
+    uint64_t count = 0;
+    while (fm_itr != fm_idx.end() && count < 500) {
+        const auto& fm = *fm_itr;
+        ++fm_itr;
+        const auto& acc = _db.get(fm.account);
+        wlog("Fixed VS: " + acc.name);
+        if (acc.next_vesting_withdrawal == fc::time_point_sec::maximum()){
+            _db.modify(acc, [&](auto& acc) {
+                acc.withdrawn = 0;
+                acc.to_withdraw = 0;
+            });
+        }
+        _db.remove(fm);
+        ++count;
+    }
 }
 
 hf_actions::hf_actions(database& db) : _db(db) {

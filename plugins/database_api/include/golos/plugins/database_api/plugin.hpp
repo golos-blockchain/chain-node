@@ -15,10 +15,10 @@
 #include <golos/plugins/database_api/api_objects/account_recovery_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/proposal_api_object.hpp>
-#include <golos/plugins/database_api/api_objects/asset_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/account_balance_api_object.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 
+#include <golos/api/asset_api_object.hpp>
 #include <golos/api/block_objects.hpp>
 #include <golos/api/chain_api_properties.hpp>
 #include <golos/api/dynamic_global_property_api_object.hpp>
@@ -54,6 +54,15 @@ struct scheduled_hardfork {
     hardfork_version hf_version;
     fc::time_point_sec live_time;
 };
+
+struct account_select_query {
+    bool include_frozen = false;
+    std::set<std::string> filter_accounts;
+};
+
+using account_select_legacy = fc::variant;
+// bool - include_frozen
+// or account_select_query
 
 struct withdraw_route {
     std::string from_account;
@@ -336,6 +345,8 @@ FC_REFLECT((golos::plugins::database_api::withdraw_route), (from_account)(to_acc
 
 FC_REFLECT_ENUM(golos::plugins::database_api::withdraw_route_type, (incoming)(outgoing)(all))
 FC_REFLECT_ENUM(golos::plugins::database_api::delegations_type, (delegated)(received))
+
+FC_REFLECT((golos::plugins::database_api::account_select_query), (include_frozen)(filter_accounts))
 
 FC_REFLECT((golos::plugins::database_api::tag_count_object), (tag)(count))
 

@@ -39,11 +39,14 @@ enum class nft_tokens_sort : uint8_t {
     by_name,
     by_issued,
     by_last_update,
-    by_last_price
+    by_last_price,
+    by_auction_expiration
 };
 
 enum class nft_token_state : uint8_t {
     selling_only,
+    selling_auction_only,
+    selling_not_auction_only,
     not_selling_only,
     any_not_burnt,
     burnt_only,
@@ -68,6 +71,8 @@ enum class nft_token_sorting_priority : uint8_t {
 };
 
 struct nft_tokens_query {
+    account_name_type current;
+
     account_name_type owner;
     std::set<std::string> select_collections;
     uint32_t collection_limit = UINT32_MAX;
@@ -92,8 +97,12 @@ struct nft_tokens_query {
 
         if (illformed == nft_token_illformed::ignore && obj.illformed) return false;
 
-        if (state == nft_token_state::selling_only && !obj.selling) return false;
-        if (state == nft_token_state::not_selling_only && obj.selling) return false;
+        auto has_auction = obj.auction_expiration != time_point_sec();
+
+        if (state == nft_token_state::selling_only && !obj.selling && !has_auction) return false;
+        if (state == nft_token_state::not_selling_only && (obj.selling || has_auction)) return false;
+        if (state == nft_token_state::selling_auction_only && !has_auction) return false;
+        if (state == nft_token_state::selling_not_auction_only && (!obj.selling || !has_auction)) return false;
 
         if (state != nft_token_state::any && state != nft_token_state::burnt_only && obj.burnt) return false;
         if (state == nft_token_state::burnt_only && !obj.burnt) return false;
@@ -132,6 +141,7 @@ struct nft_orders_query {
     account_name_type owner;
     std::set<std::string> select_collections;
     uint32_t collection_limit = UINT32_MAX;
+    std::set<uint32_t> select_token_ids;
 
     bool tokens = true;
 
@@ -154,6 +164,7 @@ struct nft_orders_query {
         if (type == nft_order_type::selling && !obj.selling) return false;
 
         if (select_collections.size() && !select_collections.count(obj.name)) return false;
+        if (select_token_ids.size() && !select_token_ids.count(obj.token_id)) return false;
 
         return true;
     };
@@ -162,6 +173,16 @@ struct nft_orders_query {
 
     nft_orders_sort sort = nft_orders_sort::by_created;
     bool reverse_sort = false;
+};
+
+struct nft_bets_query {
+    account_name_type owner;
+    std::set<uint32_t> select_token_ids;
+
+    bool tokens = true;
+
+    uint32_t start_bet_id = 0;
+    uint32_t limit = 20;
 };
 
 }}}
@@ -181,12 +202,13 @@ FC_REFLECT(
 
 FC_REFLECT_ENUM(
     golos::plugins::nft_api::nft_tokens_sort,
-    (by_name)(by_issued)(by_last_update)(by_last_price)
+    (by_name)(by_issued)(by_last_update)(by_last_price)(by_auction_expiration)
 )
 
 FC_REFLECT_ENUM(
     golos::plugins::nft_api::nft_token_state,
-    (selling_only)(not_selling_only)(any_not_burnt)(burnt_only)(any)
+    (selling_only)(selling_auction_only)(selling_not_auction_only)
+    (not_selling_only)(any_not_burnt)(burnt_only)(any)
 )
 
 FC_REFLECT_ENUM(
@@ -206,7 +228,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::nft_api::nft_tokens_query),
-    (owner)(select_collections)(collection_limit)
+    (current)(owner)(select_collections)(collection_limit)
     (collections)(orders)(start_token_id)(limit)(select_token_ids)
     (filter_creators)(filter_names)(filter_token_ids)(state)
     (sort)(reverse_sort)(illformed)(selling_sorting)(sorting_priority)
@@ -224,8 +246,14 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::nft_api::nft_orders_query),
-    (owner)(select_collections)(collection_limit)
+    (owner)(select_collections)(collection_limit)(select_token_ids)
     (tokens)(start_order_id)(limit)
     (filter_creators)(filter_names)(filter_owners)(filter_token_ids)(filter_order_ids)
     (type)(sort)(reverse_sort)
+)
+
+FC_REFLECT(
+    (golos::plugins::nft_api::nft_bets_query),
+    (owner)(select_token_ids)
+    (tokens)(start_bet_id)(limit)
 )

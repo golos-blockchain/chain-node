@@ -5,19 +5,15 @@
 
 namespace golos { namespace chain {
 
-struct hf26_database_fixture : public database_fixture {
-    hf26_database_fixture() {
-        try {
-            initialize();
-            open_database();
+struct hf26_database_fixture : public clean_database_fixture_wrap {
+    hf26_database_fixture() : clean_database_fixture_wrap(true, [&]() {
+        initialize();
+        open_database();
 
-            generate_block();
-            db->set_hardfork(STEEMIT_HARDFORK_0_25);
-            startup(false);
-        } catch (const fc::exception& e) {
-            edump((e.to_detail_string()));
-            throw;
-        }
+        generate_block();
+        db->set_hardfork(STEEMIT_HARDFORK_0_25);
+        startup(false);
+    }) {
     }
 
     ~hf26_database_fixture() {
@@ -36,7 +32,7 @@ BOOST_FIXTURE_TEST_SUITE(hf26_tests, hf26_database_fixture)
     BOOST_AUTO_TEST_CASE(convert_validation) { try {
         BOOST_TEST_MESSAGE("Testing: convert_validation");
 
-        ACTORS((alice))
+        ACTORS_OLD((alice))
         generate_block();
         vest("alice", ASSET("10.000 GOLOS"));
 
@@ -63,7 +59,7 @@ BOOST_FIXTURE_TEST_SUITE(hf26_tests, hf26_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Apply HF");
 
-        db->set_hardfork(STEEMIT_HARDFORK_0_26);
+        _db.set_hardfork(STEEMIT_HARDFORK_0_26);
         validate_database();
 
         BOOST_TEST_MESSAGE("Testing failure with VESTS symbol");
@@ -101,19 +97,19 @@ BOOST_FIXTURE_TEST_SUITE(hf26_tests, hf26_database_fixture)
         generate_block();
 
         {
-            auto& gpo = db->get_dynamic_global_properties();
+            auto& gpo = _db.get_dynamic_global_properties();
             BOOST_CHECK_EQUAL(gpo.total_reward_fund_steem, fund.reward_fund());
             BOOST_CHECK_EQUAL(gpo.total_vesting_shares, fund.vesting_shares());
             BOOST_CHECK_EQUAL(gpo.total_vesting_fund_steem, fund.vesting_fund());
             BOOST_CHECK_EQUAL(gpo.total_vesting_fund_steem, fund.vesting_fund());
-            BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, fund.worker_fund());
+            BOOST_CHECK_EQUAL(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, fund.worker_fund());
         }
 
         validate_database();
 
         BOOST_TEST_MESSAGE("-- Apply HF26");
 
-        db->set_hardfork(STEEMIT_HARDFORK_0_26);
+        _db.set_hardfork(STEEMIT_HARDFORK_0_26);
         validate_database();
 
         BOOST_TEST_MESSAGE("-- After HF26");
@@ -123,11 +119,11 @@ BOOST_FIXTURE_TEST_SUITE(hf26_tests, hf26_database_fixture)
         generate_block();
 
         {
-            auto& gpo = db->get_dynamic_global_properties();
+            auto& gpo = _db.get_dynamic_global_properties();
             BOOST_CHECK_EQUAL(gpo.total_reward_fund_steem, fund2.reward_fund());
             BOOST_CHECK_EQUAL(gpo.total_vesting_shares, fund2.vesting_shares());
             BOOST_CHECK_EQUAL(gpo.total_vesting_fund_steem, fund2.vesting_fund());
-            BOOST_CHECK_EQUAL(db->get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, fund2.worker_fund());
+            BOOST_CHECK_EQUAL(_db.get_account(STEEMIT_WORKER_POOL_ACCOUNT).balance, fund2.worker_fund());
         }
 
         validate_database();

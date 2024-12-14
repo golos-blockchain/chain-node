@@ -26,11 +26,15 @@ fc::optional<blog_donate> get_blog_donate(const donate_operation& op) {
 
 fc::optional<message_donate> get_message_donate(const donate_operation& op) {
     fc::optional<message_donate> res;
-
+    std::string group;
     std::string from_str;
     std::string to_str;
     uint64_t nonce = 0;
     try {
+        auto group_itr = op.memo.target.find("group");
+        if (group_itr != op.memo.target.end()) {
+            group = group_itr->value().as_string();
+        }
         from_str = op.memo.target["from"].as_string();
         to_str = op.memo.target["to"].as_string();
         nonce = op.memo.target["nonce"].as_uint64();
@@ -40,10 +44,16 @@ fc::optional<message_donate> get_message_donate(const donate_operation& op) {
     if (!is_valid_account_name(from_str)) return res;
     auto from = account_name_type(from_str);
 
-    if (!is_valid_account_name(to_str)) return res;
-    auto to = account_name_type(to_str);
+    account_name_type to;
+    if (to_str.size()) {
+        if (!is_valid_account_name(to_str)) return res;
+        to = account_name_type(to_str);
+    } else {
+        if (!group.size()) return res;
+    }
 
     res = message_donate();
+    res->group = group;
     res->from = from;
     res->to = to;
     res->nonce = nonce;

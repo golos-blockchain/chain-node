@@ -6,32 +6,28 @@
 
 namespace golos { namespace chain {
 
-struct hf27_database_fixture : public database_fixture {
-    hf27_database_fixture() {
-        try {
-            initialize();
-            open_database();
+struct hf27_database_fixture : public clean_database_fixture_wrap {
+    hf27_database_fixture() : clean_database_fixture_wrap(true, [&]() {
+        initialize();
+        open_database();
 
-            generate_block();
-            db->set_hardfork(STEEMIT_HARDFORK_0_26);
+        generate_block();
+        db->set_hardfork(STEEMIT_HARDFORK_0_26);
 #ifdef STEEMIT_BUILD_TESTNET
-            db->_test_freezing = true;
+        db->_test_freezing = true;
 #endif
-            startup(false);
-        } catch (const fc::exception& e) {
-            edump((e.to_detail_string()));
-            throw;
-        }
+        startup(false);
+    }) {
     }
 
     ~hf27_database_fixture() {
     }
 
     void create200accs() {
-        PREP_ACTOR(created);
+        PREP_ACTOR_OLD(created);
         for (int i = 1; i <= 200; ++i) {
             auto name = "created" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, created_public_key, created_post_key.get_public_key()));
+            GOLOS_CHECK_NO_THROW(account_create(name, created_public_key, created_public_key, created_public_key, created_post_key.get_public_key()));
             fund(name, 1000);
             vest(name, 1000);
         }
@@ -58,10 +54,10 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         generate_block();
 
-        auto gb = GOLOS_ACCUM_DISTRIBUTION_INTERVAL - (db->head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL);
+        auto gb = GOLOS_ACCUM_DISTRIBUTION_INTERVAL - (_db.head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL);
         generate_blocks(gb - 1);
 
-        for (const auto& acc : db->get_index<account_index>().indices()) {
+        for (const auto& acc : _db.get_index<account_index>().indices()) {
             BOOST_CHECK_EQUAL(acc.accumulative_balance.amount, 0);
             BOOST_CHECK_EQUAL(acc.tip_balance.amount, 0);
         }
@@ -79,13 +75,13 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Checking correctness of distribution");
 
-        const auto& props = db->get_dynamic_global_properties();
+        const auto& props = _db.get_dynamic_global_properties();
 
-        BOOST_CHECK_GT(db->get_account("cyberfounder").accumulative_balance.amount, 0);
-        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").tip_balance.amount, 0);
+        BOOST_CHECK_GT(_db.get_account("cyberfounder").accumulative_balance.amount, 0);
+        BOOST_CHECK_EQUAL(_db.get_account("cyberfounder").tip_balance.amount, 0);
 
         asset total_distributed = asset(0, STEEM_SYMBOL);
-        for (const auto& acc : db->get_index<account_index>().indices()) {
+        for (const auto& acc : _db.get_index<account_index>().indices()) {
             total_distributed += acc.accumulative_balance;
         }
 
@@ -94,7 +90,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
             total_distributed += arops[0].amount;
         }
 
-        for (const auto& acc : db->get_index<account_index>().indices()) {
+        for (const auto& acc : _db.get_index<account_index>().indices()) {
             auto stake = (uint128_t(total_distributed.amount.value) *
                 acc.emission_vesting_shares().amount.value / props.total_vesting_shares.amount.value).to_uint64();
             APPROX_CHECK_EQUAL(acc.accumulative_balance.amount.value, int64_t(stake), 1);
@@ -102,11 +98,11 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Waiting for claim idleness");
 
-        auto gb2 = GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL - (db->head_block_num() % GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL);
+        auto gb2 = GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL - (_db.head_block_num() % GOLOS_CLAIM_IDLENESS_CHECK_INTERVAL);
         generate_blocks(gb2 - 1);
 
-        BOOST_CHECK_GT(db->get_account("cyberfounder").accumulative_balance.amount, 0);
-        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").tip_balance.amount, 0);
+        BOOST_CHECK_GT(_db.get_account("cyberfounder").accumulative_balance.amount, 0);
+        BOOST_CHECK_EQUAL(_db.get_account("cyberfounder").tip_balance.amount, 0);
 
         BOOST_TEST_MESSAGE("-- Checking for claim idleness");
 
@@ -116,7 +112,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         generate_blocks(1);
 
-        for (const auto& acc : db->get_index<account_index>().indices()) {
+        for (const auto& acc : _db.get_index<account_index>().indices()) {
             BOOST_CHECK_EQUAL(acc.accumulative_balance.amount, 0);
             BOOST_CHECK_EQUAL(acc.tip_balance.amount, 0);
         }
@@ -126,7 +122,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
             workers -= arops[0].amount;
         }
 
-        BOOST_CHECK_EQUAL(db->get_account("workers").balance, workers);
+        BOOST_CHECK_EQUAL(_db.get_account("workers").balance, workers);
 
         validate_database();
     } FC_LOG_AND_RETHROW() }
@@ -140,17 +136,17 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Performing distribution");
 
-        auto gb = GOLOS_ACCUM_DISTRIBUTION_INTERVAL - (db->head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL);
+        auto gb = GOLOS_ACCUM_DISTRIBUTION_INTERVAL - (_db.head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL);
         generate_blocks(gb);
 
-        BOOST_CHECK_GT(db->get_account("cyberfounder").accumulative_balance.amount, 0);
-        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").tip_balance.amount, 0);
+        BOOST_CHECK_GT(_db.get_account("cyberfounder").accumulative_balance.amount, 0);
+        BOOST_CHECK_EQUAL(_db.get_account("cyberfounder").tip_balance.amount, 0);
 
         std::vector<account_name_type> acc_names;
         std::vector<asset> acc_bals;
 
         {
-            const auto& acc_idx = db->get_index<account_index, by_accumulative>();
+            const auto& acc_idx = _db.get_index<account_index, by_accumulative>();
             auto acc_itr = acc_idx.begin();
             for (; acc_itr != acc_idx.end() && acc_itr->accumulative_balance.amount != 0; ++acc_itr) {
                 acc_names.push_back(acc_itr->name);
@@ -162,7 +158,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Apply HF");
 
-        db->set_hardfork(STEEMIT_HARDFORK_0_27);
+        _db.set_hardfork(STEEMIT_HARDFORK_0_27);
         validate_database();
 
         BOOST_TEST_MESSAGE("-- Checking 1st auto claim");
@@ -170,13 +166,13 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
         generate_block();
 
         for (size_t i = 0; i < 100; ++i) {
-            BOOST_CHECK_EQUAL(db->get_account(acc_names[i]).accumulative_balance.amount, 0);
-            BOOST_CHECK_EQUAL(db->get_account(acc_names[i]).tip_balance, acc_bals[i]);
+            BOOST_CHECK_EQUAL(_db.get_account(acc_names[i]).accumulative_balance.amount, 0);
+            BOOST_CHECK_EQUAL(_db.get_account(acc_names[i]).tip_balance, acc_bals[i]);
         }
 
         for (size_t i = 100; i < acc_names.size(); ++i) {
-            BOOST_CHECK_GT(db->get_account(acc_names[i]).accumulative_balance.amount, 0);
-            BOOST_CHECK_EQUAL(db->get_account(acc_names[i]).tip_balance.amount, 0);
+            BOOST_CHECK_GT(_db.get_account(acc_names[i]).accumulative_balance.amount, 0);
+            BOOST_CHECK_EQUAL(_db.get_account(acc_names[i]).tip_balance.amount, 0);
         }
 
         validate_database();
@@ -186,13 +182,13 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
         generate_block();
 
         for (size_t i = 0; i < 100*2; ++i) {
-            BOOST_CHECK_EQUAL(db->get_account(acc_names[i]).accumulative_balance.amount, 0);
-            BOOST_CHECK_EQUAL(db->get_account(acc_names[i]).tip_balance, acc_bals[i]);
+            BOOST_CHECK_EQUAL(_db.get_account(acc_names[i]).accumulative_balance.amount, 0);
+            BOOST_CHECK_EQUAL(_db.get_account(acc_names[i]).tip_balance, acc_bals[i]);
         }
 
         for (size_t i = 100*2; i < acc_names.size(); ++i) {
-            BOOST_CHECK_GT(db->get_account(acc_names[i]).accumulative_balance.amount, 0);
-            BOOST_CHECK_EQUAL(db->get_account(acc_names[i]).tip_balance.amount, 0);
+            BOOST_CHECK_GT(_db.get_account(acc_names[i]).accumulative_balance.amount, 0);
+            BOOST_CHECK_EQUAL(_db.get_account(acc_names[i]).tip_balance.amount, 0);
         }
 
         validate_database();
@@ -202,11 +198,11 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
         generate_block();
 
         for (size_t i = 0; i <  acc_names.size(); ++i) {
-            BOOST_CHECK_EQUAL(db->get_account(acc_names[i]).accumulative_balance.amount, 0);
-            BOOST_CHECK_EQUAL(db->get_account(acc_names[i]).tip_balance, acc_bals[i]);
+            BOOST_CHECK_EQUAL(_db.get_account(acc_names[i]).accumulative_balance.amount, 0);
+            BOOST_CHECK_EQUAL(_db.get_account(acc_names[i]).tip_balance, acc_bals[i]);
         }
 
-        for (const auto& acc : db->get_index<account_index>().indices()) {
+        for (const auto& acc : _db.get_index<account_index>().indices()) {
             BOOST_CHECK_EQUAL(acc.accumulative_balance.amount, 0);
         }
 
@@ -221,7 +217,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
         BOOST_TEST_MESSAGE("-- Waiting for next emission");
 
         {
-            auto gb = GOLOS_ACCUM_DISTRIBUTION_INTERVAL - (db->head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL);
+            auto gb = GOLOS_ACCUM_DISTRIBUTION_INTERVAL - (_db.head_block_num() % GOLOS_ACCUM_DISTRIBUTION_INTERVAL);
             generate_blocks(gb);
         }
 
@@ -240,7 +236,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Marking them as inactive");
 
-        db->modify(db->get_account("cyberfounder"), [&](auto& acc) {
+        _db.modify(_db.get_account("cyberfounder"), [&](auto& acc) {
             acc.recovery_account = "gc-regfund";
         });
 
@@ -248,14 +244,14 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         int accs_now = 0;
 
-        for (const auto& acc : db->get_index<account_index>().indices()) {
+        for (const auto& acc : _db.get_index<account_index>().indices()) {
             BOOST_CHECK_EQUAL(acc.frozen, false);
             ++accs_now;
         }
 
         BOOST_TEST_MESSAGE("-- Apply HF, check freezing");
 
-        db->set_hardfork(STEEMIT_HARDFORK_0_27);
+        _db.set_hardfork(STEEMIT_HARDFORK_0_27);
         validate_database();
 
         generate_block();
@@ -263,7 +259,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         int accs_after = 0;
 
-        const auto& idx = db->get_index<account_index, by_proved>();
+        const auto& idx = _db.get_index<account_index, by_proved>();
         auto itr = idx.begin();
         for (; itr != idx.end() && !itr->frozen; ++itr) {
             ++accs_after;
@@ -281,25 +277,25 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Check setting recovery account");
 
-        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").recovery_account, "gc-regfund");
+        BOOST_CHECK_EQUAL(_db.get_account("cyberfounder").recovery_account, "gc-regfund");
 
         validate_database();
 
         generate_block(1);
 
-        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").recovery_account, "recovery");
+        BOOST_CHECK_EQUAL(_db.get_account("cyberfounder").recovery_account, "recovery");
 
         validate_database();
 
         BOOST_TEST_MESSAGE("-- Checking recovery accounts are not fixing after HF27 long-ago interval");
 
-        db->modify(db->get_account("cyberfounder"), [&](auto& acc) {
+        _db.modify(_db.get_account("cyberfounder"), [&](auto& acc) {
             acc.recovery_account = "gc-regfund";
         });
 
         generate_block(1);
 
-        BOOST_CHECK_EQUAL(db->get_account("cyberfounder").recovery_account, "gc-regfund");
+        BOOST_CHECK_EQUAL(_db.get_account("cyberfounder").recovery_account, "gc-regfund");
 
         validate_database();
     } FC_LOG_AND_RETHROW() }
@@ -309,7 +305,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         signed_transaction tx;
 
-        ACTORS((goodie)(badie)(whale)(curator))
+        ACTORS_OLD((goodie)(badie)(whale)(curator))
         generate_block();
         validate_database();
 
@@ -345,15 +341,15 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
             vote.weight = 10000;
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, whale_private_key, vote));
 
-            BOOST_CHECK_GT(db->get_account_reputation("whale"), 0);
+            BOOST_CHECK_GT(_db.get_account_reputation("whale"), 0);
 
             vote.author = "badie";
             vote.weight = -10000; 
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, whale_private_key, vote));
         }
 
-        BOOST_CHECK_LT(db->get_account_reputation("badie"), 0);
-        BOOST_CHECK_EQUAL(db->get_account_reputation("goodie"), 0);
+        BOOST_CHECK_LT(_db.get_account_reputation("badie"), 0);
+        BOOST_CHECK_EQUAL(_db.get_account_reputation("goodie"), 0);
 
         validate_database();
 
@@ -375,10 +371,10 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Waiting for payout");
 
-        generate_blocks(db->head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS);
+        generate_blocks(_db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS);
 
-        BOOST_CHECK_EQUAL(db->get_comment_by_perm("goodie", string("test")).mode, archived);
-        BOOST_CHECK_EQUAL(db->get_comment_by_perm("badie", string("test")).mode, archived);
+        BOOST_CHECK_EQUAL(_db.get_comment_by_perm("goodie", string("test")).mode, archived);
+        BOOST_CHECK_EQUAL(_db.get_comment_by_perm("badie", string("test")).mode, archived);
 
         {
             auto ops = get_last_operations<curation_reward_operation>(10);
@@ -396,7 +392,7 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         signed_transaction tx;
 
-        ACTORS((goodie)(badie)(whale)(curator))
+        ACTORS_OLD((goodie)(badie)(whale)(curator))
         generate_block();
 
         validate_database();
@@ -433,15 +429,15 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
             vote.weight = 10000;
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, whale_private_key, vote));
 
-            BOOST_CHECK_GT(db->get_account_reputation("whale"), 0);
+            BOOST_CHECK_GT(_db.get_account_reputation("whale"), 0);
 
             vote.author = "badie";
             vote.weight = -10000; 
             GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, whale_private_key, vote));
         }
 
-        BOOST_CHECK_LT(db->get_account_reputation("badie"), 0);
-        BOOST_CHECK_EQUAL(db->get_account_reputation("goodie"), 0);
+        BOOST_CHECK_LT(_db.get_account_reputation("badie"), 0);
+        BOOST_CHECK_EQUAL(_db.get_account_reputation("goodie"), 0);
 
         validate_database();
 
@@ -463,14 +459,14 @@ BOOST_FIXTURE_TEST_SUITE(hf27_tests, hf27_database_fixture)
 
         BOOST_TEST_MESSAGE("-- Waiting for payout");
 
-        generate_blocks(db->get_comment_by_perm("goodie", string("test")).created + STEEMIT_CASHOUT_WINDOW_SECONDS - STEEMIT_BLOCK_INTERVAL);
+        generate_blocks(_db.get_comment_by_perm("goodie", string("test")).created + STEEMIT_CASHOUT_WINDOW_SECONDS - STEEMIT_BLOCK_INTERVAL);
 
-        db->set_hardfork(STEEMIT_HARDFORK_0_27);
+        _db.set_hardfork(STEEMIT_HARDFORK_0_27);
 
         generate_block();
 
-        BOOST_CHECK_EQUAL(db->get_comment_by_perm("goodie", string("test")).mode, archived);
-        BOOST_CHECK_EQUAL(db->get_comment_by_perm("badie", string("test")).mode, archived);
+        BOOST_CHECK_EQUAL(_db.get_comment_by_perm("goodie", string("test")).mode, archived);
+        BOOST_CHECK_EQUAL(_db.get_comment_by_perm("badie", string("test")).mode, archived);
 
         {
             auto ops = get_last_operations<curation_reward_operation>(10);

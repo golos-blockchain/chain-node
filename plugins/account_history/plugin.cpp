@@ -729,7 +729,23 @@ if (options.count(name)) { \
             insert_dual(op.owner);
         }
 
+        void operator()(const nft_auction_operation& op) {
+            insert_dual(op.owner);
+        }
+
         void operator()(const nft_buy_operation& op) {
+            auto& _db = myimpl->db;
+            if (_db.has_hardfork(STEEMIT_HARDFORK_0_30) && !op.order_id) {
+                // auction bet
+                const auto& no = _db.get_nft(op.token_id);
+                insert_pair(op.buyer, no.owner);
+                return;
+            } else if (op.token_id) {
+                if (op.name.size()) { // offer
+                    insert_pair(op.buyer, _db.get_nft(op.token_id).owner);
+                    return;
+                }
+            }
             insert_dual(op.buyer);
         }
 

@@ -12,6 +12,11 @@ using golos::chain::database;
 using golos::chain::nft_collection_object;
 using golos::chain::nft_object;
 using golos::chain::nft_order_object;
+using golos::chain::nft_order_index;
+using golos::chain::nft_bet_object;
+using golos::chain::nft_bet_index;
+using golos::chain::by_token_id;
+using golos::chain::by_token_owner;
 using golos::chain::to_string;
 using protocol::asset;
 using protocol::asset_symbol_type;
@@ -22,7 +27,7 @@ struct nft_collection_api_object {
     nft_collection_api_object(const nft_collection_object& nco) : id(nco.id),
         creator(nco.creator), name(asset(0, nco.name).symbol_name()), json_metadata(to_string(nco.json_metadata)),
         created(nco.created), token_count(nco.token_count), max_token_count(nco.max_token_count), last_token_id(nco.last_token_id),
-        last_buy_price(nco.last_buy_price), buy_order_count(nco.buy_order_count), sell_order_count(nco.sell_order_count),
+        last_buy_price(nco.last_buy_price), buy_order_count(nco.buy_order_count), sell_order_count(nco.sell_order_count), auction_count(nco.auction_count),
         market_depth(nco.market_depth), market_asks(nco.market_asks), market_volume(nco.market_volume) {
     }
 
@@ -41,6 +46,7 @@ struct nft_collection_api_object {
     asset last_buy_price;
     uint32_t buy_order_count = 0;
     uint32_t sell_order_count = 0;
+    uint32_t auction_count = 0;
     double market_depth = 0;
     double market_asks = 0;
     double market_volume = 0;
@@ -50,7 +56,8 @@ struct nft_api_object {
     nft_api_object(const nft_object& no) : id(no.id),
         creator(no.creator), name(asset(0, no.name).symbol_name()), owner(no.owner), token_id(no.token_id), burnt(no.burnt),
         issue_cost(no.issue_cost), last_buy_price(no.last_buy_price), json_metadata(to_string(no.json_metadata)), illformed(false),
-        issued(no.issued), last_update(no.last_update), selling(no.selling) {
+        issued(no.issued), last_update(no.last_update), selling(no.selling),
+        auction_min_price(no.auction_min_price), auction_expiration(no.auction_expiration) {
     }
 
     nft_api_object() {}
@@ -92,6 +99,9 @@ struct nft_api_object {
     time_point_sec last_update;
     bool selling = false;
 
+    asset auction_min_price{0, STEEM_SYMBOL};
+    time_point_sec auction_expiration;
+
     double price_real() const {
         return last_buy_price.to_real();
     }
@@ -100,7 +110,7 @@ struct nft_api_object {
 struct nft_order_api_object {
     nft_order_api_object(const nft_order_object& noo) : id(noo.id),
         creator(noo.creator), name(asset(0, noo.name).symbol_name()), token_id(noo.token_id),
-        owner(noo.owner), order_id(noo.order_id), price(noo.price), selling(noo.selling),
+        owner(noo.owner), order_id(noo.order_id), price(noo.price), selling(noo.selling), holds(noo.holds),
         created(noo.created) {
     }
 
@@ -116,6 +126,7 @@ struct nft_order_api_object {
     uint32_t order_id = 0;
     asset price;
     bool selling = false;
+    bool holds = false;
 
     time_point_sec created;
 
@@ -126,12 +137,33 @@ struct nft_order_api_object {
     }
 };
 
+struct nft_bet_api_object {
+    nft_bet_api_object(const nft_bet_object& nbo) : id(nbo.id),
+        creator(nbo.creator), name(asset(0, nbo.name).symbol_name()), token_id(nbo.token_id),
+        owner(nbo.owner), price(nbo.price),
+        created(nbo.created) {
+    }
+
+    nft_bet_api_object() {}
+
+    nft_bet_object::id_type id;
+
+    account_name_type creator;
+    std::string name;
+    uint32_t token_id = 0;
+
+    account_name_type owner;
+    asset price;
+
+    time_point_sec created;
+};
+
 struct nft_extended_api_object : nft_api_object {
     nft_extended_api_object(const nft_api_object& nao) : nft_api_object(nao) {}
 
-    nft_extended_api_object(const nft_api_object& nao, const database& _db, bool collections = true, bool orders = true)
+    nft_extended_api_object(const nft_api_object& nao, const database& _db, bool collections = true, bool orders = true, account_name_type current = account_name_type())
             : nft_api_object(nao) {
-        fill_extensions(_db, collections, orders);
+        fill_extensions(_db, collections, orders, current);
     }
 
     nft_extended_api_object() {}
@@ -141,13 +173,27 @@ struct nft_extended_api_object : nft_api_object {
     }
 
     void fill_order(const database& _db) {
-        const auto* ord = _db.find_nft_order(token_id);
-        if (ord) {
-            order = nft_order_api_object(*ord);
+        const auto& idx = _db.get_index<nft_order_index, by_token_id>();
+        auto itr = idx.lower_bound(token_id);
+        while (itr != idx.end() && itr->token_id == token_id) {
+            if (itr->selling) {
+                order = nft_order_api_object(*itr);
+                return;
+            }
+            ++itr;
         }
     }
 
-    void fill_extensions(const database& _db, bool collections = true, bool orders = true) {
+    void fill_bets_offers(const database& _db, account_name_type current) {
+        bets = std::vector<nft_bet_api_object>();
+        const auto& idx = _db.get_index<nft_bet_index, by_token_owner>();
+        auto itr = idx.find(std::make_tuple(token_id, current));
+        if (itr != idx.end()) {
+            bets->emplace_back(*itr);
+        }
+    }
+
+    void fill_extensions(const database& _db, bool collections = true, bool orders = true, account_name_type current = account_name_type()) {
         if (!name.size() && !token_id) {
             return;
         }
@@ -156,6 +202,9 @@ struct nft_extended_api_object : nft_api_object {
         }
         if (orders && !order) {
             fill_order(_db);
+        }
+        if (current != account_name_type()) {
+            fill_bets_offers(_db, current);
         }
     }
 
@@ -168,26 +217,52 @@ struct nft_extended_api_object : nft_api_object {
 
     fc::optional<nft_collection_api_object> collection;
     fc::optional<nft_order_api_object> order;
+    fc::optional<std::vector<nft_bet_api_object>> bets;
+};
+
+struct nft_extended_bet_api_object : nft_bet_api_object {
+    nft_extended_bet_api_object(const nft_bet_api_object& nbao) : nft_bet_api_object(nbao) {}
+
+    nft_extended_bet_api_object(const nft_bet_object& nbo, const database& _db, bool fill_token = false)
+            : nft_bet_api_object(nbo) {
+        if (fill_token) {
+            const auto& no = _db.get<nft_object, by_token_id>(token_id);
+            token = no;
+        }
+    }
+
+    nft_extended_bet_api_object() {}
+
+    fc::optional<nft_api_object> token;
 };
 
 } } } // golos::plugins::nft_api
 
 FC_REFLECT((golos::plugins::nft_api::nft_collection_api_object),
     (id)(creator)(name)(json_metadata)(created)(token_count)(max_token_count)(last_token_id)
-    (last_buy_price)(buy_order_count)(sell_order_count)
+    (last_buy_price)(buy_order_count)(sell_order_count)(auction_count)
     (market_depth)(market_asks)(market_volume)
 )
 
 FC_REFLECT((golos::plugins::nft_api::nft_api_object),
     (id)(creator)(name)(owner)(token_id)(burnt)(issue_cost)(last_buy_price)(json_metadata)(illformed)
-    (issued)(last_update)(selling)
+    (issued)(last_update)(selling)(auction_min_price)(auction_expiration)
 )
 
 FC_REFLECT((golos::plugins::nft_api::nft_order_api_object),
-    (id)(creator)(name)(token_id)(owner)(order_id)(price)(selling)(created)(token)
+    (id)(creator)(name)(token_id)(owner)(order_id)(price)(selling)(holds)(created)(token)
+)
+
+FC_REFLECT((golos::plugins::nft_api::nft_bet_api_object),
+    (id)(creator)(name)(token_id)(owner)(price)(created)
 )
 
 FC_REFLECT_DERIVED((golos::plugins::nft_api::nft_extended_api_object),
     ((golos::plugins::nft_api::nft_api_object)),
-    (collection)(order)
+    (collection)(order)(bets)
+)
+
+FC_REFLECT_DERIVED((golos::plugins::nft_api::nft_extended_bet_api_object),
+    ((golos::plugins::nft_api::nft_bet_api_object)),
+    (token)
 )

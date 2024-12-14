@@ -23,17 +23,17 @@ using namespace golos::plugins;
 
 BOOST_AUTO_TEST_SUITE(transit_tests)
 
-    BOOST_FIXTURE_TEST_CASE(validate_transit_operation, clean_database_fixture) {
+    BOOST_FIXTURE_TEST_CASE(validate_transit_operation, clean_database_fixture_wrap) {
         try {
             BOOST_TEST_MESSAGE("Testing: transit_to_cyberway voting");
 
-            ACTORS((alice))
+            ACTORS_OLD((alice))
             fund("alice", 10000);
             private_key_type signing_key = generate_private_key("new_key");
 
             BOOST_TEST_MESSAGE("-- register witness");
             signed_transaction tx;
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(_db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
 
             witness_update_operation uop;
             uop.owner = "alice";
@@ -49,32 +49,32 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
             top.owner = uop.owner;
             top.vote_to_transit = true;
             tx.operations.push_back(top);
-            tx.sign(alice_private_key, db->get_chain_id());
-            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            tx.sign(alice_private_key, _db.get_chain_id());
+            GOLOS_CHECK_NO_THROW(_db.push_transaction(tx, 0));
 
             BOOST_TEST_MESSAGE("-- same vote to transit");
             tx.clear();
             tx.operations.push_back(top);
-            tx.sign(alice_private_key, db->get_chain_id());
-            GOLOS_CHECK_THROW_PROPS(db->push_transaction(tx, 0), tx_invalid_operation, {});
+            tx.sign(alice_private_key, _db.get_chain_id());
+            GOLOS_CHECK_THROW_PROPS(_db.push_transaction(tx, 0), tx_invalid_operation, {});
 
             BOOST_TEST_MESSAGE("-- remove vote to transit");
             tx.clear();
             top.vote_to_transit = false;
             tx.operations.push_back(top);
-            tx.sign(alice_private_key, db->get_chain_id());
-            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            tx.sign(alice_private_key, _db.get_chain_id());
+            GOLOS_CHECK_NO_THROW(_db.push_transaction(tx, 0));
         }
         FC_LOG_AND_RETHROW()
     }
 
-    BOOST_FIXTURE_TEST_CASE(transit_to_cyberway_event, clean_database_fixture) {
+    BOOST_FIXTURE_TEST_CASE(transit_to_cyberway_event, clean_database_fixture_wrap) {
         try {
             resize_shared_mem(1024 * 1024 * 32);
 
             BOOST_TEST_MESSAGE("Testing: transit_to_cyberway event");
 
-            auto witness = db->get_scheduled_witness(1);
+            auto witness = _db.get_scheduled_witness(1);
             auto witness_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             generate_block();
 
@@ -83,14 +83,14 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
 
             BOOST_TEST_MESSAGE("-- vote to transit");
             signed_transaction tx;
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(_db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
 
             transit_to_cyberway_operation op;
             op.owner = witness;
             op.vote_to_transit = true;
             tx.operations.push_back(op);
-            tx.sign(witness_priv_key, db->get_chain_id());
-            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            tx.sign(witness_priv_key, _db.get_chain_id());
+            GOLOS_CHECK_NO_THROW(_db.push_transaction(tx, 0));
 
             BOOST_TEST_MESSAGE("-- save block to transit");
             generate_block();
@@ -98,13 +98,13 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
         FC_LOG_AND_RETHROW()
     }
 
-    BOOST_FIXTURE_TEST_CASE(skip_transit_to_cyberway_event, clean_database_fixture) {
+    BOOST_FIXTURE_TEST_CASE(skip_transit_to_cyberway_event, clean_database_fixture_wrap) {
         try {
             resize_shared_mem(1024 * 1024 * 32);
 
             BOOST_TEST_MESSAGE("Testing: skipping of transit_to_cyberway event");
 
-            auto witness = db->get_scheduled_witness(1);
+            auto witness = _db.get_scheduled_witness(1);
             auto witness_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             generate_block();
 
@@ -113,14 +113,14 @@ BOOST_AUTO_TEST_SUITE(transit_tests)
 
             BOOST_TEST_MESSAGE("-- vote to transit");
             signed_transaction tx;
-            tx.set_expiration(db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
+            tx.set_expiration(_db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION);
 
             transit_to_cyberway_operation op;
             op.owner = witness;
             op.vote_to_transit = true;
             tx.operations.push_back(op);
-            tx.sign(witness_priv_key, db->get_chain_id());
-            GOLOS_CHECK_NO_THROW(db->push_transaction(tx, 0));
+            tx.sign(witness_priv_key, _db.get_chain_id());
+            GOLOS_CHECK_NO_THROW(_db.push_transaction(tx, 0));
 
             BOOST_TEST_MESSAGE("-- save block to transit");
             generate_block();

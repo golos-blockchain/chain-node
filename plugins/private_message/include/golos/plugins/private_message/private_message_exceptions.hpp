@@ -15,6 +15,13 @@ namespace golos { namespace plugins { namespace private_message {
             add_unknown_contact,
             contact_has_not_changed,
             no_unread_messages,
+            too_low_gp,
+            already_exists,
+            cannot_change_group_encrypted,
+            unauthorized,
+            too_many_groups,
+            too_many_moders,
+            group_is_public
         };
     };
 
@@ -36,4 +43,11 @@ FC_REFLECT_ENUM(golos::plugins::private_message::logic_errors::types,
     (add_unknown_contact)
     (contact_has_not_changed)
     (no_unread_messages)
+    (too_low_gp)
+    (already_exists)
+    (cannot_change_group_encrypted)
+    (unauthorized)
+    (too_many_groups)
+    (too_many_moders)
+    (group_is_public)
 );

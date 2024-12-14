@@ -14,12 +14,12 @@ BOOST_FIXTURE_TEST_SUITE(worker_api_plugin_request, worker_api_fixture)
 BOOST_AUTO_TEST_CASE(worker_request_create) {
     BOOST_TEST_MESSAGE("Testing: worker_request_create");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
 
-    const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
+    const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
 
     BOOST_TEST_MESSAGE("-- Checking metadata creating");
 
-    const auto& wto_post = db->get_comment_by_perm("bob", string("bob-request"));
+    const auto& wto_post = _db.get_comment_by_perm("bob", string("bob-request"));
     auto wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK(wtmo_itr != wtmo_idx.end());
 
@@ -66,12 +66,12 @@ BOOST_AUTO_TEST_CASE(worker_request_create) {
 BOOST_AUTO_TEST_CASE(worker_request_modify) {
     BOOST_TEST_MESSAGE("Testing: worker_request_modify");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
 
-    const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
+    const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
@@ -86,14 +86,14 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
-    const auto& wto_post = db->get_comment_by_perm("bob", string("bob-request"));
+    const auto& wto_post = _db.get_comment_by_perm("bob", string("bob-request"));
     auto wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK(wtmo_itr != wtmo_idx.end());
     BOOST_CHECK_EQUAL(wtmo_itr->modified, fc::time_point_sec::min());
 
     BOOST_TEST_MESSAGE("-- Modifying worker request");
 
-    auto now = db->head_block_time();
+    auto now = _db.head_block_time();
 
     op.required_amount_min = ASSET_GBG(6000);
     op.required_amount_max = ASSET_GBG(60000);
@@ -112,12 +112,12 @@ BOOST_AUTO_TEST_CASE(worker_request_modify) {
 BOOST_AUTO_TEST_CASE(worker_request_vote) {
     BOOST_TEST_MESSAGE("Testing: worker_request_vote");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
 
-    const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
+    const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
-    const auto& wto_post = db->get_comment_by_perm("bob", string("bob-request"));
+    const auto& wto_post = _db.get_comment_by_perm("bob", string("bob-request"));
     auto wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK(wtmo_itr != wtmo_idx.end());
     BOOST_CHECK_EQUAL(wtmo_itr->net_rshares, 0);
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, alice_private_key, vop));
     generate_block();
 
-    const auto& wto_post_voted = db->get_comment_by_perm("bob", string("bob-request"));
+    const auto& wto_post_voted = _db.get_comment_by_perm("bob", string("bob-request"));
     wtmo_itr = wtmo_idx.find(wto_post_voted.id);
     BOOST_CHECK(wtmo_itr != wtmo_idx.end());
 
@@ -161,12 +161,12 @@ BOOST_AUTO_TEST_CASE(worker_request_vote) {
 BOOST_AUTO_TEST_CASE(worker_request_delete) {
     BOOST_TEST_MESSAGE("Testing: worker_request_delete");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
 
-    const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
+    const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
 
     BOOST_TEST_MESSAGE("-- Creating request without upvotes");
 
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
     generate_block();
 
-    const auto& wto_post = db->get_comment_by_perm("bob", string("bob-request"));
+    const auto& wto_post = _db.get_comment_by_perm("bob", string("bob-request"));
     auto wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK(wtmo_itr != wtmo_idx.end());
 
@@ -232,12 +232,12 @@ BOOST_AUTO_TEST_CASE(worker_request_delete) {
 BOOST_AUTO_TEST_CASE(worker_request_approve) {
     BOOST_TEST_MESSAGE("Testing: worker_request_approve");
 
-    ACTORS((alice)(bob)(carol)(dave))
+    ACTORS_OLD((alice)(bob)(carol)(dave))
     generate_block();
 
     signed_transaction tx;
 
-    const auto& wtmo_idx = db->get_index<worker_request_metadata_index, by_post>();
+    const auto& wtmo_idx = _db.get_index<worker_request_metadata_index, by_post>();
 
     comment_create("bob", bob_private_key, "bob-request", "", "bob-request");
 
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE(worker_request_approve) {
 
     BOOST_TEST_MESSAGE("-- Checking upvotes are 0 before approving");
 
-    const auto& wto_post = db->get_comment_by_perm("bob", string("bob-request"));
+    const auto& wto_post = _db.get_comment_by_perm("bob", string("bob-request"));
     auto wtmo_itr = wtmo_idx.find(wto_post.id);
     BOOST_CHECK(wtmo_itr != wtmo_idx.end());
     BOOST_CHECK_EQUAL(wtmo_itr->upvotes, 0);

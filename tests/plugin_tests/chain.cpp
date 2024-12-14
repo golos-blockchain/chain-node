@@ -36,7 +36,7 @@ struct chain_fixture : public golos::chain::database_fixture {
         vote_key = post_key;
         for (uint32_t i = 0; i < n; i++) {
             const auto name = "voter" + std::to_string(i);
-            GOLOS_CHECK_NO_THROW(account_create(name, private_key.get_public_key(), post_key.get_public_key()));
+            GOLOS_CHECK_NO_THROW(account_create(name, private_key.get_public_key(), private_key.get_public_key(), post_key.get_public_key(), private_key.get_public_key()));
         }
         generate_block();
         validate_database();
@@ -61,7 +61,7 @@ struct chain_fixture : public golos::chain::database_fixture {
     }
 
     void post(const std::string& permlink = "post", const std::string& parent_permlink = "test") {
-        ACTOR(alice);
+        ACTOR_OLD(alice);
         comment_operation op;
         op.author = "alice";
         op.permlink = permlink;

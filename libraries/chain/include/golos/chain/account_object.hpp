@@ -64,6 +64,7 @@ public:
     asset accumulative_balance = asset(0, STEEM_SYMBOL);
     asset tip_balance = asset(0, STEEM_SYMBOL);
     asset market_balance = asset(0, STEEM_SYMBOL);
+    asset nft_hold_balance = asset(0, STEEM_SYMBOL); ///< offers and bets
 
     /**
      *  SBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
@@ -407,6 +408,16 @@ public:
 
     account_name_type account;
     account_name_type blocking;
+};
+
+enum class relation_direction : uint8_t {
+    me_to_them,
+    they_to_me,
+    _size
+};
+
+enum class relation_type : uint8_t {
+    blocking
 };
 
 struct by_name;
@@ -759,7 +770,7 @@ FC_REFLECT((golos::chain::account_object),
     (savings_balance)
     (accumulative_balance)
     (tip_balance)
-    (market_balance)
+    (market_balance)(nft_hold_balance)
     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
     (market_sbd_balance)
     (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
@@ -830,3 +841,13 @@ FC_REFLECT((golos::chain::account_blocking_object),
         (id)(account)(blocking)
 )
 CHAINBASE_SET_INDEX_TYPE(golos::chain::account_blocking_object, golos::chain::account_blocking_index)
+
+FC_REFLECT_ENUM(
+    golos::chain::relation_direction,
+    (me_to_them)(they_to_me)(_size)
+)
+
+FC_REFLECT_ENUM(
+    golos::chain::relation_type,
+    (blocking)
+)

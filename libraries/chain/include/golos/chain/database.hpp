@@ -302,12 +302,22 @@ namespace golos { namespace chain {
             const nft_object&  get_nft(uint32_t token_id) const;
             const nft_object*  find_nft(uint32_t token_id) const;
 
-            const nft_order_object& get_nft_order(uint32_t token_id) const;
             const nft_order_object& get_nft_order(account_name_type seller, uint32_t order_id) const;
-            const nft_order_object* find_nft_order(uint32_t token_id) const;
             const nft_order_object* find_nft_order(account_name_type seller, uint32_t order_id) const;
-            void               throw_if_exists_nft_order(uint32_t token_id) const;
             void               throw_if_exists_nft_order(const account_name_type& seller, uint32_t order_id) const;
+
+            void clear_nft_orders(uint32_t token_id,
+                const nft_order_object* proceed_order, const nft_order_object* clear_order,
+                uint32_t& sell_count, uint32_t& buy_count, double& market_depth, double& market_asks,
+                bool only_buying = false);
+
+            bool check_nft_buying_price(uint32_t token_id, asset price) const;
+
+            bool check_nft_bets(uint32_t token_id, asset price) const;
+
+            void clear_nft_bets(uint32_t token_id, const nft_bet_object* proceed_bet = nullptr);
+
+            void process_nft_bets();
 
             void update_pair_depth(asset base, asset quote);
             void update_asset_marketed(asset_symbol_type symbol);
@@ -610,7 +620,9 @@ namespace golos { namespace chain {
 
             void process_funds();
 
-            asset get_min_gp_to_emission() const;
+            std::pair<asset, asset> get_min_gp_to_emission() const;
+
+            std::pair<asset, asset> get_min_gp_for_groups() const;
 
             void process_accumulative_distributions();
 
@@ -737,7 +749,6 @@ namespace golos { namespace chain {
 #endif
 
             const block_log &get_block_log() const;
-
         protected:
             //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
             //void pop_undo() { object_database::pop_undo(); }

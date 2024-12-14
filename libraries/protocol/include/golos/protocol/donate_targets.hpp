@@ -13,6 +13,7 @@ struct blog_donate {
 fc::optional<blog_donate> get_blog_donate(const donate_operation& op);
 
 struct message_donate {
+    std::string group;
     account_name_type from;
     account_name_type to;
     uint64_t nonce;

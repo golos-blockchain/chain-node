@@ -82,6 +82,7 @@ namespace golos { namespace chain {
             invite_object_type,
             asset_object_type,
             market_pair_object_type,
+            fix_me_object_type,
             account_balance_object_type,
             event_object_type,
             account_blocking_object_type,
@@ -89,7 +90,8 @@ namespace golos { namespace chain {
             paid_subscriber_object_type,
             nft_collection_object_type,
             nft_object_type,
-            nft_order_object_type
+            nft_order_object_type,
+            nft_bet_object_type
         };
 
         class dynamic_global_property_object;
@@ -131,6 +133,7 @@ namespace golos { namespace chain {
         class invite_object;
         class asset_object;
         class market_pair_object;
+        class fix_me_object;
         class account_balance_object;
         class event_object;
         class account_blocking_object;
@@ -139,6 +142,7 @@ namespace golos { namespace chain {
         class nft_collection_object;
         class nft_object;
         class nft_order_object;
+        class nft_bet_object;
 
         typedef object_id<dynamic_global_property_object> dynamic_global_property_id_type;
         typedef object_id<account_object> account_id_type;
@@ -179,6 +183,7 @@ namespace golos { namespace chain {
         typedef object_id<invite_object> invite_object_id_type;
         typedef object_id<asset_object> asset_object_id_type;
         typedef object_id<market_pair_object> market_pair_object_id_type;
+        typedef object_id<fix_me_object> fix_me_object_id_type;
         typedef object_id<account_balance_object> asset_balance_object_id_type;
         typedef object_id<event_object> event_object_id_type;
         typedef object_id<account_blocking_object> account_blocking_object_id_type;
@@ -187,6 +192,7 @@ namespace golos { namespace chain {
         typedef object_id<nft_collection_object> nft_collection_object_id_type;
         typedef object_id<nft_object> nft_object_id_type;
         typedef object_id<nft_order_object> nft_order_object_id_type;
+        typedef object_id<nft_bet_object> nft_bet_object_id_type;
 
         enum bandwidth_type {
             post,         ///< Rate limiting posting reward eligibility over time
@@ -298,6 +304,7 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (invite_object_type)
                 (asset_object_type)
                 (market_pair_object_type)
+                (fix_me_object_type)
                 (account_balance_object_type)
                 (event_object_type)
                 (account_blocking_object_type)
@@ -306,6 +313,7 @@ FC_REFLECT_ENUM(golos::chain::object_type,
                 (nft_collection_object_type)
                 (nft_object_type)
                 (nft_order_object_type)
+                (nft_bet_object_type)
 )
 
 FC_REFLECT_TYPENAME((golos::chain::shared_string))

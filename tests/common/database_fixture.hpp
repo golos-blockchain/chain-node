@@ -9,12 +9,14 @@
 #include <golos/plugins/account_history/plugin.hpp>
 #include <golos/plugins/social_network/social_network.hpp>
 
+#include <boost/test/unit_test.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128lh_t.hpp>
 
 #include <iostream>
+#include "builder.hpp"
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
 
@@ -235,25 +237,43 @@ SIMPLE_PROTOCOL_ERROR_VALIDATOR(tx_missing_other_auth);
 /// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
 #define INVOKE(test) ((struct test*)this)->test_method(); trx.clear()
 
-#define PREP_ACTOR(name) \
+#define PREP_ACTOR_OLD(name) \
    fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name));   \
    fc::ecc::private_key name ## _post_key = generate_private_key(BOOST_PP_STRINGIZE(name) "_post"); \
    public_key_type name ## _public_key = name ## _private_key.get_public_key();
 
-#define ACTOR(name) \
-   PREP_ACTOR(name) \
-   const auto& name = account_create(BOOST_PP_STRINGIZE(name), name ## _public_key, name ## _post_key.get_public_key()); \
+#define ACTOR_OLD(name) \
+   PREP_ACTOR_OLD(name) \
+   const auto& name = account_create(BOOST_PP_STRINGIZE(name), name ## _public_key, name ## _public_key, name ## _post_key.get_public_key(), name ## _public_key); \
    account_id_type name ## _id = name.id; (void)name ## _id;
 
 #define GET_ACTOR(name) \
-   fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name)); \
    const account_object& name = db->get_account(BOOST_PP_STRINGIZE(name)); \
+   account_id_type name ## _id = name.id; (void)name ## _id;
+
+#define ACTORS_OLD_IMPL(r, data, elem) ACTOR_OLD(elem)
+#define ACTORS_OLD(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_OLD_IMPL, ~, names) \
+   validate_database();
+
+
+#define PREP_ACTOR(name) \
+   fc::ecc::private_key name ## _owner_key = generate_private_key(BOOST_PP_STRINGIZE(name));   \
+   fc::ecc::private_key name ## _active_key = generate_private_key(BOOST_PP_STRINGIZE(name) "_active");   \
+   fc::ecc::private_key name ## _posting_key = generate_private_key(BOOST_PP_STRINGIZE(name) "_posting"); \
+   fc::ecc::private_key name ## _memo_key = generate_private_key(BOOST_PP_STRINGIZE(name) "_memo"); \
+   public_key_type name ## _owner_public = name ## _owner_key.get_public_key(); \
+   public_key_type name ## _active_public = name ## _active_key.get_public_key(); \
+   public_key_type name ## _posting_public = name ## _posting_key.get_public_key(); \
+   public_key_type name ## _memo_public = name ## _memo_key.get_public_key();
+
+#define ACTOR(name) \
+   PREP_ACTOR(name) \
+   const auto& name = account_create(BOOST_PP_STRINGIZE(name), name ## _owner_public, name ## _active_public, name ## _posting_public, name ## _memo_public); \
    account_id_type name ## _id = name.id; (void)name ## _id;
 
 #define ACTORS_IMPL(r, data, elem) ACTOR(elem)
 #define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names) \
    validate_database();
-
 
 // Note: testnet and mainnet can have different asset names
 #define ASSET(s) asset::from_string(s)
@@ -425,6 +445,7 @@ namespace golos { namespace chain {
         struct database_fixture {
             // the reason we use an app is to exercise the indexes of built-in plugins
             chain::database* db;
+            operation_builder _op;
             signed_transaction trx;
             private_key init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             string debug_key = golos::utilities::key_to_wif(init_account_priv_key);
@@ -440,6 +461,7 @@ namespace golos { namespace chain {
             bool skip_key_index_test = false;
 
             database_fixture() {
+                _op = operation_builder(this);
             }
 
             virtual ~database_fixture();
@@ -535,15 +557,19 @@ namespace golos { namespace chain {
                     const string &creator,
                     const private_key_type &creator_key,
                     const share_type &fee,
-                    const public_key_type &key,
-                    const public_key_type &post_key,
+                    const public_key_type &owner_key,
+                    const public_key_type &active_key,
+                    const public_key_type &posting_key,
+                    const public_key_type &memo_key,
                     const string &json_metadata
             );
 
             const account_object &account_create(
                     const string &name,
-                    const public_key_type &key,
-                    const public_key_type &post_key
+                    const public_key_type &owner_key,
+                    const public_key_type &active_key,
+                    const public_key_type &posting_key,
+                    const public_key_type &memo_key
             );
 
             const account_object &account_create(
@@ -672,11 +698,22 @@ namespace golos { namespace chain {
         };
 
         struct clean_database_fixture : public database_fixture {
-            clean_database_fixture(bool init = true);
+            clean_database_fixture(bool init = true,
+                std::function<void()> custom_init = {});
 
             ~clean_database_fixture() override;
 
             void resize_shared_mem(uint64_t size);
+        };
+
+        struct clean_database_fixture_wrap : public clean_database_fixture {
+            clean_database_fixture_wrap(bool init = true,
+                std::function<void()> custom_init = {}) :
+                    clean_database_fixture(init, custom_init),
+                    _db(*db) {
+            }
+
+            chain::database& _db;
         };
 
         struct live_database_fixture : public database_fixture {

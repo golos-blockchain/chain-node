@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE(worker_request_validate) {
 BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
     BOOST_TEST_MESSAGE("Testing: worker_request_apply_create");
 
-    ACTORS((alice)(bob)(carol)(dave)(eve)(fred)(greta))
+    ACTORS_OLD((alice)(bob)(carol)(dave)(eve)(fred)(greta))
     generate_block();
 
     signed_transaction tx;
@@ -162,15 +162,15 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
     BOOST_TEST_MESSAGE("-- Normal create worker request case");
 
     fund("bob", ASSET_GBG(101));
-    const auto& created = db->head_block_time();
+    const auto& created = _db.head_block_time();
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
-    BOOST_CHECK_EQUAL(db->get_balance("bob", SBD_SYMBOL), ASSET_GBG(1));
-    BOOST_CHECK_EQUAL(db->get_balance("workers", SBD_SYMBOL), ASSET_GBG(100));
+    BOOST_CHECK_EQUAL(_db.get_balance("bob", SBD_SYMBOL), ASSET_GBG(1));
+    BOOST_CHECK_EQUAL(_db.get_balance("workers", SBD_SYMBOL), ASSET_GBG(100));
 
-    const auto& wro_post = db->get_comment_by_perm("bob", string("bob-request"));
-    const auto& wro = db->get_worker_request(wro_post.id);
+    const auto& wro_post = _db.get_comment_by_perm("bob", string("bob-request"));
+    const auto& wro = _db.get_worker_request(wro_post.id);
     BOOST_CHECK_EQUAL(wro.post, wro_post.id);
     BOOST_CHECK_EQUAL(wro.worker, op.worker);
     BOOST_CHECK_EQUAL(wro.state, worker_request_state::created);
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
 
         comment_create("greta", greta_private_key, "greta-request", "", "greta-request");
 
-        generate_blocks(db->head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS + STEEMIT_BLOCK_INTERVAL, true);
+        generate_blocks(_db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS + STEEMIT_BLOCK_INTERVAL, true);
 
         op.author = "greta";
         op.permlink = "greta-request";
@@ -202,7 +202,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
         op.permlink = "dave-request";
         op.vest_reward = true;
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, dave_private_key, op));
-        BOOST_CHECK(db->get_worker_request(db->get_comment_by_perm("dave", string("dave-request")).id).vest_reward);
+        BOOST_CHECK(_db.get_worker_request(_db.get_comment_by_perm("dave", string("dave-request")).id).vest_reward);
     }
 
     validate_database();
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_create) {
 BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     BOOST_TEST_MESSAGE("Testing: worker_request_apply_modify");
 
-    ACTORS((alice)(bob)(carol))
+    ACTORS_OLD((alice)(bob)(carol))
     generate_block();
 
     signed_transaction tx;
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     op.required_amount_min = ASSET_GOLOS(6000);
     op.required_amount_max = ASSET_GOLOS(60000);
     op.duration = fc::days(5).to_seconds();
-    const auto& created = db->head_block_time();
+    const auto& created = _db.head_block_time();
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
     generate_block();
 
@@ -238,8 +238,8 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     generate_block();
 
     {
-        const auto& wro_post = db->get_comment_by_perm("bob", string("bob-request"));
-        const auto& wro = db->get_worker_request(wro_post.id);
+        const auto& wro_post = _db.get_comment_by_perm("bob", string("bob-request"));
+        const auto& wro = _db.get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.required_amount_min, op.required_amount_min);
         BOOST_CHECK_EQUAL(wro.required_amount_max, op.required_amount_max);
     }
@@ -251,8 +251,8 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     generate_block();
 
     {
-        const auto& wro_post = db->get_comment_by_perm("bob", string("bob-request"));
-        const auto& wro = db->get_worker_request(wro_post.id);
+        const auto& wro_post = _db.get_comment_by_perm("bob", string("bob-request"));
+        const auto& wro = _db.get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.duration, op.duration);
         BOOST_CHECK_EQUAL(wro.vote_end_time, created + op.duration);
     }
@@ -264,8 +264,8 @@ BOOST_AUTO_TEST_CASE(worker_request_apply_modify) {
     generate_block();
 
     {
-        const auto& wro_post = db->get_comment_by_perm("bob", string("bob-request"));
-        const auto& wro = db->get_worker_request(wro_post.id);
+        const auto& wro_post = _db.get_comment_by_perm("bob", string("bob-request"));
+        const auto& wro = _db.get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.worker, "bob");
     }
 
@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_validate) {
 BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     BOOST_TEST_MESSAGE("Testing: worker_request_vote_apply_combinations");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
@@ -358,11 +358,11 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
     GOLOS_CHECK_ERROR_LOGIC(already_voted_in_similar_way, alice_private_key, op);
 
     auto check_votes = [&](int upvote_count, int downvote_count) {
-        const auto& post = db->get_comment_by_perm("bob", string("bob-request"));
+        const auto& post = _db.get_comment_by_perm("bob", string("bob-request"));
         uint32_t upvotes = 0;
         uint32_t downvotes = 0;
-        const auto& vote_idx = db->get_index<worker_request_vote_index, by_request_voter>();
-        auto vote_itr = vote_idx.lower_bound(db->get_comment_by_perm("bob", string("bob-request")).id);
+        const auto& vote_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
+        auto vote_itr = vote_idx.lower_bound(_db.get_comment_by_perm("bob", string("bob-request")).id);
         for (; vote_itr != vote_idx.end() && vote_itr->post == post.id; ++vote_itr) {
             (vote_itr->vote_percent > 0) ? upvotes++ : downvotes++;
         }
@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_combinations) {
 BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     BOOST_TEST_MESSAGE("Testing: worker_request_vote_apply_approve");
 
-    ACTORS((alice)(bob)(carol)(dave)(frad))
+    ACTORS_OLD((alice)(bob)(carol)(dave)(frad))
     generate_block();
 
     signed_transaction tx;
@@ -449,9 +449,9 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     wtop.required_amount_min = ASSET_GOLOS(6);
     wtop.required_amount_max = ASSET_GOLOS(60);
     wtop.duration = fc::days(5).to_seconds();
-    const auto& created = db->head_block_time();
+    const auto& created = _db.head_block_time();
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, wtop));
-    BOOST_CHECK_EQUAL(db->get_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id).vote_end_time,
+    BOOST_CHECK_EQUAL(_db.get_worker_request(_db.get_comment_by_perm("bob", string("bob-request")).id).vote_end_time,
         created + wtop.duration);
 
     BOOST_TEST_MESSAGE("-- Creating carol request in same block");
@@ -463,7 +463,7 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     wtop.permlink = "carol-request";
     wtop.worker = "carol";
     GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, carol_private_key, wtop));
-    BOOST_CHECK_EQUAL(db->get_worker_request(db->get_comment_by_perm("carol", string("carol-request")).id).vote_end_time,
+    BOOST_CHECK_EQUAL(_db.get_worker_request(_db.get_comment_by_perm("carol", string("carol-request")).id).vote_end_time,
         created + wtop.duration);
 
     BOOST_TEST_MESSAGE("-- Creating dave request in same block");
@@ -521,19 +521,19 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
 
     BOOST_TEST_MESSAGE("-- Enabling clearing of votes and waiting for (vote_term - 1 block)");
 
-    generate_blocks(db->get_comment_by_perm("bob", string("bob-request")).created
+    generate_blocks(_db.get_comment_by_perm("bob", string("bob-request")).created
         + wtop.duration - STEEMIT_BLOCK_INTERVAL, true);
 
-    db->set_clear_old_worker_votes(true);
+    _db.set_clear_old_worker_votes(true);
 
     BOOST_TEST_MESSAGE("-- Checking bob request opened and vote still exists");
 
     {
-        const auto& wro_post = db->get_comment_by_perm("bob", string("bob-request"));
-        const auto& wro = db->get_worker_request(wro_post.id);
+        const auto& wro_post = _db.get_comment_by_perm("bob", string("bob-request"));
+        const auto& wro = _db.get_worker_request(wro_post.id);
         BOOST_CHECK(wro.state != worker_request_state::closed_by_expiration);
 
-        const auto& wrvo_idx = db->get_index<worker_request_vote_index, by_request_voter>();
+        const auto& wrvo_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
         BOOST_CHECK(wrvo_idx.find(wro_post.id) != wrvo_idx.end());
     }
 
@@ -544,11 +544,11 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     BOOST_TEST_MESSAGE("-- Checking bob request closed and vote cleared");
 
     {
-        const auto& wro_post = db->get_comment_by_perm("bob", string("bob-request"));
-        const auto& wro = db->get_worker_request(wro_post.id);
+        const auto& wro_post = _db.get_comment_by_perm("bob", string("bob-request"));
+        const auto& wro = _db.get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::closed_by_expiration);
 
-        const auto& wrvo_idx = db->get_index<worker_request_vote_index, by_request_voter>();
+        const auto& wrvo_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
         BOOST_CHECK(wrvo_idx.find(wro_post.id) == wrvo_idx.end());
 
         BOOST_TEST_MESSAGE("-- Checking virtual operation pushed");
@@ -562,14 +562,14 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     BOOST_TEST_MESSAGE("-- Checking carol request is not closed and has votes");
 
     {
-        const auto& wro_post = db->get_comment_by_perm("carol", string("carol-request"));
-        const auto& wro = db->get_worker_request(wro_post.id);
+        const auto& wro_post = _db.get_comment_by_perm("carol", string("carol-request"));
+        const auto& wro = _db.get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, wro.required_amount_max);
 
         BOOST_TEST_MESSAGE("-- Checking carol request has votes (it should, clearing is enabled after final vote)");
 
-        const auto& wrvo_idx = db->get_index<worker_request_vote_index, by_request_voter>();
+        const auto& wrvo_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
         BOOST_CHECK(wrvo_idx.find(wro_post.id) != wrvo_idx.end());
 
         BOOST_TEST_MESSAGE("-- Checking virtual operation pushed");
@@ -583,14 +583,14 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     BOOST_TEST_MESSAGE("-- Checking dave request is not closed and has votes");
 
     {
-        const auto& wro_post = db->get_comment_by_perm("dave", string("dave-request"));
-        const auto& wro = db->get_worker_request(wro_post.id);
+        const auto& wro_post = _db.get_comment_by_perm("dave", string("dave-request"));
+        const auto& wro = _db.get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::payment);
         BOOST_CHECK_EQUAL(wro.remaining_payment, ASSET_GOLOS(30));
 
         BOOST_TEST_MESSAGE("-- Checking dave request has votes (it should, clearing is enabled after final vote)");
 
-        const auto& wrvo_idx = db->get_index<worker_request_vote_index, by_request_voter>();
+        const auto& wrvo_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
         BOOST_CHECK(wrvo_idx.find(wro_post.id) != wrvo_idx.end());
 
         BOOST_TEST_MESSAGE("-- Checking virtual operation pushed");
@@ -604,14 +604,14 @@ BOOST_AUTO_TEST_CASE(worker_request_vote_apply_approve) {
     BOOST_TEST_MESSAGE("-- Checking frad request is not closed and has votes");
 
     {
-        const auto& wro_post = db->get_comment_by_perm("frad", string("frad-request"));
-        const auto& wro = db->get_worker_request(wro_post.id);
+        const auto& wro_post = _db.get_comment_by_perm("frad", string("frad-request"));
+        const auto& wro = _db.get_worker_request(wro_post.id);
         BOOST_CHECK_EQUAL(wro.state, worker_request_state::closed_by_voters);
         BOOST_CHECK_EQUAL(wro.remaining_payment, ASSET_GOLOS(3));
 
         BOOST_TEST_MESSAGE("-- Checking frad request has votes (it should, clearing is enabled after final vote)");
 
-        const auto& wrvo_idx = db->get_index<worker_request_vote_index, by_request_voter>();
+        const auto& wrvo_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
         BOOST_CHECK(wrvo_idx.find(wro_post.id) != wrvo_idx.end());
 
         BOOST_TEST_MESSAGE("-- Checking virtual operation pushed");
@@ -642,7 +642,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_validate) {
 BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
     BOOST_TEST_MESSAGE("Testing: worker_request_delete_apply");
 
-    ACTORS((alice)(bob))
+    ACTORS_OLD((alice)(bob))
     generate_block();
 
     signed_transaction tx;
@@ -676,7 +676,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
     generate_block();
 
     {
-        const auto* wro = db->find_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
+        const auto* wro = _db.find_worker_request(_db.get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK(wro);
     }
 
@@ -694,7 +694,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
     generate_block();
 
     {
-        const auto* wro = db->find_worker_request(db->get_comment_by_perm("bob", string("bob-request")).id);
+        const auto* wro = _db.find_worker_request(_db.get_comment_by_perm("bob", string("bob-request")).id);
         BOOST_CHECK(!wro);
     }
 
@@ -709,12 +709,12 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply) {
 BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
     BOOST_TEST_MESSAGE("Testing: worker_request_delete_apply_closing_cases");
 
-    ACTORS((alice)(bob)(carol)(dave))
+    ACTORS_OLD((alice)(bob)(carol)(dave))
     generate_block();
 
     signed_transaction tx;
 
-    db->set_clear_old_worker_votes(true);
+    _db.set_clear_old_worker_votes(true);
 
     worker_request_operation wtop;
 
@@ -744,8 +744,8 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
         {
             BOOST_TEST_MESSAGE("-- Checking it is deleted");
 
-            const auto& wro_post = db->get_comment_by_perm("bob", string("bob-request"));
-            const auto* wro = db->find_worker_request(wro_post.id);
+            const auto& wro_post = _db.get_comment_by_perm("bob", string("bob-request"));
+            const auto* wro = _db.find_worker_request(wro_post.id);
             BOOST_CHECK(!wro);
         }
     }
@@ -768,7 +768,7 @@ BOOST_AUTO_TEST_CASE(worker_request_delete_apply_closing_cases) {
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, bob_private_key, op));
         generate_block();
 
-        check_request_closed(db->get_comment_by_perm("bob", string("bob-request")).id,
+        check_request_closed(_db.get_comment_by_perm("bob", string("bob-request")).id,
             worker_request_state::closed_by_author, ASSET_GOLOS(0));
     }
 

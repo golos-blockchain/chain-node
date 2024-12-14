@@ -20,26 +20,93 @@ namespace golos { namespace plugins { namespace private_message {
         return false;
     }
 
+    struct group_extension_validate_visitor {
+        group_extension_validate_visitor(std::string& _group, account_name_type& _requester,
+            std::set<account_name_type>& _mentions)
+            : group(_group), requester(_requester), mentions(_mentions) {
+        }
+
+        using result_type = void;
+
+        std::string& group;
+        account_name_type& requester;
+        std::set<account_name_type>& mentions;
+
+        void operator()(const private_group_options& pgo) const {
+            pgo.validate();
+            group = pgo.group;
+            requester = pgo.requester;
+            mentions = pgo.mentions;
+        }
+    };
+
+    void private_group_options::validate() const {
+        validate_private_group_name(group);
+        if (requester != account_name_type()) {
+            GOLOS_CHECK_PARAM_ACCOUNT(requester);
+        }
+        GOLOS_CHECK_PARAM(mentions, {
+            GOLOS_CHECK_VALUE(mentions.size() <= 10, "Max mentions are 10.");
+            for (const auto& men : mentions) {
+                validate_account_name(men);
+            }
+        });
+    }
+
     void private_message_operation::validate() const {
-        GOLOS_CHECK_PARAM_ACCOUNT(to);
         GOLOS_CHECK_PARAM_ACCOUNT(from);
+
+        std::string group;
+        account_name_type requester;
+        std::set<account_name_type> mentions;
+        for (auto& e : extensions) {
+            e.visit(group_extension_validate_visitor(group, requester, mentions));
+        }
+        bool is_group = group.size();
+
+        if (requester != account_name_type()) {
+            GOLOS_CHECK_PARAM(update, {
+                GOLOS_CHECK_VALUE(update, "Moderator can only edit messages, not send them as another user.");
+            });
+        }
+
+        if (!is_group) {
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to != account_name_type(), "`to` can't be empty");
+            });
+        }
+        if (to.size()) {
+            GOLOS_CHECK_PARAM_ACCOUNT(to);
+        }
 
         GOLOS_CHECK_LOGIC(from != to,
             logic_errors::cannot_send_to_yourself,
             "You cannot write to yourself");
 
-        GOLOS_CHECK_PARAM(to_memo_key, {
-            GOLOS_CHECK_VALUE(to_memo_key != public_key_type(), "`to_key` can't be empty");
-        });
+        if (!is_group) {
+            // memo_keys should be GLS1111111111111111111111111111111114T1Anm
 
-        GOLOS_CHECK_PARAM(from_memo_key, {
-            GOLOS_CHECK_VALUE(from_memo_key != public_key_type(), "`from_key` can't be empty");
-        });
+            GOLOS_CHECK_PARAM(to_memo_key, {
+                GOLOS_CHECK_VALUE(to_memo_key != public_key_type(), "`to_key` can't be empty");
+            });
 
-        GOLOS_CHECK_LOGIC(
-            from_memo_key != to_memo_key,
-            logic_errors::from_and_to_memo_keys_must_be_different,
-            "`from_key` can't be equal to `to_key`");
+            GOLOS_CHECK_PARAM(from_memo_key, {
+                GOLOS_CHECK_VALUE(from_memo_key != public_key_type(), "`from_key` can't be empty");
+            });
+
+            GOLOS_CHECK_LOGIC(
+                from_memo_key != to_memo_key,
+                logic_errors::from_and_to_memo_keys_must_be_different,
+                "`from_key` can't be equal to `to_key`");
+        } else {
+            GOLOS_CHECK_PARAM(to_memo_key, {
+                GOLOS_CHECK_VALUE(to_memo_key == public_key_type(), "`to_key` should be empty, it is only for private chats, not groups");
+            });
+
+            GOLOS_CHECK_PARAM(from_memo_key, {
+                GOLOS_CHECK_VALUE(from_memo_key == public_key_type(), "`from_key` should be empty, it is only for private chats, not groups");
+            });
+        }
 
         GOLOS_CHECK_PARAM(nonce, {
             GOLOS_CHECK_VALUE(nonce != 0, "`nonce` can't be zero");
@@ -50,7 +117,52 @@ namespace golos { namespace plugins { namespace private_message {
         });
     }
 
+    struct delete_extension_validate_visitor : group_extension_validate_visitor {
+        delete_extension_validate_visitor(std::string& _group, account_name_type& _requester,
+            std::set<account_name_type>& _mentions, fc::optional<bool>& _delete_contact)
+            : group_extension_validate_visitor(_group, _requester, _mentions),
+            delete_contact(_delete_contact) {
+        }
+
+        fc::optional<bool>& delete_contact;
+
+        using group_extension_validate_visitor::operator();
+
+        void operator()(const delete_options& dop) const {
+            delete_contact = dop.delete_contact;
+        }
+    };
+
     void private_delete_message_operation::validate() const {
+        std::string group;
+        account_name_type ext_requester;
+        std::set<account_name_type> mentions;
+        fc::optional<bool> delete_contact;
+        for (auto& e : extensions) {
+            e.visit(delete_extension_validate_visitor(group, ext_requester, mentions, delete_contact));
+        }
+        if (!delete_contact.valid()) {
+            delete_contact = group.size() ? false : true;
+        }
+        GOLOS_CHECK_PARAM(extensions, {
+            GOLOS_CHECK_VALUE(!ext_requester.size(),
+                "For delete operations, use `requester` only from operation, not extension.");
+            GOLOS_CHECK_VALUE(!mentions.size(),
+                "For delete operations, `mentions` are not applicable.");
+            if (group.size()) {
+                GOLOS_CHECK_VALUE(!(*delete_contact), "Cannot delete contact of group.");
+            }
+        });
+
+        if (group.size() && nonce == 0) {
+            GOLOS_CHECK_PARAM(from, {
+                GOLOS_CHECK_VALUE(from == account_name_type(), "`from` not yet supported for groups");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to == account_name_type(), "`to` not yet supported for groups");
+            });
+        }
+
         GOLOS_CHECK_PARAM(from, {
             if (from.size()) {
                 validate_account_name(from);
@@ -67,7 +179,7 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(requester, {
             validate_account_name(requester);
             if (to.size() || from.size()) {
-                GOLOS_CHECK_VALUE(requester == to || requester == from,
+                GOLOS_CHECK_VALUE(group.size() || requester == to || requester == from,
                     "`requester` can delete messages only from his inbox/outbox");
             }
         });
@@ -79,7 +191,8 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
                 GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
-                GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
+                if (!group.size())
+                    GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
@@ -87,7 +200,49 @@ namespace golos { namespace plugins { namespace private_message {
     }
 
     void private_mark_message_operation::validate() const {
-        GOLOS_CHECK_PARAM_ACCOUNT(to);
+        std::string group;
+        account_name_type requester;
+        std::set<account_name_type> mentions;
+        for (auto& e : extensions) {
+            e.visit(group_extension_validate_visitor(group, requester, mentions));
+        }
+        bool is_group = group.size();
+
+        GOLOS_CHECK_PARAM(extensions, {
+            if (is_group) {
+                GOLOS_CHECK_VALUE(requester != account_name_type(),
+                    "For group operations, you should use `requester` field.");
+                GOLOS_CHECK_VALUE(mentions.size() <= 1,
+                    "For mark operations, `mentions` size cannot be > 1.");
+                if (mentions.size()) {
+                    GOLOS_CHECK_VALUE(*(mentions.begin()) == requester,
+                        "You cannot read mention of another person.");
+                }
+            } else {
+                GOLOS_CHECK_VALUE(requester == account_name_type(),
+                    "In private chats, `requester` not supported. Use `to` only.");
+                GOLOS_CHECK_VALUE(!mentions.size(),
+                    "In private chats, `mentions` not supported.");
+            }
+        });
+
+        if (!is_group) {
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to != account_name_type(), "`to` can't be empty");
+            });
+        }
+        if (is_group && nonce == 0) {
+            GOLOS_CHECK_PARAM(from, {
+                GOLOS_CHECK_VALUE(from == account_name_type(), "`from` not yet supported for groups");
+            });
+            GOLOS_CHECK_PARAM(to, {
+                GOLOS_CHECK_VALUE(to == account_name_type(), "`to` not yet supported for groups");
+            });
+        }
+
+        if (to.size()) {
+            GOLOS_CHECK_PARAM_ACCOUNT(to);
+        }
 
         GOLOS_CHECK_PARAM(from, {
             if (from.size()) {
@@ -103,6 +258,8 @@ namespace golos { namespace plugins { namespace private_message {
         GOLOS_CHECK_PARAM(nonce, {
             if (nonce != 0) {
                 GOLOS_CHECK_VALUE(from.size(), "Non-zero `nonce` requires `from` to be set too");
+                if (!is_group)
+                    GOLOS_CHECK_VALUE(to.size(), "Non-zero `nonce` requires `to` to be set too");
                 GOLOS_CHECK_VALUE(start_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `start_date`");
                 GOLOS_CHECK_VALUE(stop_date == time_point_sec::min(), "Non-zero `nonce` can't be used with `stop_date`");
             }
@@ -150,6 +307,77 @@ namespace golos { namespace plugins { namespace private_message {
             GOLOS_CHECK_PARAM(json_metadata, {
                 GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
                 GOLOS_CHECK_VALUE(type != unknown, "JSON Metadata can't be set for unknown contact");
+            });
+        }
+    }
+
+    void validate_private_group_name(const std::string& name) {
+        GOLOS_CHECK_VALUE(name.size(), "Private group name should not be empty");
+        GOLOS_CHECK_VALUE(name.size() <= 32, "Private group name should not be longer than 32 bytes");
+        for (size_t i = 0; i < name.size(); ++i) {
+            const auto& c = name[i];
+            bool is_alpha = c >= 'a' && c <= 'z';
+            bool is_digit = c >= '0' && c <= '9';
+            bool is_dash = c == '-';
+            bool is_ul = c == '_';
+            if (i == 0) {
+                GOLOS_CHECK_VALUE(is_alpha || is_digit,
+                    "Private group name can start only from a-z symbol, or 0-9 digit.");
+            } else {
+                GOLOS_CHECK_VALUE(is_alpha || is_digit || is_dash || is_ul,
+                    "Private group name can contain only a-z, 0-9 symbols, - and _.");
+            }
+        }
+    }
+
+    void private_group_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(creator);
+        GOLOS_CHECK_PARAM(name, {
+            validate_private_group_name(name);
+        });
+        if (json_metadata.size() > 0) {
+            GOLOS_CHECK_PARAM(json_metadata, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(json_metadata, 512);
+                GOLOS_CHECK_VALUE_UTF8(json_metadata);
+                GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
+            });
+        }
+        GOLOS_CHECK_PARAM(privacy, {
+            GOLOS_CHECK_VALUE(privacy != private_group_privacy::_size, "Wrong privacy value.");
+        });
+        if (privacy == private_group_privacy::private_group) {
+            GOLOS_CHECK_PARAM(is_encrypted, {
+                GOLOS_CHECK_VALUE(is_encrypted, "Private group cannot be not encrypted.");
+            });
+        }
+    }
+
+    void private_group_delete_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(owner);
+        GOLOS_CHECK_PARAM(name, {
+            validate_private_group_name(name);
+        });
+    }
+
+    void private_group_member_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(requester);
+        GOLOS_CHECK_PARAM(name, {
+            validate_private_group_name(name);
+        });
+        GOLOS_CHECK_PARAM_ACCOUNT(member);
+        GOLOS_CHECK_PARAM(member_type, {
+            GOLOS_CHECK_VALUE(member_type != private_group_member_type::_size, "Wrong member type.");
+
+            if (member == requester) {
+                GOLOS_CHECK_VALUE(member_type != private_group_member_type::banned, "You cannot ban yourself.");
+                GOLOS_CHECK_VALUE(member_type != private_group_member_type::moder, "You cannot make moder yourself.");
+            }
+        });
+        if (json_metadata.size() > 0) {
+            GOLOS_CHECK_PARAM(json_metadata, {
+                GOLOS_CHECK_VALUE_MAX_SIZE(json_metadata, 512);
+                GOLOS_CHECK_VALUE_UTF8(json_metadata);
+                GOLOS_CHECK_VALUE(fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON");
             });
         }
     }

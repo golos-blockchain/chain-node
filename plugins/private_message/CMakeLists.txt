@@ -13,6 +13,7 @@ list(APPEND CURRENT_TARGET_SOURCES
         private_message_plugin.cpp
         private_message_operations.cpp
         private_message_evaluators.cpp
+        private_message_objects.cpp
         )
 
 if(BUILD_SHARED_LIBRARIES)
@@ -36,6 +37,7 @@ target_link_libraries(
         golos::protocol
         golos::network
         golos::json_rpc
+        golos::cryptor
         graphene_utilities
         graphene_time
         appbase

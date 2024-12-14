@@ -105,6 +105,7 @@ namespace golos { namespace protocol {
                 nft_sell_operation,
                 nft_buy_operation,
                 nft_cancel_order_operation,
+                nft_auction_operation,
 
                 /// virtual operations below this point
                 fill_convert_request_operation,

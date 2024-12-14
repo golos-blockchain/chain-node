@@ -14,9 +14,10 @@ static inline std::ostream& operator<<(std::ostream& out, worker_request_state s
 
 namespace golos { namespace chain {
 
-struct worker_fixture : public clean_database_fixture {
+struct worker_fixture : public clean_database_fixture_wrap {
 
-    worker_fixture(bool init = true) : clean_database_fixture(init) {
+    worker_fixture(bool init = true, std::function<void()> custom_init = {}) :
+    clean_database_fixture_wrap(init, custom_init) {
     }
 
     void worker_request_vote(
@@ -35,13 +36,13 @@ struct worker_fixture : public clean_database_fixture {
     void check_request_closed(const comment_id_type& post, worker_request_state state, asset consumption_after_close) {
         BOOST_TEST_MESSAGE("---- Checking request is not deleted but closed");
 
-        const auto* wro = db->find_worker_request(post);
+        const auto* wro = _db.find_worker_request(post);
         BOOST_CHECK(wro);
         BOOST_CHECK(wro->state == state);
 
         BOOST_TEST_MESSAGE("---- Checking approves are cleared");
 
-        const auto& wrvo_idx = db->get_index<worker_request_vote_index, by_request_voter>();
+        const auto& wrvo_idx = _db.get_index<worker_request_vote_index, by_request_voter>();
         BOOST_CHECK(wrvo_idx.find(post) == wrvo_idx.end());
     }
 };

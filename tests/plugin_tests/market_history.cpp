@@ -31,7 +31,7 @@ BOOST_FIXTURE_TEST_SUITE(market_history, database_fixture)
             startup();
             mh_plugin.plugin_startup();
 
-            ACTORS((alice)(bob)(sam));
+            ACTORS_OLD((alice)(bob)(sam));
             generate_block();
 
             fund("alice", ASSET("1000.000 GOLOS"));

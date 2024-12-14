@@ -700,10 +700,12 @@ namespace golos { namespace chain {
             if (blocked) {
                 if (blocked == 1) {
                     GOLOS_CHECK_VALUE(can_bypass,
-                        "You are blocked by user, and cannot bypass it with money in that case");
+                        "You are blocked by user (@${account}), and cannot bypass it with money in that case",
+                        ("account", account));
                 } else {
                     GOLOS_CHECK_VALUE(can_bypass,
-                        "User tells to do not bother their, and you cannot bypass it with money in that case");
+                        "User (@${account}) tells to do not bother their, and you cannot bypass it with money in that case",
+                        ("account", account));
                 }
 
                 const auto& median_props = get_witness_schedule_object().median_props;
@@ -711,11 +713,13 @@ namespace golos { namespace chain {
 
                 if (blocked == 1) {
                     GOLOS_CHECK_VALUE(payer.tip_balance >= median_props.unwanted_operation_cost,
-                        "You are blocked by user, so you need at least ${amount} of TIP balance",
+                        "You are blocked by user (@${account}), so you need at least ${amount} of TIP balance",
+                        ("account", account)
                         ("amount", median_props.unwanted_operation_cost));
                 } else {
                     GOLOS_CHECK_VALUE(payer.tip_balance >= median_props.unwanted_operation_cost,
-                        "User tells to do not bother their, so you need at least ${amount} of TIP balance",
+                        "User (@${account}) tells to do not bother their, so you need at least ${amount} of TIP balance",
+                        ("account", account)
                         ("amount", median_props.unwanted_operation_cost));
                 }
                 modify(payer, [&](auto& payer) {
@@ -2486,7 +2490,7 @@ namespace golos { namespace chain {
                 active.push_back(&get_witness(wso.current_shuffled_witnesses[i]));
             }
 
-            chain_properties_29 median_props;
+            chain_properties_30 median_props;
 
             auto median = active.size() / 2;
 
@@ -2616,6 +2620,8 @@ namespace golos { namespace chain {
             calc_median(&chain_properties_27::unlimit_operation_cost);
             calc_median(&chain_properties_28::min_golos_power_to_emission);
             calc_median(&chain_properties_29::nft_issue_cost);
+            calc_median(&chain_properties_30::private_group_golos_power);
+            calc_median(&chain_properties_30::private_group_cost);
 
             const auto& dynamic_global_properties = get_dynamic_global_properties();
 
@@ -2991,6 +2997,8 @@ namespace golos { namespace chain {
 
                 auto converted_steem = asset(to_convert, VESTS_SYMBOL) * cprops.get_vesting_share_price();
 
+                bool add_fix_me = false;
+
                 modify(from_account, [&](account_object &a) {
                     a.vesting_shares.amount -= to_withdraw;
                     a.balance += converted_steem;
@@ -3003,11 +3011,22 @@ namespace golos { namespace chain {
                         if (has_hardfork(STEEMIT_HARDFORK_0_19__971)) {
                             a.withdrawn = 0;
                             a.to_withdraw = 0;
+                        } else if (a.to_withdraw.value) {
+                            add_fix_me = true;
                         }
                     } else {
                         a.next_vesting_withdrawal += fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);
                     }
                 });
+
+                if (add_fix_me) {
+                    const auto* fm = find<fix_me_object, by_account>(from_account.id);
+                    if (!fm) {
+                        create<fix_me_object>([&](auto& fm) {
+                            fm.account = from_account.id;
+                        });
+                    }
+                }
 
                 modify(cprops, [&](dynamic_global_property_object &o) {
                     o.total_vesting_fund_steem -= converted_steem;
@@ -3478,17 +3497,32 @@ namespace golos { namespace chain {
                 push_virtual_operation(producer_reward_operation(wacc.name, producer_reward));
         } FC_CAPTURE_AND_RETHROW() }
 
-        asset database::get_min_gp_to_emission() const {
-            auto min_golos_power_to_emission = asset(0, VESTS_SYMBOL);
+        std::pair<asset, asset> database::get_min_gp_to_emission() const {
+            asset min_golos{0, STEEM_SYMBOL};
+            asset min_golos_power_to_emission{0, VESTS_SYMBOL};
             if (has_hardfork(STEEMIT_HARDFORK_0_28__218)) {
                 const auto& gbg_median = get_feed_history().current_median_history;
                 if (!gbg_median.is_null()) {
                     auto min_gbg = get_witness_schedule_object().median_props.min_golos_power_to_emission;
-                    auto min_golos = min_gbg * gbg_median;
+                    min_golos = min_gbg * gbg_median;
                     min_golos_power_to_emission = min_golos * get_dynamic_global_properties().get_vesting_share_price();
                 }
             }
-            return min_golos_power_to_emission;
+            return std::make_pair(min_golos_power_to_emission, min_golos);
+        }
+
+        std::pair<asset, asset> database::get_min_gp_for_groups() const {
+            asset min_golos{0, STEEM_SYMBOL};
+            asset min_golos_power{0, VESTS_SYMBOL};
+            if (has_hardfork(STEEMIT_HARDFORK_0_30)) {
+                const auto& gbg_median = get_feed_history().current_median_history;
+                if (!gbg_median.is_null()) {
+                    auto min_gbg = get_witness_schedule_object().median_props.private_group_golos_power;
+                    min_golos = min_gbg * gbg_median;
+                    min_golos_power = min_golos * get_dynamic_global_properties().get_vesting_share_price();
+                }
+            }
+            return std::make_pair(min_golos_power, min_golos);
         }
 
         void database::process_accumulative_distributions() { try {
@@ -3504,7 +3538,7 @@ namespace golos { namespace chain {
             }
 
             bool has_hf28 = has_hardfork(STEEMIT_HARDFORK_0_28__218);
-            auto min_golos_power_to_emission = get_min_gp_to_emission();
+            auto min_golos_power_to_emission = get_min_gp_to_emission().first;
 
             auto distributed_sum = asset(0, STEEM_SYMBOL);
 
@@ -4138,7 +4172,7 @@ namespace golos { namespace chain {
                 const auto& acc = *itr;
                 ++itr;
 
-                auto min_vests = get_min_gp_to_emission();
+                auto min_vests = get_min_gp_to_emission().first;
                 if (acc.vesting_shares < min_vests) {
                     continue;
                 }
@@ -4247,6 +4281,7 @@ namespace golos { namespace chain {
             _my->_evaluator_registry.register_evaluator<nft_sell_evaluator>();
             _my->_evaluator_registry.register_evaluator<nft_buy_evaluator>();
             _my->_evaluator_registry.register_evaluator<nft_cancel_order_evaluator>();
+            _my->_evaluator_registry.register_evaluator<nft_auction_evaluator>();
         }
 
         void database::set_custom_operation_interpreter(const std::string &id, std::shared_ptr<custom_operation_interpreter> registry) {
@@ -4302,6 +4337,7 @@ namespace golos { namespace chain {
             add_core_index<invite_index>(*this);
             add_core_index<asset_index>(*this);
             add_core_index<market_pair_index>(*this);
+            add_core_index<fix_me_index>(*this);
             add_core_index<account_balance_index>(*this);
             add_core_index<event_index>(*this);
             add_core_index<account_blocking_index>(*this);
@@ -4310,6 +4346,7 @@ namespace golos { namespace chain {
             add_core_index<nft_collection_index>(*this);
             add_core_index<nft_index>(*this);
             add_core_index<nft_order_index>(*this);
+            add_core_index<nft_bet_index>(*this);
 
             _plugin_index_signal();
         }
@@ -4886,12 +4923,19 @@ namespace golos { namespace chain {
 
                 process_paid_subscribers();
 
+                process_nft_bets();
+
                 // notify observers that the block has been applied
                 notify_applied_block(next_block);
 
                 process_transit_to_cyberway(next_block, skip);
 
                 notify_changed_objects();
+
+                if (has_hardfork(STEEMIT_HARDFORK_0_30)) {
+                    hf_actions hf_act(*this);
+                    hf_act.fix_vesting_withdrawals();
+                }
 
             } FC_CAPTURE_LOG_AND_RETHROW((next_block.block_num()))
         }
@@ -5924,6 +5968,9 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_29 == 29, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_29] = fc::time_point_sec(STEEMIT_HARDFORK_0_29_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_29] = STEEMIT_HARDFORK_0_29_VERSION;
+            FC_ASSERT(STEEMIT_HARDFORK_0_30 == 30, "Invalid hardfork configuration");
+            _hardfork_times[STEEMIT_HARDFORK_0_30] = fc::time_point_sec(STEEMIT_HARDFORK_0_30_TIME);
+            _hardfork_versions[STEEMIT_HARDFORK_0_30] = STEEMIT_HARDFORK_0_30_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -6226,7 +6273,7 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_28:
                     hf_act.convert_min_curate_golos_power();
                     break;
-                case STEEMIT_HARDFORK_0_29:
+                case STEEMIT_HARDFORK_0_30:
                     hf_act.prepare_for_tests();
                     break;
                 default:
@@ -6356,6 +6403,27 @@ namespace golos { namespace chain {
                         total_supply += itr->prepaid;
                     } else if (itr->prepaid.symbol == SBD_SYMBOL) {
                         total_sbd += itr->prepaid;
+                    }
+                }
+
+                const auto& noo_idx = get_index<nft_order_index, by_id>();
+                for (auto itr = noo_idx.begin();
+                     itr != noo_idx.end(); ++itr) {
+                    if (!itr->holds) continue;
+                    if (itr->price.symbol == STEEM_SYMBOL) {
+                        total_supply += itr->price;
+                    } else if (itr->price.symbol == SBD_SYMBOL) {
+                        total_sbd += itr->price;
+                    }
+                }
+
+                const auto& nbo_idx = get_index<nft_bet_index, by_id>();
+                for (auto itr = nbo_idx.begin();
+                     itr != nbo_idx.end(); ++itr) {
+                    if (itr->price.symbol == STEEM_SYMBOL) {
+                        total_supply += itr->price;
+                    } else if (itr->price.symbol == SBD_SYMBOL) {
+                        total_sbd += itr->price;
                     }
                 }
 

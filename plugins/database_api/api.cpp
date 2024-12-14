@@ -1,4 +1,5 @@
 #include <golos/plugins/database_api/plugin.hpp>
+#include <golos/plugins/database_api/api_objects/account_query.hpp>
 #include <golos/plugins/database_api/api_objects/asset_api_sort.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
@@ -65,9 +66,9 @@ public:
     dynamic_global_property_api_object get_dynamic_global_properties() const;
 
     // Accounts
-    std::vector<account_api_object> get_accounts(const std::vector<std::string>& names) const;
+    std::vector<account_api_object> get_accounts(const std::vector<std::string>& names, const account_query& query) const;
     std::vector<optional<account_api_object>> lookup_account_names(const std::vector<std::string> &account_names, bool include_frozen = false) const;
-    std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit, bool include_frozen = false) const;
+    std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit, account_select_legacy select = false) const;
     uint64_t get_account_count() const;
     optional<account_recovery_request_api_object> get_recovery_request(account_name_type account) const;
 
@@ -324,13 +325,14 @@ DEFINE_API(plugin, get_next_scheduled_hardfork) {
 DEFINE_API(plugin, get_accounts) {
     PLUGIN_API_VALIDATE_ARGS(
         (vector<std::string>, account_names)
+        (account_query, query, account_query())
     );
     return my->database().with_weak_read_lock([&]() {
-        return my->get_accounts(account_names);
+        return my->get_accounts(account_names, query);
     });
 }
 
-std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector<std::string>& names) const {
+std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector<std::string>& names, const account_query& query) const {
     const auto &idx = _db.get_index<account_index>().indices().get<by_name>();
     const auto &vidx = _db.get_index<witness_vote_index>().indices().get<by_account_witness>();
     std::vector<account_api_object> results;
@@ -343,6 +345,10 @@ std::vector<account_api_object> plugin::api_impl::get_accounts(const std::vector
             while (vitr != vidx.end() && vitr->account == itr->id) {
                 results.back().witness_votes.insert(_db.get(vitr->witness).owner);
                 ++vitr;
+            }
+            if (query.current != account_name_type()) {
+                results.back().relations = golos::api::current_get_relations(
+                    _db, query.current, itr->name);
             }
         }
     }
@@ -384,25 +390,35 @@ DEFINE_API(plugin, lookup_accounts) {
     PLUGIN_API_VALIDATE_ARGS(
         (account_name_type, lower_bound_name)
         (uint32_t,          limit)
-        (bool, include_frozen, false)
+        (account_select_legacy, select, false)
     );
     return my->database().with_weak_read_lock([&]() {
-        return my->lookup_accounts(lower_bound_name, limit, include_frozen);
+        return my->lookup_accounts(lower_bound_name, limit, select);
     });
 }
 
 std::set<std::string> plugin::api_impl::lookup_accounts(
     const std::string &lower_bound_name,
     uint32_t limit,
-    bool include_frozen
+    account_select_legacy select
 ) const {
     GOLOS_CHECK_LIMIT_PARAM(limit, 1000);
-    const auto &accounts_by_name = database().get_index<account_index>().indices().get<by_name>();
-    std::set<std::string> result;
 
+    account_select_query query;
+    if (select.is_bool()) {
+        query.include_frozen = select.as_bool();
+    } else if (select.is_null()) {
+        query.include_frozen = false;
+    } else {
+        query = select.as<account_select_query>(); // or it will throw bad cast
+    }
+
+    const auto& accounts_by_name = _db.get_index<account_index, by_name>();
+    std::set<std::string> result;
     for (auto itr = accounts_by_name.lower_bound(lower_bound_name);
             limit-- && itr != accounts_by_name.end(); ++itr) {
-        if (!include_frozen && itr->frozen) {
+        if ((!query.include_frozen && itr->frozen)
+                || query.filter_accounts.count(itr->name)) {
             ++limit;
             continue;
         }

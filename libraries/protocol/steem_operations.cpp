@@ -167,6 +167,10 @@ namespace golos { namespace protocol {
             void operator()(const comment_curation_rewards_percent& ccrp) const {
                 ccrp.validate();
             }
+
+            void operator()(const comment_decrypt_fee& cdf) const {
+                cdf.validate();
+            }
         };
 
         void comment_payout_beneficiaries::validate() const {
@@ -209,6 +213,10 @@ namespace golos { namespace protocol {
                     "Curation rewards percent must be between ${min} and ${max}.",
                     ("min", STEEMIT_MIN_CURATION_PERCENT)("max", STEEMIT_MAX_CURATION_PERCENT));
             });
+        }
+
+        void comment_decrypt_fee::validate() const {
+            GOLOS_CHECK_PARAM(fee, GOLOS_CHECK_ASSET_GE0(fee, GOLOS));
         }
 
         void comment_options_operation::validate() const {
@@ -397,6 +405,12 @@ namespace golos { namespace protocol {
         void chain_properties_29::validate() const {
             chain_properties_28::validate();
             GOLOS_CHECK_ASSET_GE(nft_issue_cost, GBG, GOLOS_MIN_NFT_ISSUE_COST);
+        }
+
+        void chain_properties_30::validate() const {
+            chain_properties_29::validate();
+            GOLOS_CHECK_ASSET_GE(private_group_golos_power, GBG, GOLOS_MIN_PRIVATE_GROUP_GOLOS_POWER);
+            GOLOS_CHECK_ASSET_GE(private_group_cost, GBG, GOLOS_MIN_PRIVATE_GROUP_COST);
         }
 
         void witness_update_operation::validate() const {

@@ -131,7 +131,7 @@ public:
             if (!query.is_good(no) || !good_collection_count(no.name, collection_count, query.collection_limit)) {
                 return;
             }
-            nft_extended_api_object obj(no, _db, query.collections, query.orders);
+            nft_extended_api_object obj(no, _db, query.collections, query.orders, query.current);
             result.push_back(std::move(obj));
         };
 
@@ -169,7 +169,7 @@ public:
         std::map<asset_symbol_type, uint32_t> collection_count;
 
         auto push = [&](nft_extended_api_object& obj) {
-            obj.fill_extensions(_db, query.collections, query.orders);
+            obj.fill_extensions(_db, query.collections, query.orders, query.current);
             result.push_back(std::move(obj));
         };
 
@@ -287,6 +287,14 @@ public:
                         if (query.reverse_sort) return lhs.last_update < rhs.last_update;
                         return lhs.last_update > rhs.last_update;
                     });
+                else if (query.sort == nft_tokens_sort::by_auction_expiration) 
+                    std::sort(unsorted.begin(), unsorted.end(), [&](auto& lhs, auto& rhs) {
+                        auto sc = compare_sortings(lhs, rhs);
+                        if (!!sc) return *sc;
+
+                        if (query.reverse_sort) return lhs.auction_expiration > rhs.auction_expiration;
+                        return lhs.auction_expiration < rhs.auction_expiration;
+                    });
                 else
                     std::sort(unsorted.begin(), unsorted.end(), [&](auto& lhs, auto& rhs) {
                         auto sc = compare_sortings(lhs, rhs);
@@ -315,6 +323,8 @@ public:
                     return get_nft_tokens_by_index<by_issued>(query);
                 } else if (query.sort == nft_tokens_sort::by_last_price) {
                     return get_nft_tokens_by_index<by_last_price>(query);
+                } else if (query.sort == nft_tokens_sort::by_auction_expiration) {
+                    return get_nft_tokens_by_index<by_auction_expiration>(query);
                 } else {
                     return get_nft_tokens_by_index<by_last_update>(query);
                 }
@@ -424,6 +434,46 @@ public:
         return result;
     }
 
+    std::vector<nft_extended_bet_api_object> get_nft_bets(
+        const nft_bets_query& query
+    ) {
+        std::vector<nft_extended_bet_api_object> result;
+
+        GOLOS_CHECK_LIMIT_PARAM(query.limit, 100);
+
+        const auto& idx = _db.get_index<nft_bet_index, by_token_price>();
+
+        if (query.owner != account_name_type()) {
+            for (auto itr = idx.begin(); itr != idx.end() && result.size() < query.limit; ++itr) {
+                if (itr->owner != query.owner) {
+                    continue;
+                }
+                if (query.start_bet_id && itr->id != query.start_bet_id) {
+                    continue;
+                }
+                nft_extended_bet_api_object obj(*itr, _db, query.tokens);
+                result.push_back(std::move(obj));
+            }
+        } else if (query.select_token_ids.size()) {
+            auto token_id = *(query.select_token_ids.begin());
+
+            auto itr = idx.lower_bound(token_id);
+
+            if (query.start_bet_id) {
+                for (; itr != idx.end() && itr->token_id == token_id
+                    && itr->id != query.start_bet_id; ++itr) {
+                }
+            }
+
+            for (; itr != idx.end() && itr->token_id == token_id && result.size() < query.limit; ++itr) {
+                nft_extended_bet_api_object obj(*itr, _db, query.tokens);
+                result.push_back(std::move(obj));
+            }
+        }
+
+        return result;
+    }
+
     database& _db;
 };
 
@@ -479,6 +529,15 @@ DEFINE_API(nft_api_plugin, get_nft_orders) {
     )
     return my->_db.with_weak_read_lock([&](){
         return my->get_nft_orders(query);
+    });
+}
+
+DEFINE_API(nft_api_plugin, get_nft_bets) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (nft_bets_query, query)
+    )
+    return my->_db.with_weak_read_lock([&](){
+        return my->get_nft_bets(query);
     });
 }
 

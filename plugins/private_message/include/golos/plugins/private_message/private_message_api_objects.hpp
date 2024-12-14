@@ -2,11 +2,11 @@
 
 #include <golos/protocol/asset.hpp>
 #include <golos/protocol/base.hpp>
+#include <golos/chain/database.hpp>
 
 #include <golos/plugins/private_message/private_message_operations.hpp>
 #include <golos/plugins/private_message/private_message_objects.hpp>
-
-#define PRIVATE_DEFAULT_LIMIT 100
+#include <golos/plugins/private_message/private_message_queries.hpp>
 
 namespace golos { namespace plugins { namespace private_message {
 
@@ -23,10 +23,18 @@ namespace golos { namespace plugins { namespace private_message {
             receive_date(o.receive_date),
             read_date(o.read_date), remove_date(o.remove_date),
             donates(o.donates), donates_uia(o.donates_uia) {
+            if (o.group.size()) {
+                group = std::string(o.group.begin(), o.group.end());
+                mentions = std::set<account_name_type>();
+                for (const auto& men : o.mentions) {
+                    mentions->insert(men);
+                }
+            }
         }
 
         message_api_object() = default;
 
+        fc::optional<std::string> group = fc::optional<std::string>();
         account_name_type from;
         account_name_type to;
         uint64_t nonce = 0;
@@ -34,6 +42,13 @@ namespace golos { namespace plugins { namespace private_message {
         public_key_type to_memo_key;
         uint32_t checksum = 0;
         std::vector<char> encrypted_message;
+        fc::optional<std::set<account_name_type>> mentions;
+        // Message in groups if decrypted
+        fc::optional<std::vector<char>> decrypted;
+        // Same as receive_date. Need on client side for Redux state updates 
+        fc::optional<time_point_sec> decrypt_date;
+        // Group message decrypt error
+        fc::optional<std::string> error;
 
         time_point_sec create_date;
         time_point_sec receive_date;
@@ -58,22 +73,34 @@ namespace golos { namespace plugins { namespace private_message {
      * Contact item
      */
     struct contact_api_object final {
-        contact_api_object(const contact_object& o)
-            : owner(o.owner), contact(o.contact),
+        contact_api_object(const contact_object& o, const golos::chain::database& _db)
+            : owner(o.owner), contact(o.contact.begin(), o.contact.end()),
+            kind(o.kind),
             json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
             local_type(o.type),
             size(o.size) {
+            trim_dog(contact);
+            if (kind == contact_kind::group) {
+                const auto* pgo = _db.find<private_group_object, by_name>(contact);
+                if (pgo) {
+                    object_meta = std::string(pgo->json_metadata.begin(),
+                        pgo->json_metadata.end());
+                }
+            }
         }
 
         contact_api_object() = default;
 
         account_name_type owner;
-        account_name_type contact;
+        std::string contact;
+        contact_kind kind = contact_kind::account;
         std::string json_metadata;
         private_contact_type local_type = unknown;
         private_contact_type remote_type = unknown;
         contact_size_info size;
         message_api_object last_message;
+
+        fc::optional<std::string> object_meta;
     };
 
     /**
@@ -84,25 +111,99 @@ namespace golos { namespace plugins { namespace private_message {
     };
 
     /**
-     * Query for inbox/outbox messages
+     * "Mini-account" - brief data instead of "get account + get group member" call
      */
-    struct message_box_query final {
-        fc::flat_set<std::string> select_accounts;
-        fc::flat_set<std::string> filter_accounts;
-        time_point_sec newest_date = time_point_sec::min();
-        bool unread_only = false;
-        uint16_t limit = PRIVATE_DEFAULT_LIMIT;
-        uint32_t offset = 0;
+    struct message_account_api_object final {
+        // As account
+        account_name_type name;
+        std::string json_metadata;
+        time_point_sec last_seen; // max(last_bandwidth_update, created)
+        public_key_type memo_key;
+        // As account with relations
+        fc::optional<fc::mutable_variant_object> relations;
+
+        // As group member
+        fc::optional<private_group_member_type> member_type;
     };
-    
+
+    using message_accounts = std::map<account_name_type, message_account_api_object>;
+
+    fc::variant to_variant(const message_accounts& accounts);
+
     /**
-     * Query for thread messages
+     * Private group member item
      */
-    struct message_thread_query final {
-        time_point_sec newest_date = time_point_sec::min();
-        bool unread_only = false;
-        uint16_t limit = PRIVATE_DEFAULT_LIMIT;
-        uint32_t offset = 0;
+    struct private_group_member_api_object final {
+        private_group_member_api_object(const private_group_member_object& o)
+            : group(o.group.begin(), o.group.end()), account(o.account),
+            json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
+            member_type(o.member_type), invited(o.invited),
+            joined(o.joined), updated(o.updated) {
+        }
+
+        private_group_member_api_object() = default;
+
+        std::string group;
+        account_name_type account;
+        std::string json_metadata;
+        private_group_member_type member_type = private_group_member_type::member;
+        account_name_type invited;
+        time_point_sec joined;
+        time_point_sec updated;
+
+        fc::optional<message_account_api_object> account_data;
+    };
+
+    /**
+     * Private group item
+     */
+    struct private_group_api_object final {
+        private_group_api_object(const private_group_object& o, const golos::chain::database& _db,
+            const fc::optional<private_group_members>& pgms)
+            : owner(o.owner), name(o.name.begin(), o.name.end()),
+            json_metadata(o.json_metadata.begin(), o.json_metadata.end()),
+            is_encrypted(o.is_encrypted), privacy(o.privacy), created(o.created),
+            moders(o.moders), members(o.members), pendings(o.pendings), banneds(o.banneds),
+            total_messages(o.total_messages) {
+            if (!!pgms) {
+                const auto& idx = _db.get_index<private_group_member_index, by_group_account>();
+                if (pgms->accounts.size()) {
+                    for (const auto& acc : pgms->accounts) {
+                        auto itr = idx.find(std::make_tuple(o.name, acc));
+                        if (itr == idx.end()) {
+                            member_list.emplace_back();
+                            continue;
+                        }
+                        member_list.emplace_back(*itr);
+                    }
+                } else { // Can also support different sorts
+                    auto itr = idx.lower_bound(o.name);
+                    for (; itr != idx.end() && itr->group == o.name
+                        && member_list.size() < pgms->limit; ++itr) {
+                        if (pgms->start != account_name_type() && itr->account != pgms->start) {
+                            continue;
+                        }
+                        member_list.emplace_back(*itr);
+                    }
+                }
+            }
+        }
+
+        private_group_api_object() = default;
+
+        account_name_type owner;
+        std::string name;
+        std::string json_metadata;
+        bool is_encrypted = false;
+        private_group_privacy privacy;
+        time_point_sec created;
+        uint32_t moders = 0;
+        uint32_t members = 0;
+        uint32_t pendings = 0;
+        uint32_t banneds = 0;
+        uint32_t total_messages = 0;
+
+        std::vector<private_group_member_api_object> member_list;
     };
 
     /**
@@ -146,7 +247,7 @@ namespace golos { namespace plugins { namespace private_message {
 
 FC_REFLECT(
     (golos::plugins::private_message::message_api_object),
-    (from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)
+    (group)(from)(to)(from_memo_key)(to_memo_key)(nonce)(checksum)(encrypted_message)(mentions)(decrypted)(decrypt_date)(error)
     (create_date)(receive_date)(read_date)(remove_date)
     (donates)(donates_uia)
 )
@@ -157,7 +258,9 @@ FC_REFLECT(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_size_info),
-    (total_outbox_messages)(unread_outbox_messages)(total_inbox_messages)(unread_inbox_messages))
+    (total_outbox_messages)(unread_outbox_messages)(total_inbox_messages)(unread_inbox_messages)
+    (unread_mentions)
+)
 
 FC_REFLECT_DERIVED(
     (golos::plugins::private_message::contacts_size_info), ((golos::plugins::private_message::contact_size_info)),
@@ -165,19 +268,13 @@ FC_REFLECT_DERIVED(
 
 FC_REFLECT(
     (golos::plugins::private_message::contact_api_object),
-    (contact)(json_metadata)(local_type)(remote_type)(size)(last_message))
+    (contact)(kind)(json_metadata)(local_type)(remote_type)(size)(last_message)
+    (object_meta)
+)
 
 FC_REFLECT(
     (golos::plugins::private_message::contacts_size_api_object),
     (size))
-
-FC_REFLECT(
-    (golos::plugins::private_message::message_box_query),
-    (select_accounts)(filter_accounts)(newest_date)(unread_only)(limit)(offset))
-
-FC_REFLECT(
-    (golos::plugins::private_message::message_thread_query),
-    (newest_date)(unread_only)(limit)(offset))
 
 FC_REFLECT_ENUM(
     golos::plugins::private_message::callback_event_type,
@@ -194,3 +291,21 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::plugins::private_message::callback_contact_event),
     (type)(contact))
+
+FC_REFLECT(
+    (golos::plugins::private_message::message_account_api_object),
+    (name)(json_metadata)(last_seen)(memo_key)(relations)
+    (member_type)
+)
+
+FC_REFLECT(
+    (golos::plugins::private_message::private_group_member_api_object),
+    (group)(account)(json_metadata)(member_type)
+    (invited)(joined)(updated)(account_data)
+)
+
+FC_REFLECT(
+    (golos::plugins::private_message::private_group_api_object),
+    (owner)(name)(json_metadata)(is_encrypted)(privacy)(created)
+    (moders)(members)(pendings)(banneds)(total_messages)(member_list)
+)

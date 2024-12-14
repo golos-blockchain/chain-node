@@ -7,6 +7,30 @@ namespace golos { namespace plugins { namespace private_message {
 
     using namespace golos::protocol;
 
+    struct private_group_options {
+        std::string group;
+        account_name_type requester; // For editing and marking. For delete - use operation's `requester`
+        std::set<account_name_type> mentions;
+
+        void validate() const;
+    };
+
+    using group_extension = static_variant<
+        private_group_options
+    >;
+
+    using group_extensions_type = flat_set<group_extension>;
+
+    static inline account_name_type get_op_requester(const group_extensions_type& extensions) {
+        for (const auto& ext : extensions) {
+            if (ext.which() == group_extension::tag<private_group_options>::value) {
+                const auto& pgo = ext.get<private_group_options>();
+                return pgo.requester;
+            }
+        }
+        return account_name_type();
+    }
+
     struct private_message_operation: public base_operation {
         account_name_type from;
         account_name_type to;
@@ -17,13 +41,31 @@ namespace golos { namespace plugins { namespace private_message {
         bool update = false;
         std::vector<char> encrypted_message;
 
-        extensions_type extensions;
+        group_extensions_type extensions;
 
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            if (update) {
+                auto requester = get_op_requester(extensions);
+                if (requester != account_name_type()) {
+                    a.insert(requester);
+                    return;
+                }
+            }
             a.insert(from);
         }
     };
+
+    struct delete_options {
+        bool delete_contact = false;
+    };
+
+    using delete_extension = static_variant<
+        private_group_options,
+        delete_options
+    >;
+
+    using delete_extensions_type = flat_set<delete_extension>;
 
     struct private_delete_message_operation: public base_operation {
         account_name_type requester;
@@ -33,7 +75,7 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec start_date;
         time_point_sec stop_date;
 
-        extensions_type extensions;
+        delete_extensions_type extensions;
 
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
@@ -48,10 +90,15 @@ namespace golos { namespace plugins { namespace private_message {
         time_point_sec start_date;
         time_point_sec stop_date;
 
-        extensions_type extensions;
+        group_extensions_type extensions;
 
         void validate() const;
         void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            auto requester = get_op_requester(extensions);
+            if (requester != account_name_type()) {
+                a.insert(requester);
+                return;
+            }
             a.insert(to);
         }
     };
@@ -105,19 +152,87 @@ namespace golos { namespace plugins { namespace private_message {
         }
     };
 
+    void validate_private_group_name(const std::string& name);
+
+    enum class private_group_privacy: uint8_t {
+        public_group = 1,
+        public_read_only = 2,
+        private_group = 3,
+        _size = 4
+    };
+
+    struct private_group_operation: public base_operation {
+        account_name_type creator;
+        std::string name;
+        std::string json_metadata;
+        bool is_encrypted = false;
+        private_group_privacy privacy = private_group_privacy::public_group;
+
+        extensions_type extensions;
+
+        void validate() const;
+        void get_required_active_authorities(flat_set<account_name_type>& a) const {
+            a.insert(creator);
+        }
+    };
+
+    struct private_group_delete_operation: public base_operation {
+        account_name_type owner;
+        std::string name;
+
+        extensions_type extensions;
+
+        void validate() const;
+        void get_required_active_authorities(flat_set<account_name_type>& a) const {
+            a.insert(owner);
+        }
+    };
+
+    enum class private_group_member_type: uint8_t {
+        pending = 1,
+        member = 2,
+        retired = 3,
+        banned = 4,
+        moder = 5,
+        _size = 6
+    };
+
+    struct private_group_member_operation: public base_operation {
+        account_name_type requester;
+        std::string name;
+        account_name_type member;
+        private_group_member_type member_type;
+        std::string json_metadata;
+
+        extensions_type extensions;
+
+        void validate() const;
+        void get_required_posting_authorities(flat_set<account_name_type>& a) const {
+            a.insert(requester);
+        }
+    };
+
     using private_message_plugin_operation = fc::static_variant<
         private_message_operation,
         private_delete_message_operation,
         private_mark_message_operation,
         private_settings_operation,
-        private_contact_operation>;
+        private_contact_operation,
+        private_group_operation,
+        private_group_delete_operation,
+        private_group_member_operation
+    >;
 
 } } } // golos::plugins::private_message
 
+FC_REFLECT((golos::plugins::private_message::private_group_options), (group)(requester)(mentions))
+FC_REFLECT_TYPENAME((golos::plugins::private_message::group_extension))
 FC_REFLECT(
     (golos::plugins::private_message::private_message_operation),
     (from)(to)(nonce)(from_memo_key)(to_memo_key)(checksum)(update)(encrypted_message)(extensions))
 
+FC_REFLECT((golos::plugins::private_message::delete_options), (delete_contact))
+FC_REFLECT_TYPENAME((golos::plugins::private_message::delete_extension))
 FC_REFLECT(
     (golos::plugins::private_message::private_delete_message_operation),
     (requester)(from)(to)(nonce)(start_date)(stop_date)(extensions))
@@ -138,6 +253,24 @@ FC_REFLECT_ENUM(
 FC_REFLECT(
     (golos::plugins::private_message::private_contact_operation),
     (owner)(contact)(type)(json_metadata)(extensions))
+
+FC_REFLECT_ENUM(
+    golos::plugins::private_message::private_group_privacy,
+    (public_group)(public_read_only)(private_group)(_size))
+FC_REFLECT(
+    (golos::plugins::private_message::private_group_operation),
+    (creator)(name)(json_metadata)(is_encrypted)(privacy)(extensions))
+
+FC_REFLECT(
+    (golos::plugins::private_message::private_group_delete_operation),
+    (owner)(name)(extensions))
+
+FC_REFLECT_ENUM(
+    golos::plugins::private_message::private_group_member_type,
+    (pending)(member)(retired)(banned)(moder)(_size))
+FC_REFLECT(
+    (golos::plugins::private_message::private_group_member_operation),
+    (requester)(name)(member)(member_type)(json_metadata)(extensions))
 
 FC_REFLECT_TYPENAME((golos::plugins::private_message::private_message_plugin_operation))
 

@@ -30,11 +30,12 @@ using golos::chain::account_name_set;
 using namespace golos::plugins::follow;
 
 
-struct follow_fixture : public golos::chain::database_fixture {
-    follow_fixture() : golos::chain::database_fixture() {
+struct follow_fixture : public golos::chain::clean_database_fixture_wrap {
+    follow_fixture() : golos::chain::clean_database_fixture_wrap(true, [&]() {
         initialize<golos::plugins::follow::plugin>();
         open_database();
         startup();
+    }) {
     }
 };
 
@@ -44,7 +45,7 @@ BOOST_FIXTURE_TEST_SUITE(follow_plugin, follow_fixture)
 BOOST_AUTO_TEST_CASE(follow_validate) {
     BOOST_TEST_MESSAGE("Testing: follow_validate");
 
-    ACTORS((alice)(bob));
+    ACTORS_OLD((alice)(bob));
 
     follow_operation op;
     op.follower = "alice";
@@ -70,7 +71,7 @@ BOOST_AUTO_TEST_CASE(follow_authorities) {
 BOOST_AUTO_TEST_CASE(follow_apply) {
     BOOST_TEST_MESSAGE("Testing: follow_apply");
 
-    ACTORS((alice)(bob));
+    ACTORS_OLD((alice)(bob));
 
     generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
 
@@ -123,7 +124,7 @@ BOOST_AUTO_TEST_CASE(reblog_authorities) {
 BOOST_AUTO_TEST_CASE(reblog_apply) {
     BOOST_TEST_MESSAGE("Testing: reblog_apply");
 
-    ACTORS((alice)(bob));
+    ACTORS_OLD((alice)(bob));
 
     generate_blocks(60 / STEEMIT_BLOCK_INTERVAL);
     signed_transaction tx;

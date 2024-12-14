@@ -101,9 +101,6 @@ namespace golos { namespace protocol {
             GOLOS_CHECK_PARAM(name, {
                 validate_nft_collection_name(name);
             });
-            GOLOS_CHECK_PARAM(token_id, {
-                GOLOS_CHECK_VALUE(!token_id, "You filled name field, so you want to buy any token of NFT collection, you cannot buy specific one - token_id should be 0");
-            });
             GOLOS_CHECK_PARAM(price, {
                 GOLOS_CHECK_VALUE(price.amount > 0, "If buy is first, buy price should be > 0");
             });
@@ -117,5 +114,13 @@ namespace golos { namespace protocol {
 
     void nft_cancel_order_operation::validate() const {
         GOLOS_CHECK_PARAM_ACCOUNT(owner);
+    }
+
+    void nft_auction_operation::validate() const {
+        GOLOS_CHECK_PARAM_ACCOUNT(owner);
+        GOLOS_CHECK_PARAM(min_price, {
+            GOLOS_CHECK_VALUE(min_price.symbol != VESTS_SYMBOL, "Price cannot be GESTS");
+            GOLOS_CHECK_VALUE(min_price.amount >= 0, "Price should be >= 0");
+        });
     }
 }}
