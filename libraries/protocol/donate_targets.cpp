@@ -45,9 +45,11 @@ fc::optional<message_donate> get_message_donate(const donate_operation& op) {
     auto from = account_name_type(from_str);
 
     account_name_type to;
-    if (!group.size()) {
+    if (to_str.size()) {
         if (!is_valid_account_name(to_str)) return res;
         to = account_name_type(to_str);
+    } else {
+        if (!group.size()) return res;
     }
 
     res = message_donate();
