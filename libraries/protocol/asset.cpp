@@ -39,9 +39,9 @@ namespace golos {
             } else {
                 FC_ASSERT(a[7] == 0);
             }
-            if (symbol == asset::max_symbol()) { // Fix because API requests hangs with raw one
+            /*if (symbol == asset::max_symbol()) { // Fix because API requests hangs with raw one
                 return std::string(14, '?');
-            }
+            }*/
             return &a[1];
         }
 
