@@ -46,69 +46,36 @@ namespace golos {
 
                 void validate(const exchange_query& query) const;
 
-                bool ignore_chain(bool is_buy, asset param, asset res, bool is_direct) const {
-                    auto thr = is_direct ? direct : multi;
-                    if (thr.amount.value != 0 &&
-                        (is_buy ? param : res) < thr) return true;
-                    return false;
-                }
+                bool ignore_chain(bool is_buy, asset param, asset res, bool is_direct) const;
+            };
+
+            enum class exchange_hybrid_strategy : uint8_t {
+                none,
+                discrete
+            };
+
+            struct exchange_hybrid {
+                exchange_hybrid_strategy strategy;
             };
 
             struct exchange_query {
                 asset amount;
                 std::string symbol;
-                asset_symbol_type sym2;
+                asset_symbol_type sym2; // Internal
                 exchange_direction direction = exchange_direction::sell;
 
                 exchange_remain remain;
                 exchange_excess_protect excess_protect = exchange_excess_protect::fix_input;
                 fc::optional<exchange_min_to_receive> min_to_receive;
+                fc::optional<exchange_hybrid> hybrid;
+                uint16_t pct = STEEMIT_100_PERCENT; // Internal
 
                 std::set<std::string> hidden_assets;
 
-                void initialize_validate(database& _db) {
-                    GOLOS_CHECK_PARAM(amount, {
-                        GOLOS_CHECK_VALUE_GT(amount.amount.value, 0);
-                        if (amount.symbol != STEEM_SYMBOL && amount.symbol != SBD_SYMBOL) {
-                            _db.with_weak_read_lock([&]() {
-                                _db.get_asset(amount.symbol);
-                            });
-                        }
-                    });
+                void initialize_validate(database& _db);
 
-                    GOLOS_CHECK_PARAM(symbol, {
-                        GOLOS_CHECK_VALUE(symbol != amount.symbol_name(),
-                            "amount should have another symbol than query.symbol");
-
-                        _db.with_weak_read_lock([&]() {
-                            sym2 = _db.symbol_from_str(symbol);
-                        });
-                    });
-
-                    GOLOS_CHECK_PARAM(min_to_receive, {
-                        if (!!min_to_receive) {
-                            min_to_receive->validate(*this);
-                        }
-                    });
-                }
+                std::vector<exchange_query> discrete_split(uint16_t step);
             };
-
-            void exchange_min_to_receive::validate(const exchange_query& query) const {
-                #define VALIDATE_AMOUNT(FIELD) \
-                    if (FIELD.amount.value != 0) { \
-                        GOLOS_CHECK_VALUE_GT(FIELD.amount.value, 0); \
-                        if (query.direction == exchange_direction::sell) { \
-                            GOLOS_CHECK_VALUE(FIELD.symbol == query.sym2, \
-                                "min_to_receive should have same symbol as 'symbol' field"); \
-                        } else { \
-                            GOLOS_CHECK_VALUE(FIELD.symbol == query.amount.symbol, \
-                                "min_to_receive should have same symbol as 'amount' symbol"); \
-                        } \
-                    }
-                VALIDATE_AMOUNT(direct);
-                VALIDATE_AMOUNT(multi);
-                #undef VALIDATE_AMOUNT
-            }
         }
     }
 } // golos::plugins::exchange
@@ -138,9 +105,19 @@ FC_REFLECT(
     (direct)(multi)
 )
 
+FC_REFLECT_ENUM(
+    golos::plugins::exchange::exchange_hybrid_strategy,
+    (none)(discrete)
+)
+
+FC_REFLECT(
+    (golos::plugins::exchange::exchange_hybrid),
+    (strategy)
+)
+
 FC_REFLECT(
     (golos::plugins::exchange::exchange_query),
     (amount)(symbol)(direction)
-    (remain)(excess_protect)(min_to_receive)
+    (remain)(excess_protect)(min_to_receive)(hybrid)(pct)
     (hidden_assets)
 )

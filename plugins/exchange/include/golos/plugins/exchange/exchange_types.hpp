@@ -123,18 +123,28 @@ namespace golos {
                     return false;
                 }
 
-                const asset& res() const {
+                asset res() const {
                     if (steps.size()) {
                         auto idx = reversed ? 0 : steps.size() - 1;
-                        return steps[idx].res();
+                        auto main = steps[idx].res();
+                        if (subchains.size())
+                        {
+                            main += subchains[0].res();
+                        }
+                        return main;
                     }
                     return empty;
                 }
 
-                const asset& param() const {
+                asset param() const {
                     if (steps.size()) {
                         auto idx = reversed ? steps.size() - 1 : 0;
-                        return steps[idx].param();
+                        auto main = steps[idx].param();
+                        if (subchains.size())
+                        {
+                            main += subchains[0].param();
+                        }
+                        return main;
                     }
                     return empty;
                 }
@@ -152,10 +162,21 @@ namespace golos {
 
                 std::vector<exchange_step> steps;
                 std::vector<std::string> syms;
+                std::vector<ex_chain> subchains;
                 bool has_remain = false; // Not reflected - internal
                 bool reversed = false; //
                 asset empty{0, asset::min_symbol()}; //
             };
+
+            const ex_chain* get_direct_chain(const std::vector<ex_chain>& chains) {
+                auto itr = std::find_if(chains.begin(), chains.end(), [&](const auto& chain) {
+                    return chain.size() == 1;
+                });
+                if (itr != chains.end()) {
+                    return &(*itr);
+                }
+                return nullptr;
+            }
 
             struct ex_stat {
                 fc::time_point start;
@@ -178,6 +199,29 @@ namespace golos {
             };
 
             const uint32_t SEARCH_TIMEOUT = 1000;
+
+            using order_cache = multi_index_container<
+                limit_order_object,
+                indexed_by<
+                    ordered_unique<tag<by_id>,
+                        member<limit_order_object, limit_order_id_type, &limit_order_object::id>
+                    >,
+                    ordered_unique<tag<by_price>, composite_key<limit_order_object,
+                        member<limit_order_object, price, &limit_order_object::sell_price>,
+                        member<limit_order_object, limit_order_id_type, &limit_order_object::id>
+                    >, composite_key_compare<
+                        std::greater<price>,
+                        std::less<limit_order_id_type>
+                    >>,
+                    ordered_unique<tag<by_buy_price>, composite_key<limit_order_object,
+                        const_mem_fun<limit_order_object, price, &limit_order_object::buy_price>,
+                        member<limit_order_object, limit_order_id_type, &limit_order_object::id>
+                    >, composite_key_compare<
+                        std::less<price>,
+                        std::less<limit_order_id_type>
+                    >>
+                >
+            >;
         }
     }
 } // golos::plugins::exchange
@@ -224,6 +268,10 @@ namespace fc {
         fc::variant syms_v;
         to_variant(syms, syms_v);
         res["syms"] = syms_v;
+
+        fc::variant subchains;
+        to_variant(var.subchains, subchains);
+        res["subchains"] = subchains;
 
         res["best_price"] = best_price;
         res["limit_price"] = limit_price;
