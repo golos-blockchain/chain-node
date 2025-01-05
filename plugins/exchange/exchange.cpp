@@ -269,6 +269,7 @@ void exchange::exchange_impl::exchange_go_chain(
 ex_chain exchange::exchange_impl::fix_receive(const ex_chain& chain, const ex_stat& stat) const {
     ex_chain result;
     result.reversed = true;
+    result.subchains = chain.subchains;
 
     const auto& idx = _db.get_index<limit_order_index, by_buy_price>();
 
@@ -318,6 +319,11 @@ ex_chain exchange::exchange_impl::fix_receive(const ex_chain& chain, const ex_st
         if (!step.receive.amount.value && i != last) {
             result.steps.clear();
             return result;
+        }
+
+        if (!!st.remain) {
+            step.remain = st.remain;
+            result.has_remain = true;
         }
 
         step.is_buy = true;
@@ -465,7 +471,11 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
     }
 
     if (chains.size()) {
-        result["best"] = chains[0];
+        if (chains.size() > 1 && !!chains[0].steps[0].remain) {
+            result["best"] = chains[1];
+        } else {
+            result["best"] = chains[0];
+        }
     } else {
         result["best"] = false;
     }
