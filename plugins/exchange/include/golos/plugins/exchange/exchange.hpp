@@ -39,7 +39,7 @@ private:
 
     std::unique_ptr<exchange_impl> my;
 
-    uint16_t hybrid_discrete_step = 1000; // 10.00%
+    uint16_t hybrid_discrete_step = 100; // 1.00%
 };
 
 } } } // golos::plugins::exchange

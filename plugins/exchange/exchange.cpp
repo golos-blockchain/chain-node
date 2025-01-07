@@ -165,6 +165,14 @@ void exchange::exchange_impl::exchange_go_chain(
 
         auto& res = step.res();
 
+        if (query.pct != STEEMIT_100_PERCENT) {
+            if ((query.pct_direct && quote_symbol != query.sym2) ||
+                (!query.pct_direct && chain.size() == 1 && quote_symbol == sym2)) {
+                ++itr;
+                continue;
+            }
+        }
+
         if (res.symbol != quote_symbol) {
             const auto& a = get_asset(assets, quote_symbol);
 
@@ -342,7 +350,9 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
 
     query.initialize_validate(_db);
 
-    std::map<uint16_t, std::vector<ex_chain>> chain_map;
+    using chain_map = std::map<uint16_t, std::vector<ex_chain>>;
+    chain_map multies;
+    chain_map directs;
 
     bool is_buy = query.direction == exchange_direction::buy;
 
@@ -405,20 +415,23 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
             return result;
         }
 
-        chain_map[curr.pct] = chains;
+        if (curr.pct_direct) {
+            directs[curr.pct] = chains;
+        } else {
+            multies[curr.pct] = chains;
+        }
     }
 
     std::vector<ex_chain> chains;
-    for (auto itr = chain_map.rbegin(); itr != chain_map.rend(); ++itr) {
+    for (auto itr = multies.rbegin(); itr != multies.rend(); ++itr) {
         auto pct = itr->first;
         const auto& vec = itr->second;
         if (pct == STEEMIT_100_PERCENT) {
             std::copy(vec.begin(), vec.end(), std::back_inserter(chains));
         } else {
-            auto dir_pct = STEEMIT_100_PERCENT - pct;
-            auto dirs = chain_map.find(dir_pct);
+            auto dirs = directs.find(pct);
             const ex_chain* direct = nullptr;
-            if (dirs != chain_map.end()) {
+            if (dirs != directs.end()) {
                 direct = get_direct_chain(dirs->second);
             }
             if (!direct) {
@@ -426,6 +439,9 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
             }
             for (auto chain : vec) {
                 if (chain.size() == 1) {
+                    continue;
+                }
+                if (direct->has_remain && query.remain.multi == exchange_remain_policy::ignore) {
                     continue;
                 }
                 chain.subchains.push_back(*direct);
@@ -449,6 +465,14 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
                             && query.min_to_receive->ignore_chain(c2.is_buy(), c2.param(), c2.res(), c2.size() == 1)) {
                         continue;
                     }
+                    if (c2.subchains.size()) {
+                        auto sub = fix_receive(c2.subchains[0], stat);
+                        if (sub.steps.size()) {
+                            c2.subchains[0] = sub;
+                        } else {
+                            c2.subchains.clear();
+                        }
+                    }
                     new_chains.push_back(c2);
                 }
             }
@@ -471,7 +495,8 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
     }
 
     if (chains.size()) {
-        if (chains.size() > 1 && !!chains[0].steps[0].remain) {
+        if (query.remain.multi == exchange_remain_policy::ignore &&
+                chains.size() > 1 && !!chains[0].steps[0].remain) {
             result["best"] = chains[1];
         } else {
             result["best"] = chains[0];

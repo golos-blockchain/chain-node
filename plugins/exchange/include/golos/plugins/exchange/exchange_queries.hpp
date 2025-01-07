@@ -69,6 +69,7 @@ namespace golos {
                 fc::optional<exchange_min_to_receive> min_to_receive;
                 fc::optional<exchange_hybrid> hybrid;
                 uint16_t pct = STEEMIT_100_PERCENT; // Internal
+                bool pct_direct = false; //
 
                 std::set<std::string> hidden_assets;
 

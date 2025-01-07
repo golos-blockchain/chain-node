@@ -72,6 +72,14 @@ std::vector<exchange_query> exchange_query::discrete_split(uint16_t step) {
         }
         prev_amount = chunk.amount;
         qus.push_back(chunk);
+
+        if (pct != STEEMIT_100_PERCENT) {
+            auto dir = *this;
+            dir.pct = pct;
+            dir.pct_direct = true;
+            dir.amount -= chunk.amount;
+            qus.push_back(dir);
+        }
     }
     return qus;
 }
