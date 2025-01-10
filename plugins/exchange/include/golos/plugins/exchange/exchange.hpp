@@ -5,6 +5,8 @@
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 
+#define GOLOS_MIN_DISCRETE_STEP 200 // 2.00%
+
 namespace golos { namespace plugins { namespace exchange {
 
 namespace bpo = boost::program_options;
@@ -39,7 +41,7 @@ private:
 
     std::unique_ptr<exchange_impl> my;
 
-    uint16_t hybrid_discrete_step = 1000; // 10.00%
+    uint16_t hybrid_discrete_step = GOLOS_MIN_DISCRETE_STEP;
 };
 
 } } } // golos::plugins::exchange

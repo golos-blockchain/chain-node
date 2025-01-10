@@ -364,7 +364,13 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
 
     std::vector<exchange_query> queries;
     if (!!query.hybrid && query.hybrid->strategy == exchange_hybrid_strategy::discrete) {
-        queries = query.discrete_split(hybrid_discrete_step);
+        GOLOS_CHECK_PARAM(query.hybrid, {
+            GOLOS_CHECK_VALUE(query.hybrid->discrete_step <= STEEMIT_100_PERCENT,
+                "discrete_step cannot be greater than 10000 (100%)");
+            GOLOS_CHECK_VALUE(query.hybrid->discrete_step >= hybrid_discrete_step,
+                "discrete_step cannot be less than " + std::to_string(hybrid_discrete_step));
+        });
+        queries = query.discrete_split(query.hybrid->discrete_step);
     } else {
         queries = {query};
     }

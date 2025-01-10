@@ -1,5 +1,6 @@
 #pragma once
 
+#include <golos/plugins/exchange/exchange.hpp>
 #include <golos/plugins/json_rpc/utility.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/chain/steem_object_types.hpp>
@@ -56,6 +57,7 @@ namespace golos {
 
             struct exchange_hybrid {
                 exchange_hybrid_strategy strategy;
+                uint16_t discrete_step = GOLOS_MIN_DISCRETE_STEP;
             };
 
             struct exchange_query {
@@ -113,7 +115,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_hybrid),
-    (strategy)
+    (strategy)(discrete_step)
 )
 
 FC_REFLECT(
