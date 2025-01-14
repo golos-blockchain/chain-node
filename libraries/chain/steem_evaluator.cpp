@@ -2623,7 +2623,11 @@ namespace golos { namespace chain {
         }
 
         void limit_order_create2_evaluator::do_apply(const limit_order_create2_operation& o) {
+            std::string errlog;
+            try {
+errlog+=" p0";
             if (!_db.has_hardfork(STEEMIT_HARDFORK_0_24__95)) {
+errlog+=" p1";
                 auto amount_to_sell = o.amount_to_sell;
                 auto exchange_rate = o.exchange_rate;
                 GOLOS_CHECK_LOGIC((is_asset_type(amount_to_sell, STEEM_SYMBOL) &&
@@ -2632,17 +2636,22 @@ namespace golos { namespace chain {
                            is_asset_type(exchange_rate.quote, STEEM_SYMBOL)),
                         logic_exception::limit_order_must_be_for_golos_gbg_market,
                         "Limit order must be for the GOLOS:GBG market");
+errlog+=" p2";
             }
 
+errlog+=" p3";
             GOLOS_CHECK_VALUE(
                 o.amount_to_sell.symbol == STEEM_SYMBOL ||
                 o.amount_to_sell.symbol == SBD_SYMBOL ||
                 _db.get_asset(o.amount_to_sell.symbol).whitelists(o.exchange_rate.quote.symbol), "Selling asset must whitelist receiving");
+
+errlog+=" p4";
             GOLOS_CHECK_VALUE(
                 o.exchange_rate.quote.symbol == STEEM_SYMBOL ||
                 o.exchange_rate.quote.symbol == SBD_SYMBOL ||
                 _db.get_asset(o.exchange_rate.quote.symbol).whitelists(o.amount_to_sell.symbol), "Receiving asset must whitelist selling");
 
+errlog+=" p5";
             GOLOS_CHECK_OP_PARAM(o, expiration, {
                 GOLOS_CHECK_VALUE(o.expiration > _db.head_block_time(),
                         "Limit order has to expire after head block time.");
@@ -2650,10 +2659,12 @@ namespace golos { namespace chain {
 
             const auto &owner = _db.get_account(o.owner);
 
+errlog+=" p6";
             GOLOS_CHECK_BALANCE(_db, owner, MAIN_BALANCE, o.amount_to_sell);
             _db.adjust_balance(owner, -o.amount_to_sell);
             _db.adjust_market_balance(owner, o.amount_to_sell);
 
+errlog+=" p7";
             GOLOS_CHECK_OBJECT_MISSING(_db, limit_order, o.owner, o.orderid);
 
             const auto &order = _db.create<limit_order_object>([&](limit_order_object &obj) {
@@ -2666,7 +2677,12 @@ namespace golos { namespace chain {
                 obj.expiration = o.expiration;
             });
 
+errlog+=" p8";
             _db.push_order_create_event(order);
+
+errlog+=" p9";
+            auto to_receive = order.amount_to_receive();
+errlog+=" p91";
 
             bool filled = _db.apply_order(order);
 
@@ -2674,9 +2690,26 @@ namespace golos { namespace chain {
                 GOLOS_CHECK_LOGIC(filled, logic_exception::cancelling_not_filled_order,
                         "Cancelling order because it was not filled.");
 
+errlog+=" p10";
             _db.update_asset_marketed(o.amount_to_sell.symbol);
+errlog+=" p11";
             _db.update_asset_marketed(o.exchange_rate.quote.symbol);
-            _db.update_pair_depth(o.amount_to_sell, order.amount_to_receive());
+errlog+=" p12";
+            _db.update_pair_depth(o.amount_to_sell, to_receive);
+errlog+=" p13";
+            } catch( fc::exception& err ) {
+                elog("limit_order_create2 error: " + errlog);
+                throw err;
+            } catch( const std::exception& err ) {
+                elog("limit_order_create2 error: " + errlog);
+                throw err;
+            } catch(...) {
+                elog("limit_order_create2 error: " + errlog);
+                fc::unhandled_exception e(
+                    FC_LOG_MESSAGE( warn, "rethrow"),
+                    std::current_exception() );
+                throw e;
+            }
         }
 
         void limit_order_cancel_evaluator::do_apply(const limit_order_cancel_operation &o) {

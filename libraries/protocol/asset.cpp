@@ -37,6 +37,10 @@ namespace golos {
             if (a[0] >= 100) {
                 FC_ASSERT(a[15] == 0);
             } else {
+                if (a[7] != 0) {
+                    elog("a[7] == 0 error:");
+                    elog(std::string(&a[1]));
+                }
                 FC_ASSERT(a[7] == 0);
             }
             /*if (symbol == asset::max_symbol()) { // Fix because API requests hangs with raw one

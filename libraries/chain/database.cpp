@@ -5143,28 +5143,50 @@ namespace golos { namespace chain {
                             apply_operation(op);
                             ++_current_op_in_trx;
                         } catch(const fc::exception& e) {
+                            elog("operation error DETAILS:");
+                            elog(e.to_detail_string());
                             FC_THROW_EXCEPTION(tx_invalid_operation,
                                     "Invalid operation ${index} in transaction: ${errmsg}",
                                     ("index", _current_op_in_trx)
                                     ("errmsg", e.to_string())
                                     ("error", e));
                         } 
-                    } FC_CAPTURE_AND_RETHROW((op));
+                    } FC_CAPTURE_LOG_AND_RETHROW((op));
                 }
                 _current_trx_id = transaction_id_type();
 
-            } FC_CAPTURE_AND_RETHROW((trx))
+            } FC_CAPTURE_LOG_AND_RETHROW((trx))
         }
 
         void database::apply_operation(const operation &op, bool is_virtual /* false */) {
+            std::string errlog;
+            try {
+            errlog += " ao1";
             operation_notification note(op);
             if (is_virtual) {
                 ++_current_virtual_op;
                 note.virtual_op = _current_virtual_op;
             }
+            errlog += " ao2";
             notify_pre_apply_operation(note);
+            errlog += " ao3";
             _my->_evaluator_registry.get_evaluator(op).apply(op);
+            errlog += " ao4";
             notify_post_apply_operation(note);
+            errlog += " ao5";
+            } catch( fc::exception& err ) {
+                elog("apply_operation error: " + errlog);
+                throw err;
+            } catch( const std::exception& err ) {
+                elog("apply_operation error: " + errlog);
+                throw err;
+            } catch(...) {
+                elog("apply_operation error: " + errlog);
+                fc::unhandled_exception e(
+                    FC_LOG_MESSAGE( warn, "rethrow"),
+                    std::current_exception() );
+                throw e;
+            }
         }
 
         const witness_object &database::validate_block_header(uint32_t skip, const signed_block &next_block) const {
