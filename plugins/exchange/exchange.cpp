@@ -98,7 +98,7 @@ void exchange::exchange_impl::exchange_go_chain(
     std::vector<ex_chain>& chains, asset_symbol_type sym2,
     const exchange_query& query, const OrderIndex& idx, std::function<void(const limit_order_object&)> add_to_cache, asset_map& assets, const ex_stat& stat
 ) const {
-    if (stat.msec() > SEARCH_TIMEOUT) throw ex_timeout_exception();
+    if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
 
     if (add_me.param().symbol == sym2) {
         if (query.pct == STEEMIT_100_PERCENT && !!query.min_to_receive
@@ -147,7 +147,8 @@ void exchange::exchange_impl::exchange_go_chain(
 
     auto itr = idx.lower_bound(prc);
     while (itr != idx.end()) {
-        if (stat.msec() > SEARCH_TIMEOUT) throw ex_timeout_exception();
+        while (true)
+        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
 
         add_to_cache(*itr);
 
@@ -303,7 +304,7 @@ ex_chain exchange::exchange_impl::fix_receive(const ex_chain& chain, const ex_st
         auto itr = idx.lower_bound(prc);
         auto end = idx.upper_bound(prc.max());
         while (itr != end && par.amount.value > 0) {
-            if (stat.msec() > SEARCH_TIMEOUT) throw ex_timeout_exception();
+            if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
 
             if (!step.best_price.base.amount.value) {
                 step.best_price = ~itr->sell_price;
@@ -433,7 +434,16 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
         auto pct = itr->first;
         const auto& vec = itr->second;
         if (pct == STEEMIT_100_PERCENT) {
-            std::copy(vec.begin(), vec.end(), std::back_inserter(chains));
+            if (!!query.hybrid && query.hybrid->strategy == exchange_hybrid_strategy::spread) {
+                for (auto chain : vec) {
+                    if (chain.size() > 1) {
+
+                    }
+                    chains.push_back(chain);
+                }
+            } else {
+                std::copy(vec.begin(), vec.end(), std::back_inserter(chains));
+            }
         } else {
             auto dirs = directs.find(pct);
             const ex_chain* direct = nullptr;

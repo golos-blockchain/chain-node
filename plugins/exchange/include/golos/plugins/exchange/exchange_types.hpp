@@ -198,8 +198,6 @@ namespace golos {
                 }
             };
 
-            const uint32_t SEARCH_TIMEOUT = 1000;
-
             using order_cache = multi_index_container<
                 limit_order_object,
                 indexed_by<

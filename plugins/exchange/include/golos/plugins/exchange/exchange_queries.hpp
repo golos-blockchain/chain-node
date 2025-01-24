@@ -52,7 +52,8 @@ namespace golos {
 
             enum class exchange_hybrid_strategy : uint8_t {
                 none,
-                discrete
+                discrete,
+                spread
             };
 
             struct exchange_hybrid {
@@ -110,7 +111,7 @@ FC_REFLECT(
 
 FC_REFLECT_ENUM(
     golos::plugins::exchange::exchange_hybrid_strategy,
-    (none)(discrete)
+    (none)(discrete)(spread)
 )
 
 FC_REFLECT(
