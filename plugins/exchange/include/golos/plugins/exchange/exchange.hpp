@@ -5,7 +5,7 @@
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 
-#define GOLOS_SEARCH_TIMEOUT 3000
+#define GOLOS_SEARCH_TIMEOUT 1500
 
 #define GOLOS_MIN_DISCRETE_STEP 200 // 2.00%
 

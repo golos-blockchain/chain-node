@@ -147,7 +147,6 @@ void exchange::exchange_impl::exchange_go_chain(
 
     auto itr = idx.lower_bound(prc);
     while (itr != idx.end()) {
-        while (true)
         if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
 
         add_to_cache(*itr);
