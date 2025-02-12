@@ -41,6 +41,8 @@ namespace golos {
                 price best_price{asset(0, STEEM_SYMBOL), asset(0, SBD_SYMBOL)};
                 price limit_price{asset(0, STEEM_SYMBOL), asset(0, SBD_SYMBOL)};
 
+                std::vector<limit_order_object> impacted_orders;
+
                 static exchange_step from_sell(asset s) {
                     exchange_step step;
                     step.sell = s;
@@ -123,10 +125,17 @@ namespace golos {
                     return false;
                 }
 
-                asset res() const {
+                const exchange_step& last() const {
                     if (steps.size()) {
                         auto idx = reversed ? 0 : steps.size() - 1;
-                        auto main = steps[idx].res();
+                        return steps[idx];
+                    }
+                    return empty_step;
+                }
+
+                asset res() const {
+                    if (steps.size()) {
+                        auto main = last().res();
                         if (subchains.size())
                         {
                             main += subchains[0].res();
@@ -136,10 +145,17 @@ namespace golos {
                     return empty;
                 }
 
-                asset param() const {
+                const exchange_step& first() const {
                     if (steps.size()) {
                         auto idx = reversed ? steps.size() - 1 : 0;
-                        auto main = steps[idx].param();
+                        return steps[idx];
+                    }
+                    return empty_step;
+                }
+
+                asset param() const {
+                    if (steps.size()) {
+                        auto main = first().param();
                         if (subchains.size())
                         {
                             main += subchains[0].param();
@@ -166,6 +182,7 @@ namespace golos {
                 bool has_remain = false; // Not reflected - internal
                 bool reversed = false; //
                 asset empty{0, asset::min_symbol()}; //
+                exchange_step empty_step; //
             };
 
             const ex_chain* get_direct_chain(const std::vector<ex_chain>& chains) {
@@ -226,7 +243,7 @@ namespace golos {
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_step),
-    (sell)(receive)(remain)(fee)(fee_pct)(best_price)(limit_price)
+    (sell)(receive)(remain)(fee)(fee_pct)(best_price)(limit_price)(impacted_orders)
 )
 
 namespace fc {

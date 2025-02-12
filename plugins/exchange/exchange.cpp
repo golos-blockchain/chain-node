@@ -19,17 +19,37 @@ public:
     ~exchange_impl() {
     }
 
-    asset_info get_asset(asset_map& assets, asset_symbol_type symbol) const;
+    asset_info get_asset(asset_map& assets, asset_symbol_type symbol, bool cached = false) const;
 
     asset subtract_fee(asset& a, uint16_t fee_pct) const;
+
+    asset include_fee(asset& a, uint16_t fee_pct) const;
+
+    struct cache_helper {
+        order_cache cache;
+        bool from_cache = false;
+
+        void add_to_cache(const limit_order_object& loo) {
+            if (from_cache) return;
+            auto& id = cache.get<by_id>();
+            if (id.find(loo.id) != id.end()) return;
+            id.emplace(loo);
+        }
+    };
 
     template<typename OrderIndex>
     void exchange_go_chain(ex_chain chain, exchange_step add_me,
         std::vector<ex_chain>& chains, asset_symbol_type sym2,
-        const exchange_query& query, const OrderIndex& idx, std::function<void(const limit_order_object&)> add_to_cache, asset_map& assets, const ex_stat& stat) const;
-    fc::mutable_variant_object get_exchange(exchange_query query) const;
+        const exchange_query& query, const OrderIndex& idx, cache_helper& ch, asset_map& assets, const ex_stat& stat) const;
 
     ex_chain fix_receive(const ex_chain& chain, const ex_stat& stat) const;
+
+    asset apply_direct(exchange_step& dir, const limit_order_object& ord, asset param) const;
+
+    std::vector<ex_chain> spread_chains(const std::vector<ex_chain>& chains, const exchange_query& query,
+        const cache_helper& ch, const ex_stat& stat) const;
+
+    fc::mutable_variant_object get_exchange(exchange_query query) const;
 
     database& _db;
 
@@ -64,7 +84,7 @@ void exchange::plugin_shutdown() {
     ilog("Shutting down exchange plugin");
 }
 
-asset_info exchange::exchange_impl::get_asset(asset_map& assets, asset_symbol_type symbol) const {
+asset_info exchange::exchange_impl::get_asset(asset_map& assets, asset_symbol_type symbol, bool cached) const {
     auto a_itr = assets.find(symbol);
     if (a_itr != assets.end()) {
         return a_itr->second;
@@ -74,7 +94,8 @@ asset_info exchange::exchange_impl::get_asset(asset_map& assets, asset_symbol_ty
         } else if (symbol == SBD_SYMBOL) {
             assets[symbol] = asset_info("GBG");
         } else {
-            const auto& a = _db.get_asset(symbol);                           
+            FC_ASSERT(!cached, "Cannot access not cached asset when using cached orders");
+            const auto& a = _db.get_asset(symbol);
             assets[symbol] = asset_info(a);
         }
         return assets[symbol];
@@ -92,11 +113,27 @@ asset exchange::exchange_impl::subtract_fee(asset& a, uint16_t fee_pct) const {
     return fee;
 }
 
+asset exchange::exchange_impl::include_fee(asset& a, uint16_t fee_pct) const {
+    auto orig = a;
+    auto am_pct = STEEMIT_100_PERCENT - fee_pct;
+    if (am_pct) {
+        a = asset((fc::uint128_t(a.amount.value) * STEEMIT_100_PERCENT / am_pct).to_uint64(),
+            a.symbol);
+        if (fee_pct && a == orig) { // for HF 25 fix
+            a += asset(1, a.symbol);
+        }
+        return a - orig;
+    } else {
+        a.amount.value = 0;
+        return orig;
+    }
+}
+
 template<typename OrderIndex>
 void exchange::exchange_impl::exchange_go_chain(
     ex_chain chain, exchange_step add_me,
     std::vector<ex_chain>& chains, asset_symbol_type sym2,
-    const exchange_query& query, const OrderIndex& idx, std::function<void(const limit_order_object&)> add_to_cache, asset_map& assets, const ex_stat& stat
+    const exchange_query& query, const OrderIndex& idx, cache_helper& ch, asset_map& assets, const ex_stat& stat
 ) const {
     if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
 
@@ -132,7 +169,7 @@ void exchange::exchange_impl::exchange_go_chain(
     };
 
     if (add_me.is_buy) {
-        const auto& a = get_asset(assets, par.symbol);
+        const auto& a = get_asset(assets, par.symbol, ch.from_cache);
         if (a.fee_pct) {
             step.fee_pct = a.fee_pct;
         } else if (!!step.fee_pct) {
@@ -149,7 +186,7 @@ void exchange::exchange_impl::exchange_go_chain(
     while (itr != idx.end()) {
         if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
 
-        add_to_cache(*itr);
+        ch.add_to_cache(*itr);
 
         auto itr_prc = add_me.is_buy ? itr->sell_price : itr->buy_price();
         if (itr_prc.base.symbol != par.symbol) {
@@ -174,7 +211,7 @@ void exchange::exchange_impl::exchange_go_chain(
         }
 
         if (res.symbol != quote_symbol) {
-            const auto& a = get_asset(assets, quote_symbol);
+            const auto& a = get_asset(assets, quote_symbol, ch.from_cache);
 
             if (query.hidden_assets.count(a.symbol_name)) {
                 ++itr;
@@ -184,11 +221,12 @@ void exchange::exchange_impl::exchange_go_chain(
             if (res.amount.value || res.symbol == sym2) {
                 make_remain();
                 exchange_go_chain(chain, exchange_step::from(res, add_me.is_buy),
-                    chains, sym2, query, idx, add_to_cache, assets, stat);
+                    chains, sym2, query, idx, ch, assets, stat);
                 chain.has_remain = false;
             }
             res.amount.value = 0;
             res.symbol = quote_symbol;
+            step.impacted_orders.clear();
             if (step.remain) step.remain.reset();
             if (add_me.is_buy) {
                 par = receive0;
@@ -217,12 +255,7 @@ void exchange::exchange_impl::exchange_go_chain(
             auto ord_orig = itr->amount_for_sale();
             auto ord = ord_orig;
 
-            auto fee = asset((fc::uint128_t(ord.amount.value) * fee_pct / STEEMIT_100_PERCENT).to_uint64(),
-                ord.symbol);
-            if (fee_pct && fee.amount.value == 0) { // for HF 25 fix
-                fee.amount.value = 1;
-            }
-            ord -= fee;
+            auto fee = subtract_fee(ord, fee_pct);
 
             if (par >= ord) {
                 step.receive += ord;
@@ -232,15 +265,9 @@ void exchange::exchange_impl::exchange_go_chain(
             } else {
                 step.receive += par;
 
-                auto am_pct = STEEMIT_100_PERCENT - fee_pct;
                 auto am = par;
-                if (am_pct) {
-                    am = asset((fc::uint128_t(am.amount.value) * STEEMIT_100_PERCENT / am_pct).to_uint64(),
-                        am.symbol);
-                    if (fee_pct && am == par) { // for HF 25 fix
-                        am += asset(1, am.symbol);
-                    }
-                } else {
+                include_fee(am, fee_pct);
+                if (am.amount == 0) {
                     ++itr;
                     continue;
                 }
@@ -263,13 +290,15 @@ void exchange::exchange_impl::exchange_go_chain(
             res += r;
         }
 
+        step.impacted_orders.push_back(*itr);
+
         ++itr;
     }
 
     if (step.res().amount.value || step.res().symbol == sym2) {
         make_remain();
         exchange_go_chain(chain, exchange_step::from(step.res(), add_me.is_buy),
-            chains, sym2, query, idx, add_to_cache, assets, stat);
+            chains, sym2, query, idx, ch, assets, stat);
         chain.has_remain = false;
     }
 }
@@ -345,6 +374,107 @@ ex_chain exchange::exchange_impl::fix_receive(const ex_chain& chain, const ex_st
     return result;
 }
 
+asset exchange::exchange_impl::apply_direct(exchange_step& dir, const limit_order_object& ord, asset param) const {
+    auto par = param;
+
+    uint16_t fee_pct = 0;
+    if (!!dir.fee_pct) fee_pct = *(dir.fee_pct);
+
+    if (dir.is_buy) {
+        auto ord_orig = ord.amount_for_sale();
+        auto full = ord_orig;
+
+        auto fee = subtract_fee(full, fee_pct);
+        if (par >= full) {
+            dir.add_fee(fee);
+            par -= full;
+            dir.add_res(ord_orig, ord.sell_price);
+        } else {
+            auto am = par;
+            include_fee(am, fee_pct);
+            if (am.amount == 0) {
+                //TODO
+                //++itr;
+                //continue;
+            }
+
+            dir.add_fee(am - par);
+
+            par -= par;
+
+            dir.add_res(am, ord.sell_price);
+        }
+    } else {
+        auto o_par = std::min(par, ord.amount_to_receive());
+        auto r = o_par * ord.sell_price;
+        par -= o_par;
+
+        if (fee_pct) {
+            auto fee = subtract_fee(r, fee_pct);
+            dir.add_fee(fee);
+        }
+        dir.res() += r;
+    }
+
+    return par;
+}
+
+std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<ex_chain>& chains, const exchange_query& query,
+    const cache_helper& ch, const ex_stat& stat) const {
+    std::vector<ex_chain> res;
+
+    for (auto chain : chains) {
+        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+
+        if (chain.size() > 1) {
+            auto is_buy = chain.is_buy();
+            auto par = chain.param();
+            auto mid = chain.get_price();
+            //elog("ch " + fc::json::to_string(mid));
+
+            exchange_step dir;
+            dir = exchange_step::from(par, is_buy);
+            dir.param().amount = 0;
+            dir.res() = asset(0, chain.res().symbol);
+            dir.fee_pct = chain.last().fee_pct;
+
+            auto process_idx = [&](const auto& idx) {
+                auto prc = price::min(query.amount.symbol, query.sym2);
+                auto prc_max = prc.max();
+                auto itr = idx.lower_bound(is_buy ? prc_max : prc);
+                auto end = idx.upper_bound(is_buy ? prc : prc_max);
+                while (itr != end) {
+                    if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+
+                    auto itr_prc = is_buy ? itr->buy_price() : itr->sell_price;
+                    bool better = is_buy ? itr_prc < mid : itr_prc > mid;
+
+                    if (better) {
+                        par = apply_direct(dir, *itr, par);
+                    }
+
+                    ++itr;
+                }  
+            };
+            if (is_buy) {
+                const auto& cache_idx = ch.cache.get<by_price>();
+                process_idx(cache_idx);
+            } else {
+                const auto& cache_idx = ch.cache.get<by_buy_price>();
+                process_idx(cache_idx);
+            }
+
+            // TODO: check
+            ex_chain direct;
+            direct.push_back(dir);
+            chain.subchains.push_back(direct);
+        }
+        res.push_back(chain);
+    }
+
+    return res;
+}
+
 fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query query) const {
     fc::mutable_variant_object result;
 
@@ -359,7 +489,7 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
     ex_stat stat;
 
     ex_chain chain;
-    order_cache cache;
+    cache_helper ch;
     asset_map assets;
 
     std::vector<exchange_query> queries;
@@ -383,35 +513,28 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
         std::vector<ex_chain> chains;
 
         try {
-            auto add_to_cache = [&](const limit_order_object& loo) {
-                if (from_cache) return;
-                auto& id = cache.get<by_id>();
-                if (id.find(loo.id) != id.end()) return;
-                id.emplace(loo);
-            };
-
             auto use_indexes = [&](const auto& idx, const auto& cache_idx) {
                 if (from_cache) {
                     exchange_go_chain(
                         chain, step,
-                        chains, curr.sym2, curr, cache_idx, add_to_cache, assets, stat);
+                        chains, curr.sym2, curr, cache_idx, ch, assets, stat);
                 } else {
                     _db.with_weak_read_lock([&]() {
                         exchange_go_chain(
                             chain, step,
-                            chains, curr.sym2, curr, idx, add_to_cache, assets, stat);
+                            chains, curr.sym2, curr, idx, ch, assets, stat);
                     });
                 }
             };
 
             if (is_buy) {
                 const auto& idx = _db.get_index<limit_order_index, by_price>();
-                const auto& cache_idx = cache.get<by_price>();
+                const auto& cache_idx = ch.cache.get<by_price>();
 
                 use_indexes(idx, cache_idx);
             } else {
                 const auto& idx = _db.get_index<limit_order_index, by_buy_price>();
-                const auto& cache_idx = cache.get<by_buy_price>();
+                const auto& cache_idx = ch.cache.get<by_buy_price>();
 
                 use_indexes(idx, cache_idx);
             }
@@ -434,12 +557,7 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
         const auto& vec = itr->second;
         if (pct == STEEMIT_100_PERCENT) {
             if (!!query.hybrid && query.hybrid->strategy == exchange_hybrid_strategy::spread) {
-                for (auto chain : vec) {
-                    if (chain.size() > 1) {
-
-                    }
-                    chains.push_back(chain);
-                }
+                chains = spread_chains(vec, query, ch, stat);
             } else {
                 std::copy(vec.begin(), vec.end(), std::back_inserter(chains));
             }
