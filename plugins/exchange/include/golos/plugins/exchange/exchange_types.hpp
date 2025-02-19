@@ -296,4 +296,3 @@ namespace fc {
         vo = res;
     }
 } // fc
-

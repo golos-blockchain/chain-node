@@ -84,4 +84,33 @@ std::vector<exchange_query> exchange_query::discrete_split(uint16_t step) {
     return qus;
 }
 
+bool exchange_path_query::is_bad_symbol(const std::string& sym) const {
+    return filter_syms.size() && filter_syms.count(sym);
+}
+
+bool exchange_path_query::is_good_symbol(const std::string& sym) const {
+    return !is_bad_symbol(sym) && (!select_syms.size() || select_syms.count(sym));
+}
+
+bool exchange_path_query::is_buy() const {
+    return sell.empty();
+}
+
+void exchange_path_query::initialize_validate(database& _db) {
+    GOLOS_CHECK_PARAM(sell, {
+        GOLOS_CHECK_VALUE(sell != buy, "`sell` cannot be same as `buy`");
+        GOLOS_CHECK_VALUE(!sell.size() || !buy.size(), "`sell` and `buy` cannot be set both (in current implementation)");
+        GOLOS_CHECK_VALUE(sell.size() || buy.size(), "`sell` and `buy` cannot be empty both");
+    });
+
+    _db.with_weak_read_lock([&]() {
+        if (sell.size()) {
+            sell_sym = _db.symbol_from_str(sell);
+        }
+        if (buy.size()) {
+            buy_sym = _db.symbol_from_str(buy);
+        }
+    });
+}
+
 } } } // golos::plugins::exchange

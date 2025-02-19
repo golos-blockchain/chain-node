@@ -80,6 +80,24 @@ namespace golos {
 
                 std::vector<exchange_query> discrete_split(uint16_t step);
             };
+
+            struct exchange_path_query {
+                std::string sell;
+                std::string buy;
+
+                std::set<std::string> select_syms;
+                std::set<std::string> filter_syms;
+
+                asset_symbol_type sell_sym; // Internal
+                asset_symbol_type buy_sym; // Internal
+
+                bool is_bad_symbol(const std::string& sym) const;
+                bool is_good_symbol(const std::string& sym) const;
+
+                bool is_buy() const;
+
+                void initialize_validate(database& _db);
+            };
         }
     }
 } // golos::plugins::exchange
@@ -124,4 +142,9 @@ FC_REFLECT(
     (amount)(symbol)(direction)
     (remain)(excess_protect)(min_to_receive)(hybrid)(pct)
     (hidden_assets)
+)
+
+FC_REFLECT(
+    (golos::plugins::exchange::exchange_path_query),
+    (sell)(buy)(select_syms)(filter_syms)
 )

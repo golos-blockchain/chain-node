@@ -14,7 +14,14 @@ namespace golos { namespace plugins { namespace exchange {
 namespace bpo = boost::program_options;
 using namespace golos::chain;
 
+using value_path = std::vector<std::string>;
+
+struct exchange_path {
+    std::vector<value_path> paths;
+};
+
 DEFINE_API_ARGS(get_exchange, json_rpc::msg_pack, fc::mutable_variant_object)
+DEFINE_API_ARGS(get_exchange_path, json_rpc::msg_pack, exchange_path)
 
 class exchange final : public appbase::plugin<exchange> {
 public:
@@ -37,6 +44,7 @@ public:
 
     DECLARE_API(
         (get_exchange)
+        (get_exchange_path)
     )
 private:
     class exchange_impl;
@@ -47,3 +55,8 @@ private:
 };
 
 } } } // golos::plugins::exchange
+
+FC_REFLECT(
+    (golos::plugins::exchange::exchange_path),
+    (paths)
+)

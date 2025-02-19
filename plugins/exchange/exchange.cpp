@@ -9,6 +9,11 @@
 
 namespace golos { namespace plugins { namespace exchange {
 
+using sym_path = std::vector<asset_symbol_type>;
+bool sym_exists(const auto& path, auto sym) {
+    return std::find(path.begin(), path.end(), sym) != path.end();
+};
+
 class exchange::exchange_impl final {
 public:
     exchange_impl(uint16_t hds = 0)
@@ -50,6 +55,13 @@ public:
         const cache_helper& ch, const ex_stat& stat) const;
 
     fc::mutable_variant_object get_exchange(exchange_query query) const;
+
+    template<typename OrderIndex>
+    void go_value_path(const exchange_path_query& query, std::vector<value_path>& paths,
+        sym_path path, value_path path_str,
+        asset_symbol_type add_me, const std::string& add_me_str, const OrderIndex& idx, const ex_stat& stat) const;
+
+    exchange_path get_exchange_path(exchange_path_query query) const;
 
     database& _db;
 
@@ -653,6 +665,83 @@ DEFINE_API(exchange, get_exchange) {
     fc::mutable_variant_object result;
     result = my->get_exchange(query);
     return result;
+}
+
+template<typename OrderIndex>
+void exchange::exchange_impl::go_value_path(
+    const exchange_path_query& query, std::vector<value_path>& paths,
+    sym_path path, value_path path_str,
+    asset_symbol_type add_me, const std::string& add_me_str, const OrderIndex& idx, const ex_stat& stat) const {
+    path.push_back(add_me);
+    path_str.push_back(add_me_str);
+
+    auto prc = price::min(add_me, 0);
+    if (query.is_buy()) {
+        prc = price::max(add_me, asset::max_symbol());
+    }
+
+    asset_symbol_type prev;
+
+    auto itr = idx.lower_bound(prc);
+    while (itr != idx.end()) {
+        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+
+        auto itr_prc = query.is_buy() ? itr->sell_price : itr->buy_price();
+        if (itr_prc.base.symbol != add_me) {
+            break;
+        }
+
+        auto quote_symbol = itr_prc.quote.symbol;
+        if (prev == quote_symbol) {
+            ++itr;
+            continue;
+        }
+
+        auto quote_str = itr_prc.quote.symbol_name();
+        if (query.is_bad_symbol(quote_str)) {
+            ++itr;
+            continue;
+        }
+
+        if (!sym_exists(path, quote_symbol)) {
+            go_value_path(query, paths, path, path_str, quote_symbol, quote_str, idx, stat);
+        }
+
+        prev = quote_symbol;
+
+        ++itr;
+    }
+
+    if (path.size() > 1 && query.is_good_symbol(add_me_str)) {
+        paths.push_back(path_str);
+    }
+}
+
+exchange_path exchange::exchange_impl::get_exchange_path(exchange_path_query query) const {
+    query.initialize_validate(_db);
+
+    ex_stat stat;
+    exchange_path res;
+
+    _db.with_weak_read_lock([&]() {
+        if (query.is_buy()) {
+            const auto& idx = _db.get_index<limit_order_index, by_price>();
+            go_value_path(query, res.paths, sym_path(), value_path(), query.buy_sym, query.buy, idx, stat);
+        } else {
+            const auto& idx = _db.get_index<limit_order_index, by_buy_price>();
+            go_value_path(query, res.paths, sym_path(), value_path(), query.sell_sym, query.sell, idx, stat);
+        }
+    });
+
+    return res;
+}
+
+DEFINE_API(exchange, get_exchange_path) {
+    PLUGIN_API_VALIDATE_ARGS(
+        (exchange_path_query, query)
+    );
+
+    return my->get_exchange_path(query);
 }
 
 } } } // golos::plugins::exchange
