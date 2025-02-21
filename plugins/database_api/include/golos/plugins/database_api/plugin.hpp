@@ -16,6 +16,7 @@
 #include <golos/plugins/database_api/api_objects/savings_withdraw_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/proposal_api_object.hpp>
 #include <golos/plugins/database_api/api_objects/account_balance_api_object.hpp>
+#include <golos/plugins/database_api/api_objects/asset_api_sort.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 
 #include <golos/api/asset_api_object.hpp>
@@ -327,6 +328,8 @@ public:
 
         (get_accounts_balances)
     )
+
+    std::vector<asset_api_object> get_assets_inner(const std::string& creator, const std::vector<std::string>& symbols, const std::string& from, uint32_t limit, asset_api_sort sort, const assets_query& query) const;
 
 private:
     struct api_impl;

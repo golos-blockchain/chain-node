@@ -1,6 +1,5 @@
 #include <golos/plugins/database_api/plugin.hpp>
 #include <golos/plugins/database_api/api_objects/account_query.hpp>
-#include <golos/plugins/database_api/api_objects/asset_api_sort.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/protocol/get_config.hpp>
@@ -1069,6 +1068,17 @@ std::vector<asset_api_object> plugin::api_impl::get_assets(
     return results;
 }
 
+std::vector<asset_api_object> plugin::get_assets_inner(
+    const std::string& creator,
+    const std::vector<std::string>& symbols,
+    const std::string& from, uint32_t limit,
+    asset_api_sort sort,
+    const assets_query& query) const {
+    return my->database().with_weak_read_lock([&]() {
+        return my->get_assets(creator, symbols, from, limit, sort, query);
+    });
+}
+
 DEFINE_API(plugin, get_assets) {
     PLUGIN_API_VALIDATE_ARGS(
         (std::string, creator, std::string())
@@ -1080,9 +1090,7 @@ DEFINE_API(plugin, get_assets) {
     );
     GOLOS_CHECK_LIMIT_PARAM(limit, 5000);
 
-    return my->database().with_weak_read_lock([&]() {
-        return my->get_assets(creator, symbols, from, limit, sort, query);
-    });
+    return get_assets_inner(creator, symbols, from, limit, sort, query);
 }
 
 std::vector<account_balances_map_api_object> plugin::api_impl::get_accounts_balances(const std::vector<std::string>& account_names, const balances_query& query) const {

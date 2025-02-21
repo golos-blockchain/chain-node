@@ -1,5 +1,7 @@
 #pragma once
 
+#include <golos/plugins/database_api/plugin.hpp>
+
 #include <golos/chain/database.hpp>
 #include <appbase/plugin.hpp>
 #include <golos/plugins/chain/plugin.hpp>
@@ -18,6 +20,9 @@ using value_path = std::vector<std::string>;
 
 struct exchange_path {
     std::vector<value_path> paths;
+    std::set<std::string> result_syms;
+    fc::mutable_variant_object assets;
+    uint32_t _msec = UINT32_MAX;
 };
 
 DEFINE_API_ARGS(get_exchange, json_rpc::msg_pack, fc::mutable_variant_object)
@@ -58,5 +63,5 @@ private:
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_path),
-    (paths)
+    (paths)(result_syms)(assets)(_msec)
 )

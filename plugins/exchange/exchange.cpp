@@ -57,7 +57,7 @@ public:
     fc::mutable_variant_object get_exchange(exchange_query query) const;
 
     template<typename OrderIndex>
-    void go_value_path(const exchange_path_query& query, std::vector<value_path>& paths,
+    void go_value_path(const exchange_path_query& query, exchange_path& res,
         sym_path path, value_path path_str,
         asset_symbol_type add_me, const std::string& add_me_str, const OrderIndex& idx, const ex_stat& stat) const;
 
@@ -669,7 +669,7 @@ DEFINE_API(exchange, get_exchange) {
 
 template<typename OrderIndex>
 void exchange::exchange_impl::go_value_path(
-    const exchange_path_query& query, std::vector<value_path>& paths,
+    const exchange_path_query& query, exchange_path& res,
     sym_path path, value_path path_str,
     asset_symbol_type add_me, const std::string& add_me_str, const OrderIndex& idx, const ex_stat& stat) const {
     path.push_back(add_me);
@@ -704,7 +704,7 @@ void exchange::exchange_impl::go_value_path(
         }
 
         if (!sym_exists(path, quote_symbol)) {
-            go_value_path(query, paths, path, path_str, quote_symbol, quote_str, idx, stat);
+            go_value_path(query, res, path, path_str, quote_symbol, quote_str, idx, stat);
         }
 
         prev = quote_symbol;
@@ -713,7 +713,8 @@ void exchange::exchange_impl::go_value_path(
     }
 
     if (path.size() > 1 && query.is_good_symbol(add_me_str)) {
-        paths.push_back(path_str);
+        res.result_syms.insert(add_me_str);
+        res.paths.push_back(path_str);
     }
 }
 
@@ -726,12 +727,32 @@ exchange_path exchange::exchange_impl::get_exchange_path(exchange_path_query que
     _db.with_weak_read_lock([&]() {
         if (query.is_buy()) {
             const auto& idx = _db.get_index<limit_order_index, by_price>();
-            go_value_path(query, res.paths, sym_path(), value_path(), query.buy_sym, query.buy, idx, stat);
+            go_value_path(query, res, sym_path(), value_path(), query.buy_sym, query.buy, idx, stat);
         } else {
             const auto& idx = _db.get_index<limit_order_index, by_buy_price>();
-            go_value_path(query, res.paths, sym_path(), value_path(), query.sell_sym, query.sell, idx, stat);
+            go_value_path(query, res, sym_path(), value_path(), query.sell_sym, query.sell, idx, stat);
         }
     });
+
+    if (query.assets) {
+        using golos::api::assets_query;
+        using database_api::asset_api_sort;
+
+        std::set<std::string> keys;
+        keys.insert(res.result_syms.begin(), res.result_syms.end());
+        if (query.sell.size())keys.insert(query.sell);
+        if (query.buy.size()) keys.insert(query.buy);
+
+        auto& _dapi = appbase::app().get_plugin<golos::plugins::database_api::plugin>();
+        auto assets = _dapi.get_assets_inner("",
+            std::vector<std::string>(keys.begin(), keys.end()),
+            "", 100, asset_api_sort::by_symbol_name, assets_query());
+        for (const auto& a : assets) {
+            res.assets[a.supply.symbol_name()] = a;
+        }
+    }
+
+    res._msec = stat.msec();
 
     return res;
 }
