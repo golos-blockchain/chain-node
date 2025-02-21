@@ -88,6 +88,8 @@ namespace golos {
                 std::set<std::string> select_syms;
                 std::set<std::string> filter_syms;
 
+                bool assets = false;
+
                 asset_symbol_type sell_sym; // Internal
                 asset_symbol_type buy_sym; // Internal
 
@@ -146,5 +148,5 @@ FC_REFLECT(
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_path_query),
-    (sell)(buy)(select_syms)(filter_syms)
+    (sell)(buy)(select_syms)(filter_syms)(assets)
 )

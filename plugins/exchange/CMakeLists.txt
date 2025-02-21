@@ -30,6 +30,7 @@ target_link_libraries(
     golos_${CURRENT_TARGET}
     golos::chain_plugin
     golos::json_rpc
+    golos::database_api
     appbase
 )
 
