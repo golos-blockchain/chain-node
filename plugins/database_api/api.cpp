@@ -409,6 +409,8 @@ std::set<std::string> plugin::api_impl::lookup_accounts(
         query.include_frozen = select.as_bool();
     } else if (select.is_null()) {
         query.include_frozen = false;
+    } else if (select.is_string()) {
+        query.include_frozen = (select.as_string() == "true");
     } else {
         query = select.as<account_select_query>(); // or it will throw bad cast
     }
