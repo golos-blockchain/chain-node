@@ -208,12 +208,11 @@ namespace golos {
                 }
             };
 
-            class ex_timeout_exception : public std::exception {
-            public:
-                std::string what() {
-                    return "Timeout";
-                }
-            };
+            GOLOS_DECLARE_DERIVED_EXCEPTION(
+                api_timeout, golos::golos_exception,
+                6000000, "API timeout");
+#define CHECK_API_TIMEOUT(TIMEOUT) \
+    if (stat.msec() > TIMEOUT) throw api_timeout();
 
             using order_cache = multi_index_container<
                 limit_order_object,

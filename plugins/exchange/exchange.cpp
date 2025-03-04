@@ -49,10 +49,17 @@ public:
 
     ex_chain fix_receive(const ex_chain& chain, const ex_stat& stat) const;
 
+    // -- spread
+
     asset apply_direct(exchange_step& dir, const limit_order_object& ord, asset param) const;
+
+    template<typename OrderIndex>
+    ex_chain optimize_chain(asset par, const ex_chain& chain, const OrderIndex& idx, const ex_stat& stat) const;
 
     std::vector<ex_chain> spread_chains(const std::vector<ex_chain>& chains, const exchange_query& query,
         const cache_helper& ch, const ex_stat& stat) const;
+
+    // -- spread end
 
     fc::mutable_variant_object get_exchange(exchange_query query) const;
 
@@ -147,7 +154,7 @@ void exchange::exchange_impl::exchange_go_chain(
     std::vector<ex_chain>& chains, asset_symbol_type sym2,
     const exchange_query& query, const OrderIndex& idx, cache_helper& ch, asset_map& assets, const ex_stat& stat
 ) const {
-    if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+    CHECK_API_TIMEOUT(GOLOS_SEARCH_TIMEOUT);
 
     if (add_me.param().symbol == sym2) {
         if (query.pct == STEEMIT_100_PERCENT && !!query.min_to_receive
@@ -196,7 +203,7 @@ void exchange::exchange_impl::exchange_go_chain(
 
     auto itr = idx.lower_bound(prc);
     while (itr != idx.end()) {
-        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+        CHECK_API_TIMEOUT(GOLOS_SEARCH_TIMEOUT);
 
         ch.add_to_cache(*itr);
 
@@ -344,7 +351,7 @@ ex_chain exchange::exchange_impl::fix_receive(const ex_chain& chain, const ex_st
         auto itr = idx.lower_bound(prc);
         auto end = idx.upper_bound(prc.max());
         while (itr != end && par.amount.value > 0) {
-            if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+            CHECK_API_TIMEOUT(GOLOS_SEARCH_TIMEOUT);
 
             if (!step.best_price.base.amount.value) {
                 step.best_price = ~itr->sell_price;
@@ -428,7 +435,46 @@ asset exchange::exchange_impl::apply_direct(exchange_step& dir, const limit_orde
         dir.res() += r;
     }
 
+    auto itr_prc = dir.is_buy ? ord.buy_price() : ord.sell_price;
+    if (!dir.best_price.base.amount.value) {
+        dir.best_price = itr_prc;
+    }
+    dir.limit_price = itr_prc;
+
     return par;
+}
+
+template<typename OrderIndex>
+ex_chain exchange::exchange_impl::optimize_chain(asset par, const ex_chain& chain, const OrderIndex& idx, const ex_stat& stat) const {
+    int64_t first = 0;
+    int64_t end = chain.size();
+    ex_chain new_chain;
+
+    for (int64_t i = first; i != end; ++i) {
+        const auto& step = chain[i];
+        auto copy = step;
+
+        auto prc = price::min(par.symbol, 0);
+        if (copy.is_buy) {
+            prc = price::max(par.symbol, asset::max_symbol());
+        }
+
+        auto itr = idx.lower_bound(prc);
+        while (itr != idx.end()) {
+            CHECK_API_TIMEOUT(GOLOS_SEARCH_TIMEOUT);
+
+            auto itr_prc = copy.is_buy ? itr->sell_price : itr->buy_price();
+            if (itr_prc.base.symbol != par.symbol) {
+                break;
+            }
+
+            elog(fc::json::to_string(*itr));
+
+            ++itr;
+        }
+    }
+
+    return new_chain;
 }
 
 std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<ex_chain>& chains, const exchange_query& query,
@@ -436,7 +482,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
     std::vector<ex_chain> res;
 
     for (auto chain : chains) {
-        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+        CHECK_API_TIMEOUT(GOLOS_SEARCH_TIMEOUT);
 
         if (chain.size() > 1) {
             auto is_buy = chain.is_buy();
@@ -456,13 +502,18 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                 auto itr = idx.lower_bound(is_buy ? prc_max : prc);
                 auto end = idx.upper_bound(is_buy ? prc : prc_max);
                 while (itr != end) {
-                    if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+                    CHECK_API_TIMEOUT(GOLOS_SEARCH_TIMEOUT);
 
                     auto itr_prc = is_buy ? itr->buy_price() : itr->sell_price;
                     bool better = is_buy ? itr_prc < mid : itr_prc > mid;
 
                     if (better) {
                         par = apply_direct(dir, *itr, par);
+                        elog("PAR:" + par.to_string());
+
+                        optimize_chain(par, chain, idx, stat);
+
+                        break;
                     }
 
                     ++itr;
@@ -550,7 +601,7 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
 
                 use_indexes(idx, cache_idx);
             }
-        } catch (const ex_timeout_exception& ex) {
+        } catch (const api_timeout& ex) {
             result["error"] = "timeout";
             elog("get_exchange timeout - " + fc::json::to_string(curr));
             return result;
@@ -684,7 +735,7 @@ void exchange::exchange_impl::go_value_path(
 
     auto itr = idx.lower_bound(prc);
     while (itr != idx.end()) {
-        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+        CHECK_API_TIMEOUT(GOLOS_SEARCH_TIMEOUT);
 
         auto itr_prc = query.is_buy() ? itr->sell_price : itr->buy_price();
         if (itr_prc.base.symbol != add_me) {
