@@ -44,10 +44,12 @@ namespace golos {
             struct exchange_min_to_receive {
                 asset direct;
                 asset multi;
+                uint16_t min_profit_pct = 0;
 
                 void validate(const exchange_query& query) const;
 
-                bool ignore_chain(bool is_buy, asset param, asset res, bool is_direct) const;
+                bool ignore_chain(bool is_buy, asset param, asset res, bool is_direct,
+                    asset dir_receive = asset()) const;
             };
 
             enum class exchange_hybrid_strategy : uint8_t {
@@ -57,8 +59,9 @@ namespace golos {
             };
 
             struct exchange_hybrid {
-                exchange_hybrid_strategy strategy;
+                exchange_hybrid_strategy strategy = exchange_hybrid_strategy::none;
                 uint16_t discrete_step = GOLOS_MIN_DISCRETE_STEP;
+                bool fix_sell = false;
             };
 
             struct exchange_query {
@@ -69,8 +72,9 @@ namespace golos {
 
                 exchange_remain remain;
                 exchange_excess_protect excess_protect = exchange_excess_protect::fix_input;
-                fc::optional<exchange_min_to_receive> min_to_receive;
-                fc::optional<exchange_hybrid> hybrid;
+                exchange_min_to_receive min_to_receive;
+                exchange_hybrid hybrid;
+                bool logs = false;
                 uint16_t pct = STEEMIT_100_PERCENT; // Internal
                 bool pct_direct = false; //
 
@@ -79,6 +83,10 @@ namespace golos {
                 void initialize_validate(database& _db);
 
                 std::vector<exchange_query> discrete_split(uint16_t step);
+
+                bool is_discrete() const;
+                bool is_spread() const;
+                bool will_fix_input() const;
             };
 
             struct exchange_path_query {
@@ -126,7 +134,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_min_to_receive),
-    (direct)(multi)
+    (direct)(multi)(min_profit_pct)
 )
 
 FC_REFLECT_ENUM(
@@ -136,13 +144,14 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_hybrid),
-    (strategy)(discrete_step)
+    (strategy)(discrete_step)(fix_sell)
 )
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_query),
     (amount)(symbol)(direction)
-    (remain)(excess_protect)(min_to_receive)(hybrid)(pct)
+    (remain)(excess_protect)(min_to_receive)(hybrid)(logs)
+    (pct)
     (hidden_assets)
 )
 

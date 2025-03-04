@@ -4,6 +4,7 @@
 #include <golos/plugins/json_rpc/plugin.hpp>
 #include <golos/chain/steem_object_types.hpp>
 #include <golos/chain/steem_objects.hpp>
+#include <golos/protocol/exceptions.hpp>
 #include <golos/protocol/types.hpp>
 #include <golos/protocol/asset.hpp>
 #include <golos/protocol/steem_virtual_operations.hpp>
@@ -13,22 +14,6 @@ namespace golos {
         namespace exchange {
 
             using namespace golos::chain;
-
-            // Non-API internal usage only
-
-            struct asset_info {
-                uint16_t fee_pct = 0;
-                std::string symbol_name;
-
-                asset_info() {}
-
-                asset_info(const asset_object& a) : fee_pct(a.fee_percent),
-                    symbol_name(a.symbol_name()) {}
-
-                asset_info(const std::string& s) : fee_pct(0), symbol_name(s) {}
-            };
-
-            using asset_map = std::map<asset_symbol_type, asset_info>;
 
             struct exchange_step {
                 asset sell{0, asset::min_symbol()};
@@ -87,16 +72,47 @@ namespace golos {
                     *(fee) += f;
                 }
 
-                void add_res(asset a, price p) {
+                asset add_res(asset a, price p) {
                     auto add = a * p;
                     if ((add * p) < a) { // fixes test.2: case
                         add += asset(1, add.symbol);
                     }
                     res() += add; // TODO: using only in buy
+                    return add;
                 }
             };
 
+            struct ex_row {
+                asset par;
+                asset res;
+
+                ex_row() {}
+
+                ex_row(asset_symbol_type par_sym, asset_symbol_type res_sym) {
+                    par = asset(0, par_sym);
+                    res = asset(0, res_sym);
+                }
+
+                ex_row(asset p, asset r) : par(p), res(r) {}
+
+                price get_price() const {
+                    return price{res, par};
+                }
+
+                void minus_par(asset am) {
+                    auto prc = get_price();
+                    par -= am;
+                    res = par * prc;
+                }
+            };
+
+            using ex_rows = std::vector<ex_row>;
+
             struct ex_chain {
+                ex_chain(fc::log_level ll) {
+                    _log_lev = ll;
+                }
+
                 void push_back(const exchange_step& step) {
                     steps.push_back(step);
                 }
@@ -111,6 +127,10 @@ namespace golos {
 
                 size_t size() const {
                     return steps.size();
+                }
+
+                bool is_direct() const {
+                    return steps.size() == 1;
                 }
 
                 void reverse() {
@@ -176,24 +196,47 @@ namespace golos {
                     return false;
                 }
 
+                void set_direct(const exchange_step& dir) {
+                    ex_chain direct(_log_lev);
+                    direct.push_back(dir);
+                    subchains.clear();
+                    subchains.push_back(direct);
+                }
+
+                void log_i(const std::function<std::string ()>& adder, std::vector<std::string>* ret_logs = nullptr) {
+                    if (_log_lev > fc::log_level::info) return;
+                    _logs.push_back(adder());
+                    if (ret_logs) (*ret_logs) = _logs;
+                }
+
+                void log_d(const std::function<std::string ()>& adder, std::vector<std::string>* ret_logs = nullptr) {
+                    if (_log_lev > fc::log_level::debug) return;
+                    _logs.push_back(adder());
+                    if (ret_logs) (*ret_logs) = _logs;
+                }
+
+                void copy_logs(const ex_chain& prev) {
+                    if (_log_lev == fc::log_level::off) return;
+                    for (const auto& str : prev._logs) {
+                        _logs.push_back(str);
+                    }
+                }
+
                 std::vector<exchange_step> steps;
                 std::vector<std::string> syms;
                 std::vector<ex_chain> subchains;
+                ex_rows rows;
                 bool has_remain = false; // Not reflected - internal
                 bool reversed = false; //
                 asset empty{0, asset::min_symbol()}; //
                 exchange_step empty_step; //
+                fc::log_level _log_lev = fc::log_level::off; //
+
+                std::vector<std::string> _logs;
+                std::string _err_report;
             };
 
-            const ex_chain* get_direct_chain(const std::vector<ex_chain>& chains) {
-                auto itr = std::find_if(chains.begin(), chains.end(), [&](const auto& chain) {
-                    return chain.size() == 1;
-                });
-                if (itr != chains.end()) {
-                    return &(*itr);
-                }
-                return nullptr;
-            }
+            const ex_chain* get_direct_chain(const std::vector<ex_chain>& chains);
 
             struct ex_stat {
                 fc::time_point start;
@@ -208,12 +251,20 @@ namespace golos {
                 }
             };
 
-            class ex_timeout_exception : public std::exception {
-            public:
-                std::string what() {
-                    return "Timeout";
-                }
-            };
+            GOLOS_DECLARE_DERIVED_EXCEPTION(
+                api_timeout, golos::golos_exception,
+                6000000, "API timeout");
+#define CHECK_API_TIMEOUT(STAT, TIMEOUT) \
+    if (STAT.msec() > TIMEOUT) throw api_timeout();
+
+#define CATCH_REPORT(CHAIN) \
+    catch (fc::exception& err) { \
+        if (CHAIN._err_report.empty()) CHAIN._err_report = err.to_detail_string(); \
+    } catch (const std::exception& err) { \
+        if (CHAIN._err_report.empty()) CHAIN._err_report = err.what(); \
+    } catch (...) { \
+        if (CHAIN._err_report.empty()) CHAIN._err_report = "Unknown error"; \
+    }
 
             using order_cache = multi_index_container<
                 limit_order_object,
@@ -245,12 +296,16 @@ FC_REFLECT(
     (golos::plugins::exchange::exchange_step),
     (sell)(receive)(remain)(fee)(fee_pct)(best_price)(limit_price)(impacted_orders)
 )
+FC_REFLECT(
+    (golos::plugins::exchange::ex_row),
+    (par)(res)
+)
 
 namespace fc {
     using namespace std;
     using golos::protocol::price;
 
-    void to_variant(const golos::plugins::exchange::ex_chain &var, fc::variant &vo) {
+    static void to_variant(const golos::plugins::exchange::ex_chain &var, fc::variant &vo) {
         fc::mutable_variant_object res;
         res["res"] = var.res();
 
@@ -262,22 +317,26 @@ namespace fc {
         price limit_price;
 
         std::vector<std::string> syms;
-        for (size_t i = 0; i < var.steps.size(); ++i) {
-            const auto& s = var.steps[i];
-            if (i == 0) {
-                syms.push_back(s.sell.symbol_name());
-                best_price = s.best_price;
-                limit_price = s.limit_price;
-            } else {
-                if (var.is_buy()) {
-                    best_price.quote = best_price.quote * s.best_price;
-                    limit_price.quote = limit_price.quote * s.limit_price;
+        try {
+            for (size_t i = 0; i < var.steps.size(); ++i) {
+                const auto& s = var.steps[i];
+                if (i == 0) {
+                    syms.push_back(s.sell.symbol_name());
+                    best_price = s.best_price;
+                    limit_price = s.limit_price;
                 } else {
-                    best_price.base = best_price.base * s.best_price;
-                    limit_price.base = limit_price.base * s.limit_price;
+                    if (var.is_buy()) { // TODO: if not reversed,works wrong
+                        best_price.quote = best_price.quote * s.best_price;
+                        limit_price.quote = limit_price.quote * s.limit_price;
+                    } else {
+                        best_price.base = best_price.base * s.best_price;
+                        limit_price.base = limit_price.base * s.limit_price;
+                    }
                 }
+                syms.push_back(s.receive.symbol_name());
             }
-            syms.push_back(s.receive.symbol_name());
+        } catch (...) {
+            FC_ASSERT(false, "Chain has wrong best_price, limit_price");
         }
 
         fc::variant syms_v;
@@ -292,6 +351,17 @@ namespace fc {
         res["limit_price"] = limit_price;
 
         res["buy"] = var.is_buy();
+
+        if (var._log_lev != fc::log_level::off) {
+            res["_logs"] = var._logs;
+        }
+
+        if (!var._err_report.empty()) {
+            res["_err_report"] = var._err_report;
+        }
+
+        res["rows"] = var.rows;
+        res["has_remain"] = var.has_remain;
 
         vo = res;
     }

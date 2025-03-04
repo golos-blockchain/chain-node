@@ -47,7 +47,9 @@ void hf_actions::prepare_for_tests() {
 #define COMMON_POSTING public_key_type("GLS8hnaAj3ufXbfFBKqGNhyGvW78EQN5rpeqfcDD2d2tQyhd2dEDb")
 #define COMMON_ACTIVE public_key_type("GLS8EAm8DhD8tjX3N87RVAvw1o8uzSQkRJ3Tcn4dgmybHwnsyvThb")
 
-    //_db.adjust_balance(_db.get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
+#ifndef GOLOS_BUILD_TESTS
+    _db.adjust_balance(_db.get_account("cyberfounder"), asset(10000000, SBD_SYMBOL));
+#endif
 
     _db.modify(_db.get_authority(_db.get_account("cyberfounder").name), [&](account_authority_object &auth) {
         auth.posting = authority(1, COMMON_POSTING, 1);

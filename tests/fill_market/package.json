@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "arg": "^5.0.2",
+    "golos-lib-js": "^0.9.77",
+    "sequelize": "^6.37.7",
+    "sqlite3": "^5.1.7"
+  }
+}

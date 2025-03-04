@@ -1,8 +1,8 @@
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/json_rpc/api_helper.hpp>
 #include <golos/plugins/exchange/exchange_queries.hpp>
-#include <golos/plugins/exchange/exchange_types.hpp>
 #include <golos/plugins/exchange/exchange.hpp>
+#include <golos/plugins/exchange/order_cache.hpp>
 #include <golos/protocol/exceptions.hpp>
 #include <golos/protocol/donate_targets.hpp>
 #include <golos/chain/operation_notification.hpp>
@@ -49,10 +49,22 @@ public:
 
     ex_chain fix_receive(const ex_chain& chain, const ex_stat& stat) const;
 
+    // -- spread
+
     asset apply_direct(exchange_step& dir, const limit_order_object& ord, asset param) const;
+
+    ex_rows map_rows(const ex_rows& curr, ex_rows prev, const ex_stat& stat) const;
+
+    template<typename OrderIndex>
+    void trying_to_pass(asset start, ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize = true) const;
+
+    template<typename OrderIndex>
+    std::pair<ex_chain, asset> optimize_chain(const asset& start, const ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize = true) const;
 
     std::vector<ex_chain> spread_chains(const std::vector<ex_chain>& chains, const exchange_query& query,
         const cache_helper& ch, const ex_stat& stat) const;
+
+    // -- spread end
 
     fc::mutable_variant_object get_exchange(exchange_query query) const;
 
@@ -66,6 +78,8 @@ public:
     database& _db;
 
     uint16_t hybrid_discrete_step = 0;
+
+    fc::log_level log_lev = fc::log_level::info;
 };
 
 exchange::exchange() = default;
@@ -78,12 +92,25 @@ const std::string& exchange::name() {
 }
 
 void exchange::set_program_options(bpo::options_description& cli, bpo::options_description& cfg) {
+    cfg.add_options()
+        ("exchange-log-level", bpo::value<std::string>()->default_value("info"), "info or all");
 }
 
-void exchange::plugin_initialize(const bpo::variables_map &options) {
+void exchange::plugin_initialize(const bpo::variables_map& options) {
     ilog("Initializing exchange plugin");
 
     my = std::make_unique<exchange::exchange_impl>(this->hybrid_discrete_step);
+
+    if (options.count("exchange-log-level")) {
+        auto log_lev = options.at("exchange-log-level").as<std::string>();
+        if (log_lev == "info") {
+            my->log_lev = fc::log_level::info;
+        } else if (log_lev == "all") {
+            my->log_lev = fc::log_level::all;
+        } else {
+            FC_ASSERT(false, "'" + log_lev + "' exchange-log-level not supported");
+        }
+    }
 
     JSON_RPC_REGISTER_API(name())
 } 
@@ -94,6 +121,11 @@ void exchange::plugin_startup() {
 
 void exchange::plugin_shutdown() {
     ilog("Shutting down exchange plugin");
+}
+
+ex_rows exchange::map_rows(const ex_rows& curr, ex_rows prev) const {
+    ex_stat stat;
+    return my->map_rows(curr, prev, stat);
 }
 
 asset_info exchange::exchange_impl::get_asset(asset_map& assets, asset_symbol_type symbol, bool cached) const {
@@ -147,19 +179,17 @@ void exchange::exchange_impl::exchange_go_chain(
     std::vector<ex_chain>& chains, asset_symbol_type sym2,
     const exchange_query& query, const OrderIndex& idx, cache_helper& ch, asset_map& assets, const ex_stat& stat
 ) const {
-    if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+    CHECK_API_TIMEOUT(stat, GOLOS_SEARCH_TIMEOUT_MS);
 
     if (add_me.param().symbol == sym2) {
-        if (query.pct == STEEMIT_100_PERCENT && !!query.min_to_receive
-                && query.min_to_receive->ignore_chain(add_me.is_buy, chain.param(), chain.res(), chain.size() == 1)) {
+        if (query.pct == STEEMIT_100_PERCENT
+                && (!query.is_spread() || chain.is_direct())
+                && query.min_to_receive.ignore_chain(add_me.is_buy, chain.param(), chain.res(), chain.is_direct())) {
             return;
         }
-        if (add_me.is_buy) {
-            chain.reverse();
-        }
-        if (chain.size() == 1) {
+        if (chain.is_direct()) {
             if (chain.has_remain && query.remain.direct == exchange_remain_policy::ignore) return;
-        } else {
+        } else if (!query.is_spread()) {
             if (chain.has_remain && query.remain.multi == exchange_remain_policy::ignore) return;
         }
         chains.push_back(chain);
@@ -196,7 +226,7 @@ void exchange::exchange_impl::exchange_go_chain(
 
     auto itr = idx.lower_bound(prc);
     while (itr != idx.end()) {
-        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+        CHECK_API_TIMEOUT(stat, GOLOS_SEARCH_TIMEOUT_MS);
 
         ch.add_to_cache(*itr);
 
@@ -231,14 +261,15 @@ void exchange::exchange_impl::exchange_go_chain(
             }
 
             if (res.amount.value || res.symbol == sym2) {
+                bool was_remain = chain.has_remain;
                 make_remain();
                 exchange_go_chain(chain, exchange_step::from(res, add_me.is_buy),
                     chains, sym2, query, idx, ch, assets, stat);
-                chain.has_remain = false;
+                chain.has_remain = was_remain;
             }
             res.amount.value = 0;
             res.symbol = quote_symbol;
-            step.impacted_orders.clear();
+            if (chain._log_lev < fc::log_level::off) step.impacted_orders.clear();
             if (step.remain) step.remain.reset();
             if (add_me.is_buy) {
                 par = receive0;
@@ -302,7 +333,7 @@ void exchange::exchange_impl::exchange_go_chain(
             res += r;
         }
 
-        step.impacted_orders.push_back(*itr);
+        if (chain._log_lev < fc::log_level::off) step.impacted_orders.push_back(*itr);
 
         ++itr;
     }
@@ -311,12 +342,11 @@ void exchange::exchange_impl::exchange_go_chain(
         make_remain();
         exchange_go_chain(chain, exchange_step::from(step.res(), add_me.is_buy),
             chains, sym2, query, idx, ch, assets, stat);
-        chain.has_remain = false;
     }
 }
 
 ex_chain exchange::exchange_impl::fix_receive(const ex_chain& chain, const ex_stat& stat) const {
-    ex_chain result;
+    ex_chain result(chain._log_lev);
     result.reversed = true;
     result.subchains = chain.subchains;
 
@@ -344,7 +374,7 @@ ex_chain exchange::exchange_impl::fix_receive(const ex_chain& chain, const ex_st
         auto itr = idx.lower_bound(prc);
         auto end = idx.upper_bound(prc.max());
         while (itr != end && par.amount.value > 0) {
-            if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+            CHECK_API_TIMEOUT(stat, GOLOS_SEARCH_TIMEOUT_MS);
 
             if (!step.best_price.base.amount.value) {
                 step.best_price = ~itr->sell_price;
@@ -428,7 +458,264 @@ asset exchange::exchange_impl::apply_direct(exchange_step& dir, const limit_orde
         dir.res() += r;
     }
 
+    dir.param() += (param - par);
+
+    auto itr_prc = dir.is_buy ? ord.buy_price() : ord.sell_price;
+    if (!dir.best_price.base.amount.value) {
+        dir.best_price = itr_prc;
+    }
+    dir.limit_price = itr_prc;
+
     return par;
+}
+
+ex_rows exchange::exchange_impl::map_rows(const ex_rows& curr, ex_rows prev, const ex_stat& stat) const {
+    ex_rows res;
+
+    for (size_t i = 0; i < curr.size(); ++i) {
+        auto row = curr[i];
+        auto row_price = row.get_price();
+
+        auto safe_price = [&](asset a, price p) {
+            if (a.symbol == p.base.symbol && p.base.amount == 0) {
+                return asset(0, p.quote.symbol);
+            }
+            if (a.symbol == p.quote.symbol && p.quote.amount == 0) {
+                return asset(0, p.base.symbol);
+            }
+            return a * p;
+        };
+
+        asset new_res(0, row.res.symbol);
+        auto first_i = res.size();
+
+        while (true) {
+            CHECK_API_TIMEOUT(stat, GOLOS_SPREAD_PER_CHAIN_TIMEOUT_MS);
+
+            if (row.par.amount <= 0) break;
+
+            FC_ASSERT(prev.size(), "No enough prev row found");
+
+            auto& pr = prev[0];
+
+            ex_row nr(pr.par.symbol, row.res.symbol);
+
+            auto par0 = safe_price(row.par, pr.get_price());
+            if (row.par >= pr.res || par0 >= pr.par) {
+                nr.par = pr.par;
+                nr.res = safe_price(pr.res, row_price);
+                res.push_back(nr);
+                new_res += nr.res;
+
+                row.par -= pr.res;
+                row.res = safe_price(row.par, row_price);
+
+                prev.erase(prev.begin());
+                continue;
+            } else {
+                nr.par = par0;
+                nr.res = row.res;
+                new_res += nr.res;
+
+                pr.par -= par0;
+                pr.res -= row.par;
+            }
+
+            res.push_back(nr);
+
+            break;
+        }
+
+        auto error = curr[i].res - new_res;
+        res[first_i].res += error;
+    }
+
+    return res;
+}
+
+template<typename OrderIndex>
+void exchange::exchange_impl::trying_to_pass(asset start, ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize) const {
+    ex_chain new_chain(chain._log_lev);
+    chain.log_i([&]() { return "--- trying_to_pass " + start.to_string(); });
+    chain.log_i([&]() { return std::to_string(new_chain.size()); });
+}
+
+template<typename OrderIndex>
+std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(const asset& start, const ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize) const {
+    ex_chain new_chain(chain._log_lev);
+    new_chain.copy_logs(chain);
+    new_chain.log_i([&]() { return "--- optimize_chain " + start.to_string(); });
+    asset next;
+
+    try {
+        int64_t first = 0;
+        int64_t end = chain.size();
+
+        for (int64_t i = first; i != end; ++i) {
+            const auto& step = chain[i];
+
+            auto copy = step;
+            if (i == first) {
+                copy.param() = start;
+            } else {
+                copy.param() = new_chain[i - 1].res();
+            }
+
+            copy.remain.reset();
+            if (new_chain._log_lev < fc::log_level::off) copy.impacted_orders.clear();
+
+            auto par = copy.param();
+            auto& res = copy.res();
+            res.amount = 0;
+
+            ex_rows rows;
+
+            auto prc = price::min(par.symbol, res.symbol);
+            if (copy.is_buy) {
+                prc = price::max(par.symbol, res.symbol);
+            }
+
+            bool first_ord = true;
+            auto itr = idx.lower_bound(prc);
+            while (itr != idx.end()) {
+                CHECK_API_TIMEOUT(stat, GOLOS_SPREAD_PER_CHAIN_TIMEOUT_MS);
+
+                if (par.amount == 0) break;
+
+                auto itr_prc = copy.is_buy ? itr->sell_price : itr->buy_price();
+                if (itr_prc.base.symbol != par.symbol || itr_prc.quote.symbol != res.symbol) {
+                    break;
+                }
+
+                ex_row row(par.symbol, res.symbol);
+
+                uint16_t fee_pct = 0;
+                if (!!copy.fee_pct) fee_pct = *(copy.fee_pct);
+
+                if (copy.is_buy) {
+                    auto ord_orig = itr->amount_for_sale();
+                    auto full = ord_orig;
+
+                    auto fee = subtract_fee(full, fee_pct);
+                    if (par >= full) {
+                        copy.add_fee(fee);
+                        par -= full;
+
+                        new_chain.log_d([&]() { return ord_orig.to_string() + " add_res " + fc::json::to_string(itr->sell_price); });
+                        auto add = copy.add_res(ord_orig, itr->sell_price);
+
+                        row.par += full;
+                        row.res += add;
+                    } else {
+                        auto am = par;
+                        include_fee(am, fee_pct);
+                        if (am.amount == 0) {
+                            //TODO
+                            //++itr;
+                            //continue;
+                        }
+
+                        copy.add_fee(am - par);
+
+                        auto par0 = par;
+                        par -= par;
+
+                        new_chain.log_d([&]() { return am.to_string() + " add_res " + fc::json::to_string(itr->sell_price); });
+                        auto add = copy.add_res(am, itr->sell_price);
+
+                        row.par += par0;
+                        row.res += add;
+                    }
+                } else {
+                    bool do_fix = par <= itr->amount_to_receive();
+
+                    auto o_par = std::min(par, itr->amount_to_receive());
+
+                    new_chain.log_d([&]() { return o_par.to_string() + " * " + fc::json::to_string(itr->sell_price); });
+                    auto r = o_par * itr->sell_price;
+
+                    // fix_sell
+                    bool fixed = false;
+                    if (!copy.is_buy && i == first && r.amount > 0 && do_fix && optimize) {
+                        auto fix = r * itr->sell_price;
+                        if (fix < o_par) {
+                            fixed = true;
+                            par -= fix;
+
+                            row.par += fix;
+                        }
+                    }
+
+                    if (!fixed) {
+                        par -= o_par;
+
+                        row.par += o_par;
+                    }
+
+                    if (fee_pct) {
+                        auto fee = subtract_fee(r, fee_pct);
+                        copy.add_fee(fee);
+                    }
+                    res += r;
+
+                    row.res += r;
+                }
+
+                if (first_ord) {
+                    copy.best_price = ~itr_prc;
+                }
+                first_ord = false;
+                copy.limit_price = ~itr_prc;
+
+                rows.push_back(row);
+
+                if (new_chain._log_lev < fc::log_level::off) copy.impacted_orders.push_back(*itr);
+
+                ++itr;
+            }
+
+            if (par.amount.value != 0) {
+                if (i == first) {
+                    next = par;
+                } else {
+                    auto set_remain = [&]() {
+                        copy.remain = par;
+                        new_chain.has_remain = true;
+                    };
+
+                    set_remain();
+                }
+            }
+
+            if (i == first && next.amount.value) {
+                copy.param() -= next;
+            }
+
+            if (i == first) {
+                new_chain.rows = rows;
+            } else {
+                #define SUBMIT_ERROR(REPORT) \
+                    if (new_chain._err_report.empty()) new_chain._err_report = "map_rows: " + std::string(REPORT);
+
+                try {
+                    new_chain.rows = map_rows(rows, new_chain.rows, stat);
+                } catch (fc::exception& err) {
+                    SUBMIT_ERROR(err.to_detail_string());
+                } catch (const std::exception& err) {
+                    SUBMIT_ERROR(err.what());
+                } catch (...) {
+                    SUBMIT_ERROR("Unknown error");
+                }
+            }
+
+            new_chain.log_d([&]() { return "rows: " + fc::json::to_string(new_chain.rows)
+                + " | cur_rows: " + fc::json::to_string(rows); });
+
+            new_chain.push_back(copy);
+        }
+    } CATCH_REPORT(new_chain)
+
+    return { new_chain, next };
 }
 
 std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<ex_chain>& chains, const exchange_query& query,
@@ -436,50 +723,182 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
     std::vector<ex_chain> res;
 
     for (auto chain : chains) {
-        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+        CHECK_API_TIMEOUT(stat, GOLOS_SEARCH_TIMEOUT_MS);
+
+        ex_stat per_chain;
 
         if (chain.size() > 1) {
-            auto is_buy = chain.is_buy();
-            auto par = chain.param();
-            auto mid = chain.get_price();
-            //elog("ch " + fc::json::to_string(mid));
+            auto orig = chain;
 
-            exchange_step dir;
-            dir = exchange_step::from(par, is_buy);
-            dir.param().amount = 0;
-            dir.res() = asset(0, chain.res().symbol);
-            dir.fee_pct = chain.last().fee_pct;
+            std::vector<std::string> err_logs;
 
-            auto process_idx = [&](const auto& idx) {
-                auto prc = price::min(query.amount.symbol, query.sym2);
-                auto prc_max = prc.max();
-                auto itr = idx.lower_bound(is_buy ? prc_max : prc);
-                auto end = idx.upper_bound(is_buy ? prc : prc_max);
-                while (itr != end) {
-                    if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+            #define HANDLE_ERROR(REPORT) \
+                orig._err_report = REPORT; \
+                if (err_logs.size()) orig._logs = err_logs; \
+                if (!orig.has_remain || query.remain.multi != exchange_remain_policy::ignore) res.push_back(orig); \
+                continue;
 
-                    auto itr_prc = is_buy ? itr->buy_price() : itr->sell_price;
-                    bool better = is_buy ? itr_prc < mid : itr_prc > mid;
+            try {
+                auto is_buy = chain.is_buy();
+                auto par = query.amount;
+                bool chain_empty = true;
 
-                    if (better) {
-                        par = apply_direct(dir, *itr, par);
+                exchange_step dir;
+                dir = exchange_step::from(par, is_buy);
+                dir.param().amount = 0;
+                dir.res() = asset(0, chain.res().symbol);
+                dir.fee_pct = chain.last().fee_pct;
+
+                auto process_idx = [&](const auto& idx) {
+                    #define RETURN_ORIG_WITH_REPORT(OPTIM) \
+                        orig._logs = OPTIM._logs; \
+                        if (!OPTIM._err_report.empty()) { \
+                            orig._err_report = OPTIM._err_report; \
+                            return; \
+                        }
+
+                    auto optim = optimize_chain(par, chain, idx, per_chain, query.hybrid.fix_sell);
+                    RETURN_ORIG_WITH_REPORT(optim.first);
+                    optim.first.log_i([&]() { return "oc1"; }, &err_logs);
+
+                    auto rows = optim.first.rows;
+                    int64_t r = rows.size() - 1;
+
+                    auto prc = price::min(query.amount.symbol, query.sym2);
+                    auto prc_max = prc.max();
+                    auto itr = idx.lower_bound(is_buy ? prc_max : prc);
+                    auto end = idx.upper_bound(is_buy ? prc : prc_max);
+
+                    asset ord;
+                    asset last_ord;
+                    asset dir_per_ord;
+                    while (itr != end && r >= 0) {
+                        CHECK_API_TIMEOUT(per_chain, GOLOS_SPREAD_PER_CHAIN_TIMEOUT_MS);
+
+                        if (dir_per_ord.amount == 0) dir_per_ord = asset(0, rows[r].par.symbol);
+
+                        auto itr_prc = is_buy ? itr->buy_price() : itr->sell_price;
+                        auto prc = rows[r].get_price();
+                        bool better = is_buy ? itr_prc < prc : itr_prc > prc;
+
+                        optim.first.log_i([&]() { return "sc: " + fc::json::to_string(prc) + " " + fc::json::to_string(itr_prc) + " " + std::to_string(better); }, &err_logs);
+
+                        last_ord = is_buy ? itr->amount_for_sale() : itr->amount_to_receive();
+
+                        if (better) {
+                            if (ord.amount == 0) {
+                                ord = last_ord;
+                            }
+
+                            asset param;
+                            if (rows[r].par < ord) {
+                                param = rows[r].par;
+                            } else {
+                                param = ord;
+                            }
+
+                            rows[r].minus_par(param);
+                            if (rows[r].par.amount == 0) {
+                                --r;
+                            }
+                            ord -= param;
+                            last_ord -= param;
+                            dir_per_ord += param;
+
+                            if (ord.amount == 0) {
+                                apply_direct(dir, *itr, dir_per_ord);
+                                optim.first.log_i([&]() { return "dir0: " + fc::json::to_string(*itr); });
+
+                                par -= dir_per_ord;
+                                dir_per_ord.amount = 0;
+
+                                itr++;
+                                if (itr != end)
+                                    last_ord = is_buy ? itr->amount_for_sale() : itr->amount_to_receive();
+                            }
+                        } else {
+                            break;
+                        }
                     }
 
-                    ++itr;
-                }  
-            };
-            if (is_buy) {
-                const auto& cache_idx = ch.cache.get<by_price>();
-                process_idx(cache_idx);
-            } else {
-                const auto& cache_idx = ch.cache.get<by_buy_price>();
-                process_idx(cache_idx);
-            }
+                    if (dir_per_ord.amount > 0 && itr != end) {
+                        optim.first.log_i([&]() { return "dir_last: " + fc::json::to_string(*itr) + " " + dir_per_ord.to_string(); }, &err_logs);
+                        apply_direct(dir, *itr, dir_per_ord);
+                        par -= dir_per_ord;
+                        optim.first.log_d([&]() { return par.to_string(); }, &err_logs);
+                    }
 
-            // TODO: check
-            ex_chain direct;
-            direct.push_back(dir);
-            chain.subchains.push_back(direct);
+                    if (par.amount == 0) {
+                        // chain empty
+                        orig._err_report = optim.first._err_report;
+                        return;
+                    }
+
+                    auto mult = optimize_chain(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
+                    RETURN_ORIG_WITH_REPORT(mult.first);
+                    mult.first.log_i([&]() { return "oc2"; }, &err_logs);
+
+                    auto next = mult.second;
+                    while (next.amount > 0 && itr != end) {
+                        mult.first.log_i([&]() { return "dir_next: " + fc::json::to_string(*itr) + " " + next.to_string(); }, &err_logs);
+                        // TODO: but it is wrong. last ord should be used
+                        auto next2 = apply_direct(dir, *itr, next);
+                        par -= (next - next2);
+                        next = next2;
+
+                        ++itr;
+                    }
+
+                    if (next.amount > 0) {
+                        mult = optimize_chain(par, mult.first, idx, per_chain, false);
+                        RETURN_ORIG_WITH_REPORT(mult.first);
+                        next = mult.second;
+                        mult.first.log_i([&]() { return "oc3"; }, &err_logs);
+                    }
+
+                    chain = mult.first;
+                    chain_empty = false;
+
+                    if (next.amount > 0) {
+                        chain.has_remain = true;
+                        chain.steps[0].remain = next;
+                    }
+
+                    chain.log_i([&]() { return "--"; }, &err_logs);
+                };
+
+                if (is_buy) {
+                    const auto& cache_idx = ch.cache.get<by_price>();
+                    process_idx(cache_idx);
+                } else {
+                    const auto& cache_idx = ch.cache.get<by_buy_price>();
+                    process_idx(cache_idx);
+                }
+
+                if (chain_empty) {
+                    if (!orig.has_remain || query.remain.multi != exchange_remain_policy::ignore) res.push_back(orig);
+                    continue;
+                }
+
+                if (dir.param().amount > 0) {
+                    chain.set_direct(dir);
+                }
+
+                if (chain.has_remain && query.remain.multi == exchange_remain_policy::ignore) {
+                    if (!orig.has_remain) res.push_back(orig);
+                    continue;
+                }
+                if (!query.will_fix_input() &&
+                    query.min_to_receive.ignore_chain(chain.is_buy(), chain.param(), chain.res(), false)) {
+                    continue;
+                }
+            } catch (fc::exception& err) {
+                HANDLE_ERROR(err.to_detail_string());
+            } catch (const std::exception& err) {
+                HANDLE_ERROR(err.what());
+            } catch (...) {
+                HANDLE_ERROR("Unknown error");
+            }
         }
         res.push_back(chain);
     }
@@ -500,19 +919,20 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
 
     ex_stat stat;
 
-    ex_chain chain;
+    auto ll = query.logs ? log_lev : fc::log_level::off;
+    ex_chain chain(ll);
     cache_helper ch;
     asset_map assets;
 
     std::vector<exchange_query> queries;
-    if (!!query.hybrid && query.hybrid->strategy == exchange_hybrid_strategy::discrete) {
+    if (query.is_discrete()) {
         GOLOS_CHECK_PARAM(query.hybrid, {
-            GOLOS_CHECK_VALUE(query.hybrid->discrete_step <= STEEMIT_100_PERCENT,
+            GOLOS_CHECK_VALUE(query.hybrid.discrete_step <= STEEMIT_100_PERCENT,
                 "discrete_step cannot be greater than 10000 (100%)");
-            GOLOS_CHECK_VALUE(query.hybrid->discrete_step >= hybrid_discrete_step,
+            GOLOS_CHECK_VALUE(query.hybrid.discrete_step >= hybrid_discrete_step,
                 "discrete_step cannot be less than " + std::to_string(hybrid_discrete_step));
         });
-        queries = query.discrete_split(query.hybrid->discrete_step);
+        queries = query.discrete_split(query.hybrid.discrete_step);
     } else {
         queries = {query};
     }
@@ -550,7 +970,7 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
 
                 use_indexes(idx, cache_idx);
             }
-        } catch (const ex_timeout_exception& ex) {
+        } catch (const api_timeout& ex) {
             result["error"] = "timeout";
             elog("get_exchange timeout - " + fc::json::to_string(curr));
             return result;
@@ -568,7 +988,7 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
         auto pct = itr->first;
         const auto& vec = itr->second;
         if (pct == STEEMIT_100_PERCENT) {
-            if (!!query.hybrid && query.hybrid->strategy == exchange_hybrid_strategy::spread) {
+            if (query.is_spread()) {
                 chains = spread_chains(vec, query, ch, stat);
             } else {
                 std::copy(vec.begin(), vec.end(), std::back_inserter(chains));
@@ -590,8 +1010,8 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
                     continue;
                 }
                 chain.subchains.push_back(*direct);
-                if (!!query.min_to_receive
-                        && query.min_to_receive->ignore_chain(chain.is_buy(), chain.param(), chain.res(), false)) {
+                if (!query.will_fix_input() &&
+                    query.min_to_receive.ignore_chain(chain.is_buy(), chain.param(), chain.res(), false)) {
                     continue;
                 }
                 chains.push_back(chain);
@@ -599,17 +1019,23 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
         }
     }
 
-    if (is_buy && query.excess_protect == exchange_excess_protect::fix_input) {
+    asset dir_receive;
+    for (const auto& c : chains) {
+        if (c.is_direct()) {
+            dir_receive = c.is_buy() ? c.param() : c.res();
+            break;
+        }
+    }
+
+    uint16_t err_count = 0;
+
+    if (query.will_fix_input()) {
         std::vector<ex_chain> new_chains;
 
         _db.with_weak_read_lock([&]() {
             for (const auto& c : chains) {
                 auto c2 = fix_receive(c, stat);
                 if (c2.steps.size()) {
-                    if (!!query.min_to_receive
-                            && query.min_to_receive->ignore_chain(c2.is_buy(), c2.param(), c2.res(), c2.size() == 1)) {
-                        continue;
-                    }
                     if (c2.subchains.size()) {
                         auto sub = fix_receive(c2.subchains[0], stat);
                         if (sub.steps.size()) {
@@ -618,11 +1044,32 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
                             c2.subchains.clear();
                         }
                     }
+                    if (query.min_to_receive.ignore_chain(c2.is_buy(), c2.param(), c2.res(), c2.size() == 1, dir_receive)) {
+                        continue;
+                    }
+                    if (!c._err_report.empty()) ++err_count;
                     new_chains.push_back(c2);
                 }
             }
         });
 
+        chains = new_chains;
+    } else {
+        std::vector<ex_chain> new_chains;
+
+        for (auto& c : chains) {
+            // Need for min_profit_pct only...
+            if (query.min_to_receive.ignore_chain(c.is_buy(), c.param(), c.res(), c.is_direct(), dir_receive)) {
+                continue;
+            }
+
+            if (is_buy) c.reverse();
+
+            if (!c._err_report.empty()) ++err_count;
+
+            new_chains.push_back(c);
+        }
+        
         chains = new_chains;
     }
 
@@ -654,6 +1101,12 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
 
     result["_msec"] = stat.msec();
 
+    if (err_count)
+        result["_err_count"] = err_count;
+
+    if (query.is_spread())
+        result["_fix_sell"] = query.hybrid.fix_sell;
+
     return result;
 }
 
@@ -684,7 +1137,7 @@ void exchange::exchange_impl::go_value_path(
 
     auto itr = idx.lower_bound(prc);
     while (itr != idx.end()) {
-        if (stat.msec() > GOLOS_SEARCH_TIMEOUT) throw ex_timeout_exception();
+        CHECK_API_TIMEOUT(stat, GOLOS_SEARCH_TIMEOUT_MS);
 
         auto itr_prc = query.is_buy() ? itr->sell_price : itr->buy_price();
         if (itr_prc.base.symbol != add_me) {

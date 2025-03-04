@@ -6,8 +6,10 @@
 #include <appbase/plugin.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/json_rpc/plugin.hpp>
+#include <golos/plugins/exchange/exchange_types.hpp>
 
-#define GOLOS_SEARCH_TIMEOUT 1500
+#define GOLOS_SEARCH_TIMEOUT_MS 1500
+#define GOLOS_SPREAD_PER_CHAIN_TIMEOUT_MS 10
 
 #define GOLOS_MIN_DISCRETE_STEP 200 // 2.00%
 
@@ -46,6 +48,8 @@ public:
     void plugin_shutdown() override;
 
     static const std::string& name();
+
+    ex_rows map_rows(const ex_rows& curr, ex_rows prev) const;
 
     DECLARE_API(
         (get_exchange)
