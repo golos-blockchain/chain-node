@@ -4,10 +4,18 @@
 
 namespace golos { namespace plugins { namespace exchange {
 
-bool exchange_min_to_receive::ignore_chain(bool is_buy, asset param, asset res, bool is_direct) const {
+bool exchange_min_to_receive::ignore_chain(bool is_buy, asset param, asset res, bool is_direct,
+    asset dir_receive) const {
     auto thr = is_direct ? direct : multi;
     if (thr.amount.value != 0 &&
         (is_buy ? param : res) < thr) return true;
+    if (min_profit_pct && !is_buy && !is_direct && dir_receive.amount.value > 0) {
+        auto more = asset(uint128_t(dir_receive.amount.value
+                * (STEEMIT_100_PERCENT + min_profit_pct)
+                / STEEMIT_100_PERCENT).to_uint64(), dir_receive.symbol);
+        if (more == dir_receive) more.amount += 1;
+        if (res < more) return true;
+    }
     return false;
 }
 
@@ -48,9 +56,7 @@ void exchange_query::initialize_validate(database& _db) {
     });
 
     GOLOS_CHECK_PARAM(min_to_receive, {
-        if (!!min_to_receive) {
-            min_to_receive->validate(*this);
-        }
+        min_to_receive.validate(*this);
     });
 }
 
@@ -82,6 +88,19 @@ std::vector<exchange_query> exchange_query::discrete_split(uint16_t step) {
         }
     }
     return qus;
+}
+
+bool exchange_query::is_discrete() const {
+    return hybrid.strategy == exchange_hybrid_strategy::discrete;
+}
+
+bool exchange_query::is_spread() const {
+    return hybrid.strategy == exchange_hybrid_strategy::spread;
+}
+
+bool exchange_query::will_fix_input() const {
+    return direction == exchange_direction::buy
+        && excess_protect == exchange_excess_protect::fix_input;
 }
 
 bool exchange_path_query::is_bad_symbol(const std::string& sym) const {

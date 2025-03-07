@@ -41,8 +41,6 @@ namespace golos {
                 price best_price{asset(0, STEEM_SYMBOL), asset(0, SBD_SYMBOL)};
                 price limit_price{asset(0, STEEM_SYMBOL), asset(0, SBD_SYMBOL)};
 
-                std::vector<limit_order_object> impacted_orders;
-
                 static exchange_step from_sell(asset s) {
                     exchange_step step;
                     step.sell = s;
@@ -111,6 +109,10 @@ namespace golos {
 
                 size_t size() const {
                     return steps.size();
+                }
+
+                bool is_direct() const {
+                    return steps.size() == 1;
                 }
 
                 void reverse() {
@@ -242,7 +244,7 @@ namespace golos {
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_step),
-    (sell)(receive)(remain)(fee)(fee_pct)(best_price)(limit_price)(impacted_orders)
+    (sell)(receive)(remain)(fee)(fee_pct)(best_price)(limit_price)
 )
 
 namespace fc {
@@ -252,31 +254,35 @@ namespace fc {
     void to_variant(const golos::plugins::exchange::ex_chain &var, fc::variant &vo) {
         fc::mutable_variant_object res;
         res["res"] = var.res();
-
+elog("tov1");
         fc::variant steps;
         to_variant(var.steps, steps);
         res["steps"] = steps;
-
+elog("tov0");
         price best_price;
         price limit_price;
 
         std::vector<std::string> syms;
-        for (size_t i = 0; i < var.steps.size(); ++i) {
-            const auto& s = var.steps[i];
-            if (i == 0) {
-                syms.push_back(s.sell.symbol_name());
-                best_price = s.best_price;
-                limit_price = s.limit_price;
-            } else {
-                if (var.is_buy()) {
-                    best_price.quote = best_price.quote * s.best_price;
-                    limit_price.quote = limit_price.quote * s.limit_price;
+        try {
+            for (size_t i = 0; i < var.steps.size(); ++i) {
+                const auto& s = var.steps[i];
+                if (i == 0) {
+                    syms.push_back(s.sell.symbol_name());
+                    best_price = s.best_price;
+                    limit_price = s.limit_price;
                 } else {
-                    best_price.base = best_price.base * s.best_price;
-                    limit_price.base = limit_price.base * s.limit_price;
+                    if (var.is_buy()) { // TODO: if not reversed,works wrong
+                        best_price.quote = best_price.quote * s.best_price;
+                        limit_price.quote = limit_price.quote * s.limit_price;
+                    } else {
+                        best_price.base = best_price.base * s.best_price;
+                        limit_price.base = limit_price.base * s.limit_price;
+                    }
                 }
+                syms.push_back(s.receive.symbol_name());
             }
-            syms.push_back(s.receive.symbol_name());
+        } catch (...) {
+            FC_ASSERT(false, "Chain has wrong best_price, limit_price");
         }
 
         fc::variant syms_v;
