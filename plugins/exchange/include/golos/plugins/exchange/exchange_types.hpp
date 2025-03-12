@@ -178,9 +178,15 @@ namespace golos {
                     return false;
                 }
 
+                void add_log(const std::string& str) {
+                    if (!_logs) _logs = std::vector<std::string>();
+                    _logs->push_back(str);
+                }
+
                 std::vector<exchange_step> steps;
                 std::vector<std::string> syms;
                 std::vector<ex_chain> subchains;
+                fc::optional<std::vector<std::string>> _logs;
                 bool has_remain = false; // Not reflected - internal
                 bool reversed = false; //
                 asset empty{0, asset::min_symbol()}; //
@@ -297,6 +303,10 @@ elog("tov0");
         res["limit_price"] = limit_price;
 
         res["buy"] = var.is_buy();
+
+        if (!!var._logs) {
+            res["_logs"] = var._logs;
+        }
 
         vo = res;
     }

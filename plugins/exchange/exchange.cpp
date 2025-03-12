@@ -592,6 +592,8 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                     auto itr_prc = is_buy ? itr->buy_price() : itr->sell_price;
                     bool better = is_buy ? itr_prc < mid : itr_prc > mid;
 
+                    chain.add_log(fc::json::to_string(itr_prc) + " " + fc::json::to_string(mid) + " " + std::to_string(better));
+
                     if (par.amount <= 0) {
                         if (!better) {
                             break;
@@ -607,8 +609,14 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                     if (par.amount <= 0) break;
 
                     if (better) {
+                        chain.add_log("optimize_chain: " + par.to_string());
+
                         auto optim = optimize_chain(par, chain, idx, stat);
+
+                        auto logs = chain._logs;
                         chain = optim.first;
+                        chain._logs = logs;
+
                         mid = chain.get_price();
                         par = optim.second; // If recovered because "fix sell"...
                         chain_empty = false;
