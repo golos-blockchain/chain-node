@@ -9,6 +9,7 @@ list(APPEND CURRENT_TARGET_HEADERS
 list(APPEND CURRENT_TARGET_SOURCES
     exchange.cpp
     exchange_queries.cpp
+    exchange_types.cpp
 )
 
 if(BUILD_SHARED_LIBRARIES)

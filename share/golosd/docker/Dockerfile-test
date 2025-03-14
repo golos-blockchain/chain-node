@@ -43,6 +43,7 @@ RUN \
     cmake \
         -DCMAKE_BUILD_TYPE=Debug \
         -DBUILD_GOLOS_TESTNET=TRUE \
+        -DGOLOS_BUILD_TESTS=TRUE \
         -DMAX_19_VOTED_WITNESSES=TRUE \
         -DENABLE_MONGO_PLUGIN=FALSE \
         .. && \
@@ -62,6 +63,7 @@ RUN \
 #        -DCMAKE_BUILD_TYPE=Debug \
 #        -DENABLE_COVERAGE_TESTING=TRUE \
 #        -DBUILD_GOLOS_TESTNET=TRUE \
+#        -DGOLOS_BUILD_TESTS=TRUE \
 #        -DMAX_19_VOTED_WITNESSES=TRUE \
 #        -DENABLE_MONGO_PLUGIN=FALSE \
 #        .. && \

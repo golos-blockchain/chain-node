@@ -73,6 +73,16 @@ if(BUILD_GOLOS_LIVETEST)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSTEEMIT_BUILD_LIVETEST")
 endif()
 
+option(GOLOS_BUILD_TESTS "Building source is for auto-tests (ON OR OFF)" OFF)
+message(STATUS "GOLOS_BUILD_TESTS: ${GOLOS_BUILD_TESTS}")
+if(GOLOS_BUILD_TESTS)
+    message(STATUS "     ")
+    message(STATUS "             CONFIGURING FOR TESTS             ")
+    message(STATUS "     ")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGOLOS_BUILD_TESTS")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGOLOS_BUILD_TESTS")
+endif()
+
 
 option(MAX_19_VOTED_WITNESSES "Build source with 19 voted witnesses (ON OR OFF)" OFF)
 message(STATUS "MAX_19_VOTED_WITNESSES: ${MAX_19_VOTED_WITNESSES}")

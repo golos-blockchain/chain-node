@@ -73,6 +73,7 @@ namespace golos {
                 exchange_excess_protect excess_protect = exchange_excess_protect::fix_input;
                 exchange_min_to_receive min_to_receive;
                 exchange_hybrid hybrid;
+                bool logs = false;
                 uint16_t pct = STEEMIT_100_PERCENT; // Internal
                 bool pct_direct = false; //
 
@@ -148,7 +149,8 @@ FC_REFLECT(
 FC_REFLECT(
     (golos::plugins::exchange::exchange_query),
     (amount)(symbol)(direction)
-    (remain)(excess_protect)(min_to_receive)(hybrid)(pct)
+    (remain)(excess_protect)(min_to_receive)(hybrid)(logs)
+    (pct)
     (hidden_assets)
 )
 
