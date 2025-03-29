@@ -642,7 +642,12 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, 
             if (i == first) {
                 next = par;
             } else {
-                // TODO: remain
+                auto set_remain = [&]() {
+                    copy.remain = par;
+                    new_chain.has_remain = true;
+                };
+
+                set_remain();
             }
         }
 
@@ -794,6 +799,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                     while (next.amount > 0 && itr != end) {
                         // TODO: but it is wrong. last ord should be used
                         next = apply_direct(dir, *itr, next);
+                        par -= next;
                         mult.first.log_i([&]() { return "dir_next: " + fc::json::to_string(*itr); });
 
                         ++itr;
@@ -802,10 +808,16 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                     if (next.amount > 0) {
                         mult = optimize_chain(par, optim.first, idx, per_chain, false);
                         RETURN_ORIG_WITH_REPORT(mult.first);
+                        next = mult.second;
                     }
 
                     chain = mult.first;
                     chain_empty = false;
+
+                    if (next.amount > 0) {
+                        chain.has_remain = true;
+                        chain.steps[0].remain = next;
+                    }
                 };
 
                 if (is_buy) {
@@ -824,6 +836,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                 chain.set_direct(dir);
 
                 if (chain.has_remain && query.remain.multi == exchange_remain_policy::ignore) {
+                    res.push_back(orig);
                     continue;
                 }
                 if (!query.will_fix_input() &&
