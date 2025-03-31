@@ -659,7 +659,7 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, 
             new_chain.rows = rows;
         } else {
             #define SUBMIT_ERROR(REPORT) \
-                new_chain._err_report = "map_rows: " + std::string(REPORT);
+                if (!new_chain._err_report) new_chain._err_report = "map_rows: " + std::string(REPORT);
 
             try {
                 new_chain.rows = map_rows(rows, new_chain.rows, stat);

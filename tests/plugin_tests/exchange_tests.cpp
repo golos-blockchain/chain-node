@@ -196,6 +196,47 @@ BOOST_AUTO_TEST_CASE(rows_combining) {
     BOOST_CHECK_EQUAL(rows3[1].res, ASSET("2.000 GOLOS"));
 }
 
+BOOST_AUTO_TEST_CASE(rows_many_steps) {
+    BOOST_TEST_MESSAGE("Testing: rows_many_steps");
+
+    initialize({});
+
+    ex_rows rows;
+    rows.emplace_back(ASSET("0.250 GBG"), ASSET("0.002 AAA"));
+    rows.emplace_back(ASSET("0.250 GBG"), ASSET("0.001 AAA"));
+
+    ex_rows rows2;
+    rows2.emplace_back(ex_row{ASSET("0.003 AAA"), ASSET("6.000 BBB")});
+
+    ex_rows rows3;
+    GOLOS_CHECK_NO_THROW(rows3 = ex_plugin->map_rows(rows2, rows));
+
+    BOOST_CHECK_EQUAL(rows3.size(), 2);
+    BOOST_CHECK_EQUAL(rows3[0].par, ASSET("0.250 GBG"));
+    BOOST_CHECK_EQUAL(rows3[0].res, ASSET("4.000 BBB"));
+    BOOST_CHECK_EQUAL(rows3[1].par, ASSET("0.250 GBG"));
+    BOOST_CHECK_EQUAL(rows3[1].res, ASSET("2.000 BBB"));
+
+    BOOST_TEST_MESSAGE("-- 2nd map_rows (also, tests integer division remainder)");
+
+    ex_rows rows4;
+    rows4.emplace_back(ex_row{ASSET("5.000 BBB"), ASSET("1.000 GOLOS")});
+    rows4.emplace_back(ex_row{ASSET("0.500 BBB"), ASSET("0.002 GOLOS")});
+    rows4.emplace_back(ex_row{ASSET("0.500 BBB"), ASSET("0.001 GOLOS")});
+
+    ex_rows rows5;
+    GOLOS_CHECK_NO_THROW(rows5 = ex_plugin->map_rows(rows4, rows3));
+    BOOST_CHECK_EQUAL(rows5.size(), 4);
+    BOOST_CHECK_EQUAL(rows5[0].par, ASSET("0.250 GBG"));
+    BOOST_CHECK_EQUAL(rows5[0].res, ASSET("0.800 GOLOS"));
+    BOOST_CHECK_EQUAL(rows5[1].par, ASSET("0.125 GBG"));
+    BOOST_CHECK_EQUAL(rows5[1].res, ASSET("0.200 GOLOS"));
+    BOOST_CHECK_EQUAL(rows5[2].par, ASSET("0.062 GBG"));
+    BOOST_CHECK_EQUAL(rows5[2].res, ASSET("0.002 GOLOS"));
+    BOOST_CHECK_EQUAL(rows5[3].par, ASSET("0.063 GBG"));
+    BOOST_CHECK_EQUAL(rows5[3].res, ASSET("0.001 GOLOS"));
+}
+
 /*BOOST_AUTO_TEST_CASE(rows_remain_1cent) {
     BOOST_TEST_MESSAGE("Testing: rows_remain_1cent");
 
@@ -599,6 +640,69 @@ BOOST_AUTO_TEST_CASE(exchange_spread_remain) { try {
     });
     EX_CHAIN_CHECK_RES_ETC(res["best"], "0.006 GOLOSF", {
         EX_CHAIN_CHECK_REMAIN(obj, 0, "0.001 GBGF");
+    });
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(exchange_spread_remain_in_middle) { try {
+    BOOST_TEST_MESSAGE("Testing: exchange_spread_remain_in_middle");
+
+    initialize({});
+
+    BOOST_TEST_MESSAGE("-- Creating assets");
+
+    create_GBGF();
+    create_GOLOSF();
+    create_AAA();
+
+    BOOST_TEST_MESSAGE("-- Fill market with direct");
+
+    issue(ASSET("100000.000 GOLOSF"));
+
+    sell(ASSET("0.002 GOLOSF"), ASSET("0.001 GBGF"));
+    sell(ASSET("0.001 GOLOSF"), ASSET("0.002 GBGF"));
+    sell(ASSET("0.001 GOLOSF"), ASSET("0.003 GBGF"));
+
+    BOOST_TEST_MESSAGE("-- Fill market with chained");
+
+    issue(ASSET("100000.000 AAA"));
+
+    sell(ASSET("0.002 GOLOSF"), ASSET("0.002 AAA"));
+    sell(ASSET("0.004 AAA"), ASSET("0.004 GBGF"));
+
+    BOOST_TEST_MESSAGE("-- Try sell without strategy");
+
+    exchange_query qu;
+    qu.amount = ASSET("0.004 GBGF");
+    qu.symbol = "GOLOSF";
+    qu.hybrid.strategy = exchange_hybrid_strategy::none;
+
+    fc::mutable_variant_object res;
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_RES(res["direct"], "0.003 GOLOSF");
+    // same as direct. Multi cannot be best because price = res / param,
+    // without treating remainder as valuable
+    EX_CHAIN_CHECK_RES(res["best"], "0.003 GOLOSF");
+
+    {
+        auto chains = res["all_chains"].get_array();
+        BOOST_CHECK_EQUAL(chains.size(), 2);
+        EX_CHAIN_CHECK_RES_ETC(chains[1], "0.002 GOLOSF", {
+            EX_CHAIN_CHECK_REMAIN(obj, 1, "0.002 AAA");
+        });
+    }
+
+    BOOST_TEST_MESSAGE("-- Try sell with spread");
+
+    qu.hybrid.strategy = exchange_hybrid_strategy::spread;
+
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_RES(res["direct"], "0.003 GOLOSF");
+
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "0.004 GOLOSF", {
+        // will sell 0.003 GBGF, and split 0.001 GBGF to subchain because order #1 is better
+        EX_CHAIN_CHECK_REMAIN(obj, 1, "0.001 AAA");
     });
 } FC_LOG_AND_RETHROW() }
 
