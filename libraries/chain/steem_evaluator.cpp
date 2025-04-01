@@ -2668,6 +2668,8 @@ namespace golos { namespace chain {
 
             _db.push_order_create_event(order);
 
+            auto to_receive = order.amount_to_receive();
+
             bool filled = _db.apply_order(order);
 
             if (o.fill_or_kill)
@@ -2676,7 +2678,7 @@ namespace golos { namespace chain {
 
             _db.update_asset_marketed(o.amount_to_sell.symbol);
             _db.update_asset_marketed(o.exchange_rate.quote.symbol);
-            _db.update_pair_depth(o.amount_to_sell, order.amount_to_receive());
+            _db.update_pair_depth(o.amount_to_sell, to_receive);
         }
 
         void limit_order_cancel_evaluator::do_apply(const limit_order_cancel_operation &o) {
