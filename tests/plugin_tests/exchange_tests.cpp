@@ -728,11 +728,11 @@ BOOST_AUTO_TEST_CASE(exchange_spread_zero_orders) { try {
 
     sell(ASSET("0.002 GOLOSF"), ASSET("0.002 AAA"));
     sell(ASSET("0.001 GOLOSF"), ASSET("0.002 AAA"));
-    sell(ASSET("0.001 GOLOSF"), ASSET("1.000 AAA"));
+    sell(ASSET("0.002 GOLOSF"), ASSET("1.000 AAA"));
     sell(ASSET("0.002 AAA"), ASSET("0.002 GBGF"));
     sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF"));
     sell(ASSET("0.001 AAA"), ASSET("2.000 GBGF"));
-    sell(ASSET("0.001 AAA"), ASSET("2.000 GBGF"));
+    sell(ASSET("0.002 AAA"), ASSET("2.000 GBGF"));
 
     BOOST_TEST_MESSAGE("-- Try sell without strategy");
 
@@ -752,7 +752,7 @@ BOOST_AUTO_TEST_CASE(exchange_spread_zero_orders) { try {
         EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
     });
 
-    BOOST_TEST_MESSAGE("-- Try sell with strategy");
+    BOOST_TEST_MESSAGE("-- Try sell with spread");
 
     qu.hybrid.strategy = exchange_hybrid_strategy::spread;
 
@@ -767,7 +767,7 @@ BOOST_AUTO_TEST_CASE(exchange_spread_zero_orders) { try {
         BOOST_CHECK_EQUAL(subchains.size(), 0);
     });
 
-    BOOST_TEST_MESSAGE("-- Try sell with strategy #2");
+    BOOST_TEST_MESSAGE("-- Try sell with spread #2");
 
     qu.amount = ASSET("3.002 GBGF");
 
@@ -782,7 +782,7 @@ BOOST_AUTO_TEST_CASE(exchange_spread_zero_orders) { try {
         BOOST_CHECK_EQUAL(subchains.size(), 0);
     });
 
-    BOOST_TEST_MESSAGE("-- Try sell with strategy #3");
+    BOOST_TEST_MESSAGE("-- Try sell with spread #3");
 
     qu.amount = ASSET("5.002 GBGF");
 
@@ -791,12 +791,42 @@ BOOST_AUTO_TEST_CASE(exchange_spread_zero_orders) { try {
     EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
 
     EX_CHAIN_CHECK_RES_ETC(res["best"], "0.003 GOLOSF", {
-        BOOST_TEST_MESSAGE(fc::json::to_string(obj));
         EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GBGF");
         EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
         auto subchains = obj["subchains"].get_array();
         BOOST_CHECK_EQUAL(subchains.size(), 0);
     });
+
+    BOOST_TEST_MESSAGE("-- Try sell with spread #3, with fee");
+
+    set_fee("AAA", 1);
+
+    qu.amount = ASSET("5.002 GBGF");
+
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
+
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "0.002 GOLOSF", {
+        EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GBGF");
+        EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
+        auto subchains = obj["subchains"].get_array();
+        BOOST_CHECK_EQUAL(subchains.size(), 0);
+    });
+
+    BOOST_TEST_MESSAGE("-- Try buy with spread, with fee");
+
+    qu.amount = ASSET("0.002 GOLOSF");
+    qu.symbol = "GBGF";
+    qu.direction = exchange_direction::buy;
+    qu.hybrid.strategy = exchange_hybrid_strategy::none;
+    qu.excess_protect = exchange_excess_protect::none;
+
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
+
+    BOOST_TEST_MESSAGE(fc::json::to_string(res["best"]));
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

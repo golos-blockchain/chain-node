@@ -473,6 +473,16 @@ ex_rows exchange::exchange_impl::map_rows(const ex_rows& curr, ex_rows prev, con
         auto row = curr[i];
         auto row_price = row.get_price();
 
+        auto safe_price = [&](asset a, price p) {
+            if (a.symbol == p.base.symbol && p.base.amount == 0) {
+                return asset(0, p.quote.symbol);
+            }
+            if (a.symbol == p.quote.symbol && p.quote.amount == 0) {
+                return asset(0, p.base.symbol);
+            }
+            return a * p;
+        };
+
         while (true) {
             CHECK_API_TIMEOUT(stat, GOLOS_SPREAD_PER_CHAIN_TIMEOUT_MS);
 
@@ -484,14 +494,14 @@ ex_rows exchange::exchange_impl::map_rows(const ex_rows& curr, ex_rows prev, con
 
             ex_row nr(pr.par.symbol, row.res.symbol);
 
-            auto par0 = row.par * pr.get_price();
+            auto par0 = safe_price(row.par, pr.get_price());
             if (row.par >= pr.res || par0 >= pr.par) {
                 nr.par = pr.par;
-                nr.res = pr.res * row_price;
+                nr.res = safe_price(pr.res, row_price);
                 res.push_back(nr);
 
                 row.par -= pr.res;
-                row.res = row.par * row_price;
+                row.res = safe_price(row.par, row_price);
 
                 prev.erase(prev.begin());
                 continue;
@@ -600,7 +610,7 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, 
 
                 // fix_sell
                 bool fixed = false;
-                if (!copy.is_buy && i == first && optimize) {
+                if (!copy.is_buy && i == first && r.amount > 0 && optimize) {
                     auto fix = r * itr->sell_price;
                     if (fix < o_par) {
                         fixed = true;
