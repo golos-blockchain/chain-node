@@ -99,6 +99,10 @@ struct exchange_fixture : public database_fixture {
     BOOST_CHECK_EQUAL(_err_report, REPORT); \
 }
 
+#define EX_CHAIN_CHECK_NO_CHAIN(CHAIN) { \
+    BOOST_CHECK_EQUAL(fc::json::to_string(CHAIN), "false"); \
+}
+
 #define EX_CHAIN_CHECK_RES_ETC(CHAIN, RES, ETC) { \
     BOOST_CHECK_NE(fc::json::to_string(CHAIN), "false"); \
     auto obj = CHAIN.get_object(); \
@@ -703,6 +707,95 @@ BOOST_AUTO_TEST_CASE(exchange_spread_remain_in_middle) { try {
     EX_CHAIN_CHECK_RES_ETC(res["best"], "0.004 GOLOSF", {
         // will sell 0.003 GBGF, and split 0.001 GBGF to subchain because order #1 is better
         EX_CHAIN_CHECK_REMAIN(obj, 1, "0.001 AAA");
+    });
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(exchange_spread_zero_orders) { try {
+    BOOST_TEST_MESSAGE("Testing: exchange_spread_zero_orders");
+
+    initialize({});
+
+    BOOST_TEST_MESSAGE("-- Creating assets");
+
+    create_GBGF();
+    create_GOLOSF();
+    create_AAA();
+
+    BOOST_TEST_MESSAGE("-- Fill market with chained");
+
+    issue(ASSET("100000.000 GOLOSF"));
+    issue(ASSET("100000.000 AAA"));
+
+    sell(ASSET("0.002 GOLOSF"), ASSET("0.002 AAA"));
+    sell(ASSET("0.001 GOLOSF"), ASSET("0.002 AAA"));
+    sell(ASSET("0.001 GOLOSF"), ASSET("1.000 AAA"));
+    sell(ASSET("0.002 AAA"), ASSET("0.002 GBGF"));
+    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF"));
+    sell(ASSET("0.001 AAA"), ASSET("2.000 GBGF"));
+    sell(ASSET("0.001 AAA"), ASSET("2.000 GBGF"));
+
+    BOOST_TEST_MESSAGE("-- Try sell without strategy");
+
+    exchange_query qu;
+    qu.amount = ASSET("1.000 GBGF");
+    qu.symbol = "GOLOSF";
+    qu.hybrid.strategy = exchange_hybrid_strategy::none;
+
+    fc::mutable_variant_object res;
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
+
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "0.002 GOLOSF", {
+        // Can also check limit_price includes zero-order...
+        EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GBGF");
+        EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
+    });
+
+    BOOST_TEST_MESSAGE("-- Try sell with strategy");
+
+    qu.hybrid.strategy = exchange_hybrid_strategy::spread;
+
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
+
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "0.002 GOLOSF", {
+        EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GBGF");
+        EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
+        auto subchains = obj["subchains"].get_array();
+        BOOST_CHECK_EQUAL(subchains.size(), 0);
+    });
+
+    BOOST_TEST_MESSAGE("-- Try sell with strategy #2");
+
+    qu.amount = ASSET("3.002 GBGF");
+
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
+
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "0.003 GOLOSF", {
+        EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GBGF");
+        EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
+        auto subchains = obj["subchains"].get_array();
+        BOOST_CHECK_EQUAL(subchains.size(), 0);
+    });
+
+    BOOST_TEST_MESSAGE("-- Try sell with strategy #3");
+
+    qu.amount = ASSET("5.002 GBGF");
+
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
+
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "0.003 GOLOSF", {
+        BOOST_TEST_MESSAGE(fc::json::to_string(obj));
+        EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GBGF");
+        EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
+        auto subchains = obj["subchains"].get_array();
+        BOOST_CHECK_EQUAL(subchains.size(), 0);
     });
 } FC_LOG_AND_RETHROW() }
 

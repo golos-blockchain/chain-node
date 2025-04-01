@@ -833,7 +833,9 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                     continue;
                 }
 
-                chain.set_direct(dir);
+                if (dir.param().amount > 0) {
+                    chain.set_direct(dir);
+                }
 
                 if (chain.has_remain && query.remain.multi == exchange_remain_policy::ignore) {
                     res.push_back(orig);
