@@ -605,12 +605,14 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, 
                     row.res += add;
                 }
             } else {
+                bool do_fix = par <= itr->amount_to_receive();
+
                 auto o_par = std::min(par, itr->amount_to_receive());
                 auto r = o_par * itr->sell_price;
 
                 // fix_sell
                 bool fixed = false;
-                if (!copy.is_buy && i == first && r.amount > 0 && optimize) {
+                if (!copy.is_buy && i == first && r.amount > 0 && do_fix && optimize) {
                     auto fix = r * itr->sell_price;
                     if (fix < o_par) {
                         fixed = true;
@@ -726,7 +728,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                             return; \
                         }
 
-                    auto optim = optimize_chain(par, chain, idx, per_chain);
+                    auto optim = optimize_chain(par, chain, idx, per_chain, false);
                     RETURN_ORIG_WITH_REPORT(optim.first);
 
                     auto rows = optim.first.rows;
@@ -802,7 +804,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         return;
                     }
 
-                    auto mult = optimize_chain(par, optim.first, idx, per_chain);
+                    auto mult = optimize_chain(par, optim.first, idx, per_chain, false);
                     RETURN_ORIG_WITH_REPORT(mult.first);
 
                     auto next = mult.second;
