@@ -5971,9 +5971,6 @@ namespace golos { namespace chain {
             FC_ASSERT(STEEMIT_HARDFORK_0_30 == 30, "Invalid hardfork configuration");
             _hardfork_times[STEEMIT_HARDFORK_0_30] = fc::time_point_sec(STEEMIT_HARDFORK_0_30_TIME);
             _hardfork_versions[STEEMIT_HARDFORK_0_30] = STEEMIT_HARDFORK_0_30_VERSION;
-            FC_ASSERT(STEEMIT_HARDFORK_0_31 == 31, "Invalid hardfork configuration");
-            _hardfork_times[STEEMIT_HARDFORK_0_31] = fc::time_point_sec(STEEMIT_HARDFORK_0_31_TIME);
-            _hardfork_versions[STEEMIT_HARDFORK_0_31] = STEEMIT_HARDFORK_0_31_VERSION;
 
             const auto &hardforks = get_hardfork_property_object();
             FC_ASSERT(
@@ -6276,7 +6273,7 @@ namespace golos { namespace chain {
                 case STEEMIT_HARDFORK_0_28:
                     hf_act.convert_min_curate_golos_power();
                     break;
-                case STEEMIT_HARDFORK_0_31:
+                case STEEMIT_HARDFORK_0_30:
                     hf_act.prepare_for_tests();
                     break;
                 default:
