@@ -728,7 +728,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                             return; \
                         }
 
-                    auto optim = optimize_chain(par, chain, idx, per_chain, false);
+                    auto optim = optimize_chain(par, chain, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(optim.first);
 
                     auto rows = optim.first.rows;
@@ -804,7 +804,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         return;
                     }
 
-                    auto mult = optimize_chain(par, optim.first, idx, per_chain, false);
+                    auto mult = optimize_chain(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(mult.first);
 
                     auto next = mult.second;
@@ -1070,6 +1070,9 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
 
     if (err_count)
         result["_err_count"] = err_count;
+
+    if (query.is_spread())
+        result["_fix_sell"] = query.hybrid.fix_sell;
 
     return result;
 }

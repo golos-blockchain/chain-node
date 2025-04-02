@@ -61,6 +61,7 @@ namespace golos {
             struct exchange_hybrid {
                 exchange_hybrid_strategy strategy = exchange_hybrid_strategy::none;
                 uint16_t discrete_step = GOLOS_MIN_DISCRETE_STEP;
+                bool fix_sell = false;
             };
 
             struct exchange_query {
@@ -143,7 +144,7 @@ FC_REFLECT_ENUM(
 
 FC_REFLECT(
     (golos::plugins::exchange::exchange_hybrid),
-    (strategy)(discrete_step)
+    (strategy)(discrete_step)(fix_sell)
 )
 
 FC_REFLECT(
