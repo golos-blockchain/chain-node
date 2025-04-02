@@ -850,7 +850,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                 }
 
                 if (chain.has_remain && query.remain.multi == exchange_remain_policy::ignore) {
-                    res.push_back(orig);
+                    if (!orig.has_remain) res.push_back(orig);
                     continue;
                 }
                 if (!query.will_fix_input() &&
