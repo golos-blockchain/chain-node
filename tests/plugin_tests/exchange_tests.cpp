@@ -829,4 +829,49 @@ BOOST_AUTO_TEST_CASE(exchange_spread_zero_orders) { try {
     BOOST_TEST_MESSAGE(fc::json::to_string(res["best"]));
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(exchange_spread_odd_orders) { try {
+    BOOST_TEST_MESSAGE("Testing: exchange_spread_odd_orders");
+
+    initialize({});
+
+    BOOST_TEST_MESSAGE("-- Creating assets");
+
+    create_GBGF();
+    create_GOLOSF();
+    create_AAA();
+
+    BOOST_TEST_MESSAGE("-- Fill market with chained");
+
+    issue(ASSET("100000.000 GOLOSF"));
+    issue(ASSET("100000.000 AAA"));
+
+    sell(ASSET("1.000 GOLOS"), ASSET("1.000 GOLOSF"));
+
+    sell(ASSET("1.000 GOLOSF"), ASSET("0.003 AAA"));
+
+    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF"));
+    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF"));
+    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF"));
+
+    BOOST_TEST_MESSAGE("-- Try sell with spread");
+
+    exchange_query qu;
+    qu.amount = ASSET("3.000 GBGF");
+    qu.symbol = "GOLOS";
+    qu.hybrid.strategy = exchange_hybrid_strategy::spread;
+
+    fc::mutable_variant_object res;
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
+
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "1.000 GOLOS", {
+        EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GBGF");
+        EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
+        EX_CHAIN_CHECK_REMAIN(obj, 2, "0.000 GOLOSF");
+        auto subchains = obj["subchains"].get_array();
+        BOOST_CHECK_EQUAL(subchains.size(), 0);
+    });
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

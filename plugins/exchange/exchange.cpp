@@ -483,6 +483,9 @@ ex_rows exchange::exchange_impl::map_rows(const ex_rows& curr, ex_rows prev, con
             return a * p;
         };
 
+        asset new_res(0, row.res.symbol);
+        auto first_i = res.size();
+
         while (true) {
             CHECK_API_TIMEOUT(stat, GOLOS_SPREAD_PER_CHAIN_TIMEOUT_MS);
 
@@ -499,6 +502,7 @@ ex_rows exchange::exchange_impl::map_rows(const ex_rows& curr, ex_rows prev, con
                 nr.par = pr.par;
                 nr.res = safe_price(pr.res, row_price);
                 res.push_back(nr);
+                new_res += nr.res;
 
                 row.par -= pr.res;
                 row.res = safe_price(row.par, row_price);
@@ -508,16 +512,19 @@ ex_rows exchange::exchange_impl::map_rows(const ex_rows& curr, ex_rows prev, con
             } else {
                 nr.par = par0;
                 nr.res = row.res;
+                new_res += nr.res;
+
                 pr.par -= par0;
                 pr.res -= row.par;
             }
-
-            // TODO remain
 
             res.push_back(nr);
 
             break;
         }
+
+        auto error = curr[i].res - new_res;
+        res[first_i].res += error;
     }
 
     return res;
