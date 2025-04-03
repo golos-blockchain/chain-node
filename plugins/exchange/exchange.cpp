@@ -684,7 +684,8 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, 
             }
         }
 
-        new_chain.log_d([&]() { return "rows: " + fc::json::to_string(new_chain.rows); });
+        new_chain.log_d([&]() { return "rows: " + fc::json::to_string(new_chain.rows)
+            + " | cur_rows: " + fc::json::to_string(rows); });
 
         new_chain.push_back(copy);
     }
