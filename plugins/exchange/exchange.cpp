@@ -712,8 +712,11 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
         if (chain.size() > 1) {
             auto orig = chain;
 
+            std::vector<std::string> err_logs;
+
             #define HANDLE_ERROR(REPORT) \
                 orig._err_report = REPORT; \
+                if (err_logs.size()) orig._logs = err_logs;
                 res.push_back(orig); \
                 continue;
 
@@ -738,6 +741,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
 
                     auto optim = optimize_chain(par, chain, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(optim.first);
+                    optim.first.log_d([&]() { return "oc1"; }, &err_logs);
 
                     auto rows = optim.first.rows;
                     int64_t r = rows.size() - 1;
@@ -759,7 +763,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         auto prc = rows[r].get_price();
                         bool better = is_buy ? itr_prc < prc : itr_prc > prc;
 
-                        optim.first.log_d([&]() { return "sc: " + fc::json::to_string(prc) + " " + fc::json::to_string(itr_prc) + " " + std::to_string(better); });
+                        optim.first.log_d([&]() { return "sc: " + fc::json::to_string(prc) + " " + fc::json::to_string(itr_prc) + " " + std::to_string(better); }, &err_logs);
 
                         last_ord = is_buy ? itr->amount_for_sale() : itr->amount_to_receive();
 
@@ -802,7 +806,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
 
                     if (dir_per_ord.amount > 0 && itr != end) {
                         apply_direct(dir, *itr, dir_per_ord);
-                        optim.first.log_i([&]() { return "dir_last: " + fc::json::to_string(*itr); });
+                        optim.first.log_i([&]() { return "dir_last: " + fc::json::to_string(*itr); }, &err_logs);
                         par -= dir_per_ord;
                     }
 
@@ -814,13 +818,14 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
 
                     auto mult = optimize_chain(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(mult.first);
+                    mult.first.log_d([&]() { return "oc2"; }, &err_logs);
 
                     auto next = mult.second;
                     while (next.amount > 0 && itr != end) {
                         // TODO: but it is wrong. last ord should be used
                         next = apply_direct(dir, *itr, next);
                         par -= next;
-                        mult.first.log_i([&]() { return "dir_next: " + fc::json::to_string(*itr); });
+                        mult.first.log_i([&]() { return "dir_next: " + fc::json::to_string(*itr); }, &err_logs);
 
                         ++itr;
                     }
@@ -829,6 +834,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         mult = optimize_chain(par, optim.first, idx, per_chain, false);
                         RETURN_ORIG_WITH_REPORT(mult.first);
                         next = mult.second;
+                        mult.first.log_d([&]() { return "oc3"; }, &err_logs);
                     }
 
                     chain = mult.first;
@@ -866,10 +872,8 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                     continue;
                 }
             } catch (fc::exception& err) {
-                elog("BUF_REP" + err.to_detail_string());
                 HANDLE_ERROR(err.to_detail_string());
             } catch (const std::exception& err) {
-                elog("BUF_REP2" + std::string(err.what()));
                 HANDLE_ERROR(err.what());
             } catch (...) {
                 HANDLE_ERROR("Unknown error");

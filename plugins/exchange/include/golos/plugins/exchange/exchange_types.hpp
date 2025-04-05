@@ -205,14 +205,16 @@ namespace golos {
                     subchains.push_back(direct);
                 }
 
-                void log_i(const std::function<std::string ()>& adder) {
+                void log_i(const std::function<std::string ()>& adder, std::vector<std::string>* ret_logs = nullptr) {
                     if (_log_lev > fc::log_level::info) return;
                     _logs->push_back(adder());
+                    if (ret_logs) (*ret_logs) = *_logs;
                 }
 
-                void log_d(const std::function<std::string ()>& adder) {
+                void log_d(const std::function<std::string ()>& adder, std::vector<std::string>* ret_logs = nullptr) {
                     if (_log_lev > fc::log_level::debug) return;
                     _logs->push_back(adder());
+                    if (ret_logs) (*ret_logs) = *_logs;
                 }
 
                 void copy_logs(const ex_chain& prev) {
