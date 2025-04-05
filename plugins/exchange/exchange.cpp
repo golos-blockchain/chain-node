@@ -534,168 +534,178 @@ template<typename OrderIndex>
 std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, const ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize) const {
     ex_chain new_chain(chain._log_lev);
     new_chain.copy_logs(chain);
-    new_chain.log_d([&]() { return "--- optimize_chain"; });
+    new_chain.log_i([&]() { return "--- optimize_chain " + start.to_string(); });
     asset next;
 
-    int64_t first = 0;
-    int64_t end = chain.size();
+    try {
+        int64_t first = 0;
+        int64_t end = chain.size();
 
-    for (int64_t i = first; i != end; ++i) {
-        const auto& step = chain[i];
+        for (int64_t i = first; i != end; ++i) {
+            const auto& step = chain[i];
 
-        auto copy = step;
-        if (i == first) {
-            copy.param() = start;
-        } else {
-            copy.param() = new_chain[i - 1].res();
-        }
-        copy.remain.reset();
-        if (new_chain._log_lev < fc::log_level::off) copy.impacted_orders.clear();
-
-        auto par = copy.param();
-        auto& res = copy.res();
-        res.amount = 0;
-
-        ex_rows rows;
-
-        auto prc = price::min(par.symbol, res.symbol);
-        if (copy.is_buy) {
-            prc = price::max(par.symbol, res.symbol);
-        }
-
-        bool first_ord = true;
-        auto itr = idx.lower_bound(prc);
-        while (itr != idx.end()) {
-            CHECK_API_TIMEOUT(stat, GOLOS_SPREAD_PER_CHAIN_TIMEOUT_MS);
-
-            if (par.amount == 0) break;
-
-            auto itr_prc = copy.is_buy ? itr->sell_price : itr->buy_price();
-            if (itr_prc.base.symbol != par.symbol || itr_prc.quote.symbol != res.symbol) {
-                break;
-            }
-
-            ex_row row(par.symbol, res.symbol);
-
-            uint16_t fee_pct = 0;
-            if (!!copy.fee_pct) fee_pct = *(copy.fee_pct);
-
-            if (copy.is_buy) {
-                auto ord_orig = itr->amount_for_sale();
-                auto full = ord_orig;
-
-                auto fee = subtract_fee(full, fee_pct);
-                if (par >= full) {
-                    copy.add_fee(fee);
-                    par -= full;
-                    auto add = copy.add_res(ord_orig, itr->sell_price);
-
-                    row.par += full;
-                    row.res += add;
-                } else {
-                    auto am = par;
-                    include_fee(am, fee_pct);
-                    if (am.amount == 0) {
-                        //TODO
-                        //++itr;
-                        //continue;
-                    }
-
-                    copy.add_fee(am - par);
-
-                    auto par0 = par;
-                    par -= par;
-
-                    auto add = copy.add_res(am, itr->sell_price);
-
-                    row.par += par0;
-                    row.res += add;
-                }
-            } else {
-                bool do_fix = par <= itr->amount_to_receive();
-
-                auto o_par = std::min(par, itr->amount_to_receive());
-                auto r = o_par * itr->sell_price;
-
-                // fix_sell
-                bool fixed = false;
-                if (!copy.is_buy && i == first && r.amount > 0 && do_fix && optimize) {
-                    auto fix = r * itr->sell_price;
-                    if (fix < o_par) {
-                        fixed = true;
-                        par -= fix;
-
-                        row.par += fix;
-                    }
-                }
-
-                if (!fixed) {
-                    par -= o_par;
-
-                    row.par += o_par;
-                }
-
-                if (fee_pct) {
-                    auto fee = subtract_fee(r, fee_pct);
-                    copy.add_fee(fee);
-                }
-                res += r;
-
-                row.res += r;
-            }
-
-            if (first_ord) {
-                copy.best_price = ~itr_prc;
-            }
-            first_ord = false;
-            copy.limit_price = ~itr_prc;
-
-            rows.push_back(row);
-
-            if (new_chain._log_lev < fc::log_level::off) copy.impacted_orders.push_back(*itr);
-
-            ++itr;
-        }
-
-        if (par.amount.value != 0) {
+            auto copy = step;
             if (i == first) {
-                next = par;
+                copy.param() = start;
             } else {
-                auto set_remain = [&]() {
-                    copy.remain = par;
-                    new_chain.has_remain = true;
-                };
-
-                set_remain();
+                copy.param() = new_chain[i - 1].res();
             }
-        }
+    new_chain.log_d([&]() { return copy.param().to_string(); });
+            copy.remain.reset();
+            if (new_chain._log_lev < fc::log_level::off) copy.impacted_orders.clear();
 
-        if (i == first && next.amount.value) {
-            copy.param() -= next;
-        }
+            auto par = copy.param();
+            auto& res = copy.res();
+            res.amount = 0;
 
-        if (i == first) {
-            new_chain.rows = rows;
-        } else {
-            #define SUBMIT_ERROR(REPORT) \
-                if (!new_chain._err_report) new_chain._err_report = "map_rows: " + std::string(REPORT);
+            ex_rows rows;
 
-            try {
-                new_chain.rows = map_rows(rows, new_chain.rows, stat);
-            } catch (fc::exception& err) {
-                SUBMIT_ERROR(err.to_detail_string());
-            } catch (const std::exception& err) {
-                SUBMIT_ERROR(err.what());
-            } catch (...) {
-                SUBMIT_ERROR("Unknown error");
+            auto prc = price::min(par.symbol, res.symbol);
+            if (copy.is_buy) {
+                prc = price::max(par.symbol, res.symbol);
             }
+
+            bool first_ord = true;
+            auto itr = idx.lower_bound(prc);
+            while (itr != idx.end()) {
+                CHECK_API_TIMEOUT(stat, GOLOS_SPREAD_PER_CHAIN_TIMEOUT_MS);
+
+                if (par.amount == 0) break;
+
+                auto itr_prc = copy.is_buy ? itr->sell_price : itr->buy_price();
+                if (itr_prc.base.symbol != par.symbol || itr_prc.quote.symbol != res.symbol) {
+                    break;
+                }
+
+                ex_row row(par.symbol, res.symbol);
+
+                uint16_t fee_pct = 0;
+                if (!!copy.fee_pct) fee_pct = *(copy.fee_pct);
+
+                if (copy.is_buy) {
+                    auto ord_orig = itr->amount_for_sale();
+                    auto full = ord_orig;
+
+                    auto fee = subtract_fee(full, fee_pct);
+                    if (par >= full) {
+                        copy.add_fee(fee);
+                        par -= full;
+
+                        new_chain.log_d([&]() { return ord_orig.to_string() + " add_res " + fc::json::to_string(itr->sell_price); });
+                        auto add = copy.add_res(ord_orig, itr->sell_price);
+
+                        row.par += full;
+                        row.res += add;
+                    } else {
+                        auto am = par;
+                        include_fee(am, fee_pct);
+                        if (am.amount == 0) {
+                            //TODO
+                            //++itr;
+                            //continue;
+                        }
+
+                        copy.add_fee(am - par);
+
+                        auto par0 = par;
+                        par -= par;
+
+                        new_chain.log_d([&]() { return am.to_string() + " add_res " + fc::json::to_string(itr->sell_price); });
+                        auto add = copy.add_res(am, itr->sell_price);
+
+                        row.par += par0;
+                        row.res += add;
+                    }
+                } else {
+                    bool do_fix = par <= itr->amount_to_receive();
+
+    new_chain.log_d([&]() { return par.to_string(); });
+    new_chain.log_d([&]() { return itr->amount_to_receive().to_string(); });
+                    auto o_par = std::min(par, itr->amount_to_receive());
+
+                    new_chain.log_d([&]() { return o_par.to_string() + " * " + fc::json::to_string(itr->sell_price); });
+                    auto r = o_par * itr->sell_price;
+
+                    // fix_sell
+                    bool fixed = false;
+                    if (!copy.is_buy && i == first && r.amount > 0 && do_fix && optimize) {
+                        auto fix = r * itr->sell_price;
+                        if (fix < o_par) {
+                            fixed = true;
+                            par -= fix;
+
+                            row.par += fix;
+                        }
+                    }
+
+                    if (!fixed) {
+                        par -= o_par;
+
+                        row.par += o_par;
+                    }
+
+                    if (fee_pct) {
+                        auto fee = subtract_fee(r, fee_pct);
+                        copy.add_fee(fee);
+                    }
+                    res += r;
+
+                    row.res += r;
+                }
+
+                if (first_ord) {
+                    copy.best_price = ~itr_prc;
+                }
+                first_ord = false;
+                copy.limit_price = ~itr_prc;
+
+                rows.push_back(row);
+
+                if (new_chain._log_lev < fc::log_level::off) copy.impacted_orders.push_back(*itr);
+
+                ++itr;
+            }
+
+            if (par.amount.value != 0) {
+                if (i == first) {
+                    next = par;
+                } else {
+                    auto set_remain = [&]() {
+                        copy.remain = par;
+                        new_chain.has_remain = true;
+                    };
+
+                    set_remain();
+                }
+            }
+
+            if (i == first && next.amount.value) {
+                copy.param() -= next;
+            }
+
+            if (i == first) {
+                new_chain.rows = rows;
+            } else {
+                #define SUBMIT_ERROR(REPORT) \
+                    if (!new_chain._err_report) new_chain._err_report = "map_rows: " + std::string(REPORT);
+
+                try {
+                    new_chain.rows = map_rows(rows, new_chain.rows, stat);
+                } catch (fc::exception& err) {
+                    SUBMIT_ERROR(err.to_detail_string());
+                } catch (const std::exception& err) {
+                    SUBMIT_ERROR(err.what());
+                } catch (...) {
+                    SUBMIT_ERROR("Unknown error");
+                }
+            }
+
+            new_chain.log_d([&]() { return "rows: " + fc::json::to_string(new_chain.rows)
+                + " | cur_rows: " + fc::json::to_string(rows); });
+
+            new_chain.push_back(copy);
         }
-
-        new_chain.log_d([&]() { return "rows: " + fc::json::to_string(new_chain.rows)
-            + " | cur_rows: " + fc::json::to_string(rows); });
-
-        new_chain.push_back(copy);
-    }
+    } CATCH_REPORT(new_chain)
 
     return { new_chain, next };
 }
@@ -712,8 +722,11 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
         if (chain.size() > 1) {
             auto orig = chain;
 
+            std::vector<std::string> err_logs;
+
             #define HANDLE_ERROR(REPORT) \
                 orig._err_report = REPORT; \
+                if (err_logs.size()) orig._logs = err_logs; \
                 res.push_back(orig); \
                 continue;
 
@@ -738,6 +751,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
 
                     auto optim = optimize_chain(par, chain, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(optim.first);
+                    optim.first.log_i([&]() { return "oc1"; }, &err_logs);
 
                     auto rows = optim.first.rows;
                     int64_t r = rows.size() - 1;
@@ -759,7 +773,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         auto prc = rows[r].get_price();
                         bool better = is_buy ? itr_prc < prc : itr_prc > prc;
 
-                        optim.first.log_d([&]() { return "sc: " + fc::json::to_string(prc) + " " + fc::json::to_string(itr_prc) + " " + std::to_string(better); });
+                        optim.first.log_i([&]() { return "sc: " + fc::json::to_string(prc) + " " + fc::json::to_string(itr_prc) + " " + std::to_string(better); }, &err_logs);
 
                         last_ord = is_buy ? itr->amount_for_sale() : itr->amount_to_receive();
 
@@ -801,9 +815,10 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                     }
 
                     if (dir_per_ord.amount > 0 && itr != end) {
+                        optim.first.log_i([&]() { return "dir_last: " + fc::json::to_string(*itr) + " " + dir_per_ord.to_string(); }, &err_logs);
                         apply_direct(dir, *itr, dir_per_ord);
-                        optim.first.log_i([&]() { return "dir_last: " + fc::json::to_string(*itr); });
                         par -= dir_per_ord;
+                        optim.first.log_d([&]() { return par.to_string(); }, &err_logs);
                     }
 
                     if (par.amount == 0) {
@@ -814,13 +829,16 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
 
                     auto mult = optimize_chain(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(mult.first);
+                    mult.first.log_i([&]() { return "oc2"; }, &err_logs);
 
                     auto next = mult.second;
                     while (next.amount > 0 && itr != end) {
+                        mult.first.log_i([&]() { return "dir_next: " + fc::json::to_string(*itr); }, &err_logs);
                         // TODO: but it is wrong. last ord should be used
                         next = apply_direct(dir, *itr, next);
                         par -= next;
-                        mult.first.log_i([&]() { return "dir_next: " + fc::json::to_string(*itr); });
+
+                        mult.first.log_i([&]() { return next.to_string(); }, &err_logs);
 
                         ++itr;
                     }
@@ -829,6 +847,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         mult = optimize_chain(par, optim.first, idx, per_chain, false);
                         RETURN_ORIG_WITH_REPORT(mult.first);
                         next = mult.second;
+                        mult.first.log_i([&]() { return "oc3"; }, &err_logs);
                     }
 
                     chain = mult.first;
@@ -838,6 +857,8 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         chain.has_remain = true;
                         chain.steps[0].remain = next;
                     }
+
+                    chain.log_i([&]() { return "--"; }, &err_logs);
                 };
 
                 if (is_buy) {
@@ -866,10 +887,8 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                     continue;
                 }
             } catch (fc::exception& err) {
-                elog("BUF_REP" + err.to_detail_string());
                 HANDLE_ERROR(err.to_detail_string());
             } catch (const std::exception& err) {
-                elog("BUF_REP2" + std::string(err.what()));
                 HANDLE_ERROR(err.what());
             } catch (...) {
                 HANDLE_ERROR("Unknown error");

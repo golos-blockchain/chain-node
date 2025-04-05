@@ -205,14 +205,16 @@ namespace golos {
                     subchains.push_back(direct);
                 }
 
-                void log_i(const std::function<std::string ()>& adder) {
+                void log_i(const std::function<std::string ()>& adder, std::vector<std::string>* ret_logs = nullptr) {
                     if (_log_lev > fc::log_level::info) return;
                     _logs->push_back(adder());
+                    if (ret_logs) (*ret_logs) = *_logs;
                 }
 
-                void log_d(const std::function<std::string ()>& adder) {
+                void log_d(const std::function<std::string ()>& adder, std::vector<std::string>* ret_logs = nullptr) {
                     if (_log_lev > fc::log_level::debug) return;
                     _logs->push_back(adder());
+                    if (ret_logs) (*ret_logs) = *_logs;
                 }
 
                 void copy_logs(const ex_chain& prev) {
@@ -257,6 +259,15 @@ namespace golos {
                 6000000, "API timeout");
 #define CHECK_API_TIMEOUT(STAT, TIMEOUT) \
     if (STAT.msec() > TIMEOUT) throw api_timeout();
+
+#define CATCH_REPORT(CHAIN) \
+    catch (fc::exception& err) { \
+        if (!CHAIN._err_report) CHAIN._err_report = err.to_detail_string(); \
+    } catch (const std::exception& err) { \
+        if (!CHAIN._err_report) CHAIN._err_report = err.what(); \
+    } catch (...) { \
+        if (!CHAIN._err_report) CHAIN._err_report = "Unknown error"; \
+    }
 
             using order_cache = multi_index_container<
                 limit_order_object,
