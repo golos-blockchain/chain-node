@@ -543,7 +543,7 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, 
     ex_chain new_chain(chain._log_lev);
     new_chain.log_i([&]() { return "--- optimize_chain0 " + start.to_string(); });
     new_chain.copy_logs(chain);
-    new_chain.log_i([&]() { return "--- optimize_chain " + start.to_string(); });
+    new_chain.log_i([&]() { return "--- optimize_chain1 " + start.to_string(); });
     asset next;
 
     try {
