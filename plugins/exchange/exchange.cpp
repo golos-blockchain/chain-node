@@ -696,7 +696,7 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, 
                 new_chain.rows = rows;
             } else {
                 #define SUBMIT_ERROR(REPORT) \
-                    if (!new_chain._err_report) new_chain._err_report = "map_rows: " + std::string(REPORT);
+                    if (new_chain._err_report.empty()) new_chain._err_report = "map_rows: " + std::string(REPORT);
 
                 try {
                     new_chain.rows = map_rows(rows, new_chain.rows, stat);
@@ -753,7 +753,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                 auto process_idx = [&](const auto& idx) {
                     #define RETURN_ORIG_WITH_REPORT(OPTIM) \
                         orig._logs = OPTIM._logs; \
-                        if (!!OPTIM._err_report) { \
+                        if (!OPTIM._err_report.empty()) { \
                             orig._err_report = OPTIM._err_report; \
                             return; \
                         }
@@ -1052,7 +1052,7 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
                     if (query.min_to_receive.ignore_chain(c2.is_buy(), c2.param(), c2.res(), c2.size() == 1, dir_receive)) {
                         continue;
                     }
-                    if (!!c._err_report) ++err_count;
+                    if (!c._err_report.empty()) ++err_count;
                     new_chains.push_back(c2);
                 }
             }
@@ -1070,7 +1070,7 @@ fc::mutable_variant_object exchange::exchange_impl::get_exchange(exchange_query 
 
             if (is_buy) c.reverse();
 
-            if (!!c._err_report) ++err_count;
+            if (!c._err_report.empty()) ++err_count;
 
             new_chains.push_back(c);
         }

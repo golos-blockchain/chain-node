@@ -111,8 +111,6 @@ namespace golos {
             struct ex_chain {
                 ex_chain(fc::log_level ll) {
                     _log_lev = ll;
-                    if (_log_lev < fc::log_level::off)
-                        _logs = std::vector<std::string>();
                 }
 
                 void push_back(const exchange_step& step) {
@@ -207,21 +205,20 @@ namespace golos {
 
                 void log_i(const std::function<std::string ()>& adder, std::vector<std::string>* ret_logs = nullptr) {
                     if (_log_lev > fc::log_level::info) return;
-                    _logs->push_back(adder());
-                    if (ret_logs) (*ret_logs) = *_logs;
+                    _logs.push_back(adder());
+                    if (ret_logs) (*ret_logs) = _logs;
                 }
 
                 void log_d(const std::function<std::string ()>& adder, std::vector<std::string>* ret_logs = nullptr) {
                     if (_log_lev > fc::log_level::debug) return;
-                    _logs->push_back(adder());
-                    if (ret_logs) (*ret_logs) = *_logs;
+                    _logs.push_back(adder());
+                    if (ret_logs) (*ret_logs) = _logs;
                 }
 
                 void copy_logs(const ex_chain& prev) {
-                    if (!_logs) return;
-                    if (!prev._logs) return;
-                    for (const auto& str : *(prev._logs)) {
-                        _logs->push_back(str);
+                    if (_log_lev == fc::log_level::off) return;
+                    for (const auto& str : prev._logs) {
+                        _logs.push_back(str);
                     }
                 }
 
@@ -235,8 +232,8 @@ namespace golos {
                 exchange_step empty_step; //
                 fc::log_level _log_lev = fc::log_level::off; //
 
-                fc::optional<std::vector<std::string>> _logs;
-                fc::optional<std::string> _err_report;
+                std::vector<std::string> _logs;
+                std::string _err_report;
             };
 
             const ex_chain* get_direct_chain(const std::vector<ex_chain>& chains);
@@ -262,11 +259,11 @@ namespace golos {
 
 #define CATCH_REPORT(CHAIN) \
     catch (fc::exception& err) { \
-        if (!CHAIN._err_report) CHAIN._err_report = err.to_detail_string(); \
+        if (CHAIN._err_report.empty()) CHAIN._err_report = err.to_detail_string(); \
     } catch (const std::exception& err) { \
-        if (!CHAIN._err_report) CHAIN._err_report = err.what(); \
+        if (CHAIN._err_report.empty()) CHAIN._err_report = err.what(); \
     } catch (...) { \
-        if (!CHAIN._err_report) CHAIN._err_report = "Unknown error"; \
+        if (CHAIN._err_report.empty()) CHAIN._err_report = "Unknown error"; \
     }
 
             using order_cache = multi_index_container<
@@ -355,11 +352,11 @@ namespace fc {
 
         res["buy"] = var.is_buy();
 
-        if (!!var._logs) {
+        if (var._log_lev != fc::log_level::off) {
             res["_logs"] = var._logs;
         }
 
-        if (!!var._err_report) {
+        if (!var._err_report.empty()) {
             res["_err_report"] = var._err_report;
         }
 
