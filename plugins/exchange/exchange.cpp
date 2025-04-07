@@ -55,6 +55,8 @@ public:
 
     ex_rows map_rows(const ex_rows& curr, ex_rows prev, const ex_stat& stat) const;
 
+    void trying_to_pass(asset start,ex_chain& chain) const;
+
     template<typename OrderIndex>
     std::pair<ex_chain, asset> optimize_chain(asset start, const ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize = true) const;
 
@@ -530,6 +532,10 @@ ex_rows exchange::exchange_impl::map_rows(const ex_rows& curr, ex_rows prev, con
     return res;
 }
 
+void exchange::exchange_impl::trying_to_pass(asset start,ex_chain& chain) const {
+    chain.log_i([&]() { return "--- trying_to_pass " + start.to_string(); });
+}
+
 template<typename OrderIndex>
 std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(asset start, const ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize) const {
     ex_chain new_chain(chain._log_lev);
@@ -744,7 +750,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                 auto process_idx = [&](const auto& idx) {
                     #define RETURN_ORIG_WITH_REPORT(OPTIM) \
                         orig._logs = OPTIM._logs; \
-                        if (OPTIM._err_report) { \
+                        if (!!OPTIM._err_report) { \
                             orig._err_report = OPTIM._err_report; \
                             return; \
                         }
@@ -827,6 +833,8 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         return;
                     }
 
+                    optim.first.log_d([&]() { return "M2-" + par.to_string(); }, &err_logs);
+                    trying_to_pass(par, optim.first);
                     auto mult = optimize_chain(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(mult.first);
                     mult.first.log_i([&]() { return "oc2"; }, &err_logs);
