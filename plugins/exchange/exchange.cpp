@@ -535,7 +535,9 @@ ex_rows exchange::exchange_impl::map_rows(const ex_rows& curr, ex_rows prev, con
 
 template<typename OrderIndex>
 void exchange::exchange_impl::trying_to_pass(asset start, ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize) const {
+    ex_chain new_chain(chain._log_lev);
     chain.log_i([&]() { return "--- trying_to_pass " + start.to_string(); });
+    chain.log_i([&]() { return std::to_string(new_chain.size()); });
 }
 
 template<typename OrderIndex>
