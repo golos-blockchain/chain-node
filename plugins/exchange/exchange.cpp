@@ -840,7 +840,8 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
 
                     optim.first.log_d([&]() { return "M22 " + par.to_string(); }, &err_logs);
                     trying_to_pass(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
-                    auto mult = optimize_chain(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
+                    asset cp = par;
+                    auto mult = optimize_chain(cp, optim.first, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(mult.first);
                     mult.first.log_i([&]() { return "oc2"; }, &err_logs);
 
