@@ -543,9 +543,8 @@ void exchange::exchange_impl::trying_to_pass(asset start, ex_chain& chain, const
 template<typename OrderIndex>
 std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(const asset& start, const ex_chain& chain, const OrderIndex& idx, const ex_stat& stat, bool optimize) const {
     ex_chain new_chain(chain._log_lev);
-    new_chain.log_i([&]() { return "--- optimize_chain0 " + start.to_string(); });
     new_chain.copy_logs(chain);
-    new_chain.log_i([&]() { return "--- optimize_chain1 " + start.to_string(); });
+    new_chain.log_i([&]() { return "--- optimize_chain " + start.to_string(); });
     asset next;
 
     try {
@@ -561,7 +560,7 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(const asset& 
             } else {
                 copy.param() = new_chain[i - 1].res();
             }
-    new_chain.log_d([&]() { return copy.param().to_string(); });
+
             copy.remain.reset();
             if (new_chain._log_lev < fc::log_level::off) copy.impacted_orders.clear();
 
@@ -630,8 +629,6 @@ std::pair<ex_chain, asset> exchange::exchange_impl::optimize_chain(const asset& 
                 } else {
                     bool do_fix = par <= itr->amount_to_receive();
 
-    new_chain.log_d([&]() { return par.to_string(); });
-    new_chain.log_d([&]() { return itr->amount_to_receive().to_string(); });
                     auto o_par = std::min(par, itr->amount_to_receive());
 
                     new_chain.log_d([&]() { return o_par.to_string() + " * " + fc::json::to_string(itr->sell_price); });
@@ -738,7 +735,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
             #define HANDLE_ERROR(REPORT) \
                 orig._err_report = REPORT; \
                 if (err_logs.size()) orig._logs = err_logs; \
-                res.push_back(orig); \
+                if (!orig.has_remain || query.remain.multi != exchange_remain_policy::ignore) res.push_back(orig); \
                 continue;
 
             try {
@@ -800,7 +797,6 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                                 param = ord;
                             }
 
-                            // TODO: what if res = 0 because price?
                             rows[r].minus_par(param);
                             if (rows[r].par.amount == 0) {
                                 --r;
@@ -838,27 +834,23 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                         return;
                     }
 
-                    optim.first.log_d([&]() { return "M22 " + par.to_string(); }, &err_logs);
-                    trying_to_pass(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
-                    asset cp = par;
-                    auto mult = optimize_chain(cp, optim.first, idx, per_chain, query.hybrid.fix_sell);
+                    auto mult = optimize_chain(par, optim.first, idx, per_chain, query.hybrid.fix_sell);
                     RETURN_ORIG_WITH_REPORT(mult.first);
                     mult.first.log_i([&]() { return "oc2"; }, &err_logs);
 
                     auto next = mult.second;
                     while (next.amount > 0 && itr != end) {
-                        mult.first.log_i([&]() { return "dir_next: " + fc::json::to_string(*itr); }, &err_logs);
+                        mult.first.log_i([&]() { return "dir_next: " + fc::json::to_string(*itr) + " " + next.to_string(); }, &err_logs);
                         // TODO: but it is wrong. last ord should be used
-                        next = apply_direct(dir, *itr, next);
-                        par -= next;
-
-                        mult.first.log_i([&]() { return next.to_string(); }, &err_logs);
+                        auto next2 = apply_direct(dir, *itr, next);
+                        par -= (next - next2);
+                        next = next2;
 
                         ++itr;
                     }
 
                     if (next.amount > 0) {
-                        mult = optimize_chain(par, optim.first, idx, per_chain, false);
+                        mult = optimize_chain(par, mult.first, idx, per_chain, false);
                         RETURN_ORIG_WITH_REPORT(mult.first);
                         next = mult.second;
                         mult.first.log_i([&]() { return "oc3"; }, &err_logs);
@@ -884,7 +876,7 @@ std::vector<ex_chain> exchange::exchange_impl::spread_chains(const std::vector<e
                 }
 
                 if (chain_empty) {
-                    res.push_back(orig);
+                    if (!orig.has_remain || query.remain.multi != exchange_remain_policy::ignore) res.push_back(orig);
                     continue;
                 }
 

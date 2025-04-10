@@ -50,3 +50,7 @@ documentation/doxygen/latex
 *.pyo
 *.egg-info/
 .vscode/settings.json
+
+node_modules
+tests/fill_market/code.txt
+tests/fill_market/orders.sqlite

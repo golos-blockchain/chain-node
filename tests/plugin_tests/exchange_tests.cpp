@@ -133,6 +133,20 @@ struct exchange_fixture : public database_fixture {
     } \
 }
 
+#define EX_CHAIN_CHECK_ROWS(OBJ, PAR, RES) { \
+    auto rows = OBJ["rows"].get_array(); \
+    auto par_sum = asset(0, ASSET(PAR).symbol); \
+    auto res_sum = asset(0, ASSET(RES).symbol); \
+    for (const auto& row : rows) { \
+        auto par_i = row["par"].as_string(); \
+        par_sum += ASSET(par_i); \
+        auto res_i = row["res"].as_string(); \
+        res_sum += ASSET(res_i); \
+    } \
+    BOOST_CHECK_EQUAL(par_sum.to_string(), PAR); \
+    BOOST_CHECK_EQUAL(res_sum.to_string(), RES); \
+}
+
 BOOST_FIXTURE_TEST_SUITE(exchange_tests, exchange_fixture)
 
 using namespace golos::plugins::exchange;
@@ -829,8 +843,8 @@ BOOST_AUTO_TEST_CASE(exchange_spread_zero_orders) { try {
     BOOST_TEST_MESSAGE(fc::json::to_string(res["best"]));
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE(exchange_spread_odd_orders) { try {
-    BOOST_TEST_MESSAGE("Testing: exchange_spread_odd_orders");
+BOOST_AUTO_TEST_CASE(exchange_spread_aliquant_orders) { try {
+    BOOST_TEST_MESSAGE("Testing: exchange_spread_aliquant_orders");
 
     initialize({});
 
@@ -845,18 +859,22 @@ BOOST_AUTO_TEST_CASE(exchange_spread_odd_orders) { try {
     issue(ASSET("100000.000 GOLOSF"));
     issue(ASSET("100000.000 AAA"));
 
+    sell(ASSET("1.000 GOLOS"), ASSET("1.000 GOLOSF")); // aliquant row
     sell(ASSET("1.000 GOLOS"), ASSET("1.000 GOLOSF"));
 
-    sell(ASSET("1.000 GOLOSF"), ASSET("0.003 AAA"));
+    sell(ASSET("1.000 GOLOSF"), ASSET("0.003 AAA")); //
+    sell(ASSET("0.500 GOLOSF"), ASSET("0.002 AAA"));
+    sell(ASSET("0.500 GOLOSF"), ASSET("0.002 AAA"));
 
-    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF"));
-    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF"));
-    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF"));
+    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF")); //
+    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF")); //
+    sell(ASSET("0.001 AAA"), ASSET("1.000 GBGF")); //
+    sell(ASSET("0.004 AAA"), ASSET("5.000 GBGF"));
 
     BOOST_TEST_MESSAGE("-- Try sell with spread");
 
     exchange_query qu;
-    qu.amount = ASSET("3.000 GBGF");
+    qu.amount = ASSET("8.000 GBGF");
     qu.symbol = "GOLOS";
     qu.hybrid.strategy = exchange_hybrid_strategy::spread;
 
@@ -865,10 +883,31 @@ BOOST_AUTO_TEST_CASE(exchange_spread_odd_orders) { try {
 
     EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
 
-    EX_CHAIN_CHECK_RES_ETC(res["best"], "1.000 GOLOS", {
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "2.000 GOLOS", {
         EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GBGF");
         EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
         EX_CHAIN_CHECK_REMAIN(obj, 2, "0.000 GOLOSF");
+
+        auto subchains = obj["subchains"].get_array();
+        BOOST_CHECK_EQUAL(subchains.size(), 0);
+
+        EX_CHAIN_CHECK_ROWS(obj, "8.000 GBGF", "2.000 GOLOS");
+    });
+
+    BOOST_TEST_MESSAGE("-- Try buy with spread");
+
+    qu.amount = ASSET("2.000 GOLOS");
+    qu.symbol = "GBGF";
+    qu.direction = exchange_direction::buy;
+
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_NO_CHAIN(res["direct"]);
+
+    EX_CHAIN_CHECK_RES_ETC(res["best"], "8.000 GBGF", {
+        EX_CHAIN_CHECK_REMAIN(obj, 0, "0.000 GOLOSF");
+        EX_CHAIN_CHECK_REMAIN(obj, 1, "0.000 AAA");
+        EX_CHAIN_CHECK_REMAIN(obj, 2, "0.000 GBGF");
         auto subchains = obj["subchains"].get_array();
         BOOST_CHECK_EQUAL(subchains.size(), 0);
     });
