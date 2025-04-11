@@ -62,6 +62,26 @@ struct exchange_fixture : public database_fixture {
         GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, init_account_priv_key, op));
     }
 
+    void create_BBB() {
+        asset_create_operation op;
+        op.creator = STEEMIT_INIT_MINER_NAME;
+        op.max_supply = ASSET("1000000.000 BBB");
+        op.json_metadata = "{}";
+        op.allow_fee = true;
+        signed_transaction tx;
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, init_account_priv_key, op));
+    }
+
+    void create_CCC() {
+        asset_create_operation op;
+        op.creator = STEEMIT_INIT_MINER_NAME;
+        op.max_supply = ASSET("1000000.000 CCC");
+        op.json_metadata = "{}";
+        op.allow_fee = true;
+        signed_transaction tx;
+        GOLOS_CHECK_NO_THROW(push_tx_with_ops(tx, init_account_priv_key, op));
+    }
+
     void issue(asset amount) {
         asset_issue_operation op;
         op.creator = STEEMIT_INIT_MINER_NAME;
@@ -911,6 +931,73 @@ BOOST_AUTO_TEST_CASE(exchange_spread_aliquant_orders) { try {
         auto subchains = obj["subchains"].get_array();
         BOOST_CHECK_EQUAL(subchains.size(), 0);
     });
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(exchange_remain_ignore) { try {
+    BOOST_TEST_MESSAGE("Testing: exchange_remain_ignore");
+
+    initialize({});
+
+    BOOST_TEST_MESSAGE("-- Creating assets");
+
+    create_GBGF();
+    create_AAA();
+    create_BBB();
+    create_CCC();
+
+    issue(ASSET("100000.000 GBGF"));
+    issue(ASSET("100000.000 AAA"));
+    issue(ASSET("100000.000 BBB"));
+    issue(ASSET("100000.000 CCC"));
+
+    sell(ASSET("1.000 GBGF"), ASSET("1.000 BBB"));
+    sell(ASSET("1.000 GBGF"), ASSET("1.000 CCC"));
+
+    sell(ASSET("1.000 BBB"), ASSET("0.500 AAA"));
+    sell(ASSET("1.000 CCC"), ASSET("1.000 AAA"));
+
+    sell(ASSET("1.000 AAA"), ASSET("2.000 GOLOS"));
+
+    sell(ASSET("1.000 GBGF"), ASSET("2.000 GOLOS"));
+
+    BOOST_TEST_MESSAGE("-- Check ignoring multi with remain");
+
+    exchange_query qu;
+    qu.amount = ASSET("3.000 GOLOS");
+    qu.symbol = "GBGF";
+    qu.hybrid.strategy = exchange_hybrid_strategy::none;
+    qu.remain.multi = exchange_remain_policy::ignore;
+
+    fc::mutable_variant_object res;
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+
+    EX_CHAIN_CHECK_RES_ETC(res["direct"], "1.000 GBGF", {
+        EX_CHAIN_CHECK_REMAIN(obj, 0, "1.000 GOLOS");
+        auto steps = obj["steps"].get_array();
+        BOOST_CHECK_EQUAL(steps.size(), 1);
+    });
+    {
+        auto chains = res["all_chains"].get_array();
+        BOOST_CHECK_EQUAL(chains.size(), 1);
+    }
+
+    BOOST_TEST_MESSAGE("-- Check ignoring direct with remain");
+
+    qu.remain.direct = exchange_remain_policy::ignore;
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+    {
+        auto chains = res["all_chains"].get_array();
+        BOOST_CHECK_EQUAL(chains.size(), 0);
+    }
+
+    BOOST_TEST_MESSAGE("-- Check ignoring only with remain");
+
+    qu.amount = ASSET("2.000 GOLOS");
+    GOLOS_CHECK_NO_THROW(res = get_exchange(qu));
+    {
+        auto chains = res["all_chains"].get_array();
+        BOOST_CHECK_EQUAL(chains.size(), 2);
+    }
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

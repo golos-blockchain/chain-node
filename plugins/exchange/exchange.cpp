@@ -261,10 +261,11 @@ void exchange::exchange_impl::exchange_go_chain(
             }
 
             if (res.amount.value || res.symbol == sym2) {
+                bool was_remain = chain.has_remain;
                 make_remain();
                 exchange_go_chain(chain, exchange_step::from(res, add_me.is_buy),
                     chains, sym2, query, idx, ch, assets, stat);
-                chain.has_remain = false;
+                chain.has_remain = was_remain;
             }
             res.amount.value = 0;
             res.symbol = quote_symbol;
@@ -341,7 +342,6 @@ void exchange::exchange_impl::exchange_go_chain(
         make_remain();
         exchange_go_chain(chain, exchange_step::from(step.res(), add_me.is_buy),
             chains, sym2, query, idx, ch, assets, stat);
-        chain.has_remain = false;
     }
 }
 
