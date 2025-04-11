@@ -13,6 +13,7 @@ _db.create<asset_object>([&](auto& a) {
         from_string(a.json_metadata, jm);
     }
     a.created = _db.head_block_time();
+    a.fee_percent = ${a.fee_percent};
 });
 `
 }

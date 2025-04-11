@@ -361,6 +361,7 @@ namespace fc {
         }
 
         res["rows"] = var.rows;
+        res["has_remain"] = var.has_remain;
 
         vo = res;
     }

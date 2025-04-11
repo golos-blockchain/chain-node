@@ -40,7 +40,7 @@ const main = async () => {
         const sym2 = syms[i+1]
         const pair = [sym1, sym2]
         console.log('-- Processing pair:', pair)
-        const ords = await golos.api.getOrderBookExtendedAsync(100, pair)
+        const ords = await golos.api.getOrderBookExtendedAsync(1000, pair)
         if (ords.bids[0]) await saveSyms(ords.bids[0])
         for (const ord of ords.bids) {
             await db.saveOrder(sym1, sym2, true, ord)
