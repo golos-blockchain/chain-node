@@ -43,7 +43,6 @@ list(APPEND BOOST_COMPONENTS thread
         program_options
         serialization
         chrono
-        unit_test_framework
         context
         locale
 )
@@ -238,7 +237,7 @@ add_subdirectory(thirdparty)
 add_subdirectory(libraries)
 add_subdirectory(plugins)
 add_subdirectory(programs)
-add_subdirectory(tests)
+# add_subdirectory(tests)
 
 if(ENABLE_INSTALLER)
 

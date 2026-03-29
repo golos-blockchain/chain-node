@@ -1,4 +1,4 @@
-FROM phusion/baseimage:bionic-1.0.0 as builder
+FROM phusion/baseimage:focal-1.2.0 as builder
 
 ARG TYPE=Release
 
@@ -103,7 +103,7 @@ RUN \
         /usr/include \
         /usr/local/include
 
-FROM phusion/baseimage:bionic-1.0.0 as production
+FROM phusion/baseimage:focal-1.2.0 as production
 COPY --from=builder /usr/local /usr/local
 
 ADD share/golosd/golosdctl /usr/local/bin/golosdctl
