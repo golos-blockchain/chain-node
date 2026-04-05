@@ -9,7 +9,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
 #include <websocketpp/config/asio_client.hpp>
@@ -122,10 +122,10 @@ namespace golos {
                             ws_server.init_asio(&ws_ios);
                             ws_server.set_reuse_addr(true);
 
-                            ws_server.set_message_handler(boost::bind(&webserver_plugin_impl::handle_ws_message, this, &ws_server, _1, _2));
+                            ws_server.set_message_handler(boost::bind(&webserver_plugin_impl::handle_ws_message, this, &ws_server, boost::placeholders::_1, boost::placeholders::_2));
 
                             if (http_endpoint && http_endpoint == ws_endpoint) {
-                                ws_server.set_http_handler(boost::bind(&webserver_plugin_impl::handle_http_message, this, &ws_server, _1));
+                                ws_server.set_http_handler(boost::bind(&webserver_plugin_impl::handle_http_message, this, &ws_server, boost::placeholders::_1));
                                 ilog("start listending for http requests");
                             }
 

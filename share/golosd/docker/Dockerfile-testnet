@@ -1,4 +1,4 @@
-FROM phusion/baseimage:focal-1.2.0 as builder
+FROM phusion/baseimage:jammy-1.0.1 as builder
 
 ARG TYPE=Release
 
@@ -36,10 +36,10 @@ RUN apt-get update && \
 
 ADD . /usr/local/src/golos
 
+#    git submodule deinit -f . && \
+#    git submodule update --init --recursive -f && \
 RUN \
     cd /usr/local/src/golos && \
-    git submodule deinit -f . && \
-    git submodule update --init --recursive -f && \
     mkdir build && \
     cd build && \
     cmake \
@@ -91,7 +91,7 @@ RUN \
         /usr/include \
         /usr/local/include
 
-FROM phusion/baseimage:focal-1.2.0 as production
+FROM phusion/baseimage:jammy-1.0.1 as production
 COPY --from=builder /usr/local /usr/local
 
 ADD share/golosd/golosdctl /usr/local/bin/golosdctl

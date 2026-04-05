@@ -1,4 +1,4 @@
-FROM phusion/baseimage:focal-1.2.0 as builder
+FROM phusion/baseimage:jammy-1.0.1 as builder
 
 ARG TYPE=Release
 ARG LIVETEST=FALSE
@@ -101,7 +101,7 @@ RUN \
         /usr/include \
         /usr/local/include
 
-FROM phusion/baseimage:focal-1.2.0 as production
+FROM phusion/baseimage:jammy-1.0.1 as production
 COPY --from=builder /usr/local /usr/local
 
 ADD share/golosd/golosdctl /usr/local/bin/golosdctl
