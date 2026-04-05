@@ -56,7 +56,7 @@ RUN \
     rm -rf /usr/local/src/golos
 
 RUN \
-    apt-get remove -y \
+    apt-get remove --purge -y \
         automake \
         autotools-dev \
         bsdmainutils \
@@ -65,33 +65,23 @@ RUN \
         doxygen \
         dpkg-dev \
         libboost-all-dev \
-        libc6-dev \
         libexpat1-dev \
-        libgcc-7-dev \
         libhwloc-dev \
         libibverbs-dev \
         libicu-dev \
         libltdl-dev \
-        libncurses5-dev \
+        libncurses-dev \
         libnuma-dev \
         libopenmpi-dev \
-        libpython-dev \
-        libpython2.7-dev \
         libreadline-dev \
-        libreadline6-dev \
         libssl-dev \
-        libstdc++-7-dev \
-        libtinfo-dev \
         libtool \
         libxslt-dev \
-        linux-libc-dev \
         m4 \
         make \
         manpages \
         manpages-dev \
         mpi-default-dev \
-        python-dev \
-        python2.7-dev \
         python3-dev \
     && \
     apt-get autoremove -y && \
