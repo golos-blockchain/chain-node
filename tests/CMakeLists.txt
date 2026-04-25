@@ -10,15 +10,17 @@ if(GPERFTOOLS_FOUND)
     list(APPEND PLATFORM_SPECIFIC_LIBS tcmalloc)
 endif()
 
-if(NOT Boost_USE_STATIC_LIBS)
-    add_definitions(-DBOOST_TEST_DYN_LINK)
-endif()
+set(Boost_USE_STATIC_LIBS OFF)
+
+find_package(Boost REQUIRED COMPONENTS unit_test_framework)
 
 file(GLOB UNIT_TESTS "tests/*.cpp")
 add_executable(chain_test ${UNIT_TESTS} ${COMMON_SOURCES})
+target_compile_definitions(chain_test PRIVATE BOOST_TEST_DYN_LINK)
 target_include_directories(chain_test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/common")
 target_link_libraries(
         chain_test
+        Boost::unit_test_framework
         chainbase
         golos_chain
         golos_protocol
@@ -47,7 +49,9 @@ file(GLOB PLUGIN_TESTS
     "plugin_tests/worker_api_payment.cpp"
     "plugin_tests/private_message.cpp")
 add_executable(plugin_test ${PLUGIN_TESTS} ${COMMON_SOURCES})
+target_compile_definitions(plugin_test PRIVATE BOOST_TEST_DYN_LINK)
 target_link_libraries(plugin_test
+    Boost::unit_test_framework
     golos_chain golos_protocol
     golos_account_history
     golos_event_plugin

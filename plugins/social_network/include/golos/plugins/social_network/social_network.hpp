@@ -76,8 +76,6 @@ namespace golos { namespace plugins { namespace social_network {
         const comment_content_object& get_comment_content(const comment_id_type& comment) const ;
         const comment_content_object* find_comment_content(const comment_id_type& comment) const ;
 
-
-    private:
         struct impl;
         std::unique_ptr<impl> pimpl;
     };
