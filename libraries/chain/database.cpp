@@ -1895,7 +1895,7 @@ namespace golos { namespace chain {
 
             if (!is_transit_enabled()) {
                 vector<account_name_type> transit_witnesses;
-                transit_witnesses.reserve(gpo.active_witnesses);
+                transit_witnesses.reserve(STEEMIT_MAX_WITNESSES);
 
                 uint32_t i;
                 const auto& wso = get_witness_schedule_object();
@@ -2087,10 +2087,8 @@ namespace golos { namespace chain {
         }
 
         void database::update_witness_schedule4() { try {
-            const auto& gprops = get_dynamic_global_properties();
-
             vector<account_name_type> active_witnesses;
-            active_witnesses.reserve(gprops.active_witnesses);
+            active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
 
             /// Add the highest voted witnesses
             flat_set<witness_id_type> selected_voted;
@@ -2117,6 +2115,7 @@ namespace golos { namespace chain {
 
             if (!has_hardfork(STEEMIT_HARDFORK_0_28__216)) {
                 selected_miners.reserve(STEEMIT_MAX_MINER_WITNESSES);
+                const auto &gprops = get_dynamic_global_properties();
                 const auto &pow_idx = get_index<witness_index>().indices().get<by_pow>();
                 auto mitr = pow_idx.upper_bound(0);
                 while (mitr != pow_idx.end() &&
@@ -2198,23 +2197,13 @@ namespace golos { namespace chain {
                 reset_virtual_schedule_time();
             }
 #ifndef STEEMIT_BUILD_TESTNET
-            if (is_oct26_max_witnesses_fixed()) {
-                FC_ASSERT(active_witnesses.size() >= 2, "number of active witnesses cannot be lower than 2");
-            } else {
-                size_t expected_active_witnesses = std::min(size_t(STEEMIT_MAX_WITNESSES), widx.size());
-                if (head_block_num() > 14400) {
-                    FC_ASSERT(active_witnesses.size() ==
-                              expected_active_witnesses, "number of active witnesses does not equal expected_active_witnesses=${expected_active_witnesses}",
-                            ("active_witnesses.size()", active_witnesses.size())("STEEMIT_MAX_WITNESSES", STEEMIT_MAX_WITNESSES)("expected_active_witnesses", expected_active_witnesses));
-                }
+            size_t expected_active_witnesses = std::min(size_t(STEEMIT_MAX_WITNESSES), widx.size());
+            if (head_block_num() > 14400) {
+                FC_ASSERT(active_witnesses.size() ==
+                          expected_active_witnesses, "number of active witnesses does not equal expected_active_witnesses=${expected_active_witnesses}",
+                        ("active_witnesses.size()", active_witnesses.size())("STEEMIT_MAX_WITNESSES", STEEMIT_MAX_WITNESSES)("expected_active_witnesses", expected_active_witnesses));
             }
 #endif
-            if (is_oct26_max_witnesses_fixed()) {
-                modify(gprops, [&](dynamic_global_property_object& gpo) {
-                    gpo.active_witnesses = std::min(int(active_witnesses.size()), STEEMIT_MAX_WITNESSES);
-                });
-            }
-            auto max_active_witnesses = head_block_num() > 14400 ? active_witnesses.size() : STEEMIT_MAX_WITNESSES;
 
             auto majority_version = wso.majority_version;
 
@@ -2288,12 +2277,13 @@ namespace golos { namespace chain {
                    active_witnesses.size());
 
             modify(wso, [&](witness_schedule_object &_wso) {
+                // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
                 for (size_t i = 0; i < active_witnesses.size(); i++) {
                     _wso.current_shuffled_witnesses[i] = active_witnesses[i];
                 }
 
                 for (size_t i = active_witnesses.size();
-                     i < max_active_witnesses; i++) {
+                     i < STEEMIT_MAX_WITNESSES; i++) {
                     _wso.current_shuffled_witnesses[i] = account_name_type();
                 }
 
@@ -2336,9 +2326,7 @@ namespace golos { namespace chain {
  *  See @ref witness_object::virtual_last_update
  */
         void database::update_witness_schedule() {
-            const auto& props = get_dynamic_global_properties();
-
-            if ((head_block_num() % props.active_witnesses) ==
+            if ((head_block_num() % STEEMIT_MAX_WITNESSES) ==
                 0) //wso.next_shuffle_block_num )
             {
                 if (has_hardfork(STEEMIT_HARDFORK_0_4)) {
@@ -2346,11 +2334,12 @@ namespace golos { namespace chain {
                     return;
                 }
 
+                const auto &props = get_dynamic_global_properties();
                 const witness_schedule_object &wso = get_witness_schedule_object();
 
 
                 vector<account_name_type> active_witnesses;
-                active_witnesses.reserve(props.active_witnesses);
+                active_witnesses.reserve(STEEMIT_MAX_WITNESSES);
 
                 fc::uint128_t new_virtual_time;
 
@@ -2361,7 +2350,7 @@ namespace golos { namespace chain {
 
                     for (auto itr = widx.begin(); itr != widx.end() &&
                                                   (active_witnesses.size() <
-                                                   (props.active_witnesses -
+                                                   (STEEMIT_MAX_WITNESSES -
                                                     2)); ++itr) {
                         if (itr->pow_worker) {
                             continue;
@@ -2415,7 +2404,7 @@ namespace golos { namespace chain {
 
                 auto itr = pow_idx.upper_bound(0);
                 /// if there is more than 1 POW witness, then pop the first one from the queue...
-                if (props.num_pow_witnesses > props.active_witnesses) {
+                if (props.num_pow_witnesses > STEEMIT_MAX_WITNESSES) {
                     if (itr != pow_idx.end()) {
                         modify(*itr, [&](witness_object &wit) {
                             wit.pow_worker = 0;
@@ -2432,7 +2421,7 @@ namespace golos { namespace chain {
                     active_witnesses.push_back(itr->owner);
 
                     if (head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK ||
-                        active_witnesses.size() >= props.active_witnesses) {
+                        active_witnesses.size() >= STEEMIT_MAX_WITNESSES) {
                         break;
                     }
                     ++itr;
@@ -2452,7 +2441,7 @@ namespace golos { namespace chain {
                     }
 
                     for (size_t i = active_witnesses.size();
-                         i < props.active_witnesses; i++) {
+                         i < STEEMIT_MAX_WITNESSES; i++) {
                         _wso.current_shuffled_witnesses[i] = account_name_type();
                     }
 
@@ -3440,7 +3429,7 @@ namespace golos { namespace chain {
                     content_reward = new_steem - worker_reward - witness_reward - vesting_reward;
                 }
 
-                witness_reward *= props.active_witnesses;
+                witness_reward *= STEEMIT_MAX_WITNESSES;
 
                 if (cwit.schedule == witness_object::timeshare) {
                     witness_reward *= wso.timeshare_weight;
@@ -3682,7 +3671,7 @@ namespace golos { namespace chain {
 
 #ifndef STEEMIT_BUILD_TESTNET
             /// 0 block rewards until at least STEEMIT_MAX_WITNESSES have produced a POW
-            if (props.num_pow_witnesses < props.active_witnesses &&
+            if (props.num_pow_witnesses < STEEMIT_MAX_WITNESSES &&
                 props.head_block_number < STEEMIT_START_VESTING_BLOCK) {
                 return asset(0, STEEM_SYMBOL);
             }
@@ -5408,9 +5397,9 @@ namespace golos { namespace chain {
     */
                 if (head_block_num() < STEEMIT_START_MINER_VOTING_BLOCK) {
                     modify(dpo, [&](dynamic_global_property_object &_dpo) {
-                        if (head_block_num() > dpo.active_witnesses) {
+                        if (head_block_num() > STEEMIT_MAX_WITNESSES) {
                             _dpo.last_irreversible_block_num =
-                                    head_block_num() - dpo.active_witnesses;
+                                    head_block_num() - STEEMIT_MAX_WITNESSES;
                         }
                     });
                 } else {
@@ -6064,10 +6053,6 @@ namespace golos { namespace chain {
                     apply_hardfork(i);
                 }
             }
-        }
-
-        bool database::is_oct26_max_witnesses_fixed() const {
-            return head_block_num() >= 104756294;
         }
 
         void database::apply_hardfork(uint32_t hardfork) {

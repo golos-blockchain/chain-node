@@ -2374,7 +2374,7 @@ namespace golos { namespace chain {
             /// POW reward depends upon whether we are before or after MINER_VOTING kicks in
             asset pow_reward = db.get_pow_reward();
             if (db.head_block_num() < STEEMIT_START_MINER_VOTING_BLOCK) {
-                pow_reward.amount *= dgp.active_witnesses;
+                pow_reward.amount *= STEEMIT_MAX_WITNESSES;
             }
             db.adjust_supply(pow_reward, true);
 
