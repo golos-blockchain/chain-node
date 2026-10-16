@@ -45,7 +45,7 @@ namespace golos { namespace api {
         uint64_t current_reserve_ratio = 1;
         uint16_t custom_ops_bandwidth_multiplier = STEEMIT_CUSTOM_OPS_BANDWIDTH_MULTIPLIER;
         uint32_t transit_block_num = UINT32_MAX;
-        fc::array<account_name_type, STEEMIT_MAX_WITNESSES> transit_witnesses;
+        fc::array<account_name_type, 21> transit_witnesses;
         flat_map<asset_symbol_type, uint32_t> worker_requests;
         asset accumulative_emission_per_day = asset(0, STEEM_SYMBOL);
         std::pair<asset, asset> min_golos_power_to_emission;
