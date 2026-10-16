@@ -153,7 +153,7 @@ namespace golos { namespace chain {
 
         fc::uint128_t current_virtual_time;
         uint32_t next_shuffle_block_num = 1;
-        fc::array<account_name_type, STEEMIT_MAX_WITNESSES> current_shuffled_witnesses;
+        fc::array<account_name_type, 21> current_shuffled_witnesses;
         uint8_t num_scheduled_witnesses = 1;
         uint8_t top19_weight = 1;
         uint8_t timeshare_weight = 5;
