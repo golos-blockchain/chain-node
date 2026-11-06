@@ -427,6 +427,23 @@ namespace golos {
                 std::shared_ptr<fc::thread> _thread;
 #endif // P2P_IN_DEDICATED_THREAD
                 std::unique_ptr<statistics_gathering_node_delegate_wrapper> _delegate;
+                bool _discovery_only = false;
+                bool _network_started = false;
+                std::string _hello_key;
+                node::hello_producer _hello_producer;
+                node::hello_consumer _hello_consumer;
+
+                void set_discovery_only(bool enabled) {
+                    FC_ASSERT(!_network_started && _handshaking_connections.empty() && _active_connections.empty());
+                    _discovery_only = enabled;
+                }
+                void set_hello_extension(const std::string& key, node::hello_producer produce, node::hello_consumer consume) {
+                    FC_ASSERT(key.empty() || (key.size() <= 64 && key.compare(0, 6, "golos.") == 0 && key != "golos.discovery_only.v1"));
+                    FC_ASSERT(key.empty() || !_network_started || key == _hello_key);
+                    _hello_key = key;
+                    _hello_producer = std::move(produce);
+                    _hello_consumer = std::move(consume);
+                }
 
 #define NODE_CONFIGURATION_FILENAME      "node_config.json"
 #define POTENTIAL_PEER_DATABASE_FILENAME "peers.json"
@@ -1339,7 +1356,7 @@ namespace golos {
                     for (const peer_connection_ptr &peer : _active_connections) {
                         // only advertise to peers who are in sync with us
                         //wdump((peer->peer_needs_sync_items_from_us));
-                        if (!peer->peer_needs_sync_items_from_us) {
+                        if (!peer->discovery_only && !peer->peer_needs_sync_items_from_us) {
                             std::map<uint32_t, std::vector<item_hash_t>> items_to_advertise_by_type;
                             // don't send the peer anything we've already advertised to it
                             // or anything it has advertised to us
@@ -1787,14 +1804,18 @@ namespace golos {
 
             bool node_impl::is_accepting_new_connections() {
                 VERIFY_CORRECT_THREAD();
-                return !_p2p_network_connect_loop_done.canceled() &&
+                // Discovery deliberately has no reconnect future (an absent FC future is canceled).
+                return _network_started && !_node_is_shutting_down &&
+                       (_discovery_only || !_p2p_network_connect_loop_done.canceled()) &&
                        get_number_of_connections() <=
                        _maximum_number_of_connections;
             }
 
             bool node_impl::is_wanting_new_connections() {
                 VERIFY_CORRECT_THREAD();
-                return !_p2p_network_connect_loop_done.canceled() &&
+                // Discovery deliberately has no reconnect future (an absent FC future is canceled).
+                return _network_started && !_node_is_shutting_down &&
+                       (_discovery_only || !_p2p_network_connect_loop_done.canceled()) &&
                        get_number_of_connections() <
                        _desired_number_of_connections;
             }
@@ -1883,6 +1904,8 @@ namespace golos {
 
             void node_impl::on_message(peer_connection *originating_peer, const message &received_message) {
                 VERIFY_CORRECT_THREAD();
+                if (_discovery_only && !discovery_control_message(received_message.msg_type)) return;
+                if (originating_peer->discovery_only && !discovery_control_message(received_message.msg_type)) return;
                 message_hash_type message_hash = received_message.id();
                 dlog("handling message ${type} ${hash} size ${size} from peer ${endpoint}",
                         ("type", golos::network::core_message_type_enum(received_message.msg_type))("hash", message_hash)
@@ -1990,7 +2013,14 @@ namespace golos {
                 }
 
                 user_data["chain_id"] = STEEMIT_CHAIN_ID;
-
+                if (_discovery_only) user_data["golos.discovery_only.v1"] = true;
+                if (_hello_producer && !_hello_key.empty()) {
+                    try {
+                        auto extension = _hello_producer();
+                        if (extension.size() <= 16384) user_data[_hello_key] = extension;
+                    } catch (const fc::canceled_exception&) { throw; }
+                    catch (...) { /* Optional metadata must not break ordinary P2P. */ }
+                }
                 return user_data;
             }
 
@@ -2207,6 +2237,19 @@ namespace golos {
                                     ("peer", originating_peer->get_remote_endpoint()));
                         } else {
                             originating_peer->their_state = peer_connection::their_connection_state::connection_accepted;
+                            // Only capture after all signature/chain/admission checks succeeded.
+                            try {
+                                if (hello_message_received.user_data.contains("golos.discovery_only.v1") &&
+                                    hello_message_received.user_data["golos.discovery_only.v1"].is_bool() &&
+                                    hello_message_received.user_data["golos.discovery_only.v1"].as_bool())
+                                    originating_peer->discovery_only = true;
+                                if (_hello_consumer && !_hello_key.empty() && hello_message_received.user_data.contains(_hello_key.c_str())) {
+                                    const auto& value = hello_message_received.user_data[_hello_key];
+                                    if (value.is_string() && value.get_string().size() <= 16384)
+                                        originating_peer->pending_hello_extension.capture(value.get_string());
+                                }
+                            } catch (const fc::canceled_exception&) { throw; }
+                            catch (...) { /* Invalid optional metadata is ignored. */ }
                             originating_peer->send_message(message(connection_accepted_message()));
                             dlog("Received a hello_message from peer ${peer}, sending reply to accept connection",
                                     ("peer", originating_peer->get_remote_endpoint()));
@@ -2314,7 +2357,7 @@ namespace golos {
                 for (address_info &address : updated_addresses) {
                     address.last_seen_time = fc::time_point_sec(fc::time_point::now());
                 }
-                bool new_information_received = merge_address_info_with_potential_peer_database(updated_addresses);
+                bool new_information_received = !_discovery_only && merge_address_info_with_potential_peer_database(updated_addresses);
                 if (new_information_received) {
                     trigger_p2p_network_connect_loop();
                 }
@@ -3956,6 +3999,11 @@ namespace golos {
 
             void node_impl::start_synchronizing_with_peer(const peer_connection_ptr &peer) {
                 VERIFY_CORRECT_THREAD();
+                if (_discovery_only || peer->discovery_only) {
+                    peer->we_need_sync_items_from_peer = false;
+                    peer->peer_needs_sync_items_from_us = false;
+                    return;
+                }
                 peer->ids_of_items_to_get.clear();
                 peer->number_of_unfetched_item_ids = 0;
                 peer->we_need_sync_items_from_peer = true;
@@ -3985,6 +4033,8 @@ namespace golos {
 
             void node_impl::close() {
                 VERIFY_CORRECT_THREAD();
+                _hello_producer = {};
+                _hello_consumer = {};
 
                 try {
                     _potential_peer_db.close();
@@ -4224,6 +4274,8 @@ namespace golos {
 
             void node_impl::accept_connection_task(peer_connection_ptr new_peer) {
                 VERIFY_CORRECT_THREAD();
+                _network_started = true;
+                new_peer->discovery_only = _discovery_only;
                 new_peer->accept_connection(); // this blocks until the secure connection is fully negotiated
                 send_hello_message(new_peer);
             }
@@ -4303,6 +4355,8 @@ namespace golos {
             void node_impl::connect_to_task(peer_connection_ptr new_peer,
                     const fc::ip::endpoint &remote_endpoint) {
                 VERIFY_CORRECT_THREAD();
+                _network_started = true;
+                new_peer->discovery_only = _discovery_only;
 
                 if (!new_peer->performing_firewall_check()) {
                     // create or find the database entry for the new peer
@@ -4489,6 +4543,8 @@ namespace golos {
 
             void node_impl::listen_to_p2p_network() {
                 VERIFY_CORRECT_THREAD();
+                FC_ASSERT(!_discovery_only || _delegate);
+                _network_started = true;
                 if (!_node_configuration.accept_incoming_connections) {
                     wlog("accept_incoming_connections is false, p2p network will not accept any incoming connections");
                     return;
@@ -4579,6 +4635,8 @@ namespace golos {
 
             void node_impl::connect_to_p2p_network() {
                 VERIFY_CORRECT_THREAD();
+                FC_ASSERT(!_discovery_only || _delegate);
+                _network_started = true;
                 assert(_node_public_key != fc::ecc::public_key_data());
 
                 assert(!_accept_loop_complete.valid() &&
@@ -4593,12 +4651,16 @@ namespace golos {
                 if (_node_configuration.accept_incoming_connections) {
                     _accept_loop_complete = fc::async([=]() { accept_loop(); }, "accept_loop");
                 }
-                _p2p_network_connect_loop_done = fc::async([=]() { p2p_network_connect_loop(); }, "p2p_network_connect_loop");
+                if (!_discovery_only)
+                    _p2p_network_connect_loop_done = fc::async([=]() { p2p_network_connect_loop(); }, "p2p_network_connect_loop");
+                if (!_discovery_only) {
                 _fetch_sync_items_loop_done = fc::async([=]() { fetch_sync_items_loop(); }, "fetch_sync_items_loop");
                 _fetch_item_loop_done = fc::async([=]() { fetch_items_loop(); }, "fetch_items_loop");
                 _advertise_inventory_loop_done = fc::async([=]() { advertise_inventory_loop(); }, "advertise_inventory_loop");
+                }
                 _terminate_inactive_connections_loop_done = fc::async([=]() { terminate_inactive_connections_loop(); }, "terminate_inactive_connections_loop");
-                _fetch_updated_peer_lists_loop_done = fc::async([=]() { fetch_updated_peer_lists_loop(); }, "fetch_updated_peer_lists_loop");
+                if (!_discovery_only)
+                    _fetch_updated_peer_lists_loop_done = fc::async([=]() { fetch_updated_peer_lists_loop(); }, "fetch_updated_peer_lists_loop");
                 _bandwidth_monitor_loop_done = fc::async([=]() { bandwidth_monitor_loop(); }, "bandwidth_monitor_loop");
                 _dump_node_status_task_done = fc::async([=]() { dump_node_status_task(); }, "dump_node_status_task");
             }
@@ -4642,6 +4704,8 @@ namespace golos {
 
             void node_impl::connect_to_endpoint(const fc::ip::endpoint &remote_endpoint) {
                 VERIFY_CORRECT_THREAD();
+                FC_ASSERT(!_discovery_only || _delegate);
+                _network_started = true;
                 if (is_connection_to_endpoint_in_progress(remote_endpoint))
                     FC_THROW_EXCEPTION(already_connected_to_requested_peer, "already connected to requested endpoint ${endpoint}",
                             ("endpoint", remote_endpoint));
@@ -4679,7 +4743,17 @@ namespace golos {
 
             void node_impl::move_peer_to_active_list(const peer_connection_ptr &peer) {
                 VERIFY_CORRECT_THREAD();
-                _active_connections.insert(peer);
+                const bool first_activation = _active_connections.insert(peer).second;
+                auto extension = peer->pending_hello_extension.consume(
+                    peer->chain_id && *peer->chain_id == STEEMIT_CHAIN_ID,
+                    peer->our_state == peer_connection::our_connection_state::connection_accepted,
+                    peer->their_state == peer_connection::their_connection_state::connection_accepted);
+                if (first_activation && _hello_consumer && !_node_is_shutting_down && !extension.empty()) {
+                    try { _hello_consumer(fc::variant(peer->node_public_key).as_string(), extension); }
+                    catch (const fc::canceled_exception&) { throw; }
+                    catch (...) { /* Isolate optional plugin failures. */ }
+                }
+                peer->pending_hello_extension.cancel();
                 _handshaking_connections.erase(peer);
                 _closing_connections.erase(peer);
                 _terminating_connections.erase(peer);
@@ -4690,6 +4764,7 @@ namespace golos {
 
             void node_impl::move_peer_to_closing_list(const peer_connection_ptr &peer) {
                 VERIFY_CORRECT_THREAD();
+                peer->pending_hello_extension.cancel();
                 _active_connections.erase(peer);
                 _handshaking_connections.erase(peer);
                 _closing_connections.insert(peer);
@@ -4701,6 +4776,7 @@ namespace golos {
 
             void node_impl::move_peer_to_terminating_list(const peer_connection_ptr &peer) {
                 VERIFY_CORRECT_THREAD();
+                peer->pending_hello_extension.cancel();
                 _active_connections.erase(peer);
                 _handshaking_connections.erase(peer);
                 _closing_connections.erase(peer);
@@ -4905,6 +4981,7 @@ namespace golos {
 
             void node_impl::broadcast(const message &item_to_broadcast, const message_propagation_data &propagation_data) {
                 VERIFY_CORRECT_THREAD();
+                FC_ASSERT(!_discovery_only, "Discovery-only nodes cannot broadcast chain messages");
                 fc::uint160_t hash_of_message_contents;
                 if (item_to_broadcast.msg_type ==
                     golos::network::block_message_type) {
@@ -4936,6 +5013,7 @@ namespace golos {
 
             void node_impl::sync_from(const item_id &current_head_block, const std::vector<uint32_t> &hard_fork_block_numbers) {
                 VERIFY_CORRECT_THREAD();
+                FC_ASSERT(!_discovery_only, "Discovery-only nodes cannot synchronize");
                 _most_recent_blocks_accepted.clear();
                 _sync_item_type = current_head_block.item_type;
                 _most_recent_blocks_accepted.push_back(current_head_block.item_hash);
@@ -5132,6 +5210,13 @@ namespace golos {
         void node::set_node_delegate(node_delegate *del) {
             fc::thread *delegate_thread = &fc::thread::current();
             INVOKE_IN_IMPL(set_node_delegate, del, delegate_thread);
+        }
+
+        void node::set_hello_extension(const std::string& key, hello_producer produce, hello_consumer consume) {
+            INVOKE_IN_IMPL(set_hello_extension, key, produce, consume);
+        }
+        void node::set_discovery_only(bool enabled) {
+            INVOKE_IN_IMPL(set_discovery_only, enabled);
         }
 
         void node::load_configuration(const fc::path &configuration_directory) {

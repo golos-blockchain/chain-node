@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #include <golos/network/peer_connection.hpp>
+#include <golos/network/discovery_policy.hpp>
 
 #include <fc/thread/thread.hpp>
 
@@ -276,7 +277,8 @@ namespace golos {
                     //dlog("peer_connection::send_queued_messages_task() calling message_oriented_connection::send_message() "
                     //     "to send message of type ${type} for peer ${endpoint}",
                     //     ("type", message_to_send.msg_type)("endpoint", get_remote_endpoint()));
-                    _message_connection.send_message(message_to_send);
+                    if (!discovery_only || discovery_control_message(message_to_send.msg_type))
+                        _message_connection.send_message(message_to_send);
                     //dlog("peer_connection::send_queued_messages_task()'s call to message_oriented_connection::send_message() completed normally for peer ${endpoint}",
                     //     ("endpoint", get_remote_endpoint()));
                 }
@@ -339,6 +341,7 @@ namespace golos {
 
         void peer_connection::send_message(const message &message_to_send, size_t message_send_time_field_offset) {
             VERIFY_CORRECT_THREAD();
+            if (discovery_only && !discovery_control_message(message_to_send.msg_type)) return;
             //dlog("peer_connection::send_message() enqueueing message of type ${type} for peer ${endpoint}",
             //     ("type", message_to_send.msg_type)("endpoint", get_remote_endpoint()));
             std::unique_ptr<queued_message> message_to_enqueue(new real_queued_message(message_to_send, message_send_time_field_offset));
@@ -347,6 +350,7 @@ namespace golos {
 
         void peer_connection::send_item(const item_id &item_to_send) {
             VERIFY_CORRECT_THREAD();
+            if (discovery_only && !discovery_control_message(item_to_send.item_type)) return;
             //dlog("peer_connection::send_item() enqueueing message of type ${type} for peer ${endpoint}",
             //     ("type", item_to_send.item_type)("endpoint", get_remote_endpoint()));
             std::unique_ptr<queued_message> message_to_enqueue(new virtual_queued_message(item_to_send));

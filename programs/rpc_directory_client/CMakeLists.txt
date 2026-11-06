@@ -1,0 +1,10 @@
+add_executable(golos-rpc-directory-client main.cpp)
+# Network/protocol serialization and FC only: no appbase, chain plugin, DB or RPC server.
+target_link_libraries(golos-rpc-directory-client PRIVATE golos::network fc)
+if(BUILD_RPC_DIRECTORY_LOOPBACK_TEST)
+    add_executable(rpc_directory_loopback_test "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/rpc_directory/loopback_test.cpp")
+    target_link_libraries(rpc_directory_loopback_test PRIVATE golos::network fc)
+    add_test(NAME rpc_directory_loopback COMMAND rpc_directory_loopback_test)
+    set_tests_properties(rpc_directory_loopback PROPERTIES TIMEOUT 40)
+endif()
+install(TARGETS golos-rpc-directory-client RUNTIME DESTINATION bin)

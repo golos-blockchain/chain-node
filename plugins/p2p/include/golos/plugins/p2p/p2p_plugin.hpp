@@ -1,6 +1,7 @@
 #pragma once
 
 #include <golos/plugins/chain/plugin.hpp>
+#include <golos/network/node.hpp>
 
 #include <appbase/application.hpp>
 
@@ -42,6 +43,9 @@ namespace golos {
                 void broadcast_transaction(const golos::protocol::signed_transaction &tx);
 
                 void set_block_production(bool producing_blocks);
+                // Thin optional metadata bridge, configured during plugin initialization.
+                void set_hello_extension(const std::string& key, network::node::hello_producer produce,
+                                         network::node::hello_consumer consume);
 
             private:
                 std::unique_ptr<detail::p2p_plugin_impl> my;

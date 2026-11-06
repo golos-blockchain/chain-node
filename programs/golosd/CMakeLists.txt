@@ -56,6 +56,11 @@ target_link_libraries(
         ${PLATFORM_SPECIFIC_LIBS}
 )
 
+if(BUILD_RPC_DIRECTORY)
+    target_link_libraries(${CURRENT_TARGET} PRIVATE golos::rpc_directory)
+    target_compile_definitions(${CURRENT_TARGET} PRIVATE GOLOS_RPC_DIRECTORY_BUILT)
+endif()
+
 install(TARGETS
         ${CURRENT_TARGET}
 
