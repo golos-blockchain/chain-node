@@ -58,7 +58,19 @@ No new RPC method or listener is exposed. In-process consumers can read bounded 
   127.0.0.1:1776 ./rpc-discovery-state 5
 ```
 
-Replace the example IP:port with an explicitly known **supporting P2P peer**, not an RPC HTTP/WebSocket address. At least one reachable peer running this feature is required; old seed nodes cannot supply a catalog they do not implement.
+The legacy command contacts one explicitly known **supporting P2P peer**, not an RPC URL. Search mode instead starts with ordinary P2P seeds, follows their standard address responses under finite budgets, and reads a catalog only when it eventually connects to a supporting peer:
+
+```sh
+./build/programs/rpc_directory_client/golos-rpc-directory-client --search ./rpc-discovery-state 10
+./build/programs/rpc_directory_client/golos-rpc-directory-client --search ./rpc-discovery-state 10 --seed seed.example.org:1776 --seed 8.8.8.8:1776
+# Optional newline-delimited HOST:PORT file (at most 64 seeds): --seed-file ./seeds.txt
+```
+
+Examples are syntax illustrations, not advertised running providers. Without explicit seeds, the client uses the 12 ordinary numeric bootstrap endpoints pinned from `share/golosd/seednodes`. Explicit `--seed`/`--seed-file` entries replace those defaults. Numeric explicit seeds are trusted operator input (including owned-loopback tests); DNS answers, cached endpoints and referrals must always be public numeric IPv4 endpoints. IPv6 is not supported by this legacy FC transport. No CLI switch relaxes referral policy. Loopback/private/link-local, shared-address, multicast, documentation, benchmark, reserved and zero-port referrals are rejected.
+
+The reusable controller deduplicates endpoints across the search: total queue 64 (22 cached supporters, 21 bootstrap, 21 referrals, with admission reserved for each class), seen 128, attempts 16, address responses 16, at most 64 addresses per response, at least 250 ms between attempts. Nonempty classes take turns cache → bootstrap → referral, beginning with cache and skipping empty classes; dead cached peers and referral floods cannot exhaust another class's admission or all its attempts. The CLI permits two simultaneous owned attempts with two-second attempt deadlines and a total duration of at most 60 seconds. The discovery network hook requires same-chain bilateral admission and rejects oversized address vectors before FC vector deserialization (64 entries / 16 KiB); it never restarts normal crawling or inserts referrals into the normal peer database. A peer response snapshot is drained rather than retained without bound.
+
+`rpc_search_supporters.v2` is an optional supporter cache: at most 64 public numeric endpoints, an 8 KiB read limit, one-hour TTL, and validation on every read. Only an actual connected peer whose catalog extension was accepted can enter it; ordinary referrals are not persisted as supporters. Cached supporters receive the first attempt; subsequent attempts rotate fairly among nonempty cache, bootstrap and referral classes. Observed protocol support does not establish RPC ownership, reachability or correctness. Future timestamps, malformed or expired caches are ignored; the legacy `rpc_search_peers.v1` file is ignored rather than migrated. Publication uses a same-directory, no-copy atomic replacement; failure preserves the old cache and removes only the owned pending file. Catalog URLs are not persisted or probed by this cache. Referral reachability is not guaranteed: ordinary peers can return transient/inbound socket addresses, and a bounded search can legitimately finish empty. An ordinary seed supplies topology, **not** a catalog; catalog propagation itself remains hello-only.
 
 The duration is `1..60` seconds (default 5). The state directory contains only P2P configuration/peer bookkeeping, not blockchain storage. Each JSON result contains `url`, absolute Unix `expires`, and `trust: "UNVERIFIED_PEER_ANNOUNCEMENT"`.
 
@@ -91,7 +103,7 @@ ctest --test-dir build-rpc-tests --no-tests=error --output-on-failure
 python3 tests/rpc_directory/transport_contract_test.py
 ```
 
-The focused suite passed 9/9: three linked policy/state/production-admission-predicate tests and six actual-source syntax checks. Source contracts passed 5/5. AddressSanitizer passed 3/3; combined AddressSanitizer/UndefinedBehaviorSanitizer passed 2/2 dependency-free tests. The reduced FC admission harness did not link with combined instrumentation because its minimal linkage omits FC promise RTTI; it is not counted as a combined-sanitizer pass.
+The focused suite registers seven runtime tests (policy, state, production admission, search, duplicate-referral, overlap and L3 policy) and six actual-source syntax checks. Search tests cover public endpoint filtering, queue/attempt/rate/response caps, cycles, cancellation and cache expiry/read validation. A fresh valid referral can promote an already queued cached supporter within its existing class without adding an attempt or changing class reservations; this prevents an overlapping cached provider from remaining behind dead entries. See [adversarial test layers](../tests/rpc_directory/adversarial/README.md) for encrypted-wire, actual-client and explicitly nonshipping loopback-overlay coverage. Policy sanitizer results are not whole-transport sanitizer coverage. Earlier pre-search sanitizer results are historical gates, not sanitizer acceptance of the new crawler.
 
 Real encrypted integration with the full legacy toolchain:
 
@@ -106,8 +118,10 @@ ctest -R '^rpc_directory_loopback$' --timeout 60 --output-on-failure
 cd ..
 ```
 
-On older CTest versions, separately check that exactly one test was discovered; an empty suite may otherwise exit successfully. The actual linked fixture passed 1/1: encrypted A -> B -> C relay, unchanged expiry, zero chain-delegate calls and explicit close.
+On older CTest versions, separately check that exactly one test was discovered; an empty suite may otherwise exit successfully. The encrypted fixture starts an ordinary peer with its catalog hook disabled, connects it outbound to a provider, then gives the search client only the ordinary peer. The provider is learned exclusively from the standard address response. Its owned-loopback referral policy is injected into the test controller only; production continues rejecting private referrals. It asserts unchanged expiry, zero chain-delegate calls and explicit close without a chain database. The fixture's `--serve` mode supports `tests/rpc_directory/cli_search_test.py CLIENT FIXTURE` for separate-process legacy/search, strict private-referral rejection, invalid-argument and cancellation checks.
 
 The full Bionic `golosd` also passed help/version and isolated startup tests: with `plugin = rpc_directory`, the separate client received the announcement; without enabling it, the client returned `[]`. Both node processes shut down with exit 0 after SIGINT. These checks were repeated in a fresh network-disabled container. A separate `BUILD_RPC_DIRECTORY=OFF` configuration excluded feature targets; a separate OFF binary was not built.
 
-The actual standalone client additionally passed announced/empty/unavailable-provider, usage, invalid-duration and cancellation cases. These are local Linux tests, not a mainnet deployment, Windows package test, full financial audit, old-peer compatibility result or long-running synchronization test.
+The actual standalone client additionally passed announced/empty/unavailable-provider, usage, invalid-duration and cancellation cases. These are local tests, not a mainnet deployment, GUI or package acceptance, CI success, full financial audit, old-peer compatibility result or long-running synchronization test.
+
+The native Windows standalone client was exercised with owned encrypted P2P fixtures and a Unicode state-directory path. Its client-only manifest requests UTF-8 activeCodePage on Windows 10 1903+ / Windows 11. That executable used a separately prepared legacy cross-toolchain with isolated dependency compatibility/build patches that are not included here. This is not evidence that an unmodified upstream checkout builds on Windows, nor a claim that the legacy dependencies are production-security ready. No application repository, GUI harness, binary or package is part of this change.

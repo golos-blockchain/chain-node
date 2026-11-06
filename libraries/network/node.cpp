@@ -432,6 +432,27 @@ namespace golos {
                 std::string _hello_key;
                 node::hello_producer _hello_producer;
                 node::hello_consumer _hello_consumer;
+                node::hello_endpoint_observer _hello_endpoint_observer;
+                void set_hello_endpoint_observer(node::hello_endpoint_observer observe) {
+                    FC_ASSERT(!_network_started);
+                    _hello_endpoint_observer = std::move(observe);
+                }
+                std::vector<std::string> _discovery_addresses;
+                std::set<std::string> _discovery_responded;
+                unsigned _discovery_response_count = 0;
+                std::vector<std::string> take_discovery_addresses() {
+                    std::vector<std::string> result;
+                    result.swap(_discovery_addresses);
+                    return result;
+                }
+                void disconnect_discovery_peer(const fc::ip::endpoint& endpoint) {
+                    FC_ASSERT(_discovery_only);
+                    auto peer = get_connection_to_endpoint(endpoint);
+                    if (peer) {
+                        move_peer_to_closing_list(peer);
+                        peer->destroy_connection(); // Owned deadline: do not wait for a remote close acknowledgement.
+                    }
+                }
 
                 void set_discovery_only(bool enabled) {
                     FC_ASSERT(!_network_started && _handshaking_connections.empty() && _active_connections.empty());
@@ -1906,6 +1927,17 @@ namespace golos {
                 VERIFY_CORRECT_THREAD();
                 if (_discovery_only && !discovery_control_message(received_message.msg_type)) return;
                 if (originating_peer->discovery_only && !discovery_control_message(received_message.msg_type)) return;
+                if (_discovery_only && received_message.msg_type == core_message_type_enum::address_message_type) {
+                    // FC vectors allocate from their wire varint. Reject before as<> can allocate.
+                    const auto& bytes = received_message.data;
+                    if (!_network_started || _node_is_shutting_down || _discovery_response_count>=16 ||
+                        !originating_peer->chain_id || *originating_peer->chain_id!=STEEMIT_CHAIN_ID ||
+                        originating_peer->our_state!=peer_connection::our_connection_state::connection_accepted ||
+                        originating_peer->their_state!=peer_connection::their_connection_state::connection_accepted ||
+                        _discovery_responded.count(std::string(*originating_peer->get_remote_endpoint())) ||
+                        bytes.empty() || bytes.size()>16384 || static_cast<unsigned char>(bytes[0])>64)
+                        return;
+                }
                 message_hash_type message_hash = received_message.id();
                 dlog("handling message ${type} ${hash} size ${size} from peer ${endpoint}",
                         ("type", golos::network::core_message_type_enum(received_message.msg_type))("hash", message_hash)
@@ -2243,7 +2275,7 @@ namespace golos {
                                     hello_message_received.user_data["golos.discovery_only.v1"].is_bool() &&
                                     hello_message_received.user_data["golos.discovery_only.v1"].as_bool())
                                     originating_peer->discovery_only = true;
-                                if (_hello_consumer && !_hello_key.empty() && hello_message_received.user_data.contains(_hello_key.c_str())) {
+                                if ((_hello_consumer || _hello_endpoint_observer) && !_hello_key.empty() && hello_message_received.user_data.contains(_hello_key.c_str())) {
                                     const auto& value = hello_message_received.user_data[_hello_key];
                                     if (value.is_string() && value.get_string().size() <= 16384)
                                         originating_peer->pending_hello_extension.capture(value.get_string());
@@ -2349,6 +2381,25 @@ namespace golos {
 
             void node_impl::on_address_message(peer_connection *originating_peer, const address_message &address_message_received) {
                 VERIFY_CORRECT_THREAD();
+                if (_discovery_only) {
+                    // No pre-hello, wrong-chain or rejected response may feed a crawler.
+                    if (!_network_started || _node_is_shutting_down || !originating_peer->chain_id ||
+                        *originating_peer->chain_id != STEEMIT_CHAIN_ID ||
+                        originating_peer->our_state != peer_connection::our_connection_state::connection_accepted ||
+                        originating_peer->their_state != peer_connection::their_connection_state::connection_accepted) return;
+                    if (_handshaking_connections.count(originating_peer->shared_from_this())) {
+                        originating_peer->negotiation_status = peer_connection::connection_negotiation_status::negotiation_complete;
+                        move_peer_to_active_list(originating_peer->shared_from_this());
+                        new_peer_just_added(originating_peer->shared_from_this());
+                    }
+                    if (_active_connections.count(originating_peer->shared_from_this()) &&
+                        _discovery_response_count < 16 && _discovery_responded.insert(std::string(*originating_peer->get_remote_endpoint())).second) {
+                        ++_discovery_response_count;
+                        for (size_t i=0; i<address_message_received.addresses.size() && i<64 && _discovery_addresses.size()<128; ++i)
+                            _discovery_addresses.push_back(std::string(address_message_received.addresses[i].remote_endpoint));
+                    }
+                    return;
+                }
                 dlog("Received an address message containing ${size} addresses", ("size", address_message_received.addresses.size()));
                 for (const address_info &address : address_message_received.addresses) {
                     dlog("    ${endpoint} last seen ${time}", ("endpoint", address.remote_endpoint)("time", address.last_seen_time));
@@ -4033,8 +4084,11 @@ namespace golos {
 
             void node_impl::close() {
                 VERIFY_CORRECT_THREAD();
+                _network_started = false;
+                _discovery_addresses.clear();
                 _hello_producer = {};
                 _hello_consumer = {};
+                _hello_endpoint_observer = {};
 
                 try {
                     _potential_peer_db.close();
@@ -4748,8 +4802,14 @@ namespace golos {
                     peer->chain_id && *peer->chain_id == STEEMIT_CHAIN_ID,
                     peer->our_state == peer_connection::our_connection_state::connection_accepted,
                     peer->their_state == peer_connection::their_connection_state::connection_accepted);
-                if (first_activation && _hello_consumer && !_node_is_shutting_down && !extension.empty()) {
-                    try { _hello_consumer(fc::variant(peer->node_public_key).as_string(), extension); }
+                if (first_activation && !_node_is_shutting_down && !extension.empty()) {
+                    try {
+                        const auto source = fc::variant(peer->node_public_key).as_string();
+                        if (_hello_consumer) _hello_consumer(source, extension);
+                        const auto endpoint = peer->get_remote_endpoint();
+                        if (_hello_endpoint_observer && endpoint)
+                            _hello_endpoint_observer(source, std::string(*endpoint), extension);
+                    }
                     catch (const fc::canceled_exception&) { throw; }
                     catch (...) { /* Isolate optional plugin failures. */ }
                 }
@@ -5214,6 +5274,15 @@ namespace golos {
 
         void node::set_hello_extension(const std::string& key, hello_producer produce, hello_consumer consume) {
             INVOKE_IN_IMPL(set_hello_extension, key, produce, consume);
+        }
+        void node::set_hello_endpoint_observer(hello_endpoint_observer observe) {
+            INVOKE_IN_IMPL(set_hello_endpoint_observer, observe);
+        }
+        std::vector<std::string> node::take_discovery_addresses() {
+            INVOKE_IN_IMPL(take_discovery_addresses);
+        }
+        void node::disconnect_discovery_peer(const fc::ip::endpoint& endpoint) {
+            INVOKE_IN_IMPL(disconnect_discovery_peer, endpoint);
         }
         void node::set_discovery_only(bool enabled) {
             INVOKE_IN_IMPL(set_discovery_only, enabled);
