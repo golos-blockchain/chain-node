@@ -1,0 +1,20 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -121,7 +121,7 @@
+         set(Boost_LIBRARIES ${BOOST_LIBRARIES_TEMP} ${Boost_LIBRARIES})
+     endif()
+ 
+-    set(PLATFORM_SPECIFIC_LIBS wsock32.lib ws2_32.lib userenv.lib)
++    set(PLATFORM_SPECIFIC_LIBS wsock32 ws2_32 userenv)
+     # iphlpapi.lib
+ 
+ else(WIN32)
+@@ -396,7 +396,7 @@
+ 
+ if(WIN32)
+     # add addtional import library on windows platform
+-    target_link_libraries(fc PUBLIC crypt32.lib)
++    target_link_libraries(fc PUBLIC crypt32)
+ 
+     # now generate a list of the DLLs we're using to use during the install process
+     include(ParseLibraryList)

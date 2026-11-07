@@ -1,0 +1,3 @@
+160000 commit aee799a31d08977b166fb19cad794730717e3304	vendor/diff-match-patch-cpp-stl
+160000 commit d22774e248c703a191049b78f8d04f37d6fcfa05	vendor/secp256k1-zkp
+160000 commit 72e2760a4cceef2d270450746ce90efce9374eb8	vendor/websocketpp
