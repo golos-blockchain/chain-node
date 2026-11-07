@@ -9,7 +9,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
 #include <websocketpp/config/asio_client.hpp>
@@ -79,10 +79,13 @@ namespace golos {
             struct webserver_plugin::webserver_plugin_impl final {
             public:
                 boost::thread_group& thread_pool = appbase::app().scheduler();
-                webserver_plugin_impl(thread_pool_size_t thread_pool_size) : thread_pool_work(this->thread_pool_ios) {
+                bool allow_cors = false;
+
+                webserver_plugin_impl(thread_pool_size_t thread_pool_size, bool _allow_cors) : thread_pool_work(this->thread_pool_ios) {
                     for (uint32_t i = 0; i < thread_pool_size; ++i) {
                         thread_pool.create_thread(boost::bind(&asio::io_service::run, &thread_pool_ios));
                     }
+                    allow_cors = _allow_cors;
                 }
 
                 void start_webserver();
@@ -119,10 +122,10 @@ namespace golos {
                             ws_server.init_asio(&ws_ios);
                             ws_server.set_reuse_addr(true);
 
-                            ws_server.set_message_handler(boost::bind(&webserver_plugin_impl::handle_ws_message, this, &ws_server, _1, _2));
+                            ws_server.set_message_handler(boost::bind(&webserver_plugin_impl::handle_ws_message, this, &ws_server, boost::placeholders::_1, boost::placeholders::_2));
 
                             if (http_endpoint && http_endpoint == ws_endpoint) {
-                                ws_server.set_http_handler(boost::bind(&webserver_plugin_impl::handle_http_message, this, &ws_server, _1));
+                                ws_server.set_http_handler(boost::bind(&webserver_plugin_impl::handle_http_message, this, &ws_server, boost::placeholders::_1));
                                 ilog("start listending for http requests");
                             }
 
@@ -220,6 +223,12 @@ namespace golos {
                 thread_pool_ios.post([con, this]() {
                     auto body = con->get_request_body();
 
+                    if (this->allow_cors) {
+                        con->append_header("Access-Control-Allow-Origin", "*");
+                        con->append_header("Access-Control-Allow-Methods", "GET, POST");
+                        con->append_header("Access-Control-Allow-Headers", "Content-Type");
+                    }
+
                     try {
                         api->call(body, [con](const std::string &data){
                             // this lambda can be called from any thread in application
@@ -260,14 +269,18 @@ namespace golos {
                     ("rpc-endpoint", boost::program_options::value<string>(),
                         "Local http and websocket endpoint for webserver requests. Deprectaed in favor of webserver-http-endpoint and webserver-ws-endpoint")
                     ("webserver-thread-pool-size", boost::program_options::value<thread_pool_size_t>()->default_value(256),
-                        "Number of threads used to handle queries. Default: 256.");
+                        "Number of threads used to handle queries. Default: 256.")
+                    ("allow-cors", bpo::value<bool>()->default_value(false),
+                        "Allow use http node without proxy which adds Access-Control-Allow-Origin. Mostly for testing purposes. Default: false.");
             }
 
             void webserver_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
                 auto thread_pool_size = options.at("webserver-thread-pool-size").as<thread_pool_size_t>();
                 FC_ASSERT(thread_pool_size > 0, "webserver-thread-pool-size must be greater than 0");
                 ilog("configured with ${tps} thread pool size", ("tps", thread_pool_size));
-                my.reset(new webserver_plugin_impl(thread_pool_size));
+                
+                auto allow_cors = options.at("allow-cors").as<bool>();
+                my.reset(new webserver_plugin_impl(thread_pool_size, allow_cors));
 
                 if (options.count("webserver-http-endpoint")) {
                     auto http_endpoint = options.at("webserver-http-endpoint").as<string>();

@@ -732,6 +732,8 @@ namespace golos { namespace chain {
                with id N, applies all hardforks with id <= N */
             void set_hardfork(uint32_t hardfork, bool process_now = true);
 
+            bool is_oct26_max_witnesses_fixed() const;
+
             void validate_invariants() const;
 
             /**

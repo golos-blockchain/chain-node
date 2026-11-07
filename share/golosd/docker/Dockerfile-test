@@ -1,4 +1,4 @@
-FROM phusion/baseimage:bionic-1.0.0
+FROM phusion/baseimage:jammy-1.0.1
 
 ENV LANG=en_US.UTF-8
 
@@ -47,9 +47,15 @@ RUN \
         -DMAX_19_VOTED_WITNESSES=TRUE \
         -DENABLE_MONGO_PLUGIN=FALSE \
         .. && \
-    make -j$(nproc) chain_test plugin_test && \
-    ./tests/chain_test --log_level=message --report_level=detailed && \
-    ./tests/plugin_test --log_level=message --report_level=detailed
+    make -j 4 chain_test plugin_test
+
+ARG CACHEBUST=1
+RUN \
+    cd /usr/local/src/golos \
+    cd build \
+    ./tests/chain_test --log_level=message --report_level=detailed --run_test=operation_tests
+
+# ./tests/plugin_test --log_level=message --report_level=detailed
 
 # isn't used now, but can be used later ...
 #

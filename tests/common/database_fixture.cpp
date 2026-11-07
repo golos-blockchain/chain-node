@@ -30,6 +30,11 @@ std::ostream& operator<<(std::ostream& out, const fc::time_point& v) {
     return out;
 }
 
+std::ostream& operator<<(std::ostream& out, const fc::time_point_sec& v) {
+    out << static_cast<std::string>(v);
+    return out;
+}
+
 std::ostream& operator<<(std::ostream& out, const fc::uint128_t& v) {
     out << static_cast<std::string>(v);
     return out;

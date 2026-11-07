@@ -32,12 +32,17 @@
 #include <boost/test/included/unit_test.hpp>
 #endif
 
+struct GlobalFixture {
+    GlobalFixture() {
+        fc::configure_logging(fc::logging_config::default_config(fc::log_level::error));
 
-boost::unit_test::test_suite *init_unit_test_suite(int argc, char *argv[]) {
-    fc::configure_logging(fc::logging_config::default_config(fc::log_level::error));
+        std::srand(time(NULL));
+        std::cout << "Random number generator seeded to " << time(NULL)
+                << std::endl;
+    }
 
-    std::srand(time(NULL));
-    std::cout << "Random number generator seeded to " << time(NULL)
-              << std::endl;
-    return nullptr;
-}
+    ~GlobalFixture() {
+    }
+};
+
+BOOST_TEST_GLOBAL_FIXTURE(GlobalFixture);

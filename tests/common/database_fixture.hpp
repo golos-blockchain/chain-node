@@ -299,6 +299,7 @@ namespace fc {
 
 std::ostream& operator<<(std::ostream& out, const fc::exception& e);
 std::ostream& operator<<(std::ostream& out, const fc::time_point& v);
+std::ostream& operator<<(std::ostream& out, const fc::time_point_sec& v);
 std::ostream& operator<<(std::ostream& out, const fc::uint128_t& v);
 std::ostream& operator<<(std::ostream& out, const fc::uint128lh_t& v);
 std::ostream& operator<<(std::ostream& out, const fc::fixed_string<fc::uint128_t>& v);
