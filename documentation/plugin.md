@@ -1,4 +1,9 @@
 
+> This document describes the legacy `steemd` plugin architecture. Current
+> appbase-based `golosd` uses `plugin = <name>` in `config.ini`.
+> For the optional P2P RPC directory plugin, including its default-OFF build
+> option and runtime activation, see [RPC directory](rpc_directory.md).
+
 How plugins work
 ----------------
 

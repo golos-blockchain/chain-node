@@ -30,6 +30,8 @@
 #include <golos/protocol/types.hpp>
 
 #include <list>
+#include <functional>
+#include <golos/network/discovery_policy.hpp>
 
 namespace golos {
     namespace network {
@@ -196,6 +198,20 @@ namespace golos {
             void close();
 
             void set_node_delegate(node_delegate *del);
+
+            using hello_producer = std::function<std::string()>;
+            using hello_consumer = std::function<void(const std::string&, const std::string&)>;
+            using hello_endpoint_observer = std::function<void(const std::string&, const std::string&, const std::string&)>;
+            // Same bilateral admission gate as hello_consumer; endpoint is the connected socket, not advertised data.
+            void set_hello_endpoint_observer(hello_endpoint_observer observe);
+            // One bounded namespaced string, callbacks run on the network thread. No I/O in callbacks.
+            // Set before connecting; clear callbacks synchronously before destroying their owner.
+            void set_hello_extension(const std::string& key, hello_producer produce, hello_consumer consume);
+            // Immutable after first connection/listen. Never start a chain DB for this mode.
+            void set_discovery_only(bool enabled);
+            // Bounded drain, one address response per bilaterally admitted same-chain peer.
+            std::vector<std::string> take_discovery_addresses();
+            void disconnect_discovery_peer(const fc::ip::endpoint& endpoint);
 
             void load_configuration(const fc::path &configuration_directory);
 

@@ -6,6 +6,9 @@
 #include <fc/stacktrace.hpp>
 #include <golos/plugins/chain/plugin.hpp>
 #include <golos/plugins/p2p/p2p_plugin.hpp>
+#ifdef GOLOS_RPC_DIRECTORY_BUILT
+#include <golos/plugins/rpc_directory/rpc_directory_plugin.hpp>
+#endif
 #include <golos/plugins/webserver/webserver_plugin.hpp>
 #include <golos/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <golos/plugins/witness/witness.hpp>
@@ -72,6 +75,9 @@ namespace golos {
             ///plugins
             appbase::app().register_plugin<golos::plugins::chain::plugin>();
             appbase::app().register_plugin<golos::plugins::p2p::p2p_plugin>();
+#ifdef GOLOS_RPC_DIRECTORY_BUILT
+            appbase::app().register_plugin<golos::plugins::rpc_directory::plugin>();
+#endif
             appbase::app().register_plugin<golos::plugins::webserver::webserver_plugin>();
             appbase::app().register_plugin<golos::plugins::witness_plugin::witness_plugin>();
             appbase::app().register_plugin<golos::plugins::witness_api::plugin>();

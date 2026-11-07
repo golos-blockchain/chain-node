@@ -7,6 +7,9 @@ list(APPEND ${CURRENT_TARGET}_HEADERS
         include/golos/network/message.hpp
         include/golos/network/message_oriented_connection.hpp
         include/golos/network/node.hpp
+        include/golos/network/discovery_policy.hpp
+        include/golos/network/discovery_delegate.hpp
+        include/golos/network/rpc_directory.hpp
         include/golos/network/peer_connection.hpp
         include/golos/network/peer_database.hpp
         include/golos/network/stcp_socket.hpp

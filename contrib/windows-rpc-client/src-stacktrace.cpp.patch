@@ -1,0 +1,39 @@
+--- a/src/stacktrace.cpp
++++ b/src/stacktrace.cpp
+@@ -1,5 +1,9 @@
+ #include <signal.h>
++#ifdef _WIN32
++#include <windows.h>
++#else
+ #include <execinfo.h>
++#endif
+ #include <fc/log/logger.hpp>
+ #include <iostream>
+ 
+@@ -8,6 +12,18 @@
+ 
+ namespace fc {
+     void print_stacktrace() {
++#ifdef _WIN32
++        void* trace[FC_STACKTRACE_ENTRIES];
++        const USHORT size = CaptureStackBackTrace(0, FC_STACKTRACE_ENTRIES, trace, NULL);
++        std::cout << "--- STACKTRACE (symbols unavailable):" << std::endl;
++        if (size <= FC_STACKTRACE_SKIP_ENTRIES) {
++            std::cout << "unknown (no visible stack frames captured)" << std::endl;
++        }
++        for (USHORT i = FC_STACKTRACE_SKIP_ENTRIES; i < size; ++i) {
++            std::cout << "#" << (i - FC_STACKTRACE_SKIP_ENTRIES + 1)
++                      << ": " << trace[i] << " (symbols unavailable)" << std::endl;
++        }
++#else
+         void* trace[FC_STACKTRACE_ENTRIES];
+         size_t size = backtrace(trace, FC_STACKTRACE_ENTRIES);
+ 
+@@ -42,6 +58,7 @@
+         }
+ 
+         free(strs);
++#endif
+     }
+ 
+     namespace {

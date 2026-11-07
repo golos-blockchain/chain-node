@@ -1,0 +1,5 @@
+add_library(golos_rpc_directory rpc_directory_plugin.cpp)
+add_library(golos::rpc_directory ALIAS golos_rpc_directory)
+target_include_directories(golos_rpc_directory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(golos_rpc_directory PUBLIC golos::p2p golos::network appbase)
+install(TARGETS golos_rpc_directory RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)

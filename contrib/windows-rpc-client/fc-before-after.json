@@ -1,0 +1,17 @@
+{
+  "fc_commit": "94d96aaff4fddcb49195d165751b174a729b78d6",
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "before_lf_sha256": "c1ae510f7908d00f8bfe58768685456704358ad383cd5ae91cf1fe9df3717512",
+      "before_crlf_sha256": "ba68425d6ec153202200f118943d7aa59c6d47d991e62ebd12d528aca932d5bb",
+      "after_lf_sha256": "f7077f01919f7c666f86d8445bf9d99b1597b76860dd21525389d011c4dbd878"
+    },
+    {
+      "path": "src/stacktrace.cpp",
+      "before_lf_sha256": "2993fe4deee73c47c767af06b9ba253bf9cda83157423d5353279867cb963694",
+      "before_crlf_sha256": "07cae3ac25df9ae2d0c549494887fc9894cb0f5bfbffc1394b24c9d7ecfd7fa3",
+      "after_lf_sha256": "925291494ac0c3738085f42d4379f4b7dbd9bbc6aed3f5ca185a1f178fe8b213"
+    }
+  ]
+}

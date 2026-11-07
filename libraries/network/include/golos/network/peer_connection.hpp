@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #pragma once
+#include <golos/network/discovery_policy.hpp>
 
 #include <golos/network/node.hpp>
 #include <golos/network/peer_database.hpp>
@@ -172,6 +173,8 @@ namespace golos {
             std::queue<std::unique_ptr<queued_message>, std::list<std::unique_ptr<queued_message>>> _queued_messages;
             fc::future<void> _send_queued_messages_done;
         public:
+            hello_extension_state pending_hello_extension;
+            bool discovery_only = false; // local mode or accepted peer capability
             fc::time_point connection_initiation_time;
             fc::time_point connection_closed_time;
             fc::time_point connection_terminated_time;

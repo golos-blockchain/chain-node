@@ -92,6 +92,9 @@ namespace golos {
                     bool block_producer = false;
 
                     std::unique_ptr<golos::network::node> node;
+                    std::string hello_key;
+                    network::node::hello_producer hello_producer;
+                    network::node::hello_consumer hello_consumer;
 
                     chain::plugin &chain;
 
@@ -503,6 +506,7 @@ namespace golos {
                     my->node.reset(new golos::network::node(my->user_agent));
                     my->node->load_configuration(app().data_dir() / "p2p");
                     my->node->set_node_delegate(&(*my));
+                    my->node->set_hello_extension(my->hello_key, my->hello_producer, my->hello_consumer);
 
                     if (my->endpoint) {
                         ilog("Configuring P2P to listen at ${ep}", ("ep", my->endpoint));
@@ -550,6 +554,16 @@ namespace golos {
             void p2p_plugin::broadcast_transaction(const protocol::signed_transaction &tx) {
                 ulog("Broadcasting tx #${n}", ("id", tx.id()));
                 my->node->broadcast(trx_message(tx));
+            }
+
+            void p2p_plugin::set_hello_extension(const std::string& key, network::node::hello_producer produce,
+                                                  network::node::hello_consumer consume) {
+                my->hello_key = key;
+                my->hello_producer = std::move(produce);
+                my->hello_consumer = std::move(consume);
+                if (my->node) my->p2p_thread.async([this] {
+                    my->node->set_hello_extension(my->hello_key, my->hello_producer, my->hello_consumer);
+                }).wait();
             }
 
             void p2p_plugin::set_block_production(bool producing_blocks) {

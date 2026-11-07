@@ -1,0 +1,65 @@
+[
+  {
+    "Package": "binutils-mingw-w64-x86-64",
+    "Architecture": "amd64",
+    "Version": "2.30-7ubuntu1+8ubuntu1",
+    "Filename": "pool/universe/b/binutils-mingw-w64/binutils-mingw-w64-x86-64_2.30-7ubuntu1+8ubuntu1_amd64.deb",
+    "SHA256": "1d7eac794f3f98d75e22928c893b4edcff4ec42e2aa6d0fd0cf79be8419adc2f",
+    "suite": "bionic",
+    "component": "universe"
+  },
+  {
+    "Package": "g++-mingw-w64-x86-64",
+    "Architecture": "amd64",
+    "Version": "7.3.0-11ubuntu1+20.2build1",
+    "Filename": "pool/universe/g/gcc-mingw-w64/g++-mingw-w64-x86-64_7.3.0-11ubuntu1+20.2build1_amd64.deb",
+    "SHA256": "04363e84d47e512e6e12c4f9e1dc66427e6f7befbf3c2bd1aec5280efe247ebd",
+    "suite": "bionic",
+    "component": "universe"
+  },
+  {
+    "Package": "gcc-mingw-w64-x86-64",
+    "Architecture": "amd64",
+    "Version": "7.3.0-11ubuntu1+20.2build1",
+    "Filename": "pool/universe/g/gcc-mingw-w64/gcc-mingw-w64-x86-64_7.3.0-11ubuntu1+20.2build1_amd64.deb",
+    "SHA256": "2fb581007403a5ee54e3764f7824ec65fa3668829f31b8becaef82a4bf4a8054",
+    "suite": "bionic",
+    "component": "universe"
+  },
+  {
+    "Package": "gcc-mingw-w64-base",
+    "Architecture": "amd64",
+    "Version": "7.3.0-11ubuntu1+20.2build1",
+    "Filename": "pool/universe/g/gcc-mingw-w64/gcc-mingw-w64-base_7.3.0-11ubuntu1+20.2build1_amd64.deb",
+    "SHA256": "e942d83b8391ca8eb043355ed823e01c8c655573cb53be14d65ab618e3b1b717",
+    "suite": "bionic",
+    "component": "universe"
+  },
+  {
+    "Package": "mingw-w64-common",
+    "Architecture": "all",
+    "Version": "5.0.3-1",
+    "Filename": "pool/universe/m/mingw-w64/mingw-w64-common_5.0.3-1_all.deb",
+    "SHA256": "592b3d2cf110e9f616333b3aa520b395fd9c853ddd313e07e988a5ba84194cbd",
+    "suite": "bionic",
+    "component": "universe"
+  },
+  {
+    "Package": "mingw-w64-x86-64-dev",
+    "Architecture": "all",
+    "Version": "5.0.3-1",
+    "Filename": "pool/universe/m/mingw-w64/mingw-w64-x86-64-dev_5.0.3-1_all.deb",
+    "SHA256": "f02f2d61e7e2b8c2d8c79ad6b4577d6d1556dad6e81a9d291cd67e0138bf95d1",
+    "suite": "bionic",
+    "component": "universe"
+  },
+  {
+    "Package": "libisl19",
+    "Architecture": "amd64",
+    "Version": "0.19-1",
+    "Filename": "pool/main/i/isl/libisl19_0.19-1_amd64.deb",
+    "SHA256": "07a0827aba14140b1833ca19ced3f939b2d075646094926d43678a0d19cc942f",
+    "suite": "bionic",
+    "component": "main"
+  }
+]
